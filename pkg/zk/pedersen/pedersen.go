@@ -15,17 +15,12 @@ type Verifier struct {
 
 // Commit sets the variable result to
 //   s^secret t^blind
-// result and tmp are allowed to be nil, in which case they will be allocated.
-// If result and tmp are not nil, they will be overwritten.
-func (v *Verifier) Commit(secret, blind, tmp *big.Int) *big.Int {
-	var result big.Int
-	if tmp == nil {
-		tmp = new(big.Int)
-	}
+func (v *Verifier) Commit(secret, blind *big.Int) *big.Int {
+	var result, tmp big.Int
 
 	result.Exp(v.S, secret, v.N)
 	tmp.Exp(v.T, blind, v.N)
-	result.Mul(&result, tmp)
+	result.Mul(&result, &tmp)
 	result.Mod(&result, v.N)
 	return &result
 }

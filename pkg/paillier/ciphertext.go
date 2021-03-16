@@ -13,8 +13,7 @@ type Ciphertext struct {
 // Enc sets the receiver to the encryption of m under the key pk, using the given nonce.
 // If nonce is nil then a new one is generated and returned
 func (ct *Ciphertext) Enc(pk *PublicKey, m *big.Int, nonce *big.Int) (*Ciphertext, *big.Int) {
-
-
+	var tmp big.Int
 	if nonce == nil {
 		nonce = pk.Nonce()
 	}
@@ -23,9 +22,9 @@ func (ct *Ciphertext) Enc(pk *PublicKey, m *big.Int, nonce *big.Int) (*Ciphertex
 	ct.c.Add(&ct.c, one)            // N + 1
 	ct.c.Exp(&ct.c, m, pk.nSquared) // (N+1)^m mod N^2
 
-	tmp := new(big.Int).Exp(nonce, pk.n, pk.nSquared) // rho ^ N mod N^2
+	tmp.Exp(nonce, pk.n, pk.nSquared) // rho ^ N mod N^2
 
-	ct.c.Mul(&ct.c, tmp) // (N+1)^m rho ^ N
+	ct.c.Mul(&ct.c, &tmp) // (N+1)^m rho ^ N
 	ct.c.Mod(&ct.c, pk.nSquared)
 
 	return ct, nonce

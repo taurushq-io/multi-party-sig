@@ -1,13 +1,13 @@
 package zkmulg
 
 import (
-	"crypto/sha512"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
 const domain = "CMP-MULG"
@@ -37,25 +37,7 @@ type Proof struct {
 }
 
 func (commitment *Commitment) Challenge() *big.Int {
-	var e big.Int
-	h := sha512.New()
-	h.Write([]byte(domain))
-
-	// TODO Which parameters should we include?
-	// Write public parameters to hash
-	h.Write([]byte(""))
-
-	// Write commitments
-	h.Write(commitment.A.Bytes())
-	h.Write(commitment.Bx.Bytes())
-	h.Write(commitment.E.Bytes())
-	h.Write(commitment.S.Bytes())
-
-	out := h.Sum(nil)
-	e.SetBytes(out)
-	e.Mod(&e, curve.Q)
-	e.Sub(&e, curve.QHalf)
-	return &e
+	return zkcommon.MakeChallengeFq(domain, commitment.A, commitment.Bx, commitment.E, commitment.S)
 }
 
 // NewProof generates a proof that the
@@ -77,10 +59,10 @@ func NewProof(proverPailler *paillier.PublicKey, verifierPedersen *pedersen.Veri
 	Bx.ScalarBaseMult(curve.NewScalarBigInt(alpha))
 
 	commitment := &Commitment{
-		A: &A,
+		A:  &A,
 		Bx: &Bx,
-		E: verifierPedersen.Commit(alpha, gamma, nil),
-		S: verifierPedersen.Commit(x, m, nil),
+		E:  verifierPedersen.Commit(alpha, gamma),
+		S:  verifierPedersen.Commit(x, m),
 	}
 
 	e := commitment.Challenge()
@@ -110,6 +92,10 @@ func NewProof(proverPailler *paillier.PublicKey, verifierPedersen *pedersen.Veri
 }
 
 func (proof *Proof) Verify(proverPailler *paillier.PublicKey, verifierPedersen *pedersen.Verifier, C, D *paillier.Ciphertext, X *curve.Point) bool {
+	if !arith.IsInInterval(proof.Z1, arith.LPlusEpsilon) {
+		return false
+	}
+
 	e := proof.Challenge()
 
 	{
@@ -141,11 +127,10 @@ func (proof *Proof) Verify(proverPailler *paillier.PublicKey, verifierPedersen *
 	}
 
 	{
-		 if !verifierPedersen.Verify(proof.Z1, proof.Z2, proof.E, proof.S, e) {
-			 return false
-		 }
+		if !verifierPedersen.Verify(proof.Z1, proof.Z2, proof.E, proof.S, e) {
+			return false
+		}
 	}
-
 
 	return true
 }

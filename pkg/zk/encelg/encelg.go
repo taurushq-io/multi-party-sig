@@ -1,14 +1,13 @@
 package zkencelg
 
 import (
-	"crypto/sha512"
-	"fmt"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
 const domain = "CMP-ENC-ELG"
@@ -42,41 +41,21 @@ type Proof struct {
 }
 
 func (commitment *Commitment) Challenge() *big.Int {
-	var e big.Int
-	h := sha512.New()
-	h.Write([]byte(domain))
-
-	// TODO Which parameters should we include?
-	// Write public parameters to hash
-	h.Write([]byte(""))
-
-	// Write commitments
-	h.Write(commitment.S.Bytes())
-	h.Write(commitment.T.Bytes())
-	h.Write(commitment.D.Bytes())
-	h.Write(commitment.Y.Bytes())
-	h.Write(commitment.Y.Bytes())
-
-	out := h.Sum(nil)
-	e.SetBytes(out)
-	e.Mod(&e, curve.Q)
-	e.Sub(&e, curve.QHalf)
-	return &e
+	return zkcommon.MakeChallengeFq(domain, commitment.S, commitment.T, commitment.D, commitment.Y, commitment.Z)
 }
 
 // N0 = prover
 // NHat = verifier
 func NewProof(prover *paillier.PublicKey, verifier *pedersen.Verifier, C *paillier.Ciphertext, A, B, X *curve.Point,
 	x, rho *big.Int, a, b *curve.Scalar) *Proof {
-	var tmp big.Int
 
 	alpha := arith.Sample(arith.LPlusEpsilon, false)
 	mu := arith.Sample(arith.L, true)
 	gamma := arith.Sample(arith.LPlusEpsilon, true)
 	beta := curve.NewScalarRandom()
 
-	S := verifier.Commit(x, mu, &tmp)
-	T := verifier.Commit(alpha, gamma, &tmp)
+	S := verifier.Commit(x, mu)
+	T := verifier.Commit(alpha, gamma)
 	D, r := prover.Enc(alpha, nil)
 
 	var Y, Z curve.Point
@@ -100,15 +79,15 @@ func NewProof(prover *paillier.PublicKey, verifier *pedersen.Verifier, C *pailli
 	z1.Mul(e, x)
 	z1.Add(&z1, alpha)
 
+	var w curve.Scalar
+	w.MultiplyAdd(curve.NewScalarBigInt(e), b, beta)
+
 	z2.Exp(rho, e, prover.N())
 	z2.Mul(&z2, r)
 	z2.Mod(&z2, prover.N())
 
 	z3.Mul(e, mu)
 	z3.Add(&z3, gamma)
-
-	var w curve.Scalar
-	w.MultiplyAdd(curve.NewScalarBigInt(e), b, beta)
 
 	response := &Response{
 		Z1: &z1,
@@ -123,52 +102,51 @@ func NewProof(prover *paillier.PublicKey, verifier *pedersen.Verifier, C *pailli
 }
 
 func (proof *Proof) Verify(prover *paillier.PublicKey, verifier *pedersen.Verifier, C *paillier.Ciphertext, A, B, X *curve.Point) bool {
-	var (
-		rhsCt              paillier.Ciphertext
-		lhsPoint, rhsPoint curve.Point
-	)
-
 	if !arith.IsInInterval(proof.Z1, arith.LPlusEpsilon) {
-		fmt.Println("wrong interval")
 		return false
 	}
 
 	e := proof.Challenge()
 
 	{
-		lhsCt, _ := prover.Enc(proof.Z1, proof.Z2)
+		var lhs, rhs paillier.Ciphertext
+		lhs.Enc(prover, proof.Z1, proof.Z2)
 
-		rhsCt.Mul(prover, C, e)
-		rhsCt.Add(prover, &rhsCt, proof.D)
-		if !lhsCt.Equal(&rhsCt) {
-			fmt.Println("wrong interval")
+		rhs.Mul(prover, C, e)
+		rhs.Add(prover, &rhs, proof.D)
+		if !lhs.Equal(&rhs) {
 			return false
 		}
 	}
 
 	eScalar := curve.NewScalarBigInt(e)
 
-	lhsPoint.ScalarMult(proof.W, A)
-	lhsPoint.Add(&lhsPoint, rhsPoint.ScalarBaseMult(curve.NewScalarBigInt(proof.Z1))) // use rhsPoint as temp receiver
+	var lhsPoint, rhsPoint curve.Point
+	{
+		lhsPoint.ScalarMult(proof.W, A)
+		rhsPoint.ScalarBaseMult(curve.NewScalarBigInt(proof.Z1)) // use rhsPoint as temp receiver
+		lhsPoint.Add(&lhsPoint, &rhsPoint)
 
-	rhsPoint.ScalarMult(eScalar, X)
-	rhsPoint.Add(&rhsPoint, proof.Y)
-	if lhsPoint.Equal(&rhsPoint) != 1 {
-		fmt.Println("wrong 1")
-		return false
+		rhsPoint.ScalarMult(eScalar, X)
+		rhsPoint.Add(&rhsPoint, proof.Y)
+		if lhsPoint.Equal(&rhsPoint) != 1 {
+			return false
+		}
 	}
 
-	lhsPoint.ScalarBaseMult(proof.W)
-	rhsPoint.ScalarMult(eScalar, B)
-	rhsPoint.Add(&rhsPoint, proof.Z)
-	if lhsPoint.Equal(&rhsPoint) != 1 {
-		fmt.Println("wrong 2")
-		return false
+	{
+		lhsPoint.ScalarBaseMult(proof.W)
+		rhsPoint.ScalarMult(eScalar, B)
+		rhsPoint.Add(&rhsPoint, proof.Z)
+		if lhsPoint.Equal(&rhsPoint) != 1 {
+			return false
+		}
 	}
 
-	if !verifier.Verify(proof.Z1, proof.Z3, proof.T, proof.S, e) {
-		fmt.Println("wrong 3")
-		return false
+	{
+		if !verifier.Verify(proof.Z1, proof.Z3, proof.T, proof.S, e) {
+			return false
+		}
 	}
 
 	return true

@@ -1,13 +1,13 @@
 package zkdec
 
 import (
-	"crypto/sha512"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
 const domain = "CMP-DEC"
@@ -37,25 +37,7 @@ type Proof struct {
 }
 
 func (commitment *Commitment) Challenge() *big.Int {
-	var e big.Int
-	h := sha512.New()
-	h.Write([]byte(domain))
-
-	// TODO Which parameters should we include?
-	// Write public parameters to hash
-	h.Write([]byte(""))
-
-	// Write commitments
-	h.Write(commitment.A.Bytes())
-	h.Write(commitment.Gamma.Bytes())
-	h.Write(commitment.S.Bytes())
-	h.Write(commitment.T.Bytes())
-
-	out := h.Sum(nil)
-	e.SetBytes(out)
-	e.Mod(&e, curve.Q)
-	e.Sub(&e, curve.QHalf)
-	return &e
+	return zkcommon.MakeChallengeFq(domain, commitment.A, commitment.Gamma, commitment.S, commitment.T)
 }
 
 // NewProof generates a proof that the
@@ -68,13 +50,11 @@ func NewProof(
 
 	A, r := prover.Enc(alpha, nil)
 
-
-
 	commitment := &Commitment{
 		A:     A,
 		Gamma: curve.NewScalarBigInt(alpha),
-		S:     verifier.Commit(y, mu, nil),
-		T:     verifier.Commit(alpha, nu, nil),
+		S:     verifier.Commit(y, mu),
+		T:     verifier.Commit(alpha, nu),
 	}
 
 	e := commitment.Challenge()
@@ -91,11 +71,10 @@ func NewProof(
 	w.Mul(&w, r)
 	w.Mod(&w, N0)
 
-
 	response := &Response{
 		Z1: &z1,
 		Z2: &z2,
-		W: &w,
+		W:  &w,
 	}
 
 	return &Proof{

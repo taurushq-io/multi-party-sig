@@ -12,7 +12,7 @@ import (
 func TestMulG(t *testing.T) {
 	pk := zkcommon.ProverPaillierPublic
 	verif := zkcommon.Pedersen
-	x := arith.Sample(arith.LPlusEpsilon, false)
+	x := arith.Sample(arith.L, false)
 	X := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarBigInt(x))
 
 	C, _ := pk.Enc(arith.Sample(arith.LPlusEpsilon, false), nil)

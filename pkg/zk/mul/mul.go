@@ -1,12 +1,11 @@
 package zkmul
 
 import (
-	"crypto/sha512"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
 const domain = "CMP-MUL"
@@ -18,7 +17,7 @@ type Commitment struct {
 }
 
 type Response struct {
-	// Z = alpha + ex // TODO is this mod N as well?
+	// Z = alpha + ex
 	// U = r • rho^e (mod N)
 	// V = s • rhoX^e (mod N)
 	Z, U, V *big.Int
@@ -30,23 +29,7 @@ type Proof struct {
 }
 
 func (commitment *Commitment) Challenge() *big.Int {
-	var e big.Int
-	h := sha512.New()
-	h.Write([]byte(domain))
-
-	// TODO Which parameters should we include?
-	// Write public parameters to hash
-	h.Write([]byte(""))
-
-	// Write commitments
-	h.Write(commitment.A.Bytes())
-	h.Write(commitment.B.Bytes())
-
-	out := h.Sum(nil)
-	e.SetBytes(out)
-	e.Mod(&e, curve.Q)
-	e.Sub(&e, curve.QHalf)
-	return curve.Q
+	return zkcommon.MakeChallengeFq(domain, commitment.A, commitment.B)
 }
 
 // NewProof generates a proof that the
@@ -55,15 +38,13 @@ func NewProof(verifier *paillier.PublicKey, X, Y, C *paillier.Ciphertext,
 	N := verifier.N()
 
 	alpha := arith.RandomUnit(N)
-	r := arith.RandomUnit(N)
-	s := arith.RandomUnit(N)
 
 	var A, B paillier.Ciphertext
 
 	A.Mul(verifier, Y, alpha)
-	A.Randomize(verifier, r)
+	_, r := A.Randomize(verifier, nil)
 
-	B.Enc(verifier, alpha, s)
+	_, s := B.Enc(verifier, alpha, nil)
 
 	commitment := &Commitment{
 		A: &A,

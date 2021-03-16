@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
 const domain = "CMP-SCH"
@@ -52,7 +53,8 @@ func (commitment *Commitment) Challenge() *curve.Scalar {
 // NewProof generates a proof that the
 func NewProof(X *curve.Point, x *curve.Scalar) *Proof {
 	alpha, commitment := NewCommitment()
-	e := commitment.Challenge()
+
+	e := zkcommon.MakeChallengeScalar(domain, commitment.A)
 
 	response := &Response{
 		Z: new(curve.Scalar).MultiplyAdd(e, x, alpha),
@@ -65,7 +67,7 @@ func NewProof(X *curve.Point, x *curve.Scalar) *Proof {
 }
 
 func (proof *Proof) Verify(X *curve.Point) bool {
-	e := proof.Challenge()
+	e := zkcommon.MakeChallengeScalar(domain, proof.A)
 
 	var lhs, rhs curve.Point
 	lhs.ScalarBaseMult(proof.Z)

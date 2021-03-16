@@ -1,14 +1,13 @@
 package zkaffp
 
 import (
-	"crypto/sha512"
 	"fmt"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
 const domain = "CMP-AFFP"
@@ -49,36 +48,13 @@ type Proof struct {
 }
 
 func (commitment *Commitment) Challenge() *big.Int {
-	var e big.Int
-	h := sha512.New()
-	h.Write([]byte(domain))
-
-	// TODO Which parameters should we include?
-	// Write public parameters to hash
-	h.Write([]byte(""))
-
-	// Write commitments
-	h.Write(commitment.A.Bytes())
-	h.Write(commitment.Bx.Bytes())
-	h.Write(commitment.By.Bytes())
-	h.Write(commitment.E.Bytes())
-	h.Write(commitment.S.Bytes())
-	h.Write(commitment.F.Bytes())
-	h.Write(commitment.T.Bytes())
-
-	out := h.Sum(nil)
-	e.SetBytes(out)
-	e.Mod(&e, curve.Q)
-	e.Sub(&e, curve.QHalf)
-	return &e
+	return zkcommon.MakeChallengeFq(domain, commitment.A, commitment.Bx, commitment.By, commitment.E, commitment.S, commitment.F, commitment.T)
 }
 
 // N0 = verifier
 // N1 = prover
 func NewProof(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pedersen.Verifier, D, C, X, Y *paillier.Ciphertext,
 	x, y, rhoX, rhoY, rho *big.Int) *Proof {
-	var tmpCt paillier.Ciphertext
-	var tmp big.Int
 
 	alpha := arith.Sample(arith.LPlusEpsilon, false)
 	beta := arith.Sample(arith.LPrimePlusEpsilon, false)
@@ -88,6 +64,7 @@ func NewProof(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pe
 	delta := arith.Sample(arith.LPlusEpsilon, true)
 	mu := arith.Sample(arith.L, true)
 
+	var tmpCt paillier.Ciphertext
 	A, r := verifierPaillier.Enc(beta, nil)
 	tmpCt.Mul(verifierPaillier, C, alpha)
 	A.Add(verifierPaillier, A, &tmpCt)
@@ -99,10 +76,10 @@ func NewProof(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pe
 		A:  A,
 		Bx: Bx,
 		By: By,
-		E:  verifierPedersen.Commit(alpha, gamma, &tmp),
-		S:  verifierPedersen.Commit(x, m, &tmp),
-		F:  verifierPedersen.Commit(beta, delta, &tmp),
-		T:  verifierPedersen.Commit(y, mu, &tmp),
+		E:  verifierPedersen.Commit(alpha, gamma),
+		S:  verifierPedersen.Commit(x, m),
+		F:  verifierPedersen.Commit(beta, delta),
+		T:  verifierPedersen.Commit(y, mu),
 	}
 
 	e := commitment.Challenge()

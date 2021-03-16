@@ -80,6 +80,14 @@ func (s *Scalar) SetBigInt(i *big.Int) *Scalar {
 	return s
 }
 
+// SetBigInt sets s = x, and returns s.
+func (s *Scalar) SetBytes(in []byte) *Scalar {
+	s.s.SetBytes(in)
+	s.s.Mod(&s.s, Q)
+	return s
+}
+
+
 // Bytes returns the canonical 32 bytes little-endian encoding of s.
 func (s *Scalar) Bytes() []byte {
 	return s.s.Bytes()

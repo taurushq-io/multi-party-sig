@@ -1,14 +1,13 @@
 package zkenc
 
 import (
-	"crypto/sha512"
 	"fmt"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
 const domain = "CMP-ENC"
@@ -35,31 +34,13 @@ type Proof struct {
 }
 
 func (commitment *Commitment) Challenge() *big.Int {
-	var e big.Int
-	h := sha512.New()
-	h.Write([]byte(domain))
-
-	// TODO Which parameters should we include?
-	// Write public parameters to hash
-	h.Write([]byte(""))
-
-	// Write commitments
-	h.Write(commitment.A.Bytes())
-	h.Write(commitment.S.Bytes())
-	h.Write(commitment.C.Bytes())
-
-	out := h.Sum(nil)
-	e.SetBytes(out)
-	e.Mod(&e, curve.Q)
-	e.Sub(&e, curve.QHalf)
-	return &e
+	return zkcommon.MakeChallengeFq(domain, commitment.A, commitment.S, commitment.C)
 }
 
 // NewProof generates a proof that the
 func NewProof(
 	prover *paillier.PublicKey, verifier *pedersen.Verifier, K *paillier.Ciphertext,
 	k, rho *big.Int) *Proof {
-	var tmp big.Int
 	N := prover.N()
 
 	alpha := arith.Sample(arith.LPlusEpsilon, false)
@@ -70,8 +51,8 @@ func NewProof(
 
 	commitment := &Commitment{
 		A: A,
-		S: verifier.Commit(k, mu, &tmp),
-		C: verifier.Commit(alpha, gamma, &tmp),
+		S: verifier.Commit(k, mu),
+		C: verifier.Commit(alpha, gamma),
 	}
 
 	e := commitment.Challenge()

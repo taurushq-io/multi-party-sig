@@ -1,11 +1,10 @@
 package zklog
 
 import (
-	"crypto/sha512"
 	"fmt"
-	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
 const domain = "CMP-LOG"
@@ -27,21 +26,7 @@ type Proof struct {
 }
 
 func (commitment *Commitment) Challenge() *curve.Scalar {
-	var e big.Int
-	h := sha512.New()
-	h.Write([]byte(domain))
-
-	// TODO Which parameters should we include?
-	// Write public parameters to hash
-	h.Write([]byte(""))
-
-	// Write commitments
-	h.Write(commitment.A.Bytes())
-	h.Write(commitment.B.Bytes())
-
-	out := h.Sum(nil)
-	e.SetBytes(out)
-	return curve.NewScalarBigInt(&e)
+	return zkcommon.MakeChallengeScalar(domain, commitment.A, commitment.B)
 }
 
 // NewProof generates a proof that the
