@@ -112,3 +112,7 @@ func NewScalarRandom() *Scalar {
 	var s Scalar
 	return s.Random()
 }
+
+func (s *Scalar) BigInt() *big.Int {
+	return &s.s
+}

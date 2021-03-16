@@ -1,25 +1,28 @@
 package zkmulg
 
 import (
-	"math/big"
 	"testing"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
 func TestMulG(t *testing.T) {
 	pk := zkcommon.ProverPaillierPublic
-	x := big.NewInt(12)
-	X, rhoX := pk.Enc(x, nil)
-	y := big.NewInt(13)
-	Y, _ := pk.Enc(y, nil)
-	var C paillier.Ciphertext
-	C.Mul(pk, Y, x)
-	_, rho := C.Randomize(pk, nil)
+	verif := zkcommon.Pedersen
+	x := arith.Sample(arith.LPlusEpsilon, false)
+	X := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarBigInt(x))
 
-	proof := NewProof(pk, X, Y, &C, x, rho, rhoX)
-	if !proof.Verify(pk, X, Y, &C) {
+	C, _ := pk.Enc(arith.Sample(arith.LPlusEpsilon, false), nil)
+
+	var D paillier.Ciphertext
+	D.Mul(pk, C, x)
+	_, rho := D.Randomize(pk, nil)
+
+	proof := NewProof(pk, verif, C, &D, X, x, rho)
+	if !proof.Verify(pk, verif, C, &D, X) {
 		t.Error("failed to verify")
 	}
 }

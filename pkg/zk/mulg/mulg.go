@@ -7,21 +7,28 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
 )
 
 const domain = "CMP-MULG"
 
 type Commitment struct {
-	// A = Y^alpha r^N
-	// B = Enc(alpha; s)
-	A, B *paillier.Ciphertext
+	// A = (alpha ⊙ C ) • r^N0
+	A *paillier.Ciphertext
+
+	// Bx = g^alpha
+	Bx *curve.Point
+
+	// E = s^alpha t^gamma (mod NHat)
+	// S = s^x t^m (mod NHat)
+	E, S *big.Int
 }
 
 type Response struct {
-	// Z = alpha + ex // TODO is this mod N as well?
-	// U = r • rho^e (mod N)
-	// V = s • rhoX^e (mod N)
-	Z, U, V *big.Int
+	// Z1 = alpha + e•x
+	// Z2 = gamma + e•m
+	// W  = r rho^e (mod N0)
+	Z1, Z2, W *big.Int
 }
 
 type Proof struct {
@@ -40,7 +47,9 @@ func (commitment *Commitment) Challenge() *big.Int {
 
 	// Write commitments
 	h.Write(commitment.A.Bytes())
-	h.Write(commitment.B.Bytes())
+	h.Write(commitment.Bx.Bytes())
+	h.Write(commitment.E.Bytes())
+	h.Write(commitment.S.Bytes())
 
 	out := h.Sum(nil)
 	e.SetBytes(out)
@@ -50,45 +59,48 @@ func (commitment *Commitment) Challenge() *big.Int {
 }
 
 // NewProof generates a proof that the
-func NewProof(verifierPaillier *paillier.PublicKey, X, Y, C *paillier.Ciphertext,
-	x *big.Int, rho, rhoX *big.Int) *Proof {
-	N := verifierPaillier.N()
+// x ∈ ±2^l
+// g^x = X
+// D = (alpha ⊙ C ) • rho^N0
+func NewProof(proverPailler *paillier.PublicKey, verifierPedersen *pedersen.Verifier, C, D *paillier.Ciphertext, X *curve.Point,
+	x, rho *big.Int) *Proof {
+	alpha := arith.Sample(arith.LPlusEpsilon, false)
+	r := proverPailler.Nonce()
+	gamma := arith.Sample(arith.LPlusEpsilon, true)
+	m := arith.Sample(arith.L, true)
 
-	alpha := arith.RandomUnit(N)
-	r := arith.RandomUnit(N)
-	s := arith.RandomUnit(N)
+	var A paillier.Ciphertext
+	A.Mul(proverPailler, C, alpha)
+	A.Randomize(proverPailler, r)
 
-	var A, B paillier.Ciphertext
-
-	A.Mul(verifierPaillier, Y, alpha)
-	A.Randomize(verifierPaillier, r)
-
-	B.Enc(verifierPaillier, alpha, s)
+	var Bx curve.Point
+	Bx.ScalarBaseMult(curve.NewScalarBigInt(alpha))
 
 	commitment := &Commitment{
 		A: &A,
-		B: &B,
+		Bx: &Bx,
+		E: verifierPedersen.Commit(alpha, gamma, nil),
+		S: verifierPedersen.Commit(x, m, nil),
 	}
 
 	e := commitment.Challenge()
 
-	var z, u, v big.Int
-	z.Mul(e, x)
-	z.Add(&z, alpha)
-	z.Mod(&z, N)
+	var z1, z2, w big.Int
+	z1.Mul(e, x)
+	z1.Add(&z1, alpha)
 
-	u.Exp(rho, e, N)
-	u.Mul(&u, r)
-	u.Mod(&u, N)
+	z2.Mul(e, m)
+	z2.Add(&z2, gamma)
 
-	v.Exp(rhoX, e, N)
-	v.Mul(&v, s)
-	v.Mod(&v, N)
+	N0 := proverPailler.N()
+	w.Exp(rho, e, N0)
+	w.Mul(&w, r)
+	w.Mod(&w, N0)
 
 	response := &Response{
-		Z: &z,
-		U: &u,
-		V: &v,
+		Z1: &z1,
+		Z2: &z2,
+		W:  &w,
 	}
 
 	return &Proof{
@@ -97,19 +109,18 @@ func NewProof(verifierPaillier *paillier.PublicKey, X, Y, C *paillier.Ciphertext
 	}
 }
 
-func (proof *Proof) Verify(verifier *paillier.PublicKey, X, Y, C *paillier.Ciphertext) bool {
+func (proof *Proof) Verify(proverPailler *paillier.PublicKey, verifierPedersen *pedersen.Verifier, C, D *paillier.Ciphertext, X *curve.Point) bool {
 	e := proof.Challenge()
 
-	var lhs, rhs paillier.Ciphertext
-
 	{
-		// lhs = Y^z u^N
-		lhs.Mul(verifier, Y, proof.Z)
-		lhs.Randomize(verifier, proof.U)
+		var lhs, rhs paillier.Ciphertext
+		// lhs = C^z1 w^N0
+		lhs.Mul(proverPailler, C, proof.Z1)
+		lhs.Randomize(proverPailler, proof.W)
 
-		// rhs = A C^e
-		rhs.Mul(verifier, C, e)
-		rhs.Add(verifier, &rhs, proof.A)
+		// rhs = A D^e
+		rhs.Mul(proverPailler, D, e)
+		rhs.Add(proverPailler, &rhs, proof.A)
 
 		if !lhs.Equal(&rhs) {
 			return false
@@ -117,16 +128,24 @@ func (proof *Proof) Verify(verifier *paillier.PublicKey, X, Y, C *paillier.Ciphe
 	}
 
 	{
-		// lhs = Enc(z; v)
-		lhs.Enc(verifier, proof.Z, proof.V)
+		var lhs, rhs curve.Point
+		// lhs = g^z1
+		lhs.ScalarBaseMult(curve.NewScalarBigInt(proof.Z1))
 
-		// rhs = B X^e
-		rhs.Mul(verifier, X, e)
-		rhs.Add(verifier, &rhs, proof.B)
-		if !lhs.Equal(&rhs) {
+		// rhs = Bx X^e
+		rhs.ScalarMult(curve.NewScalarBigInt(e), X)
+		rhs.Add(&rhs, proof.Bx)
+		if lhs.Equal(&rhs) != 1 {
 			return false
 		}
 	}
+
+	{
+		 if !verifierPedersen.Verify(proof.Z1, proof.Z2, proof.E, proof.S, e) {
+			 return false
+		 }
+	}
+
 
 	return true
 }
