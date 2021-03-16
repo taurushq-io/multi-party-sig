@@ -16,9 +16,7 @@ func NewScalar() *Scalar {
 
 func NewScalarBigInt(n *big.Int) *Scalar {
 	var s Scalar
-	s.s.Set(n)
-	s.s.Mod(&s.s, Q)
-	return &s
+	return s.SetBigInt(n)
 }
 
 func NewScalarInt(n int64) *Scalar {
@@ -69,9 +67,16 @@ func (s *Scalar) Set(x *Scalar) *Scalar {
 	return s
 }
 
-// Set sets s = x, and returns s.
+// SetInt64 sets s = x, and returns s.
 func (s *Scalar) SetInt64(i int64) *Scalar {
 	s.s.SetInt64(i)
+	return s
+}
+
+// SetBigInt sets s = x, and returns s.
+func (s *Scalar) SetBigInt(i *big.Int) *Scalar {
+	s.s.Set(i)
+	s.s.Mod(&s.s, Q)
 	return s
 }
 

@@ -4,19 +4,21 @@ import (
 	"testing"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
 func TestDec(t *testing.T) {
-	//TODO
 	verifier := zkcommon.Pedersen
 	prover := zkcommon.ProverPaillierPublic
 
-	k := arith.Sample(arith.L, false)
-	K, rho := prover.Enc(k, nil)
+	y := arith.Sample(arith.L, false)
+	x := curve.NewScalarBigInt(y)
 
-	proof := NewProof(prover, verifier, K, k, rho)
-	if !proof.Verify(prover, verifier, K) {
+	C, rho := prover.Enc(y, nil)
+
+	proof := NewProof(prover, verifier, C, x, y, rho)
+	if !proof.Verify(prover, verifier, C, x) {
 		t.Error("failed to verify")
 	}
 }
