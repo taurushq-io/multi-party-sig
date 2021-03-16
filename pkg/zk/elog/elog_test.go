@@ -1,27 +1,24 @@
-package affp
+package zkelog
 
 import (
 	"testing"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/secp256k1"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 )
 
 func TestELog(t *testing.T) {
-	h := new(secp256k1.Point).ScalarBaseMult(secp256k1.NewScalarRandom())
+	h := new(curve.Point).ScalarBaseMult(curve.NewScalarRandom())
 
-	X := new(secp256k1.Point).ScalarBaseMult(secp256k1.NewScalarRandom())
+	X := new(curve.Point).ScalarBaseMult(curve.NewScalarRandom())
 
-	y := secp256k1.NewScalarRandom()
-	Y := new(secp256k1.Point).ScalarMult(y, h)
+	y := curve.NewScalarRandom()
+	Y := new(curve.Point).ScalarMult(y, h)
 
-	lambda := secp256k1.NewScalarRandom()
-	L := new(secp256k1.Point).ScalarBaseMult(lambda)
+	lambda := curve.NewScalarRandom()
+	L := new(curve.Point).ScalarBaseMult(lambda)
 
-	M := new(secp256k1.Point).ScalarMult(lambda, X)
-	M.Add(M, new(secp256k1.Point).ScalarBaseMult(y))
-
-
-
+	M := new(curve.Point).ScalarMult(lambda, X)
+	M.Add(M, new(curve.Point).ScalarBaseMult(y))
 
 	proof := NewProof(h, X, L, M, Y, lambda, y)
 	if !proof.Verify(h, X, L, M, Y) {

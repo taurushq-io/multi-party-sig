@@ -1,24 +1,26 @@
-package affp
+package zkmul
 
 import (
 	"math/big"
 	"testing"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
-func TestNewProof(t *testing.T) {
-	pk, _ := paillier.KeyGen(256)
+func TestMul(t *testing.T) {
+	//TODO
+	prover := zkcommon.ProverPaillierPublic
 	x := big.NewInt(12)
-	X, rhoX := pk.Enc(x, nil)
+	X, rhoX := prover.Enc(x, nil)
 	y := big.NewInt(13)
-	Y, _ := pk.Enc(y, nil)
+	Y, _ := prover.Enc(y, nil)
 	var C paillier.Ciphertext
-	C.Mul(pk, Y, x)
-	_, rho := C.Randomize(pk, nil)
+	C.Mul(prover, Y, x)
+	_, rho := C.Randomize(prover, nil)
 
-	proof := NewProof(pk, X, Y, &C, x, rho, rhoX)
-	if !proof.Verify(pk, X, Y, &C) {
+	proof := NewProof(prover, X, Y, &C, x, rho, rhoX)
+	if !proof.Verify(prover, X, Y, &C) {
 		t.Error("failed to verify")
 	}
 }

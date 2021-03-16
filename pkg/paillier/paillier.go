@@ -38,13 +38,8 @@ func KeyGen(secParam int) (pk *PublicKey, sk *SecretKey) {
 			break
 		}
 	}
-	phiInv := new(big.Int).ModInverse(phi, n)
 
-	pk = &PublicKey{n: n, nSquared: new(big.Int).Mul(n, n)}
-	sk = &SecretKey{
-		PhiInt:    phi,
-		PhiInvInt: phiInv,
-		PK:        pk,
-	}
+	pk = NewPublicKey(n)
+	sk = NewSecretKey(phi, pk)
 	return
 }

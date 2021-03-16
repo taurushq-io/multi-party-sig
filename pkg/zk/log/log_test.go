@@ -1,17 +1,17 @@
-package affp
+package zklog
 
 import (
 	"testing"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/secp256k1"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 )
 
 func TestLog(t *testing.T) {
-	r := secp256k1.NewScalarRandom()
-	h := new(secp256k1.Point).ScalarBaseMult(r)
-	x := secp256k1.NewScalarRandom()
-	X := new(secp256k1.Point).ScalarBaseMult(x)
-	Y := new(secp256k1.Point).ScalarMult(x, h)
+	r := curve.NewScalarRandom()
+	h := new(curve.Point).ScalarBaseMult(r)
+	x := curve.NewScalarRandom()
+	X := new(curve.Point).ScalarBaseMult(x)
+	Y := new(curve.Point).ScalarMult(x, h)
 	proof := NewProof(h, X, Y, x)
 	if !proof.Verify(h, X, Y) {
 		t.Error("failed to verify")

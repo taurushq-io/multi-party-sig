@@ -1,4 +1,4 @@
-package affp
+package zkaffp
 
 import (
 	"math/big"
@@ -6,15 +6,28 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
+//func TestAP(t *testing.T) {
+//	ProverPaillierPublic, ProverPaillierSecret := paillier.KeyGen(arith.SecParam)
+//	VerifierPaillierPublic, VerifierPaillierSecret := paillier.KeyGen(arith.SecParam)
+//	Pedersen := pedersen.NewPedersen(VerifierPaillierPublic.N(), VerifierPaillierSecret.Phi())
+//
+//	fmt.Printf("ProverPaillierPublic %x\n", ProverPaillierPublic.N())
+//	fmt.Printf("ProverPaillierSecret %x\n", ProverPaillierSecret.Phi())
+//	fmt.Printf("VerifierPaillierPublic %x\n", VerifierPaillierPublic.N())
+//	fmt.Printf("VerifierPaillierSecret %x\n", VerifierPaillierSecret.Phi())
+//	fmt.Printf("PedersenS %x\n", Pedersen.S)
+//	fmt.Printf("PedersenT %x\n\n", Pedersen.T)
+//}
+
 func TestAffP(t *testing.T) {
-	verifierPaillier, sk := paillier.KeyGen(arith.SecParam)
-	verifierPedersen := pedersen.NewPedersen(verifierPaillier.N(), sk.Phi())
-	prover, _ := paillier.KeyGen(arith.SecParam)
-	x := arith.Sample(arith.L, nil)
-	y := arith.Sample(arith.LPrime, nil)
+	verifierPaillier := zkcommon.VerifierPaillierPublic
+	verifierPedersen := zkcommon.Pedersen
+	prover := zkcommon.ProverPaillierPublic
+	x := arith.Sample(arith.L, false)
+	y := arith.Sample(arith.LPrime, false)
 	c := big.NewInt(12)
 
 	C, _ := verifierPaillier.Enc(c, nil)

@@ -23,35 +23,25 @@ func TestPaillier(t *testing.T) {
 		require.NoError(t, err)
 
 		// Test decryption
-		ct1, _ := pk.Enc(r1)
-		ct2, _ := pk.Enc(r2)
+		ct1, _ := pk.Enc(r1, nil)
+		ct2, _ := pk.Enc(r2, nil)
 
-		ct12 := pk.Add(ct1, ct2)
+		var ct1plus2, ct1times2 Ciphertext
+		ct1plus2.Add(pk, ct1, ct2)
 
-		r12 := sk.Dec(ct12)
+		r1plus2 := sk.Dec(&ct1plus2)
 
 		require.Equal(t, 0, sk.Dec(ct1).Cmp(r1), "r1= ct1")
 
 		// Test adding
-		require.Equal(t, 0, new(big.Int).Add(r1, r2).Cmp(r12))
+		require.Equal(t, 0, new(big.Int).Add(r1, r2).Cmp(r1plus2))
 
-		ct3 := pk.Mult(ct1, c)
+		ct1times2.Mul(pk, ct1, c)
 
 		// Test multiplication
 		res := new(big.Int).Mul(c, r1)
 		res.Mod(res, pk.n)
-		require.Equal(t, 0, res.Cmp(sk.Dec(ct3)))
-
-		mult, _ := rand.Int(rand.Reader, b)
-		add, _ := rand.Int(rand.Reader, b)
-
-		c2, _ := pk.AffineEnc(ct1, mult, add)
-		res2 := sk.Dec(c2)
-		cmp2 := new(big.Int).Mul(mult, r1)
-		cmp2.Add(add, cmp2)
-
-		require.Equal(t, 0, res2.Cmp(cmp2))
-
+		require.Equal(t, 0, res.Cmp(sk.Dec(&ct1times2)))
 	}
 }
 

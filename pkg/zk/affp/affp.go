@@ -1,4 +1,4 @@
-package affp
+package zkaffp
 
 import (
 	"crypto/sha512"
@@ -6,12 +6,12 @@ import (
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/secp256k1"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
 )
 
-const domainAffP = "CMP-AFFP"
+const domain = "CMP-AFFP"
 
 type Commitment struct {
 	// A = (alpha ⊙ C ) ⊕ Enc(N0, beta, r)
@@ -51,7 +51,7 @@ type Proof struct {
 func (commitment *Commitment) Challenge() *big.Int {
 	var e big.Int
 	h := sha512.New()
-	h.Write([]byte(domainAffP))
+	h.Write([]byte(domain))
 
 	// TODO Which parameters should we include?
 	// Write public parameters to hash
@@ -68,8 +68,8 @@ func (commitment *Commitment) Challenge() *big.Int {
 
 	out := h.Sum(nil)
 	e.SetBytes(out)
-	e.Mod(&e, secp256k1.Q)
-	e.Sub(&e, secp256k1.QHalf)
+	e.Mod(&e, curve.Q)
+	e.Sub(&e, curve.QHalf)
 	return &e
 }
 
@@ -80,13 +80,13 @@ func NewProof(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pe
 	var tmpCt paillier.Ciphertext
 	var tmp big.Int
 
-	alpha := arith.Sample(arith.LPlusEpsilon, nil)
-	beta := arith.Sample(arith.LPrimePlusEpsilon, nil)
+	alpha := arith.Sample(arith.LPlusEpsilon, false)
+	beta := arith.Sample(arith.LPrimePlusEpsilon, false)
 
-	gamma := arith.Sample(arith.LPlusEpsilon, verifierPedersen.N)
-	m := arith.Sample(arith.L, verifierPedersen.N)
-	delta := arith.Sample(arith.LPlusEpsilon, verifierPedersen.N)
-	mu := arith.Sample(arith.L, verifierPedersen.N)
+	gamma := arith.Sample(arith.LPlusEpsilon, true)
+	m := arith.Sample(arith.L, true)
+	delta := arith.Sample(arith.LPlusEpsilon, true)
+	mu := arith.Sample(arith.L, true)
 
 	A, r := verifierPaillier.Enc(beta, nil)
 	tmpCt.Mul(verifierPaillier, C, alpha)

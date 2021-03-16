@@ -1,26 +1,31 @@
 package paillier
 
-import "math/big"
+import (
+	"math/big"
+
+	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
+)
 
 type Ciphertext struct {
-		c big.Int
+	c big.Int
 }
 
 // Enc sets the receiver to the encryption of m under the key pk, using the given nonce.
 // If nonce is nil then a new one is generated and returned
 func (ct *Ciphertext) Enc(pk *PublicKey, m *big.Int, nonce *big.Int) (*Ciphertext, *big.Int) {
-	var tmp big.Int
+
+
 	if nonce == nil {
 		nonce = pk.Nonce()
 	}
 
-	ct.c.Set(pk.n)                        // N
+	ct.c.Set(pk.n)                  // N
 	ct.c.Add(&ct.c, one)            // N + 1
 	ct.c.Exp(&ct.c, m, pk.nSquared) // (N+1)^m mod N^2
 
-	tmp.Exp(nonce, pk.n, pk.nSquared) // rho ^ N mod N^2
+	tmp := new(big.Int).Exp(nonce, pk.n, pk.nSquared) // rho ^ N mod N^2
 
-	ct.c.Mul(&ct.c, &tmp) // (N+1)^m rho ^ N
+	ct.c.Mul(&ct.c, tmp) // (N+1)^m rho ^ N
 	ct.c.Mod(&ct.c, pk.nSquared)
 
 	return ct, nonce
@@ -52,11 +57,10 @@ func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *big.Int) (*Ciphertext, *bi
 		nonce = pk.Nonce()
 	}
 	tmp.Exp(nonce, pk.n, pk.nSquared) // tmp = r^N
-	ct.c.Mul(&ct.c, &tmp) // ct = ct * tmp
-	ct.c.Mod(&ct.c, pk.nSquared) // ct = ct*r^N
+	ct.c.Mul(&ct.c, &tmp)             // ct = ct * tmp
+	ct.c.Mod(&ct.c, pk.nSquared)      // ct = ct*r^N
 	return ct, nonce
 }
-
 
 func (ct *Ciphertext) BigInt() *big.Int {
 	return &ct.c
@@ -66,3 +70,9 @@ func (ct *Ciphertext) Bytes() []byte {
 	return ct.c.Bytes()
 }
 
+func newBigInt() *big.Int {
+	var result big.Int
+	result.SetBit(&result, 8*arith.SecParam, 1)
+	result.SetBit(&result, 8*arith.SecParam, 0)
+	return &result
+}

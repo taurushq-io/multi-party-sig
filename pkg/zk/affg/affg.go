@@ -1,4 +1,4 @@
-package affp
+package zkaffg
 
 import (
 	"crypto/sha512"
@@ -6,19 +6,19 @@ import (
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/secp256k1"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
 )
 
-const domainAffG = "CMP-AFFG"
+const domain = "CMP-AFFG"
 
 type Commitment struct {
 	// A = (alpha ⊙ C ) ⊕ Enc(N0, beta, r)
 	A *paillier.Ciphertext
 
 	// Bx = Enc(N1, alpha, rx)
-	Bx *secp256k1.Point
+	Bx *curve.Point
 
 	// By = Enc(N1, beta, ry)
 	By *paillier.Ciphertext
@@ -52,7 +52,7 @@ type Proof struct {
 func (commitment *Commitment) Challenge() *big.Int {
 	var e big.Int
 	h := sha512.New()
-	h.Write([]byte(domainAffG))
+	h.Write([]byte(domain))
 
 	// TODO Which parameters should we include?
 	// Write public parameters to hash
@@ -69,32 +69,32 @@ func (commitment *Commitment) Challenge() *big.Int {
 
 	out := h.Sum(nil)
 	e.SetBytes(out)
-	e.Mod(&e, secp256k1.Q)
-	e.Sub(&e, secp256k1.QHalf)
+	e.Mod(&e, curve.Q)
+	e.Sub(&e, curve.QHalf)
 	return &e
 }
 
 // N0 = verifier
 // N1 = prover
-func NewProof(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pedersen.Verifier, D, C, Y *paillier.Ciphertext, X *secp256k1.Point,
+func NewProof(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pedersen.Verifier, D, C, Y *paillier.Ciphertext, X *curve.Point,
 	x, y, rhoY, rho *big.Int) *Proof {
 	var tmpCt paillier.Ciphertext
 	var tmp big.Int
 
-	alpha := arith.Sample(arith.LPlusEpsilon, nil)
-	beta := arith.Sample(arith.LPrimePlusEpsilon, nil)
+	alpha := arith.Sample(arith.LPlusEpsilon, false)
+	beta := arith.Sample(arith.LPrimePlusEpsilon, false)
 
-	gamma := arith.Sample(arith.LPlusEpsilon, verifierPedersen.N)
-	m := arith.Sample(arith.L, verifierPedersen.N)
-	delta := arith.Sample(arith.LPlusEpsilon, verifierPedersen.N)
-	mu := arith.Sample(arith.L, verifierPedersen.N)
+	gamma := arith.Sample(arith.LPlusEpsilon, true)
+	m := arith.Sample(arith.L, true)
+	delta := arith.Sample(arith.LPlusEpsilon, true)
+	mu := arith.Sample(arith.L, true)
 
 	A, r := verifierPaillier.Enc(beta, nil)
 	tmpCt.Mul(verifierPaillier, C, alpha)
 	A.Add(verifierPaillier, A, &tmpCt)
 
-	var Bx secp256k1.Point
-	Bx.ScalarBaseMult(secp256k1.NewScalarBigInt(alpha))
+	var Bx curve.Point
+	Bx.ScalarBaseMult(curve.NewScalarBigInt(alpha))
 	By, ry := prover.Enc(beta, nil)
 
 	commitment := &Commitment{
@@ -139,13 +139,11 @@ func NewProof(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pe
 	}
 }
 
-func (proof *Proof) Verify(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pedersen.Verifier, D, C, Y *paillier.Ciphertext, X *secp256k1.Point) bool {
+func (proof *Proof) Verify(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pedersen.Verifier, D, C, Y *paillier.Ciphertext, X *curve.Point) bool {
 	if !arith.IsInInterval(proof.Z1, arith.LPlusEpsilon) {
-		fmt.Println(" failed range z1")
 		return false
 	}
 	if !arith.IsInInterval(proof.Z2, arith.LPrimePlusEpsilon) {
-		fmt.Println(" failed range z2")
 		return false
 	}
 
@@ -173,9 +171,9 @@ func (proof *Proof) Verify(prover, verifierPaillier *paillier.PublicKey, verifie
 	}
 
 	{
-		var lhsPt, rhsPt secp256k1.Point
-		lhsPt.ScalarBaseMult(secp256k1.NewScalarBigInt(proof.Z1))
-		rhsPt.ScalarBaseMult(secp256k1.NewScalarBigInt(e))
+		var lhsPt, rhsPt curve.Point
+		lhsPt.ScalarBaseMult(curve.NewScalarBigInt(proof.Z1))
+		rhsPt.ScalarBaseMult(curve.NewScalarBigInt(e))
 		rhsPt.Add(&rhsPt, proof.Bx)
 		if lhsPt.Equal(&rhsPt) != 0 {
 			fmt.Println("failed pt 1")
@@ -198,12 +196,10 @@ func (proof *Proof) Verify(prover, verifierPaillier *paillier.PublicKey, verifie
 	}
 
 	if !verifierPedersen.Verify(proof.Z1, proof.Z3, proof.E, proof.S, e) {
-		fmt.Println("failed ped 1")
 		return false
 	}
 
 	if !verifierPedersen.Verify(proof.Z2, proof.Z4, proof.F, proof.T, e) {
-		fmt.Println("failed ped 2")
 		return false
 	}
 

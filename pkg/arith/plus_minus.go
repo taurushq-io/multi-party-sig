@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/secp256k1"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 )
 
 // Sample returns a randomly sampled integer in the range
@@ -12,18 +12,25 @@ import (
 // If multiplier is not nil, the range is [- 2^bits•multiplier, 2^bits•multiplier].
 //
 // For memory optimization, we cache the bounds since we know that they are used often.
-func Sample(maxBits int, multiplier *big.Int) *big.Int {
-	var bound *big.Int
-	if multiplier == nil {
-		bound = getBound(maxBits)
-	} else {
-		bound = new(big.Int).Mul(getBound(maxBits), multiplier)
+func Sample(maxBits int, withN bool) *big.Int {
+	if withN {
+		maxBits = maxBits + paillierModulus
 	}
+
+	// add one bit for sign
+	bound := getBound(maxBits + 1)
+
 	result, err := rand.Int(rand.Reader, bound)
 	if err != nil {
 		panic(err)
 	}
-	negateRand(result)
+
+	shouldNegate := result.Bit(0) == 1
+	result.Rsh(result, 1)
+
+	if shouldNegate {
+		result.Neg(result)
+	}
 	return result
 }
 
@@ -47,6 +54,6 @@ func ModNeg(n, modulus, modulusHalf *big.Int) *big.Int {
 		n.Mod(n, modulus)
 	}
 	n.Mod(n, modulus)
-	n.Sub(n, secp256k1.QHalf)
+	n.Sub(n, curve.QHalf)
 	return n
 }

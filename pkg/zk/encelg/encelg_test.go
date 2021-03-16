@@ -1,26 +1,24 @@
-package encelg
+package zkencelg
 
 import (
 	"testing"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/secp256k1"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
 func TestEncElg(t *testing.T) {
-	verifierPublic, verifierSecret := paillier.KeyGen(arith.SecParam)
-	verifier := pedersen.NewPedersen(verifierPublic.N(), verifierSecret.Phi())
-	prover, _ := paillier.KeyGen(arith.SecParam)
-	x := arith.Sample(arith.L, nil)
+	verifier := zkcommon.Pedersen
+	prover := zkcommon.ProverPaillierPublic
+	x := arith.Sample(arith.L, false)
 	C, rho := prover.Enc(x, nil)
 
-	a := secp256k1.NewScalarRandom()
-	b := secp256k1.NewScalarRandom()
-	c := secp256k1.NewScalar()
-	c.MultiplyAdd(a, b, secp256k1.NewScalarBigInt(x))
-	var A, B, X secp256k1.Point
+	a := curve.NewScalarRandom()
+	b := curve.NewScalarRandom()
+	c := curve.NewScalar()
+	c.MultiplyAdd(a, b, curve.NewScalarBigInt(x))
+	var A, B, X curve.Point
 	A.ScalarBaseMult(a)
 	B.ScalarBaseMult(b)
 	X.ScalarBaseMult(c)

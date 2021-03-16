@@ -1,4 +1,4 @@
-package encelg
+package zkencelg
 
 import (
 	"crypto/sha512"
@@ -6,12 +6,12 @@ import (
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/secp256k1"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
 )
 
-const domainEncElg = "CMP-ENC-ELG"
+const domain = "CMP-ENC-ELG"
 
 type Commitment struct {
 	// S = s^x t^mu (mod NHat)
@@ -23,16 +23,17 @@ type Commitment struct {
 
 	// Y = A^beta g^alpha
 	// Z = g^beta
-	Y, Z *secp256k1.Point
+	Y, Z *curve.Point
 }
 
 type Response struct {
 	// Z1 = alpha + e•x
-	// W = beta + e•b (mod q)
 	// Z2 = r•rho^e (mod N0)
 	// Z3 = gamma + e•mu
 	Z1, Z2, Z3 *big.Int
-	W *secp256k1.Scalar
+
+	// W = beta + e•b (mod q)
+	W *curve.Scalar
 }
 
 type Proof struct {
@@ -40,11 +41,10 @@ type Proof struct {
 	*Response
 }
 
-
 func (commitment *Commitment) Challenge() *big.Int {
 	var e big.Int
 	h := sha512.New()
-	h.Write([]byte(domainEncElg))
+	h.Write([]byte(domain))
 
 	// TODO Which parameters should we include?
 	// Write public parameters to hash
@@ -59,31 +59,29 @@ func (commitment *Commitment) Challenge() *big.Int {
 
 	out := h.Sum(nil)
 	e.SetBytes(out)
-	e.Mod(&e, secp256k1.Q)
-	e.Sub(&e, secp256k1.QHalf)
+	e.Mod(&e, curve.Q)
+	e.Sub(&e, curve.QHalf)
 	return &e
 }
 
 // N0 = prover
 // NHat = verifier
-func NewProof(prover *paillier.PublicKey, verifier *pedersen.Verifier, C *paillier.Ciphertext, A, B, X *secp256k1.Point,
-	x, rho *big.Int, a, b *secp256k1.Scalar) *Proof {
+func NewProof(prover *paillier.PublicKey, verifier *pedersen.Verifier, C *paillier.Ciphertext, A, B, X *curve.Point,
+	x, rho *big.Int, a, b *curve.Scalar) *Proof {
 	var tmp big.Int
 
-	alpha := arith.Sample(arith.LPlusEpsilon, nil)
-	mu := arith.Sample(arith.L, verifier.N)
-	gamma := arith.Sample(arith.LPlusEpsilon, verifier.N)
-	beta := secp256k1.NewScalarRandom()
-
-
+	alpha := arith.Sample(arith.LPlusEpsilon, false)
+	mu := arith.Sample(arith.L, true)
+	gamma := arith.Sample(arith.LPlusEpsilon, true)
+	beta := curve.NewScalarRandom()
 
 	S := verifier.Commit(x, mu, &tmp)
 	T := verifier.Commit(alpha, gamma, &tmp)
 	D, r := prover.Enc(alpha, nil)
 
-	var Y, Z secp256k1.Point
+	var Y, Z curve.Point
 	Y.ScalarMult(beta, A)
-	Z.ScalarBaseMult(secp256k1.NewScalarBigInt(alpha)) // Use Z as temp variable
+	Z.ScalarBaseMult(curve.NewScalarBigInt(alpha)) // Use Z as temp variable
 	Y.Add(&Y, &Z)
 
 	Z.ScalarBaseMult(beta)
@@ -109,8 +107,8 @@ func NewProof(prover *paillier.PublicKey, verifier *pedersen.Verifier, C *pailli
 	z3.Mul(e, mu)
 	z3.Add(&z3, gamma)
 
-	var w secp256k1.Scalar
-	w.MultiplyAdd(secp256k1.NewScalarBigInt(e), b, beta)
+	var w curve.Scalar
+	w.MultiplyAdd(curve.NewScalarBigInt(e), b, beta)
 
 	response := &Response{
 		Z1: &z1,
@@ -124,10 +122,10 @@ func NewProof(prover *paillier.PublicKey, verifier *pedersen.Verifier, C *pailli
 	}
 }
 
-func (proof *Proof) Verify(prover *paillier.PublicKey, verifier *pedersen.Verifier, C *paillier.Ciphertext, A, B, X *secp256k1.Point) bool {
+func (proof *Proof) Verify(prover *paillier.PublicKey, verifier *pedersen.Verifier, C *paillier.Ciphertext, A, B, X *curve.Point) bool {
 	var (
-		rhsCt paillier.Ciphertext
-		lhsPoint, rhsPoint secp256k1.Point
+		rhsCt              paillier.Ciphertext
+		lhsPoint, rhsPoint curve.Point
 	)
 
 	if !arith.IsInInterval(proof.Z1, arith.LPlusEpsilon) {
@@ -148,10 +146,10 @@ func (proof *Proof) Verify(prover *paillier.PublicKey, verifier *pedersen.Verifi
 		}
 	}
 
-	eScalar := secp256k1.NewScalarBigInt(e)
+	eScalar := curve.NewScalarBigInt(e)
 
 	lhsPoint.ScalarMult(proof.W, A)
-	lhsPoint.Add(&lhsPoint, rhsPoint.ScalarBaseMult(secp256k1.NewScalarBigInt(proof.Z1))) // use rhsPoint as temp receiver
+	lhsPoint.Add(&lhsPoint, rhsPoint.ScalarBaseMult(curve.NewScalarBigInt(proof.Z1))) // use rhsPoint as temp receiver
 
 	rhsPoint.ScalarMult(eScalar, X)
 	rhsPoint.Add(&rhsPoint, proof.Y)
@@ -159,7 +157,6 @@ func (proof *Proof) Verify(prover *paillier.PublicKey, verifier *pedersen.Verifi
 		fmt.Println("wrong 1")
 		return false
 	}
-
 
 	lhsPoint.ScalarBaseMult(proof.W)
 	rhsPoint.ScalarMult(eScalar, B)

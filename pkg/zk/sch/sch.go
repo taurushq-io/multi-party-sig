@@ -1,22 +1,22 @@
-package affp
+package zksch
 
 import (
 	"crypto/sha512"
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/secp256k1"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 )
 
-const domainSch = "CMP-SCH"
+const domain = "CMP-SCH"
 
 type Commitment struct {
 	// A = g^alpha
-	A *secp256k1.Point
+	A *curve.Point
 }
 
 type Response struct {
 	// Z = alpha + ex
-	Z *secp256k1.Scalar
+	Z *curve.Scalar
 }
 
 type Proof struct {
@@ -24,10 +24,18 @@ type Proof struct {
 	*Response
 }
 
-func (commitment *Commitment) Challenge() *secp256k1.Scalar {
+func NewCommitment() (secret *curve.Scalar, commitment *Commitment) {
+	secret = curve.NewScalarRandom()
+	commitment = &Commitment{
+		A: new(curve.Point).ScalarBaseMult(secret),
+	}
+	return
+}
+
+func (commitment *Commitment) Challenge() *curve.Scalar {
 	var e big.Int
 	h := sha512.New()
-	h.Write([]byte(domainSch))
+	h.Write([]byte(domain))
 
 	// TODO Which parameters should we include?
 	// Write public parameters to hash
@@ -38,21 +46,16 @@ func (commitment *Commitment) Challenge() *secp256k1.Scalar {
 
 	out := h.Sum(nil)
 	e.SetBytes(out)
-	return secp256k1.NewScalarBigInt(&e)
+	return curve.NewScalarBigInt(&e)
 }
 
 // NewProof generates a proof that the
-func NewProof(X *secp256k1.Point, x *secp256k1.Scalar) *Proof {
-	alpha := secp256k1.NewScalarRandom()
-
-	commitment := &Commitment{
-		A: new(secp256k1.Point).ScalarBaseMult(alpha),
-	}
-
+func NewProof(X *curve.Point, x *curve.Scalar) *Proof {
+	alpha, commitment := NewCommitment()
 	e := commitment.Challenge()
 
 	response := &Response{
-		Z: new(secp256k1.Scalar).MultiplyAdd(e, x, alpha),
+		Z: new(curve.Scalar).MultiplyAdd(e, x, alpha),
 	}
 
 	return &Proof{
@@ -61,10 +64,10 @@ func NewProof(X *secp256k1.Point, x *secp256k1.Scalar) *Proof {
 	}
 }
 
-func (proof *Proof) Verify(X *secp256k1.Point) bool {
+func (proof *Proof) Verify(X *curve.Point) bool {
 	e := proof.Challenge()
 
-	var lhs, rhs secp256k1.Point
+	var lhs, rhs curve.Point
 	lhs.ScalarBaseMult(proof.Z)
 	rhs.ScalarMult(e, X)
 	rhs.Add(&rhs, proof.A)

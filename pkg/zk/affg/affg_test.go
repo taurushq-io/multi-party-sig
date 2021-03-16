@@ -1,26 +1,26 @@
-package affp
+package zkaffg
 
 import (
 	"math/big"
 	"testing"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/secp256k1"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
 func TestAffG(t *testing.T) {
-	verifierPaillier, sk := paillier.KeyGen(arith.SecParam)
-	verifierPedersen := pedersen.NewPedersen(verifierPaillier.N(), sk.Phi())
-	prover, _ := paillier.KeyGen(arith.SecParam)
-	x := arith.Sample(arith.L, nil)
-	y := arith.Sample(arith.LPrime, nil)
+	verifierPaillier := zkcommon.VerifierPaillierPublic
+	verifierPedersen := zkcommon.Pedersen
+	prover := zkcommon.ProverPaillierPublic
+	x := arith.Sample(arith.L, false)
+	y := arith.Sample(arith.LPrime, false)
 	c := big.NewInt(12)
 
 	C, _ := verifierPaillier.Enc(c, nil)
-	var X secp256k1.Point
-	X.ScalarBaseMult(secp256k1.NewScalarBigInt(x))
+	var X curve.Point
+	X.ScalarBaseMult(curve.NewScalarBigInt(x))
 	Y, rhoY := prover.Enc(y, nil)
 
 	var tmp paillier.Ciphertext

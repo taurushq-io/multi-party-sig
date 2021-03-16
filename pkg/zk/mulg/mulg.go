@@ -1,4 +1,4 @@
-package zkmul
+package zkmulg
 
 import (
 	"crypto/sha512"
@@ -9,7 +9,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 )
 
-const domain = "CMP-MUL"
+const domain = "CMP-MULG"
 
 type Commitment struct {
 	// A = Y^alpha r^N
@@ -46,13 +46,13 @@ func (commitment *Commitment) Challenge() *big.Int {
 	e.SetBytes(out)
 	e.Mod(&e, curve.Q)
 	e.Sub(&e, curve.QHalf)
-	return curve.Q
+	return &e
 }
 
 // NewProof generates a proof that the
-func NewProof(verifier *paillier.PublicKey, X, Y, C *paillier.Ciphertext,
+func NewProof(verifierPaillier *paillier.PublicKey, X, Y, C *paillier.Ciphertext,
 	x *big.Int, rho, rhoX *big.Int) *Proof {
-	N := verifier.N()
+	N := verifierPaillier.N()
 
 	alpha := arith.RandomUnit(N)
 	r := arith.RandomUnit(N)
@@ -60,10 +60,10 @@ func NewProof(verifier *paillier.PublicKey, X, Y, C *paillier.Ciphertext,
 
 	var A, B paillier.Ciphertext
 
-	A.Mul(verifier, Y, alpha)
-	A.Randomize(verifier, r)
+	A.Mul(verifierPaillier, Y, alpha)
+	A.Randomize(verifierPaillier, r)
 
-	B.Enc(verifier, alpha, s)
+	B.Enc(verifierPaillier, alpha, s)
 
 	commitment := &Commitment{
 		A: &A,
@@ -75,9 +75,11 @@ func NewProof(verifier *paillier.PublicKey, X, Y, C *paillier.Ciphertext,
 	var z, u, v big.Int
 	z.Mul(e, x)
 	z.Add(&z, alpha)
+	z.Mod(&z, N)
 
 	u.Exp(rho, e, N)
 	u.Mul(&u, r)
+	u.Mod(&u, N)
 
 	v.Exp(rhoX, e, N)
 	v.Mul(&v, s)
@@ -95,19 +97,19 @@ func NewProof(verifier *paillier.PublicKey, X, Y, C *paillier.Ciphertext,
 	}
 }
 
-func (proof *Proof) Verify(prover *paillier.PublicKey, X, Y, C *paillier.Ciphertext) bool {
+func (proof *Proof) Verify(verifier *paillier.PublicKey, X, Y, C *paillier.Ciphertext) bool {
 	e := proof.Challenge()
 
 	var lhs, rhs paillier.Ciphertext
 
 	{
 		// lhs = Y^z u^N
-		lhs.Mul(prover, Y, proof.Z)
-		lhs.Randomize(prover, proof.U)
+		lhs.Mul(verifier, Y, proof.Z)
+		lhs.Randomize(verifier, proof.U)
 
 		// rhs = A C^e
-		rhs.Mul(prover, C, e)
-		rhs.Add(prover, &rhs, proof.A)
+		rhs.Mul(verifier, C, e)
+		rhs.Add(verifier, &rhs, proof.A)
 
 		if !lhs.Equal(&rhs) {
 			return false
@@ -116,11 +118,11 @@ func (proof *Proof) Verify(prover *paillier.PublicKey, X, Y, C *paillier.Ciphert
 
 	{
 		// lhs = Enc(z; v)
-		lhs.Enc(prover, proof.Z, proof.V)
+		lhs.Enc(verifier, proof.Z, proof.V)
 
 		// rhs = B X^e
-		rhs.Mul(prover, X, e)
-		rhs.Add(prover, &rhs, proof.B)
+		rhs.Mul(verifier, X, e)
+		rhs.Add(verifier, &rhs, proof.B)
 		if !lhs.Equal(&rhs) {
 			return false
 		}

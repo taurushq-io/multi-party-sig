@@ -1,26 +1,26 @@
-package affp
+package zkelog
 
 import (
 	"crypto/sha512"
 	"fmt"
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/secp256k1"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 )
 
-const domainELog = "CMP-ELOG"
+const domain = "CMP-ELOG"
 
 type Commitment struct {
 	// A = g^alpha
 	// N = g^m X^alpha
 	// B = h^m
-	A, N, B *secp256k1.Point
+	A, N, B *curve.Point
 }
 
 type Response struct {
 	// Z = alpha + e lambda
 	// U = m + ey
-	Z, U *secp256k1.Scalar
+	Z, U *curve.Scalar
 }
 
 type Proof struct {
@@ -28,10 +28,10 @@ type Proof struct {
 	*Response
 }
 
-func (commitment *Commitment) Challenge() *secp256k1.Scalar {
+func (commitment *Commitment) Challenge() *curve.Scalar {
 	var e big.Int
 	h := sha512.New()
-	h.Write([]byte(domainELog))
+	h.Write([]byte(domain))
 
 	// TODO Which parameters should we include?
 	// Write public parameters to hash
@@ -44,29 +44,29 @@ func (commitment *Commitment) Challenge() *secp256k1.Scalar {
 
 	out := h.Sum(nil)
 	e.SetBytes(out)
-	return secp256k1.NewScalarBigInt(&e)
+	return curve.NewScalarBigInt(&e)
 }
 
 // NewProof generates a proof that the
-func NewProof(h, X, L, M, Y *secp256k1.Point, lambda, y *secp256k1.Scalar) *Proof {
-	alpha := secp256k1.NewScalarRandom()
-	m := secp256k1.NewScalarRandom()
+func NewProof(h, X, L, M, Y *curve.Point, lambda, y *curve.Scalar) *Proof {
+	alpha := curve.NewScalarRandom()
+	m := curve.NewScalarRandom()
 
-	gm := new(secp256k1.Point).ScalarBaseMult(m)
-	N := new(secp256k1.Point).ScalarMult(alpha, X)
+	gm := new(curve.Point).ScalarBaseMult(m)
+	N := new(curve.Point).ScalarMult(alpha, X)
 	N.Add(N, gm)
 
 	commitment := &Commitment{
-		A: new(secp256k1.Point).ScalarBaseMult(alpha),
+		A: new(curve.Point).ScalarBaseMult(alpha),
 		N: N,
-		B: new(secp256k1.Point).ScalarMult(m, h),
+		B: new(curve.Point).ScalarMult(m, h),
 	}
 
 	e := commitment.Challenge()
 
 	response := &Response{
-		Z: new(secp256k1.Scalar).MultiplyAdd(e, lambda, alpha),
-		U: new(secp256k1.Scalar).MultiplyAdd(e, y, m),
+		Z: new(curve.Scalar).MultiplyAdd(e, lambda, alpha),
+		U: new(curve.Scalar).MultiplyAdd(e, y, m),
 	}
 
 	return &Proof{
@@ -75,10 +75,10 @@ func NewProof(h, X, L, M, Y *secp256k1.Point, lambda, y *secp256k1.Scalar) *Proo
 	}
 }
 
-func (proof *Proof) Verify(h, X, L, M, Y *secp256k1.Point) bool {
+func (proof *Proof) Verify(h, X, L, M, Y *curve.Point) bool {
 	e := proof.Challenge()
 
-	var lhs, rhs secp256k1.Point
+	var lhs, rhs curve.Point
 	lhs.ScalarBaseMult(proof.Z)
 	rhs.ScalarMult(e, L)
 	rhs.Add(&rhs, proof.A)

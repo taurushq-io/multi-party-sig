@@ -1,4 +1,4 @@
-package zkenc
+package zkdec
 
 import (
 	"crypto/sha512"

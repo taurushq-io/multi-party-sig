@@ -1,4 +1,4 @@
-package zkenc
+package zkdec
 
 import (
 	"testing"
@@ -7,7 +7,8 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
-func TestEnc(t *testing.T) {
+func TestDec(t *testing.T) {
+	//TODO
 	verifier := zkcommon.Pedersen
 	prover := zkcommon.ProverPaillierPublic
 

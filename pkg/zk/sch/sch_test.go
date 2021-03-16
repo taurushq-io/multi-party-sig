@@ -1,14 +1,14 @@
-package affp
+package zksch
 
 import (
 	"testing"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/secp256k1"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 )
 
 func TestSch(t *testing.T) {
-	x := secp256k1.NewScalarRandom()
-	X := new(secp256k1.Point).ScalarBaseMult(x)
+	x := curve.NewScalarRandom()
+	X := new(curve.Point).ScalarBaseMult(x)
 	proof := NewProof(X, x)
 	if !proof.Verify(X) {
 		t.Error("failed to verify")
