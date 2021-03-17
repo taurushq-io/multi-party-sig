@@ -29,7 +29,7 @@ func MakeChallenge(domain string, components ...Byteable) []byte {
 func MakeChallengeFq(domain string, components ...Byteable) *big.Int {
 	var e big.Int
 	digest := MakeChallenge(domain, components...)
-	negate := digest[0] & 1 == 1
+	negate := digest[0]&1 == 1
 	digest[0] |= 1
 	e.SetBytes(digest)
 	e.Mod(&e, curve.Q)

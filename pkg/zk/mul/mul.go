@@ -3,8 +3,8 @@ package zkmul
 import (
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
@@ -37,7 +37,7 @@ func NewProof(verifier *paillier.PublicKey, X, Y, C *paillier.Ciphertext,
 	x *big.Int, rho, rhoX *big.Int) *Proof {
 	N := verifier.N()
 
-	alpha := arith.RandomUnit(N)
+	alpha := sample.Unit(N)
 
 	var A, B paillier.Ciphertext
 

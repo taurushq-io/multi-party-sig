@@ -3,7 +3,7 @@ package paillier
 import (
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/sample"
 )
 
 type PublicKey struct {
@@ -31,7 +31,7 @@ func (pk *PublicKey) Equal(other *PublicKey) bool {
 }
 
 func (pk *PublicKey) Nonce() *big.Int {
-	return arith.RandomUnit(pk.n)
+	return sample.Unit(pk.n)
 }
 
 func (pk *PublicKey) N() *big.Int {

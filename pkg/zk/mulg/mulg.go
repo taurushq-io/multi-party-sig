@@ -3,9 +3,9 @@ package zkmulg
 import (
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
@@ -46,10 +46,10 @@ func (commitment *Commitment) Challenge() *big.Int {
 // D = (alpha ⊙ C ) • rho^N0
 func NewProof(proverPailler *paillier.PublicKey, verifierPedersen *pedersen.Verifier, C, D *paillier.Ciphertext, X *curve.Point,
 	x, rho *big.Int) *Proof {
-	alpha := arith.Sample(arith.LPlusEpsilon, false)
+	alpha := params.Sample(params.LPlusEpsilon, false)
 	r := proverPailler.Nonce()
-	gamma := arith.Sample(arith.LPlusEpsilon, true)
-	m := arith.Sample(arith.L, true)
+	gamma := params.Sample(params.LPlusEpsilon, true)
+	m := params.Sample(params.L, true)
 
 	var A paillier.Ciphertext
 	A.Mul(proverPailler, C, alpha)
@@ -92,7 +92,7 @@ func NewProof(proverPailler *paillier.PublicKey, verifierPedersen *pedersen.Veri
 }
 
 func (proof *Proof) Verify(proverPailler *paillier.PublicKey, verifierPedersen *pedersen.Verifier, C, D *paillier.Ciphertext, X *curve.Point) bool {
-	if !arith.IsInInterval(proof.Z1, arith.LPlusEpsilon) {
+	if !params.IsInInterval(proof.Z1, params.LPlusEpsilon) {
 		return false
 	}
 

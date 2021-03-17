@@ -1,4 +1,4 @@
-package arith
+package params
 
 import (
 	"crypto/rand"
@@ -14,7 +14,7 @@ import (
 // For memory optimization, we cache the bounds since we know that they are used often.
 func Sample(maxBits int, withN bool) *big.Int {
 	if withN {
-		maxBits = maxBits + paillierModulus
+		maxBits = maxBits + PaillierBits
 	}
 
 	// add one bit for sign

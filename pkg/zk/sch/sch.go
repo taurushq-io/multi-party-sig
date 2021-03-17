@@ -1,9 +1,6 @@
 package zksch
 
 import (
-	"crypto/sha512"
-	"math/big"
-
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
@@ -34,27 +31,14 @@ func NewCommitment() (secret *curve.Scalar, commitment *Commitment) {
 }
 
 func (commitment *Commitment) Challenge() *curve.Scalar {
-	var e big.Int
-	h := sha512.New()
-	h.Write([]byte(domain))
-
-	// TODO Which parameters should we include?
-	// Write public parameters to hash
-	h.Write([]byte(""))
-
-	// Write commitments
-	h.Write(commitment.A.Bytes())
-
-	out := h.Sum(nil)
-	e.SetBytes(out)
-	return curve.NewScalarBigInt(&e)
+	return zkcommon.MakeChallengeScalar(domain, commitment.A)
 }
 
 // NewProof generates a proof that the
 func NewProof(X *curve.Point, x *curve.Scalar) *Proof {
 	alpha, commitment := NewCommitment()
 
-	e := zkcommon.MakeChallengeScalar(domain, commitment.A)
+	e := commitment.Challenge()
 
 	response := &Response{
 		Z: new(curve.Scalar).MultiplyAdd(e, x, alpha),
@@ -67,7 +51,7 @@ func NewProof(X *curve.Point, x *curve.Scalar) *Proof {
 }
 
 func (proof *Proof) Verify(X *curve.Point) bool {
-	e := zkcommon.MakeChallengeScalar(domain, proof.A)
+	e := proof.Challenge()
 
 	var lhs, rhs curve.Point
 	lhs.ScalarBaseMult(proof.Z)

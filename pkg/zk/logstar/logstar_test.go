@@ -3,8 +3,8 @@ package zklogstar
 import (
 	"testing"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
@@ -12,7 +12,7 @@ func TestLogStar(t *testing.T) {
 	verifier := zkcommon.Pedersen
 	prover := zkcommon.ProverPaillierPublic
 
-	x := arith.Sample(arith.L, false)
+	x := params.Sample(params.L, false)
 	C, rho := prover.Enc(x, nil)
 
 	var X, H curve.Point

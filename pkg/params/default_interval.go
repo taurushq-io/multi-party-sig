@@ -1,4 +1,4 @@
-package arith
+package params
 
 import (
 	"math/big"
@@ -6,7 +6,9 @@ import (
 
 const (
 	SecParam          = 256
-	paillierModulus   = 8 * SecParam
+	StatParam         = 80
+	PaillierBits      = 8 * SecParam
+	BlumPrimeBits     = 4 * SecParam
 	L                 = 1 * SecParam
 	LPrime            = 5 * SecParam
 	Epsilon           = 2 * SecParam
@@ -35,10 +37,11 @@ func init() {
 	bitBounds := []int{L, LPrime, L + Epsilon, LPrime + Epsilon}
 	for _, bit := range bitBounds {
 		getBoundSlow(bit)
-		getBoundSlow(bit + paillierModulus)
+		getBoundSlow(bit + PaillierBits)
 		getBoundSlow(bit + 1)
-		getBoundSlow(bit + paillierModulus + 1)
+		getBoundSlow(bit + PaillierBits + 1)
 	}
+
 	a := bounds
 	_ = a[1]
 }

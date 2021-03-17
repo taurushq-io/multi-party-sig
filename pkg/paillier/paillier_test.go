@@ -11,8 +11,7 @@ import (
 
 func TestPaillier(t *testing.T) {
 	for i := 0; i < 10; i++ {
-
-		pk, sk := KeyGen(256)
+		pk, sk := KeyGen()
 
 		b := new(big.Int).SetBit(new(big.Int), 200, 1)
 		r1, err := rand.Int(rand.Reader, b)
@@ -46,7 +45,7 @@ func TestPaillier(t *testing.T) {
 }
 
 func TestPaillierJson(t *testing.T) {
-	_, sk := KeyGen(256)
+	_, sk := KeyGen()
 	d, err := json.Marshal(sk)
 	require.NoError(t, err)
 	skNew := &SecretKey{}

@@ -3,8 +3,8 @@ package zkdec
 import (
 	"testing"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
@@ -12,7 +12,7 @@ func TestDec(t *testing.T) {
 	verifier := zkcommon.Pedersen
 	prover := zkcommon.ProverPaillierPublic
 
-	y := arith.Sample(arith.L, false)
+	y := params.Sample(params.L, false)
 	x := curve.NewScalarBigInt(y)
 
 	C, rho := prover.Enc(y, nil)

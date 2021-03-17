@@ -87,7 +87,6 @@ func (s *Scalar) SetBytes(in []byte) *Scalar {
 	return s
 }
 
-
 // Bytes returns the canonical 32 bytes little-endian encoding of s.
 func (s *Scalar) Bytes() []byte {
 	return s.s.Bytes()

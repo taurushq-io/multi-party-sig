@@ -3,19 +3,19 @@ package zkmulg
 import (
 	"testing"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
 func TestMulG(t *testing.T) {
 	pk := zkcommon.ProverPaillierPublic
 	verif := zkcommon.Pedersen
-	x := arith.Sample(arith.L, false)
+	x := params.Sample(params.L, false)
 	X := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarBigInt(x))
 
-	C, _ := pk.Enc(arith.Sample(arith.LPlusEpsilon, false), nil)
+	C, _ := pk.Enc(params.Sample(params.LPlusEpsilon, false), nil)
 
 	var D paillier.Ciphertext
 	D.Mul(pk, C, x)

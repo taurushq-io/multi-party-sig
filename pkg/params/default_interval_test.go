@@ -1,4 +1,4 @@
-package arith
+package params
 
 import (
 	"fmt"

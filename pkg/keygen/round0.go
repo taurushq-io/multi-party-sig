@@ -11,7 +11,7 @@ func (round *round0) ProcessMessage(msg *messages.Message) *state.Error {
 }
 
 func (round *round0) GenerateMessages() ([]*messages.Message, *state.Error) {
-	round.selfParty.PaillierPublic, round.paillierSecret = paillier.KeyGen(256)
+	round.selfParty.PaillierPublic, round.paillierSecret = paillier.KeyGen()
 
 	return nil, nil
 }

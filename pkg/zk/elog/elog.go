@@ -1,8 +1,6 @@
 package zkelog
 
 import (
-	"fmt"
-
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
@@ -36,14 +34,19 @@ func NewProof(h, X, L, M, Y *curve.Point, lambda, y *curve.Scalar) *Proof {
 	alpha := curve.NewScalarRandom()
 	m := curve.NewScalarRandom()
 
-	gm := new(curve.Point).ScalarBaseMult(m)
-	N := new(curve.Point).ScalarMult(alpha, X)
-	N.Add(N, gm)
+	var A, N, B curve.Point
+	N.ScalarMult(alpha, X)
+	A.ScalarBaseMult(m) // use A temporarily
+	N.Add(&N, &A)
+
+	A.ScalarBaseMult(alpha)
+
+	B.ScalarMult(m, h)
 
 	commitment := &Commitment{
-		A: new(curve.Point).ScalarBaseMult(alpha),
-		N: N,
-		B: new(curve.Point).ScalarMult(m, h),
+		A: &A,
+		N: &N,
+		B: &B,
 	}
 
 	e := commitment.Challenge()
@@ -63,32 +66,35 @@ func (proof *Proof) Verify(h, X, L, M, Y *curve.Point) bool {
 	e := proof.Challenge()
 
 	var lhs, rhs curve.Point
-	lhs.ScalarBaseMult(proof.Z)
-	rhs.ScalarMult(e, L)
-	rhs.Add(&rhs, proof.A)
+	{
+		lhs.ScalarBaseMult(proof.Z)
+		rhs.ScalarMult(e, L)
+		rhs.Add(&rhs, proof.A)
 
-	if lhs.Equal(&rhs) != 1 {
-		fmt.Println("fail g")
-		return false
+		if lhs.Equal(&rhs) != 1 {
+			return false
+		}
 	}
 
-	lhs.ScalarMult(proof.Z, X)
-	lhs.Add(&lhs, rhs.ScalarBaseMult(proof.U))
-	rhs.ScalarMult(e, M)
-	rhs.Add(&rhs, proof.N)
+	{
+		lhs.ScalarMult(proof.Z, X)
+		lhs.Add(&lhs, rhs.ScalarBaseMult(proof.U))
+		rhs.ScalarMult(e, M)
+		rhs.Add(&rhs, proof.N)
 
-	if lhs.Equal(&rhs) != 1 {
-		fmt.Println("fail h1")
-		return false
+		if lhs.Equal(&rhs) != 1 {
+			return false
+		}
 	}
 
-	lhs.ScalarMult(proof.U, h)
-	rhs.ScalarMult(e, Y)
-	rhs.Add(&rhs, proof.B)
+	{
+		lhs.ScalarMult(proof.U, h)
+		rhs.ScalarMult(e, Y)
+		rhs.Add(&rhs, proof.B)
 
-	if lhs.Equal(&rhs) != 1 {
-		fmt.Println("fail h2")
-		return false
+		if lhs.Equal(&rhs) != 1 {
+			return false
+		}
 	}
 
 	return true

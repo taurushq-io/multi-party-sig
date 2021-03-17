@@ -3,9 +3,9 @@ package zkdec
 import (
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
@@ -44,9 +44,9 @@ func (commitment *Commitment) Challenge() *big.Int {
 func NewProof(
 	prover *paillier.PublicKey, verifier *pedersen.Verifier, C *paillier.Ciphertext, x *curve.Scalar,
 	y, rho *big.Int) *Proof {
-	alpha := arith.Sample(arith.LPlusEpsilon, false)
-	mu := arith.Sample(arith.L, true)
-	nu := arith.Sample(arith.LPlusEpsilon, true)
+	alpha := params.Sample(params.LPlusEpsilon, false)
+	mu := params.Sample(params.L, true)
+	nu := params.Sample(params.LPlusEpsilon, true)
 
 	A, r := prover.Enc(alpha, nil)
 

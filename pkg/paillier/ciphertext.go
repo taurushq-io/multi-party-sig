@@ -2,13 +2,13 @@ package paillier
 
 import (
 	"math/big"
-
-	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
 )
 
 type Ciphertext struct {
 	c big.Int
 }
+
+var one = big.NewInt(1)
 
 // Enc sets the receiver to the encryption of m under the key pk, using the given nonce.
 // If nonce is nil then a new one is generated and returned
@@ -67,11 +67,4 @@ func (ct *Ciphertext) BigInt() *big.Int {
 
 func (ct *Ciphertext) Bytes() []byte {
 	return ct.c.Bytes()
-}
-
-func newBigInt() *big.Int {
-	var result big.Int
-	result.SetBit(&result, 8*arith.SecParam, 1)
-	result.SetBit(&result, 8*arith.SecParam, 0)
-	return &result
 }

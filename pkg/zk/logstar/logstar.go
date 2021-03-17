@@ -3,9 +3,9 @@ package zklogstar
 import (
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
@@ -43,9 +43,9 @@ func (commitment *Commitment) Challenge() *big.Int {
 // NewProof generates a proof that the
 func NewProof(prover *paillier.PublicKey, verifier *pedersen.Verifier, C *paillier.Ciphertext, X, g *curve.Point,
 	x, rho *big.Int) *Proof {
-	alpha := arith.Sample(arith.LPlusEpsilon, false)
-	mu := arith.Sample(arith.L, true)
-	gamma := arith.Sample(arith.LPlusEpsilon, true)
+	alpha := params.Sample(params.LPlusEpsilon, false)
+	mu := params.Sample(params.L, true)
+	gamma := params.Sample(params.LPlusEpsilon, true)
 
 	A, r := prover.Enc(alpha, nil)
 	var Y curve.Point
@@ -85,7 +85,7 @@ func NewProof(prover *paillier.PublicKey, verifier *pedersen.Verifier, C *pailli
 }
 
 func (proof *Proof) Verify(prover *paillier.PublicKey, verifier *pedersen.Verifier, C *paillier.Ciphertext, X, g *curve.Point) bool {
-	if !arith.IsInInterval(proof.Z1, arith.LPlusEpsilon) {
+	if !params.IsInInterval(proof.Z1, params.LPlusEpsilon) {
 		return false
 	}
 

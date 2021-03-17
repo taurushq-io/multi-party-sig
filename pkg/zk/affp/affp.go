@@ -1,11 +1,10 @@
 package zkaffp
 
 import (
-	"fmt"
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
@@ -56,26 +55,26 @@ func (commitment *Commitment) Challenge() *big.Int {
 func NewProof(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pedersen.Verifier, D, C, X, Y *paillier.Ciphertext,
 	x, y, rhoX, rhoY, rho *big.Int) *Proof {
 
-	alpha := arith.Sample(arith.LPlusEpsilon, false)
-	beta := arith.Sample(arith.LPrimePlusEpsilon, false)
+	alpha := params.Sample(params.LPlusEpsilon, false)
+	beta := params.Sample(params.LPrimePlusEpsilon, false)
 
-	gamma := arith.Sample(arith.LPlusEpsilon, true)
-	m := arith.Sample(arith.L, true)
-	delta := arith.Sample(arith.LPlusEpsilon, true)
-	mu := arith.Sample(arith.L, true)
+	gamma := params.Sample(params.LPlusEpsilon, true)
+	m := params.Sample(params.L, true)
+	delta := params.Sample(params.LPlusEpsilon, true)
+	mu := params.Sample(params.L, true)
 
-	var tmpCt paillier.Ciphertext
+	var Bx, By paillier.Ciphertext
 	A, r := verifierPaillier.Enc(beta, nil)
-	tmpCt.Mul(verifierPaillier, C, alpha)
-	A.Add(verifierPaillier, A, &tmpCt)
+	Bx.Mul(verifierPaillier, C, alpha)
+	A.Add(verifierPaillier, A, &Bx)
 
-	Bx, rx := prover.Enc(alpha, nil)
-	By, ry := prover.Enc(beta, nil)
+	_, rx := Bx.Enc(prover, alpha, nil)
+	_, ry := By.Enc(prover, beta, nil)
 
 	commitment := &Commitment{
 		A:  A,
-		Bx: Bx,
-		By: By,
+		Bx: &Bx,
+		By: &By,
 		E:  verifierPedersen.Commit(alpha, gamma),
 		S:  verifierPedersen.Commit(x, m),
 		F:  verifierPedersen.Commit(beta, delta),
@@ -116,12 +115,10 @@ func NewProof(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pe
 }
 
 func (proof *Proof) Verify(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pedersen.Verifier, D, C, X, Y *paillier.Ciphertext) bool {
-	if !arith.IsInInterval(proof.Z1, arith.LPlusEpsilon) {
-		fmt.Println(" failed range z1")
+	if !params.IsInInterval(proof.Z1, params.LPlusEpsilon) {
 		return false
 	}
-	if !arith.IsInInterval(proof.Z2, arith.LPrimePlusEpsilon) {
-		fmt.Println(" failed range z2")
+	if !params.IsInInterval(proof.Z2, params.LPrimePlusEpsilon) {
 		return false
 	}
 
@@ -143,7 +140,6 @@ func (proof *Proof) Verify(prover, verifierPaillier *paillier.PublicKey, verifie
 		rhsCt.Add(N0, &rhsCt, proof.A)
 
 		if !lhsCt.Equal(&rhsCt) {
-			fmt.Println("failed ct 1")
 			return false
 		}
 	}
@@ -157,7 +153,6 @@ func (proof *Proof) Verify(prover, verifierPaillier *paillier.PublicKey, verifie
 		rhsCt.Add(N1, &rhsCt, proof.Bx)
 
 		if !lhsCt.Equal(&rhsCt) {
-			fmt.Println("failed ct 2")
 			return false
 		}
 	}
@@ -171,18 +166,15 @@ func (proof *Proof) Verify(prover, verifierPaillier *paillier.PublicKey, verifie
 		rhsCt.Add(N1, &rhsCt, proof.By)
 
 		if !lhsCt.Equal(&rhsCt) {
-			fmt.Println("failed ct 3")
 			return false
 		}
 	}
 
 	if !verifierPedersen.Verify(proof.Z1, proof.Z3, proof.E, proof.S, e) {
-		fmt.Println("failed ped 1")
 		return false
 	}
 
 	if !verifierPedersen.Verify(proof.Z2, proof.Z4, proof.F, proof.T, e) {
-		fmt.Println("failed ped 2")
 		return false
 	}
 

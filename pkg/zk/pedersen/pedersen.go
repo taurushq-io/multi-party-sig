@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/arith"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/sample"
 )
 
 var two = big.NewInt(2)
@@ -27,7 +27,7 @@ func (v *Verifier) Commit(secret, blind *big.Int) *big.Int {
 
 func NewPedersen(N, phi *big.Int) *Verifier {
 	var s, t big.Int
-	r := arith.RandomUnit(N)
+	r := sample.Unit(N)
 	lambda, err := rand.Int(rand.Reader, phi)
 	if err != nil {
 		panic("failed to sample Pedersen lambda")
