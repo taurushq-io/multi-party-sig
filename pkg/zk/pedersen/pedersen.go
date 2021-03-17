@@ -25,22 +25,22 @@ func (v *Verifier) Commit(secret, blind *big.Int) *big.Int {
 	return &result
 }
 
-func NewPedersen(N, phi *big.Int) *Verifier {
+func NewPedersen(N, phi *big.Int) (*Verifier, *big.Int) {
 	var s, t big.Int
-	r := sample.Unit(N)
-	lambda, err := rand.Int(rand.Reader, phi)
+	tau := sample.Unit(N)
+	d, err := rand.Int(rand.Reader, phi)
 	if err != nil {
 		panic("failed to sample Pedersen lambda")
 	}
-	t.Exp(r, two, N)
-	s.Exp(&t, lambda, N)
+	t.Exp(tau, two, N)
+	s.Exp(&t, d, N)
 
 	p := &Verifier{
 		N: N,
 		S: &s,
 		T: &t,
 	}
-	return p
+	return p, d
 }
 
 func (v *Verifier) Verify(sPow, tPow, S, T, e *big.Int) bool {

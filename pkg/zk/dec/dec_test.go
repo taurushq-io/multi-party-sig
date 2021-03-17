@@ -5,6 +5,7 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
@@ -12,7 +13,7 @@ func TestDec(t *testing.T) {
 	verifier := zkcommon.Pedersen
 	prover := zkcommon.ProverPaillierPublic
 
-	y := params.Sample(params.L, false)
+	y := sample.PlusMinus(params.L, false)
 	x := curve.NewScalarBigInt(y)
 
 	C, rho := prover.Enc(y, nil)

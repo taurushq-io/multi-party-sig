@@ -3,8 +3,10 @@ package params
 import (
 	"fmt"
 	"testing"
+
+	"github.com/taurusgroup/cmp-ecdsa/pkg/sample"
 )
 
 func TestX(t *testing.T) {
-	fmt.Println(getBoundSlow(3))
+	fmt.Println(sample.getBoundSlow(3))
 }

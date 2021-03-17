@@ -7,6 +7,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
@@ -14,8 +15,8 @@ func TestAffG(t *testing.T) {
 	verifierPaillier := zkcommon.VerifierPaillierPublic
 	verifierPedersen := zkcommon.Pedersen
 	prover := zkcommon.ProverPaillierPublic
-	x := params.Sample(params.L, false)
-	y := params.Sample(params.LPrime, false)
+	x := sample.PlusMinus(params.L, false)
+	y := sample.PlusMinus(params.LPrime, false)
 	c := big.NewInt(12)
 
 	C, _ := verifierPaillier.Enc(c, nil)

@@ -6,16 +6,17 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
 
 func TestMulG(t *testing.T) {
 	pk := zkcommon.ProverPaillierPublic
 	verif := zkcommon.Pedersen
-	x := params.Sample(params.L, false)
+	x := sample.PlusMinus(params.L, false)
 	X := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarBigInt(x))
 
-	C, _ := pk.Enc(params.Sample(params.LPlusEpsilon, false), nil)
+	C, _ := pk.Enc(sample.PlusMinus(params.LPlusEpsilon, false), nil)
 
 	var D paillier.Ciphertext
 	D.Mul(pk, C, x)

@@ -7,6 +7,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
@@ -59,13 +60,13 @@ func NewProof(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pe
 	x, y, rhoY, rho *big.Int) *Proof {
 	var tmpCt paillier.Ciphertext
 
-	alpha := params.Sample(params.LPlusEpsilon, false)
-	beta := params.Sample(params.LPrimePlusEpsilon, false)
+	alpha := sample.PlusMinus(params.LPlusEpsilon, false)
+	beta := sample.PlusMinus(params.LPrimePlusEpsilon, false)
 
-	gamma := params.Sample(params.LPlusEpsilon, true)
-	m := params.Sample(params.L, true)
-	delta := params.Sample(params.LPlusEpsilon, true)
-	mu := params.Sample(params.L, true)
+	gamma := sample.PlusMinus(params.LPlusEpsilon, true)
+	m := sample.PlusMinus(params.L, true)
+	delta := sample.PlusMinus(params.LPlusEpsilon, true)
+	mu := sample.PlusMinus(params.L, true)
 
 	A, r := verifierPaillier.Enc(beta, nil)
 	tmpCt.Mul(verifierPaillier, C, alpha)
@@ -118,10 +119,10 @@ func NewProof(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pe
 }
 
 func (proof *Proof) Verify(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pedersen.Verifier, D, C, Y *paillier.Ciphertext, X *curve.Point) bool {
-	if !params.IsInInterval(proof.Z1, params.LPlusEpsilon) {
+	if !sample.IsInInterval(proof.Z1, params.LPlusEpsilon) {
 		return false
 	}
-	if !params.IsInInterval(proof.Z2, params.LPrimePlusEpsilon) {
+	if !sample.IsInInterval(proof.Z2, params.LPrimePlusEpsilon) {
 		return false
 	}
 

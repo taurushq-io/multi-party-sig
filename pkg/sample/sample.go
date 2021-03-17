@@ -20,6 +20,7 @@ func mustSample(max *big.Int) *big.Int {
 
 var one = big.NewInt(1)
 
+// Unit samples a random unit modulo order
 func Unit(order *big.Int) *big.Int {
 	var gcd big.Int
 	for i := uint8(0); i < uint8(255); i++ {
@@ -43,7 +44,6 @@ func QR(n, p, q *big.Int) *big.Int {
 }
 
 // QNR samples a random quadratic non-residue in Z_n.
-//
 func QNR(n *big.Int) *big.Int {
 	for i := uint8(0); i < uint8(255); i++ {
 		w := mustSample(n)

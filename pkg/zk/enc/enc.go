@@ -6,6 +6,7 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
 )
@@ -43,9 +44,9 @@ func NewProof(
 	k, rho *big.Int) *Proof {
 	N := prover.N()
 
-	alpha := params.Sample(params.LPlusEpsilon, false)
-	mu := params.Sample(params.L, true)
-	gamma := params.Sample(params.LPlusEpsilon, true)
+	alpha := sample.PlusMinus(params.LPlusEpsilon, false)
+	mu := sample.PlusMinus(params.L, true)
+	gamma := sample.PlusMinus(params.LPlusEpsilon, true)
 
 	A, r := prover.Enc(alpha, nil)
 
