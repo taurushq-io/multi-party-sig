@@ -53,30 +53,6 @@ func (p *Exponent) evaluateClassic(index *curve.Scalar, result *curve.Point) *cu
 	return result
 }
 
-// evaluateVar evaluates a polynomial in a given variable index.
-// We exploit the fact that curve.Point.VarTimeMultiScalarMult is a lot faster
-// than other Point ops, but this requires us to have access to an array of powers of index.
-//func (p *Exponent) evaluateVar(index *curve.Scalar, result *curve.Point) *curve.Point {
-//	if index.Equal(curve.NewScalar()) == 1 {
-//		panic("you should be using .Constant() instead")
-//	}
-//	powers := make([]curve.Scalar, len(p.coefficients))
-//	powersPointers := make([]*curve.Scalar, len(p.coefficients))
-//
-//	for i := 0; i < len(p.coefficients); i++ {
-//		switch {
-//		case i == 0:
-//			powersPointers[i] = scalar.SetScalarUInt32(&powers[0], 1)
-//		case i == 1:
-//			powersPointers[i] = powers[1].Set(index)
-//		default:
-//			powersPointers[i] = powers[i].Multiply(&powers[i-1], index)
-//		}
-//	}
-//	result.VarTimeMultiScalarMult(powersPointers, p.coefficients)
-//	return result
-//}
-
 // evaluateHorner evaluates a polynomial in a given variable index
 // We create a list of all powers of index, and use VarTimeMultiScalarMult
 // to speed things up.
