@@ -76,7 +76,17 @@ func NewProof(v *pedersen.Verifier, lambda, phi *big.Int) *Proof {
 	}
 }
 
+var one = big.NewInt(1)
+
 func (proof *Proof) Verify(v *pedersen.Verifier) bool {
+	var gcd big.Int
+	if gcd.GCD(nil, nil, v.N, v.S).Cmp(one) != 0 {
+		return false
+	}
+	if gcd.GCD(nil, nil, v.N, v.T).Cmp(one) != 0 {
+		return false
+	}
+
 	var lhs, rhs big.Int
 	es := proof.Challenge()
 	for i := 0; i < params.StatParam; i++ {
