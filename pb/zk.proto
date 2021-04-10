@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package pb;
+
+option go_package = "github.com/taurusgroup/cmp-ecdsa/pb";
+
+import "types.proto";
+
+message ZKMod {
+  Int w = 1;
+  repeated Int x = 2;
+  repeated bool a = 3;
+  repeated bool b = 4;
+  repeated Int z = 5;
+}
+
+message ZKPrm {
+  repeated Int a = 1;
+  repeated Int z = 2;
+}
+

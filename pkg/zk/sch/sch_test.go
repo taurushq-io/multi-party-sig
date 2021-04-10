@@ -3,7 +3,7 @@ package zksch
 import (
 	"testing"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 )
 
 func TestSch(t *testing.T) {

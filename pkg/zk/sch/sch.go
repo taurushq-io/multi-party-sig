@@ -1,19 +1,21 @@
 package zksch
 
 import (
-	"github.com/taurusgroup/cmp-ecdsa/pkg/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/zk/zkcommon"
+	"fmt"
+
+	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 )
 
 const domain = "CMP-SCH"
 
 type Commitment struct {
-	// A = g^alpha
+	// A = gᵃ
 	A *curve.Point
 }
 
 type Response struct {
-	// Z = alpha + ex
+	// Z = a + ex
 	Z *curve.Scalar
 }
 
@@ -22,41 +24,35 @@ type Proof struct {
 	*Response
 }
 
-func NewCommitment() (secret *curve.Scalar, commitment *Commitment) {
-	secret = curve.NewScalarRandom()
-	commitment = &Commitment{
-		A: new(curve.Point).ScalarBaseMult(secret),
+func challenge(hash *hash.Hash, A, X *curve.Point) (*curve.Scalar, error) {
+	if err := hash.WritePoint(A, X); err != nil {
+		return nil, fmt.Errorf("challenge: %w", err)
 	}
+	e, err := hash.ReadScalar()
+	if err != nil {
+		return nil, fmt.Errorf("challenge: %w", err)
+	}
+	return e, nil
+}
+
+func Prove(hash *hash.Hash, A, X *curve.Point, a, x *curve.Scalar) (proof *curve.Scalar, err error) {
+	if proof, err = challenge(hash, A, X); err != nil {
+		return nil, fmt.Errorf("zkschnorr: %w", err)
+	}
+	proof.MultiplyAdd(proof, x, a)
 	return
 }
 
-func (commitment *Commitment) Challenge() *curve.Scalar {
-	return zkcommon.MakeChallengeScalar(domain, commitment.A)
-}
-
-// NewProof generates a proof that the
-func NewProof(X *curve.Point, x *curve.Scalar) *Proof {
-	alpha, commitment := NewCommitment()
-
-	e := commitment.Challenge()
-
-	response := &Response{
-		Z: new(curve.Scalar).MultiplyAdd(e, x, alpha),
+func Verify(hash *hash.Hash, A, X *curve.Point, proof *curve.Scalar) bool {
+	e, err := challenge(hash, A, X)
+	if err != nil {
+		return false
 	}
-
-	return &Proof{
-		Commitment: commitment,
-		Response:   response,
-	}
-}
-
-func (proof *Proof) Verify(X *curve.Point) bool {
-	e := proof.Challenge()
 
 	var lhs, rhs curve.Point
-	lhs.ScalarBaseMult(proof.Z)
+	lhs.ScalarBaseMult(proof)
 	rhs.ScalarMult(e, X)
-	rhs.Add(&rhs, proof.A)
+	rhs.Add(&rhs, A)
 
 	return lhs.Equal(&rhs) == 1
 }

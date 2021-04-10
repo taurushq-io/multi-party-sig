@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package pb;
+
+option go_package = "github.com/taurusgroup/cmp-ecdsa/pb";
+
+message Point {
+  bytes point = 1;
+  bool isIdentity = 2;
+}
+
+message Scalar {
+  bytes scalar = 1;
+}
+
+message Int {
+  bytes int = 1;
+  bool zero = 2;
+  bool neg = 3;
+}
+
+message Ciphertext {
+  Int c = 1;
+}

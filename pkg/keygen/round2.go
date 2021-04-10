@@ -1,22 +1,26 @@
 package keygen
 
 import (
-	"github.com/taurusgroup/cmp-ecdsa/pkg/messages"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/state"
+	"fmt"
+
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 )
 
 type round2 struct {
 	*round1
 }
 
-func (round *round2) ProcessMessage(msg *messages.Message) *state.Error {
+func (round *round2) ProcessMessage(msg *message.Message) error {
+	// TODO unmarshal V and store
 	return nil
 }
 
-func (round *round2) GenerateMessages() ([]*messages.Message, *state.Error) {
+func (round *round2) GenerateMessages() ([]*message.Message, error) {
+	// Broadcast the message we created in round1
+	fmt.Println(round.thisParty.message2)
 	return nil, nil
 }
 
-//func (round *round0) NextRound() state.Round {
-//	return &round1{round}
+//func (round *round1) NextRound() state.Round {
+//	return &round2{round}
 //}

@@ -1,7 +1,7 @@
 package paillier
 
 import (
-	"github.com/taurusgroup/cmp-ecdsa/pkg/sample"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 )
 
 func KeyGen() (pk *PublicKey, sk *SecretKey) {

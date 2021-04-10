@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package pb;
+
+option go_package = "github.com/taurusgroup/cmp-ecdsa/pb";
+
+import "types.proto";
+import "zk.proto";
+
+enum Type {
+  Invalid = 0;
+
+  Keygen1 = 1;
+  Keygen2 = 2;
+  Keygen3 = 3;
+
+  Refresh1 = 4;
+  Refresh2 = 5;
+  Refresh3 = 6;
+}
+
+message Message {
+  Type type = 1;
+  uint32 from = 2;
+  uint32 to = 3;
+  oneof content {
+    KeygenMessage1 keygen1 = 4;
+    KeygenMessage2 keygen2 = 5;
+    KeygenMessage3 keygen3 = 6;
+    RefreshMessage1 refresh1 = 7;
+    RefreshMessage2 refresh2 = 8;
+    RefreshMessage3 refresh3 = 9;
+  }
+}
+
+message KeygenMessage1 {
+  bytes hash = 1;
+}
+
+message KeygenMessage2 {
+  bytes rid = 1;
+  Point X = 2;
+  Point A = 3;
+  bytes u = 4;
+}
+
+message KeygenMessage3 {
+  Scalar schX = 1;
+}
+
+message RefreshMessage1 {
+  bytes hash = 1;
+}
+
+message RefreshMessage2 {
+  map<uint32, Point> X = 1;
+  map<uint32, Point> A = 2;
+  Point Y = 3;
+  Point B = 4;
+  Int N = 5;
+  Int S = 6;
+  Int T = 7;
+  bytes rho = 8;
+  bytes u = 9;
+}
+
+message RefreshMessage3 {
+  ZKMod mod = 1;
+  ZKPrm prm = 2;
+  Ciphertext c = 3;
+  Scalar schX = 4;
+  Scalar schY = 5;
+}
