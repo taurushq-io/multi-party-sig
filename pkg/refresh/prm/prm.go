@@ -31,12 +31,12 @@ func (public Public) Prove(hash *hash.Hash, private Private) (*pb.ZKPrm, error) 
 	A := make([]*pb.Int, params.StatParam)
 	a := make([]*big.Int, params.StatParam)
 
-	Atmp := new(big.Int)
+	Atemp := new(big.Int)
 	for i := 0; i < params.StatParam; i++ {
-		a[i] = sample.PlusMinus(params.L, true)
+		a[i] = sample.IntervalLN()
 		a[i].Mod(a[i], phi)
-		Atmp.Exp(public.T, a[i], n)
-		A[i] = pb.NewInt(Atmp)
+		Atemp.Exp(public.T, a[i], n)
+		A[i] = pb.NewInt(Atemp)
 	}
 
 	es, err := challenge(hash, public, A)
@@ -82,12 +82,8 @@ func (public Public) Verify(hash *hash.Hash, proof *pb.ZKPrm) bool {
 	var lhs, rhs big.Int
 	z, a := new(big.Int), new(big.Int)
 	for i := 0; i < params.StatParam; i++ {
-		if z, err = proof.Z[i].Unmarshal(); err != nil {
-			return false
-		}
-		if a, err = proof.A[i].Unmarshal(); err != nil {
-			return false
-		}
+		z = proof.Z[i].Unmarshal()
+		a = proof.A[i].Unmarshal()
 		lhs.Exp(t, z, n)
 		if es[i] {
 			rhs.Mul(a, s)

@@ -37,7 +37,7 @@ func NewProof(verifier *paillier.PublicKey, X, Y, C *paillier.Ciphertext,
 	x *big.Int, rho, rhoX *big.Int) *Proof {
 	N := verifier.N()
 
-	alpha := sample.Unit(N)
+	alpha := sample.UnitModN(N)
 
 	var A, B paillier.Ciphertext
 

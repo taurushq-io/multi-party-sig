@@ -1,6 +1,10 @@
 package arith
 
-import "math/big"
+import (
+	"math/big"
+
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+)
 
 var one = big.NewInt(1)
 
@@ -11,4 +15,12 @@ func IsCoprime(a, b *big.Int) bool {
 		return true
 	}
 	return false
+}
+
+func IsInIntervalLEps(n *big.Int) bool {
+	return n.BitLen() < params.LPlusEpsilon
+}
+
+func IsInIntervalLPrimeEps(n *big.Int) bool {
+	return n.BitLen() < params.LPrimePlusEpsilon
 }

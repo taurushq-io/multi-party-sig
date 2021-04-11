@@ -11,7 +11,8 @@ type PublicKey struct {
 }
 
 func NewPublicKey(n *big.Int) *PublicKey {
-	var nSquared, nHalf big.Int
+	var nHalf big.Int
+	nSquared := newCipherTextInt()
 	nSquared.Mul(n, n)
 	nHalf.Rsh(n, 1)
 	return &PublicKey{
@@ -39,7 +40,7 @@ func (pk *PublicKey) Equal(other *PublicKey) bool {
 // Nonce returns a suitable nonce ρ for encryption.
 // ρ ∈ ℤₙˣ
 func (pk *PublicKey) Nonce() *big.Int {
-	return sample.Unit(pk.n)
+	return sample.UnitModN(pk.n)
 }
 
 // N returns the big.Int N of the public key.

@@ -10,55 +10,17 @@ import (
 
 // Unmarshal checks whether the Int is valid and returns an appropriate big.Int.
 // (Signs are preserved)
-func (x *Int) Unmarshal() (*big.Int, error) {
+func (x *Int) Unmarshal() *big.Int {
 	var n big.Int
-	b := x.GetInt()
-	if b == nil {
-		if x.GetZero() {
-			return &n, nil
-		}
-		return nil, errors.New("pb.Int: Unmarshal: got nil int")
-	}
-	n.SetBytes(b)
-	if x.GetNeg() {
-		n.Neg(&n)
-	}
-	return &n, nil
-}
-
-// IsValid checks whether Int is nil and a valid 0.
-func (x *Int) IsValid() bool {
-	if x == nil {
-		return false
-	}
-	if len(x.Int) == 0 && !x.Zero {
-		return false
-	}
-	return true
+	_ = n.GobDecode(x.Int)
+	return &n
 }
 
 func NewInt(n *big.Int) *Int {
-	switch n.Sign() {
-	case -1:
-		return &Int{
-			Int:  n.Bytes(),
-			Zero: false,
-			Neg:  true,
-		}
-	case 0:
-		return &Int{
-			Int:  nil,
-			Zero: true,
-			Neg:  false,
-		}
-	case 1:
-		return &Int{
-			Int:  n.Bytes(),
-			Zero: false,
-			Neg:  false,
-		}
+	b, _ := n.GobEncode()
+	return &Int{
+		Int: b,
 	}
-	return nil
 }
 
 func NewScalar(s *curve.Scalar) *Scalar {
@@ -107,12 +69,15 @@ func (x *Point) Unmarshal() (*curve.Point, error) {
 	return p.SetBytes(x.Point)
 }
 
-func (x *Ciphertext) Unmarshal() (*paillier.Ciphertext, error) {
-	var c paillier.Ciphertext
-	n, err := x.C.Unmarshal()
-	if err != nil {
-		return nil, err
+func NewCiphertext(c *paillier.Ciphertext) *Ciphertext {
+	return &Ciphertext{
+		C: NewInt(c.Int()),
 	}
+}
+
+func (x *Ciphertext) Unmarshal() *paillier.Ciphertext {
+	var c paillier.Ciphertext
+	n := x.C.Unmarshal()
 	c.SetInt(n)
-	return &c, nil
+	return &c
 }

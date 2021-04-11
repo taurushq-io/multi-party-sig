@@ -15,8 +15,6 @@ message Scalar {
 
 message Int {
   bytes int = 1;
-  bool zero = 2;
-  bool neg = 3;
 }
 
 message Ciphertext {

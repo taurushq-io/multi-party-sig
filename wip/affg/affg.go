@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
-	"github.com/taurusgroup/cmp-ecdsa/wip/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/wip/zkcommon"
 )
 
@@ -56,17 +56,17 @@ func (commitment *Commitment) Challenge() *big.Int {
 
 // N0 = verifier
 // N1 = prover
-func NewProof(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pedersen.Verifier, D, C, Y *paillier.Ciphertext, X *curve.Point,
+func NewProof(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pedersen.Parameters, D, C, Y *paillier.Ciphertext, X *curve.Point,
 	x, y, rhoY, rho *big.Int) *Proof {
 	var tmpCt paillier.Ciphertext
 
-	alpha := sample.PlusMinus(params.LPlusEpsilon, false)
-	beta := sample.PlusMinus(params.LPrimePlusEpsilon, false)
+	alpha := sample.IntervalLEps()
+	beta := sample.IntervalLPrimeEps()
 
-	gamma := sample.PlusMinus(params.LPlusEpsilon, true)
-	m := sample.PlusMinus(params.L, true)
-	delta := sample.PlusMinus(params.LPlusEpsilon, true)
-	mu := sample.PlusMinus(params.L, true)
+	gamma := sample.IntervalLEpsN()
+	m := sample.IntervalLN()
+	delta := sample.IntervalLEpsN()
+	mu := sample.IntervalLN()
 
 	A, r := verifierPaillier.Enc(beta, nil)
 	tmpCt.Mul(verifierPaillier, C, alpha)
@@ -118,11 +118,11 @@ func NewProof(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pe
 	}
 }
 
-func (proof *Proof) Verify(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pedersen.Verifier, D, C, Y *paillier.Ciphertext, X *curve.Point) bool {
-	if !sample.IsInInterval(proof.Z1, params.LPlusEpsilon) {
+func (proof *Proof) Verify(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pedersen.Parameters, D, C, Y *paillier.Ciphertext, X *curve.Point) bool {
+	if !arith.IsInIntervalLEps(proof.Z1) {
 		return false
 	}
-	if !sample.IsInInterval(proof.Z2, params.LPrimePlusEpsilon) {
+	if !arith.IsInIntervalLPrimeEps(proof.Z2) {
 		return false
 	}
 

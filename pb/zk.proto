@@ -19,3 +19,28 @@ message ZKPrm {
   repeated Int z = 2;
 }
 
+
+message ZKEnc {
+  Int S = 1;
+  Ciphertext A = 2;
+  Int C = 3;
+  Int Z1 = 4;
+  Int Z2 = 5;
+  Int Z3 = 6;
+}
+
+message ZKAffG {
+  Ciphertext A = 1;
+  Point Bx = 2;
+  Ciphertext By = 3;
+  Int E = 4;
+  Int S = 5;
+  Int F = 6;
+  Int T = 7;
+  Int Z1 = 8;
+  Int Z2 = 9;
+  Int Z3 = 10;
+  Int Z4 = 11;
+  Int W = 12;
+  Int Wy = 13;
+}

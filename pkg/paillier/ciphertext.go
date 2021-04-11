@@ -2,18 +2,24 @@ package paillier
 
 import (
 	"math/big"
+	"math/bits"
+
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
 type Ciphertext struct {
 	c big.Int
 }
 
+const cipherTextWordSize = params.PaillierBits/bits.UintSize + 1
+
 var one = big.NewInt(1)
 
 // Enc sets the receiver to the encryption of m under the key pk, using the given nonce.
 // If nonce is nil then a new one is generated and returned
 func (ct *Ciphertext) Enc(pk *PublicKey, m *big.Int, nonce *big.Int) (*Ciphertext, *big.Int) {
-	var tmp big.Int
+	tmp := newCipherTextInt()
+
 	if nonce == nil {
 		nonce = pk.Nonce()
 	}
@@ -55,7 +61,7 @@ func (ct *Ciphertext) Equal(ctA *Ciphertext) bool {
 // ct *= nonceᴺ for some nonce either given or generated here (if nonce = nil).
 // The updated receiver is returned, as well as the nonce update
 func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *big.Int) (*Ciphertext, *big.Int) {
-	var tmp big.Int
+	tmp := newCipherTextInt()
 	if nonce == nil {
 		nonce = pk.Nonce()
 	}
@@ -65,10 +71,10 @@ func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *big.Int) (*Ciphertext, *bi
 	return ct, nonce
 }
 
-// Not sure we need this now
-//func (ct *Ciphertext) BigInt() *big.Int {
-//	return &ct.c
-//}
+//Not sure we need this now
+func (ct *Ciphertext) Int() *big.Int {
+	return &ct.c
+}
 
 // Bytes returns the big.Int representation of ct
 func (ct *Ciphertext) Bytes() []byte {
@@ -78,4 +84,11 @@ func (ct *Ciphertext) Bytes() []byte {
 // SetInt sets ct to a big.Int ciphertext
 func (ct *Ciphertext) SetInt(n *big.Int) {
 	ct.c.Set(n)
+}
+
+func newCipherTextInt() big.Int {
+	tmpBuf := make([]big.Word, 0, cipherTextWordSize)
+	var tmp big.Int
+	tmp.SetBits(tmpBuf)
+	return tmp
 }

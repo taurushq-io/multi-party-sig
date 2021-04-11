@@ -7,7 +7,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
-	"github.com/taurusgroup/cmp-ecdsa/wip/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/wip/zkcommon"
 )
 
@@ -42,7 +42,7 @@ func (commitment *Commitment) Challenge() *big.Int {
 }
 
 // NewProof generates a proof that the
-func NewProof(prover *paillier.PublicKey, verifier *pedersen.Verifier, C *paillier.Ciphertext, X, g *curve.Point,
+func NewProof(prover *paillier.PublicKey, verifier *pedersen.Parameters, C *paillier.Ciphertext, X, g *curve.Point,
 	x, rho *big.Int) *Proof {
 	alpha := sample.PlusMinus(params.LPlusEpsilon, false)
 	mu := sample.PlusMinus(params.L, true)
@@ -85,7 +85,7 @@ func NewProof(prover *paillier.PublicKey, verifier *pedersen.Verifier, C *pailli
 	}
 }
 
-func (proof *Proof) Verify(prover *paillier.PublicKey, verifier *pedersen.Verifier, C *paillier.Ciphertext, X, g *curve.Point) bool {
+func (proof *Proof) Verify(prover *paillier.PublicKey, verifier *pedersen.Parameters, C *paillier.Ciphertext, X, g *curve.Point) bool {
 	if !sample.IsInInterval(proof.Z1, params.LPlusEpsilon) {
 		return false
 	}

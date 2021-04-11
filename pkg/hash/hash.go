@@ -132,15 +132,8 @@ func (hash *Hash) ReadBools(numBools int) ([]bool, error) {
 func (hash *Hash) WriteInt(ints ...*big.Int) error {
 	var err error
 	for _, i := range ints {
-		// append sign
-		sign := []byte{byte(i.Sign())}
-		if _, err = hash.h.Write(sign); err != nil {
-			return err
-		}
-
-		// append actual bytes
-		_, err = hash.h.Write(i.Bytes())
-		if err != nil {
+		d, _ := i.GobEncode()
+		if _, err = hash.h.Write(d); err != nil {
 			return err
 		}
 	}
@@ -151,6 +144,18 @@ func (hash *Hash) WriteInt(ints ...*big.Int) error {
 // Implements io.Writer
 func (hash *Hash) Write(data []byte) (int, error) {
 	return hash.h.Write(data)
+}
+
+// WriteInt writes data to the hash state.
+// Implements io.Writer
+func (hash *Hash) WriteBytes(data ...[]byte) error {
+	var err error
+	for _, d := range data {
+		if _, err = hash.h.Write(d); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // WritePoint takes an arbitrary number of points and hashes them to the hash state.

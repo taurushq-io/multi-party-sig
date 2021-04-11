@@ -4,7 +4,7 @@ import (
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/wip/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 )
 
 var (
@@ -12,7 +12,7 @@ var (
 	ProverPaillierSecret   *paillier.SecretKey
 	VerifierPaillierPublic *paillier.PublicKey
 	VerifierPaillierSecret *paillier.SecretKey
-	Pedersen               *pedersen.Verifier
+	Pedersen               *pedersen.Parameters
 )
 
 func init() {
@@ -27,7 +27,7 @@ func init() {
 	VerifierPaillierPublic = paillier.NewPublicKey(&nVerifier)
 	ProverPaillierSecret = paillier.NewSecretKey(&phiProver, ProverPaillierPublic)
 	VerifierPaillierSecret = paillier.NewSecretKey(&phiVerifier, VerifierPaillierPublic)
-	Pedersen = &pedersen.Verifier{
+	Pedersen = &pedersen.Parameters{
 		N: &nVerifier,
 		S: &s,
 		T: &t,

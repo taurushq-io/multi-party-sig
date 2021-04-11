@@ -3,7 +3,6 @@ package refresh
 import (
 	"bytes"
 	"errors"
-	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
@@ -34,14 +33,11 @@ func (round *round3) ProcessMessage(msg message.Message) error {
 		panic("")
 	}
 
-	paillierBound := new(big.Int)
-	paillierBound.SetBit(paillierBound, params.PaillierBits, 1)
-	if partyJ.N.Cmp(paillierBound) != 1 {
-		return errors.New("paillier key too small")
+	if partyJ.N.BitLen() != params.PaillierBits {
+		return errors.New("N is the wrong number of bits")
 	}
 
 	// Check against ID
-	id := curve.NewIdentityPoint()
 	for _, A := range partyJ.A {
 		if A.IsIdentity() {
 			return errors.New("commitment A is 0")

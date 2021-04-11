@@ -8,7 +8,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
-	"github.com/taurusgroup/cmp-ecdsa/wip/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/wip/zkcommon"
 )
 
@@ -71,7 +71,7 @@ func (commitment *Commitment) Challenge() *big.Int {
 // x ∈ ±2^l
 // gˣ = X
 // D = (alpha ⊙ c ) • rho^N0
-func NewProof(proverPailler *paillier.PublicKey, verifierPedersen *pedersen.Verifier, C, D *paillier.Ciphertext, X *curve.Point,
+func NewProof(proverPailler *paillier.PublicKey, verifierPedersen *pedersen.Parameters, C, D *paillier.Ciphertext, X *curve.Point,
 	x, rho *big.Int) *Proof {
 	alpha := sample.PlusMinus(params.LPlusEpsilon, false)
 	r := proverPailler.Nonce()
@@ -118,7 +118,7 @@ func NewProof(proverPailler *paillier.PublicKey, verifierPedersen *pedersen.Veri
 	}
 }
 
-func (proof *Proof) Verify(proverPailler *paillier.PublicKey, verifierPedersen *pedersen.Verifier, C, D *paillier.Ciphertext, X *curve.Point) bool {
+func (proof *Proof) Verify(proverPailler *paillier.PublicKey, verifierPedersen *pedersen.Parameters, C, D *paillier.Ciphertext, X *curve.Point) bool {
 	if !sample.IsInInterval(proof.Z1, params.LPlusEpsilon) {
 		return false
 	}

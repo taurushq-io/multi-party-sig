@@ -143,6 +143,7 @@ func (public *Public) Prove(hash *hash.Hash, private Private) (*pb.ZKMod, error)
 }
 
 func (public *Public) Verify(hash *hash.Hash, proof *pb.ZKMod) bool {
+	var err error
 	n := public.N
 	// check if n is odd or prime
 	if n.Bit(0) == 0 || n.ProbablyPrime(20) {
@@ -156,11 +157,7 @@ func (public *Public) Verify(hash *hash.Hash, proof *pb.ZKMod) bool {
 		return false
 	}
 
-	w, err := proof.GetW().Unmarshal()
-	if err != nil {
-		return false
-	}
-
+	w := proof.GetW().Unmarshal()
 	if err = hash.WriteInt(n, w); err != nil {
 		return false
 	}
@@ -173,12 +170,8 @@ func (public *Public) Verify(hash *hash.Hash, proof *pb.ZKMod) bool {
 			return false
 		}
 
-		if x, err = proof.X[i].Unmarshal(); err != nil {
-			return false
-		}
-		if z, err = proof.Z[i].Unmarshal(); err != nil {
-			return false
-		}
+		x = proof.X[i].Unmarshal()
+		z = proof.Z[i].Unmarshal()
 
 		{
 			// lhs = zⁿ mod n

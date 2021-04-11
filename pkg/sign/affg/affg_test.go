@@ -4,10 +4,13 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/taurusgroup/cmp-ecdsa/pb"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/wip/zkcommon"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestAffG(t *testing.T) {
@@ -28,8 +31,39 @@ func TestAffG(t *testing.T) {
 	D, rho := verifierPaillier.Enc(y, nil)
 	D.Add(verifierPaillier, D, &tmp)
 
-	proof := NewProof(prover, verifierPaillier, verifierPedersen, D, C, Y, &X, x, y, rhoY, rho)
-	if !proof.Verify(prover, verifierPaillier, verifierPedersen, D, C, Y, &X) {
+	public := Public{
+		C:        C,
+		D:        D,
+		Y:        Y,
+		X:        &X,
+		Prover:   prover,
+		Verifier: verifierPaillier,
+		Aux:      verifierPedersen,
+	}
+	private := Private{
+		X:    x,
+		Y:    y,
+		Rho:  rho,
+		RhoY: rhoY,
+	}
+	proof, err := public.Prove(hash.New(nil), private)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	out, err := proto.Marshal(proof)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	proof2 := &pb.ZKAffG{}
+	err = proto.Unmarshal(out, proof2)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if !public.Verify(hash.New(nil), proof2) {
 		t.Error("failed to verify")
 	}
 }

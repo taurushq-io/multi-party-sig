@@ -20,6 +20,16 @@ func mustSample(max *big.Int) *big.Int {
 	return n
 }
 
+func mustReadBits(buf []byte) {
+	var err error
+	for i := 0; i < 255; i++ {
+		if _, err = rand.Read(buf); err == nil {
+			return
+		}
+	}
+	panic(ErrMaxIters)
+}
+
 var one = big.NewInt(1)
 
 // Unit samples a random unit modulo order
@@ -33,12 +43,17 @@ func Unit(order *big.Int) *big.Int {
 	panic(ErrMaxIters)
 }
 
-// QR returns a quadratic residue mod n=pq, given primes p and q
-func QR(n, p, q *big.Int) *big.Int {
-	for i := uint8(0); i < uint8(255); i++ {
-		w := mustSample(n)
-		if big.Jacobi(w, p) == 1 && big.Jacobi(w, q) == 1 {
-			return w
+// UnitModN returns a u ∈ ℤₙˣ
+func UnitModN(n *big.Int) *big.Int {
+	var u, gcd big.Int
+	buf := make([]byte, params.PaillierBits/8)
+	for i := 0; i < 255; i++ {
+		mustReadBits(buf)
+		u.SetBytes(buf)
+		u.Mod(&u, n)
+		gcd.GCD(nil, nil, &u, n)
+		if gcd.Cmp(one) == 0 {
+			return &u
 		}
 	}
 	panic(ErrMaxIters)
@@ -46,10 +61,14 @@ func QR(n, p, q *big.Int) *big.Int {
 
 // QNR samples a random quadratic non-residue in Z_n.
 func QNR(n *big.Int) *big.Int {
-	for i := uint8(0); i < uint8(255); i++ {
-		w := mustSample(n)
-		if big.Jacobi(w, n) == -1 {
-			return w
+	var w big.Int
+	buf := make([]byte, params.PaillierBits/8)
+	for i := 0; i < 255; i++ {
+		mustReadBits(buf)
+		w.SetBytes(buf)
+		w.Mod(&w, n)
+		if big.Jacobi(&w, n) == -1 {
+			return &w
 		}
 	}
 	panic(ErrMaxIters)
@@ -94,15 +113,20 @@ var two = big.NewInt(2)
 
 // Pedersen generates the s, t, λ such that s = tˡ
 func Pedersen(n, phi *big.Int) (s, t, lambda *big.Int) {
-	s, t = new(big.Int), new(big.Int)
-
 	// sample lambda without statistical bias
-	lambda = PlusMinus(params.L, true)
+	lambdaBuf := make([]byte, (params.PaillierBits+params.L)/8)
+	mustReadBits(lambdaBuf)
+	lambda = new(big.Int).SetBytes(lambdaBuf)
 	lambda.Mod(lambda, phi)
 
-	tau := Unit(n)
+	tau := UnitModN(n)
 
+	// t = τ² mod N
+	t = new(big.Int)
 	t.Exp(tau, two, n)
+
+	// s = tˡ mod N
+	s = tau
 	s.Exp(t, lambda, n)
 
 	return
