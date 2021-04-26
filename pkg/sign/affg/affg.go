@@ -1,7 +1,6 @@
 package zkaffg
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
@@ -178,7 +177,6 @@ func (public Public) Verify(hash *hash.Hash, proof *pb.ZKAffG) bool {
 		rhsCt.Add(verifier, &rhsCt, A)
 
 		if !lhsCt.Equal(&rhsCt) {
-			fmt.Println("failed ct 1")
 			return false
 		}
 	}
@@ -189,7 +187,6 @@ func (public Public) Verify(hash *hash.Hash, proof *pb.ZKAffG) bool {
 		rhsPt.ScalarBaseMult(curve.NewScalarBigInt(e))
 		rhsPt.Add(&rhsPt, Bx)
 		if lhsPt.Equal(&rhsPt) != 0 {
-			fmt.Println("failed pt 1")
 			return false
 		}
 	}
@@ -203,7 +200,6 @@ func (public Public) Verify(hash *hash.Hash, proof *pb.ZKAffG) bool {
 		rhsCt.Add(prover, &rhsCt, By)
 
 		if !lhsCt.Equal(&rhsCt) {
-			fmt.Println("failed ct 3")
 			return false
 		}
 	}
@@ -220,18 +216,11 @@ func (public Public) Verify(hash *hash.Hash, proof *pb.ZKAffG) bool {
 }
 
 func challenge(hash *hash.Hash, public Public, commitment Commitment) (*big.Int, error) {
-	var err error
 
-	err = hash.WriteInt(public.Aux.N, public.Aux.S, public.Aux.T, public.Prover.N(), public.Verifier.N(),
-		public.C.Int(), public.D.Int(), public.Y.Int())
-	if err != nil {
-		return nil, err
-	}
-	err = hash.WritePoint(public.X, commitment.Bx)
-	if err != nil {
-		return nil, err
-	}
-	err = hash.WriteInt(commitment.A.Int(), commitment.By.Int(), commitment.E, commitment.S, commitment.F, commitment.T)
+	err := hash.WriteAny(public.Aux, public.Prover, public.Verifier,
+		public.C, public.D, public.Y, public.X,
+		commitment.A, commitment.Bx, commitment.By,
+		commitment.E, commitment.S, commitment.F, commitment.T)
 	if err != nil {
 		return nil, err
 	}

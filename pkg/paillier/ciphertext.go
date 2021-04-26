@@ -78,7 +78,8 @@ func (ct *Ciphertext) Int() *big.Int {
 
 // Bytes returns the big.Int representation of ct
 func (ct *Ciphertext) Bytes() []byte {
-	return ct.c.Bytes()
+	buf := make([]byte, params.BytesCiphertext)
+	return ct.c.FillBytes(buf)
 }
 
 // SetInt sets ct to a big.Int ciphertext

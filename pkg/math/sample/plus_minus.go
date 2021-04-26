@@ -68,7 +68,7 @@ func IntervalLN() *big.Int {
 	return &n
 }
 
-// IntervalLN returns an integer in the range ± 2ˡ⁺ᵉ•N, where N is the size of a Paillier modulus.
+// IntervalLEpsN returns an integer in the range ± 2ˡ⁺ᵉ•N, where N is the size of a Paillier modulus.
 func IntervalLEpsN() *big.Int {
 	var n big.Int
 	buf, neg := sampleNeg(make([]byte, (params.LPlusEpsilon+params.PaillierBits)/8+1))

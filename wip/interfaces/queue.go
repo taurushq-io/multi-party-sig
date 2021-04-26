@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 
+	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 )
 
 type Queue struct {
-	chs map[message.Type]chan message.Message
+	chs map[pb.MessageType]chan message.Message
 }
 
 var (
@@ -18,8 +19,8 @@ var (
 	ErrMessageTypeNotExpected = errors.New("queue: message type not expected")
 )
 
-func NewQueue(numPeers uint32, msgTypes ...message.Type) *Queue {
-	chs := make(map[message.Type]chan message.Message, len(msgTypes))
+func NewQueue(numPeers uint32, msgTypes ...pb.MessageType) *Queue {
+	chs := make(map[pb.MessageType]chan message.Message, len(msgTypes))
 	for _, t := range msgTypes {
 		chs[t] = make(chan message.Message, numPeers)
 	}
@@ -29,7 +30,7 @@ func NewQueue(numPeers uint32, msgTypes ...message.Type) *Queue {
 }
 
 func (q *Queue) Push(msg message.Message) error {
-	ch, ok := q.chs[msg.GetMessageType()]
+	ch, ok := q.chs[msg.GetType()]
 	if !ok {
 		return ErrNotAccepted
 	}
@@ -44,7 +45,7 @@ func (q *Queue) Push(msg message.Message) error {
 	}
 }
 
-func (q *Queue) Pop(ctx context.Context, msgType message.Type) (message.Message, error) {
+func (q *Queue) Pop(ctx context.Context, msgType pb.MessageType) (message.Message, error) {
 	ch, ok := q.chs[msgType]
 	if !ok {
 		return nil, ErrMessageTypeNotExpected

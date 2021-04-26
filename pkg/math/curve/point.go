@@ -21,7 +21,7 @@ func (v *Point) Bytes() []byte {
 	return ret
 }
 
-// Bytes returns a compressed point encoding of v.
+// BytesCompressed returns a compressed point encoding of v.
 func (v *Point) BytesCompressed() []byte {
 	compressed := make([]byte, 1+ByteSize)
 	compressed[0] = byte(v.y.Bit(0)) | 2

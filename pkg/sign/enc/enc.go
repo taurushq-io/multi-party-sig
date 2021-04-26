@@ -124,8 +124,8 @@ func (public Public) Verify(hash *hash.Hash, proof *pb.ZKEnc) bool {
 func challenge(hash *hash.Hash, public Public, commitment Commitment) (*big.Int, error) {
 	var err error
 
-	err = hash.WriteInt(public.Aux.N, public.Aux.S, public.Aux.T, public.Prover.N(), public.K.Int(),
-		commitment.S, commitment.A.Int(), commitment.C)
+	err = hash.WriteAny(public.Aux, public.Prover, public.K,
+		commitment.S, commitment.A, commitment.C)
 	if err != nil {
 		return nil, err
 	}

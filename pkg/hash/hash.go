@@ -2,10 +2,14 @@ package hash
 
 import (
 	"encoding/binary"
+	"errors"
 	"math/big"
+	"sort"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -13,6 +17,8 @@ import (
 type Hash struct {
 	h sha3.ShakeHash
 }
+
+var errNilValue = errors.New("provided element was null")
 
 const hashRate = 136
 
@@ -98,13 +104,12 @@ func (hash *Hash) ReadIntModN(n *big.Int) (*big.Int, error) {
 }
 
 // ReadBytes returns numBytes by reading from hash.Hash.
-func (hash *Hash) ReadBytes(numBytes int) ([]byte, error) {
-	out := make([]byte, numBytes)
-	_, err := hash.h.Read(out)
+func (hash *Hash) ReadBytes(in []byte) ([]byte, error) {
+	_, err := hash.h.Read(in)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	return in, nil
 }
 
 // ReadBools generates numBools by reading from hash.Hash.
@@ -146,24 +151,90 @@ func (hash *Hash) Write(data []byte) (int, error) {
 	return hash.h.Write(data)
 }
 
-// WriteInt writes data to the hash state.
-// Implements io.Writer
-func (hash *Hash) WriteBytes(data ...[]byte) error {
+// WriteAny takes many different data types and writes them to the hash state.
+func (hash *Hash) WriteAny(data ...interface{}) error {
 	var err error
+
+	bufPaillier := make([]byte, params.BytesPaillier)
+	bufCipherText := make([]byte, params.BytesCiphertext)
+	bufScalar := make([]byte, params.BytesScalar)
+
 	for _, d := range data {
-		if _, err = hash.h.Write(d); err != nil {
+	SwitchLoop:
+		switch t := d.(type) {
+		case []byte:
+			_, err = hash.h.Write(t)
+		case *curve.Point:
+			if t == nil {
+				return errNilValue
+			}
+			_, err = hash.h.Write(t.BytesCompressed())
+		case *curve.Scalar:
+			if t == nil {
+				return errNilValue
+			}
+			_, err = hash.h.Write(t.BigInt().FillBytes(bufScalar))
+		case map[uint32]*curve.Point:
+			keys := make(sort.IntSlice, 0, len(t))
+			for k := range t {
+				keys = append(keys, int(k))
+			}
+			keys.Sort()
+
+			for _, k := range keys {
+				if _, err = hash.h.Write(t[uint32(k)].BytesCompressed()); err != nil {
+					break SwitchLoop
+				}
+			}
+		case []*curve.Point:
+			// TODO maybe write the length?
+			for _, p := range t {
+				if _, err = hash.h.Write(p.BytesCompressed()); err != nil {
+					break SwitchLoop
+				}
+			}
+		case *big.Int:
+			if t == nil {
+				return errNilValue
+			}
+			b, _ := t.GobEncode()
+			_, err = hash.h.Write(b)
+		case *paillier.Ciphertext:
+			if t == nil {
+				return errNilValue
+			}
+			_, err = hash.h.Write(t.Int().FillBytes(bufCipherText))
+		case *paillier.PublicKey:
+			if t == nil {
+				return errNilValue
+			}
+			_, err = hash.h.Write(t.N().FillBytes(bufPaillier))
+		case *pedersen.Parameters:
+			if t == nil {
+				return errNilValue
+			}
+			if _, err = hash.h.Write(t.N.FillBytes(bufPaillier)); err != nil {
+				break SwitchLoop
+			}
+			if _, err = hash.h.Write(t.S.FillBytes(bufPaillier)); err != nil {
+				break SwitchLoop
+			}
+			_, err = hash.h.Write(t.T.FillBytes(bufPaillier))
+		default:
+			err = errors.New("hash: unsupported type")
+		}
+		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// WritePoint takes an arbitrary number of points and hashes them to the hash state.
-func (hash *Hash) WritePoint(pts ...*curve.Point) error {
+// WriteBytes writes data to the hash state.
+func (hash *Hash) WriteBytes(data ...[]byte) error {
 	var err error
-	for _, p := range pts {
-		_, err = hash.h.Write(p.BytesCompressed())
-		if err != nil {
+	for _, d := range data {
+		if _, err = hash.h.Write(d); err != nil {
 			return err
 		}
 	}
@@ -175,7 +246,7 @@ func (hash *Hash) Clone() *Hash {
 	return &Hash{h: hash.h.Clone()}
 }
 
-// Clone returns a copy of the Hash in its current state, but also writes the ID to the new state.
+// CloneWithID returns a copy of the Hash in its current state, but also writes the ID to the new state.
 func (hash *Hash) CloneWithID(id uint32) *Hash {
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, id)
@@ -188,6 +259,7 @@ func (hash *Hash) CloneWithID(id uint32) *Hash {
 func New(init []byte) *Hash {
 	hash := &Hash{sha3.NewShake256()}
 
+	// TODO We should probably not do this since the N is reserved
 	N := []byte("CMP")
 	initBlock := make([]byte, 0, 9*2+len(N)+len(init))
 	initBlock = append(initBlock, leftEncode(uint64(len(N)*8))...)

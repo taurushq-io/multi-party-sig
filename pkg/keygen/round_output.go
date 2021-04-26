@@ -1,9 +1,13 @@
 package keygen
 
 import (
+	"errors"
+
+	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/state"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
+	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
 
 type output struct {
@@ -11,33 +15,42 @@ type output struct {
 	X *curve.Point // X = ∑ⱼ Xⱼ
 }
 
-func (round *output) ProcessMessage(msg *message.Message) error {
-	j := msg.From()
-	A := round.parties[j].A
-	X := round.parties[j].X
-	z := round.parties[j].Z
+func (round *output) ProcessMessage(msg message.Message) error {
+	j := msg.GetFrom()
+	partyJ, ok := round.parties[j]
+	if !ok {
+		return errors.New("sender not registered")
+	}
+	m := msg.(*pb.Message)
+	body := m.GetKeygen3()
 
-	// We don't use the standard Zk stuff here, because the proof is interactive
-	e, err := round.session.HashToScalar(j, round.rid, X.Bytes())
-	if err != nil {
-		return state.NewError(0, err)
+	if !zksch.Verify(round.session.HashForID(j), partyJ.A, partyJ.X, body.GetSchX().Unmarshal()) {
+		return errors.New("schnorr verification failed")
 	}
 
-	// lhs = [z]•G (= [a+ex]•G)
-	// rhs = [e]•X + A ([ex]•G + [a]G = [a+ex]•G)
-	lhs := curve.NewIdentityPoint().ScalarBaseMult(z)
-	rhs := curve.NewIdentityPoint().ScalarMult(e, X)
-	rhs.Add(rhs, A)
-	if lhs.Equal(rhs) != 1 {
-		panic("")
-	}
-	return nil
+	return partyJ.AddMessage(msg)
 }
 
-func (round *output) GenerateMessages() ([]*message.Message, error) {
+func (round *output) GenerateMessages() ([]message.Message, error) {
 	round.X = curve.NewIdentityPoint()
 	for _, party := range round.parties {
 		round.X.Add(round.X, party.X)
 	}
 	return nil, nil
+}
+
+func (round *output) Finalize() (round.Round, error) {
+	return nil, nil
+}
+
+func (round *output) MessageType() pb.MessageType {
+	return pb.MessageType_Keygen3
+}
+
+func (round *output) RequiredMessageCount() int {
+	return round.c.N() - 1
+}
+
+func (round *output) IsProcessed(id uint32) bool {
+	panic("implement me")
 }

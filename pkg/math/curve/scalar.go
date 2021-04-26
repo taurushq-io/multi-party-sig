@@ -3,6 +3,8 @@ package curve
 import (
 	"crypto/rand"
 	"math/big"
+
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
 type Scalar struct {
@@ -91,7 +93,8 @@ func (s *Scalar) SetBytes(in []byte) *Scalar {
 
 // Bytes returns the canonical 32 bytes little-endian encoding of s.
 func (s *Scalar) Bytes() []byte {
-	return s.s.Bytes()
+	buf := make([]byte, params.BytesScalar)
+	return s.s.FillBytes(buf)
 }
 
 // Equal returns 1 if s and t are equal, and 0 otherwise.
@@ -118,6 +121,10 @@ func (s *Scalar) Random() *Scalar {
 	}
 	s.s.Set(n)
 	return s
+}
+
+func (s *Scalar) IsZero() bool {
+	return s.s.Sign() == 0
 }
 
 // NewScalarRandom returns a new Scalar in the correct range, and panics if

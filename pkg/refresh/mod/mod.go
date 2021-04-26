@@ -99,7 +99,7 @@ func makeQuadraticResidue(y, w *big.Int, n, p, q *big.Int) (a, b bool, yPrime *b
 //  - z = y^{N⁻¹ mod ϕ(N)}
 //  - a, b s.t. y' = (-1)ᵃ wᵇ y
 //  - R = [(xᵢ aᵢ, bᵢ), zᵢ] for i = 1, ..., m
-func (public *Public) Prove(hash *hash.Hash, private Private) (*pb.ZKMod, error) {
+func (public Public) Prove(hash *hash.Hash, private Private) (*pb.ZKMod, error) {
 	var err error
 
 	n, p, q, phi := public.N, private.P, private.Q, private.Phi
@@ -142,7 +142,7 @@ func (public *Public) Prove(hash *hash.Hash, private Private) (*pb.ZKMod, error)
 	}, nil
 }
 
-func (public *Public) Verify(hash *hash.Hash, proof *pb.ZKMod) bool {
+func (public Public) Verify(hash *hash.Hash, proof *pb.ZKMod) bool {
 	var err error
 	n := public.N
 	// check if n is odd or prime

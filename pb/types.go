@@ -48,6 +48,26 @@ func NewPoint(v *curve.Point) *Point {
 	}
 }
 
+func NewPointSlice(v []*curve.Point) []*Point {
+	points := make([]*Point, len(v))
+	for i, p := range v {
+		points[i] = NewPoint(p)
+	}
+	return points
+}
+
+func UnmarshalPoints(ps []*Point) ([]*curve.Point, error) {
+	var err error
+	pts := make([]*curve.Point, len(ps))
+	for i, p := range ps {
+		pts[i], err = p.Unmarshal()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return pts, nil
+}
+
 func (x *Point) IsValid() bool {
 	if x == nil {
 		return false
@@ -59,6 +79,9 @@ func (x *Point) IsValid() bool {
 }
 
 func (x *Point) Unmarshal() (*curve.Point, error) {
+	if x == nil {
+		return nil, errors.New("proto: Point: nil")
+	}
 	if !x.IsValid() {
 		return nil, errors.New("proto: Point: invalid")
 	}

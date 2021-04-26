@@ -25,7 +25,7 @@ type Proof struct {
 }
 
 func challenge(hash *hash.Hash, A, X *curve.Point) (*curve.Scalar, error) {
-	if err := hash.WritePoint(A, X); err != nil {
+	if err := hash.WriteAny(A, X); err != nil {
 		return nil, fmt.Errorf("challenge: %w", err)
 	}
 	e, err := hash.ReadScalar()
@@ -44,6 +44,14 @@ func Prove(hash *hash.Hash, A, X *curve.Point, a, x *curve.Scalar) (proof *curve
 }
 
 func Verify(hash *hash.Hash, A, X *curve.Point, proof *curve.Scalar) bool {
+	if A == nil || X == nil {
+		return false
+	}
+
+	if A.IsIdentity() || X.IsIdentity() {
+		return false
+	}
+
 	e, err := challenge(hash, A, X)
 	if err != nil {
 		return false

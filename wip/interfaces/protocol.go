@@ -6,20 +6,22 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
 type Protocol struct {
 	numPeers     uint32
 	state        State
-	currentRound Round
+	currentRound round.Round
 	queue        *Queue
 
 	mtx    sync.Mutex
 	cancel context.CancelFunc
 }
 
-func NewProtocol(numPeers uint32, initRound Round, msgTypes ...message.Type) *Protocol {
+func NewProtocol(numPeers uint32, initRound round.Round, msgTypes ...pb.MessageType) *Protocol {
 	return &Protocol{
 		numPeers:     numPeers,
 		queue:        NewQueue(numPeers, msgTypes...),
@@ -73,9 +75,9 @@ func (p *Protocol) messageLoop(ctx context.Context) (err error) {
 		p.Stop()
 	}()
 
-	round := p.currentRound
-	msgType := round.MessageType()
-	msgCount := uint32(0)
+	currentRound := p.currentRound
+	msgType := currentRound.MessageType()
+	msgCount := 0
 	for {
 		// 1. Pop messages
 		// 2. Check if the message is handled before
@@ -89,23 +91,23 @@ func (p *Protocol) messageLoop(ctx context.Context) (err error) {
 		}
 		fromID := msg.GetFrom()
 		//logger := t.logger.New("msgType", msgType, "fromId", id)
-		if round.IsProcessed(fromID) {
+		if currentRound.IsProcessed(fromID) {
 			//logger.Warn("The message is handled before")
 			return errors.New("message already handled")
 		}
 
-		err = round.ProcessMessage(msg)
+		err = currentRound.ProcessMessage(msg)
 		if err != nil {
 			//logger.Warn("Failed to save message", "err", err)
 			return fmt.Errorf("ProcessMessage: %w", err)
 		}
 
 		msgCount++
-		if msgCount < round.RequiredMessageCount() {
+		if msgCount < currentRound.RequiredMessageCount() {
 			continue
 		}
 
-		nextRound, err := round.Finalize()
+		nextRound, err := currentRound.Finalize()
 		if err != nil {
 			//logger.Warn("Failed to go to next handler", "err", err)
 			return fmt.Errorf("Finalize: %w", err)
@@ -115,17 +117,17 @@ func (p *Protocol) messageLoop(ctx context.Context) (err error) {
 			return nil
 		}
 		p.currentRound = nextRound
-		round = p.currentRound
+		currentRound = p.currentRound
 		//newType := round.MessageType()
 		//logger.Info("Change handler", "oldType", msgType, "newType", newType)
 		//msgType = newType
-		msgCount = uint32(0)
+		msgCount = 0
 	}
 }
 
 func (p *Protocol) AddMessage(msg message.Message) error {
 	currentMsgType := p.currentRound.MessageType()
-	newMessageType := msg.GetMessageType()
+	newMessageType := msg.GetType()
 	if currentMsgType > newMessageType {
 		//t.logger.Debug("Ignore old message", "currentMsgType", currentMsgType, "newMessageType", newMessageType)
 		return errors.New("message for previous round")
@@ -136,6 +138,6 @@ func (p *Protocol) AddMessage(msg message.Message) error {
 func (p *Protocol) State() State {
 	return p.state
 }
-func (p *Protocol) CurrentRound() Round {
+func (p *Protocol) CurrentRound() round.Round {
 	return p.currentRound
 }

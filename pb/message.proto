@@ -7,7 +7,7 @@ option go_package = "github.com/taurusgroup/cmp-ecdsa/pb";
 import "types.proto";
 import "zk.proto";
 
-enum Type {
+enum MessageType {
   Invalid = 0;
 
   Keygen1 = 1;
@@ -20,7 +20,7 @@ enum Type {
 }
 
 message Message {
-  Type type = 1;
+  MessageType type = 1;
   uint32 from = 2;
   uint32 to = 3;
   oneof content {
@@ -53,8 +53,8 @@ message RefreshMessage1 {
 }
 
 message RefreshMessage2 {
-  map<uint32, Point> X = 1;
-  map<uint32, Point> A = 2;
+  repeated Point X = 1;
+  repeated Point A = 2;
   Point Y = 3;
   Point B = 4;
   Int N = 5;
@@ -68,6 +68,6 @@ message RefreshMessage3 {
   ZKMod mod = 1;
   ZKPrm prm = 2;
   Ciphertext c = 3;
-  Scalar schX = 4;
+  repeated Scalar schX = 4;
   Scalar schY = 5;
 }

@@ -2,10 +2,40 @@ package pedersen
 
 import (
 	"math/big"
+
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 )
 
 type Parameters struct {
 	N, S, T *big.Int
+}
+
+func (p *Parameters) IsValid() bool {
+	// S, T < N
+	if p.S.Cmp(p.N) != -1 || p.T.Cmp(p.N) != -1 {
+		return false
+	}
+
+	// S, T > 0
+	if p.S.Sign() != 1 || p.T.Sign() != 1 {
+		return false
+	}
+
+	// S, T != 1
+	one := big.NewInt(1)
+	if p.S.Cmp(one) == 0 || p.T.Cmp(one) == 0 {
+		return false
+	}
+
+	// gcd(S, N) == gcd(T, N) == 1
+	if !arith.IsCoprime(p.S, p.N) || !arith.IsCoprime(p.T, p.N) {
+		return false
+	}
+
+	if p.S.Cmp(p.T) == 0 {
+		return false
+	}
+	return true
 }
 
 // Commit computes sˣ tʸ (mod N)
