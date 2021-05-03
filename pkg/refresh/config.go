@@ -177,29 +177,3 @@ func (p *Parameters) Verify(c *session.BaseConfig) error {
 	}
 	return nil
 }
-
-//func NewConfig(selfID uint32, rid []byte, public map[uint32]*curve.Point, secret *curve.Scalar) (*Config, error) {
-//	keys := make([]uint32, 0, len(public))
-//	for k := range public {
-//		keys = append(keys, k)
-//	}
-//
-//	kgConfig, err := keygen.N(selfID, keys)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	ssid := make([]byte, params.HashBytes)
-//
-//	h := hash.New(kgConfig.SID())
-//	_ = h.WriteAny(rid, public)
-//	_, _ = h.ReadBytes(ssid)
-//
-//	return &Config{
-//		Config:     *kgConfig,
-//		rid:        rid,
-//		PublicKeys: public,
-//		secret:     curve.NewScalar().Set(secret),
-//		ssid:       ssid,
-//	}, nil
-//}

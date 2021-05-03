@@ -3,27 +3,53 @@ package zklogstar
 import (
 	"testing"
 
+	"github.com/taurusgroup/cmp-ecdsa/pb"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/wip/zkcommon"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestLogStar(t *testing.T) {
 	verifier := zkcommon.Pedersen
 	prover := zkcommon.ProverPaillierPublic
 
-	x := sample.PlusMinus(params.L, false)
+	G := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarRandom())
+
+	x := sample.IntervalL()
 	C, rho := prover.Enc(x, nil)
+	X := curve.NewIdentityPoint().ScalarMult(curve.NewScalarBigInt(x), G)
+	public := Public{
+		C:      C,
+		X:      X,
+		G:      G,
+		Prover: prover,
+		Aux:    verifier,
+	}
 
-	var X, H curve.Point
-	h := curve.NewScalarRandom()
-	H.ScalarBaseMult(h)
+	proof, err := public.Prove(hash.New(nil), Private{
+		X:   x,
+		Rho: rho,
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
 
-	X.ScalarMult(curve.NewScalarBigInt(x), &H)
+	out, err := proto.Marshal(proof)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	proof2 := &pb.ZKLogStar{}
+	err = proto.Unmarshal(out, proof2)
+	if err != nil {
+		t.Error(err)
+		return
+	}
 
-	proof := NewProof(prover, verifier, C, &X, &H, x, rho)
-	if !proof.Verify(prover, verifier, C, &X, &H) {
+	if !public.Verify(hash.New(nil), proof2) {
 		t.Error("failed to verify")
 	}
 }

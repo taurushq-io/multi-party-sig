@@ -19,7 +19,6 @@ message ZKPrm {
   repeated Int z = 2;
 }
 
-
 message ZKEnc {
   Int S = 1;
   Ciphertext A = 2;
@@ -27,6 +26,16 @@ message ZKEnc {
   Int Z1 = 4;
   Int Z2 = 5;
   Int Z3 = 6;
+}
+
+message ZKLogStar {
+  Int S = 1;
+  Ciphertext A = 2;
+  Point Y = 3;
+  Int D = 4;
+  Int Z1 = 5;
+  Int Z2 = 6;
+  Int Z3 = 7;
 }
 
 message ZKAffG {

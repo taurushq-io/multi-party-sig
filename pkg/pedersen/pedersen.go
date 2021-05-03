@@ -7,7 +7,9 @@ import (
 )
 
 type Parameters struct {
-	N, S, T *big.Int
+	N *big.Int // N = p•q, p ≡ q ≡ 3 mod 4
+	S *big.Int // S = r² mod N
+	T *big.Int // T = Sˡ mod N
 }
 
 func (p *Parameters) IsValid() bool {

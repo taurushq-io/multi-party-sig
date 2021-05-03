@@ -22,11 +22,6 @@ var errNilValue = errors.New("provided element was null")
 
 const hashRate = 136
 
-// Sum hashes the given components and returns a digest of the default size (usually 64 byte)
-func (hash *Hash) Sum(components ...[]byte) ([]byte, error) {
-	return hash.hashToBytes(params.HashBytes, components...)
-}
-
 func (hash *Hash) hashToBytes(size int, components ...[]byte) ([]byte, error) {
 	var err error
 	sizeBuffer := make([]byte, 8)
@@ -64,11 +59,10 @@ func (hash *Hash) ReadScalar() (*curve.Scalar, error) {
 	return &scalar, nil
 }
 
-// ReadIntInInterval generates a big.Int in the interval ±2ᵖᵒʷᵉʳ, by reading from hash.Hash.
-func (hash *Hash) ReadIntInInterval(power int) (*big.Int, error) {
+// ReadFqNegative generates a big.Int in the interval ±q, by reading from hash.Hash.
+func (hash *Hash) ReadFqNegative() (*big.Int, error) {
 	var n big.Int
-	lenBytes := (power+7)/8 + 1
-	out := make([]byte, lenBytes)
+	out := make([]byte, params.BytesScalar+1)
 	_, err := hash.h.Read(out)
 	if err != nil {
 		return nil, err

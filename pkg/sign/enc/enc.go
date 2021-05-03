@@ -6,9 +6,9 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 )
 
@@ -104,6 +104,10 @@ func (public Public) Verify(hash *hash.Hash, proof *pb.ZKEnc) bool {
 
 	z1, z2, z3 := proof.Z1.Unmarshal(), proof.Z2.Unmarshal(), proof.Z3.Unmarshal()
 
+	if !arith.IsInIntervalLPrimeEps(z1) {
+		return false
+	}
+
 	var rhsCt paillier.Ciphertext
 	lhsCt, _ := prover.Enc(z1, z2)
 	rhsCt.Mul(prover, public.K, e)
@@ -130,5 +134,5 @@ func challenge(hash *hash.Hash, public Public, commitment Commitment) (*big.Int,
 		return nil, err
 	}
 
-	return hash.ReadIntInInterval(params.L)
+	return hash.ReadFqNegative()
 }

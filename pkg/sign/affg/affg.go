@@ -9,7 +9,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 )
 
@@ -225,7 +224,7 @@ func challenge(hash *hash.Hash, public Public, commitment Commitment) (*big.Int,
 		return nil, err
 	}
 
-	return hash.ReadIntInInterval(params.L)
+	return hash.ReadFqNegative()
 }
 
 func affine(a, b, c *big.Int) *pb.Int {

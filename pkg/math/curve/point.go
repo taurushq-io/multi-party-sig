@@ -106,6 +106,14 @@ func (v *Point) ScalarMult(x *Scalar, q *Point) *Point {
 	return v.setCoords(Curve.ScalarMult(&q.x, &q.y, x.Bytes()))
 }
 
+// NewBasePoint returns a point with both coordinates set to 0.
+func NewBasePoint() *Point {
+	var p Point
+	p.x.Set(Curve.Gx)
+	p.y.Set(Curve.Gy)
+	return &p
+}
+
 // NewIdentityPoint returns a point with both coordinates set to 0.
 func NewIdentityPoint() *Point {
 	return &Point{}
