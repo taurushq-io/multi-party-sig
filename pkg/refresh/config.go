@@ -3,26 +3,24 @@ package refresh
 import (
 	"bytes"
 	"crypto/rand"
-	"errors"
-	"fmt"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
 )
 
 type Parameters struct {
-	// Map of public keys of all parties
-	// { Xⱼ }ⱼ, s.t. ∑ⱼ Xⱼ = X, where X is the ECDSA public key
-	PublicSharesECDSA map[uint32]*curve.Point
-
-	// This party's share of the ECDSA key
-	// xᵢ s.t. Xᵢ = [xᵢ] G
-	PrivateShareECDSA *curve.Scalar
+	//// Map of public keys of all parties
+	//// { Xⱼ }ⱼ, s.t. ∑ⱼ Xⱼ = X, where X is the ECDSA public key
+	//PublicSharesECDSA map[uint32]*curve.Point
+	//
+	//// This party's share of the ECDSA key
+	//// xᵢ s.t. Xᵢ = [xᵢ] G
+	//PrivateShareECDSA *curve.Scalar
 
 	// ElGamal secret
 	y *curve.Scalar
@@ -47,7 +45,8 @@ type Parameters struct {
 	rho []byte
 }
 
-func (p *Parameters) fill(c *session.BaseConfig) {
+func (p *Parameters) fill(parties party.IDSlice) {
+	N := len(parties)
 	if p.y == nil {
 		p.y = curve.NewScalarRandom()
 	}
@@ -72,7 +71,7 @@ func (p *Parameters) fill(c *session.BaseConfig) {
 	}
 
 	if p.xSent == nil {
-		p.xSent = randomZeroSum(c.N())
+		p.xSent = randomZeroSum(N)
 	}
 
 	if p.bSchnorr == nil {
@@ -80,8 +79,8 @@ func (p *Parameters) fill(c *session.BaseConfig) {
 	}
 
 	if p.aSchnorr == nil {
-		p.aSchnorr = make([]*curve.Scalar, c.N())
-		for j := range c.Parties() {
+		p.aSchnorr = make([]*curve.Scalar, N)
+		for j := range parties {
 			p.aSchnorr[j] = curve.NewScalarRandom()
 		}
 	}
@@ -93,7 +92,7 @@ func (p *Parameters) fill(c *session.BaseConfig) {
 }
 
 // verify checks all parameters including all the randomness used
-func (p *Parameters) verify(c *session.BaseConfig) bool {
+func (p *Parameters) verify(n int) bool {
 	if p.y == nil ||
 		p.p == nil || p.q == nil || p.phi == nil || p.paillierSecret == nil ||
 		p.ped == nil || p.lambda == nil ||
@@ -102,7 +101,7 @@ func (p *Parameters) verify(c *session.BaseConfig) bool {
 		return false
 	}
 
-	if len(p.xSent) != c.N() || len(p.aSchnorr) != c.N() || len(p.rho) != params.SecBytes {
+	if len(p.xSent) != n || len(p.aSchnorr) != n || len(p.rho) != params.SecBytes {
 		return false
 	}
 
@@ -141,39 +140,4 @@ func randomZeroSum(n int) []*curve.Scalar {
 	sum.Negate(sum)
 	x[n-1] = sum
 	return x
-}
-
-// Verify makes sure that the parameters are compatible with the configuration
-func (p *Parameters) Verify(c *session.BaseConfig) error {
-	// is our own key the identity
-	if p.PrivateShareECDSA == nil || p.PrivateShareECDSA.Equal(curve.NewScalar()) == 1 {
-		return errors.New("PrivateShareECDSA is nil or equal to 0")
-	}
-
-	// correct number of keys
-	if len(p.PublicSharesECDSA) != c.N() {
-		return errors.New("wrong number of public shares")
-	}
-
-	for _, j := range c.Parties() {
-		// is the party included
-		x, ok := p.PublicSharesECDSA[j]
-		if !ok {
-			return fmt.Errorf("PublicSharesECDSA for party %d is not present", j)
-		}
-
-		// are any points the identity
-		if x.IsIdentity() {
-			return fmt.Errorf("PublicSharesECDSA for party %d is identity", j)
-		}
-
-		// is our own key correct
-		if j == c.SelfID() {
-			xComp := curve.NewIdentityPoint().ScalarBaseMult(p.PrivateShareECDSA)
-			if xComp.Equal(x) != 1 {
-				return errors.New("PublicSharesECDSA for self party does not correspond with PrivateShareECDSA")
-			}
-		}
-	}
-	return nil
 }

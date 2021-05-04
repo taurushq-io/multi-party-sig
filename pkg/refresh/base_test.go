@@ -2,35 +2,30 @@ package refresh
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"sort"
 	"testing"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
 	"google.golang.org/protobuf/proto"
 )
 
 type testParty struct {
-	idx int
-	id  uint32
-	p   *Parameters
-	c   *session.BaseConfig
-	r   round.Round
+	idx    int
+	id     party.ID
+	p      *Parameters
+	s      *session.Session
+	secret *session.Secret
+	r      round.Round
 }
 
-func feedMessages(parties []*testParty, msgs []message.Message) error {
+func feedMessages(parties []*testParty, msgs []*pb.Message) error {
 	for _, msg := range msgs {
-		m, ok := msg.(*pb.Message)
-		if !ok {
-			return errors.New("not a pb.Message")
-		}
-		b, err := proto.Marshal(m)
+		b, err := proto.Marshal(msg)
 		if err != nil {
 			return err
 		}
@@ -44,7 +39,7 @@ func feedMessages(parties []*testParty, msgs []message.Message) error {
 			if m2.From == p.id {
 				continue
 			}
-			if m2.To != 0 && m2.To != p.id {
+			if m2.To != "" && m2.To != p.id {
 				continue
 			}
 			err = p.r.ProcessMessage(&m2)
@@ -58,49 +53,27 @@ func feedMessages(parties []*testParty, msgs []message.Message) error {
 
 func TestRound(t *testing.T) {
 	N := 3
-	partyIDs := make(party.IDSlice, N)
-	for i := range partyIDs {
-		partyIDs[i] = uint32(1 + i*N)
-	}
-	sort.Sort(partyIDs)
 
-	fullSecret := curve.NewScalar()
+	s, secrets := session.FakeKeygenSession(N, N-1)
+
 	parties := make([]*testParty, N)
-	secrets := make([]*curve.Scalar, N)
-	publicMap := map[uint32]*curve.Point{}
-	for idx, j := range partyIDs {
-		secrets[idx] = curve.NewScalarRandom()
-		publicMap[j] = curve.NewIdentityPoint().ScalarBaseMult(secrets[idx])
-		fullSecret.Add(fullSecret, secrets[idx])
-	}
-	fullPublic := curve.NewIdentityPoint().ScalarBaseMult(fullSecret)
-
-	for idxJ, j := range partyIDs {
-		c, err := session.NewConfig(j, partyIDs)
-		if err != nil {
-			t.Error(err)
-		}
-
-		p := &Parameters{
-			PublicSharesECDSA: publicMap,
-			PrivateShareECDSA: secrets[idxJ],
-		}
-
-		r, err := NewRound(c, p)
+	for idxJ, j := range s.Parties() {
+		r, err := NewRound(s, j, secrets[j], nil)
 		if err != nil {
 			t.Error(err)
 		}
 		parties[idxJ] = &testParty{
-			idx: idxJ,
-			id:  j,
-			p:   p,
-			c:   c,
-			r:   r,
+			idx:    idxJ,
+			id:     j,
+			p:      &Parameters{},
+			s:      s,
+			secret: secrets[j],
+			r:      r,
 		}
 	}
 
 	// get the first messages
-	msgs1 := make([]message.Message, 0, N)
+	msgs1 := make([]*pb.Message, 0, N)
 	for _, pj := range parties {
 		msgs1New, err := pj.r.GenerateMessages()
 		if err != nil {
@@ -121,7 +94,7 @@ func TestRound(t *testing.T) {
 	}
 
 	// get the second set of  messages
-	msgs2 := make([]message.Message, 0, N*N)
+	msgs2 := make([]*pb.Message, 0, N*N)
 	for _, pj := range parties {
 		r, ok := pj.r.(*round2)
 		if !ok {
@@ -150,7 +123,7 @@ func TestRound(t *testing.T) {
 	fmt.Println("fed msgs from round 2")
 
 	// get the third set of  messages
-	msgs3 := make([]message.Message, 0, N*N)
+	msgs3 := make([]*pb.Message, 0, N*N)
 	for _, pj := range parties {
 		r, ok := pj.r.(*round3)
 		if !ok {
@@ -191,7 +164,7 @@ func TestRound(t *testing.T) {
 	fmt.Println("fed msgs from round 3")
 
 	// get the second set of  messages
-	msgs4 := make([]message.Message, 0, N)
+	msgs4 := make([]*pb.Message, 0, N)
 	for _, pj := range parties {
 		r, ok := pj.r.(*output)
 		if !ok {
@@ -211,10 +184,20 @@ func TestRound(t *testing.T) {
 		}
 	}
 
+	ped := make(map[party.ID]*pedersen.Parameters)
+	publicshares := make(map[party.ID]*curve.Point)
+
 	// check pub key is the same for all
 	for _, p := range parties {
-		if fullPublic.Equal(p.r.(*output).X) != 1 {
-			t.Error("X is different")
-		}
+		publicshares[p.id] = p.r.(*output).X
+		ped[p.id] = p.r.(*output).parties[p.id].Pedersen
+	}
+
+	s2, err := s.NewFromRefreshResult(publicshares, ped)
+	if err != nil {
+		t.Error(err)
+	}
+	if err := s2.Validate(nil); err != nil {
+		t.Error(err)
 	}
 }

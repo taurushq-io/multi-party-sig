@@ -1,6 +1,7 @@
 package keygen
 
 import (
+	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 )
@@ -15,9 +16,13 @@ type localParty struct {
 	rid []byte       // ridᵢ
 	X   *curve.Point // Xᵢ = [xᵢ] G
 	A   *curve.Point // Aᵢ = [aᵢ] G
+
+	keygen1 *pb.Keygen1
+	keygen2 *pb.Keygen2
+	keygen3 *pb.Keygen3
 }
 
-func newParty(id uint32) *localParty {
+func newParty(id party.ID) *localParty {
 	return &localParty{
 		Base: party.NewBaseParty(id),
 	}

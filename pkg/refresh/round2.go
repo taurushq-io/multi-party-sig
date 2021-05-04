@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
@@ -12,27 +12,26 @@ type round2 struct {
 	*round1
 }
 
-func (round *round2) ProcessMessage(msg message.Message) error {
-	m := msg.(*pb.Message)
-	j := m.GetFrom()
+func (round *round2) ProcessMessage(msg *pb.Message) error {
+	j := msg.GetFrom()
 	partyJ, ok := round.parties[j]
 	if !ok {
 		return errors.New("sender not registered")
 	}
 
-	partyJ.commitment = m.GetRefresh1().GetHash()
+	partyJ.commitment = msg.GetRefresh1().GetHash()
 
 	return partyJ.AddMessage(msg)
 }
 
-func (round *round2) GenerateMessages() ([]message.Message, error) {
+func (round *round2) GenerateMessages() ([]*pb.Message, error) {
 	// Broadcast the message we created in round1
-	return []message.Message{&pb.Message{
-		Type: pb.MessageType_Refresh2,
-		From: round.c.SelfID(),
-		To:   0,
+	return []*pb.Message{{
+		Type:      pb.MessageType_TypeRefresh2,
+		From:      round.selfID,
+		Broadcast: pb.Broadcast_Basic,
 		Content: &pb.Message_Refresh2{
-			Refresh2: &pb.RefreshMessage2{
+			Refresh2: &pb.Refresh2{
 				X:   pb.NewPointSlice(round.thisParty.X),
 				A:   pb.NewPointSlice(round.thisParty.ASch),
 				Y:   pb.NewPoint(round.thisParty.Y),
@@ -54,14 +53,14 @@ func (round *round2) Finalize() (round.Round, error) {
 }
 
 func (round *round2) MessageType() pb.MessageType {
-	return pb.MessageType_Refresh1
+	return pb.MessageType_TypeRefresh1
 }
 
 func (round *round2) RequiredMessageCount() int {
-	return round.c.N() - 1
+	return round.s.N() - 1
 }
 
-func (round *round2) IsProcessed(id uint32) bool {
+func (round *round2) IsProcessed(id party.ID) bool {
 	panic("")
 	return true
 }

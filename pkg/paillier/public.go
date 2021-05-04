@@ -11,12 +11,13 @@ type PublicKey struct {
 }
 
 func NewPublicKey(n *big.Int) *PublicKey {
-	var nHalf big.Int
+	var nNew, nHalf big.Int
+	nNew.Set(n)
 	nSquared := newCipherTextInt()
-	nSquared.Mul(n, n)
-	nHalf.Rsh(n, 1)
+	nSquared.Mul(&nNew, &nNew)
+	nHalf.Rsh(&nNew, 1)
 	return &PublicKey{
-		n:        n,
+		n:        &nNew,
 		nSquared: &nSquared,
 		nHalf:    &nHalf,
 	}

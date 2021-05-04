@@ -2,8 +2,9 @@ package refresh
 
 import (
 	"github.com/taurusgroup/cmp-ecdsa/pb"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
@@ -14,15 +15,15 @@ type round1 struct {
 	xReceived []*curve.Scalar
 
 	// decommitment of the 2nd message
-	decommitment []byte // uᵢ
+	decommitment hash.Decommitment // uᵢ
 }
 
-func (round *round1) ProcessMessage(msg message.Message) error {
+func (round *round1) ProcessMessage(msg *pb.Message) error {
 	// In the first round, no messages are expected.
 	return nil
 }
 
-func (round *round1) GenerateMessages() ([]message.Message, error) {
+func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 	var err error
 
 	// generate elGamal + schnorr commitments
@@ -30,9 +31,9 @@ func (round *round1) GenerateMessages() ([]message.Message, error) {
 	round.thisParty.BSch = curve.NewIdentityPoint().ScalarBaseMult(round.p.bSchnorr)
 
 	// generate shares
-	round.thisParty.X = make([]*curve.Point, round.c.N())
-	round.thisParty.ASch = make([]*curve.Point, round.c.N())
-	for idxJ := range round.c.Parties() {
+	round.thisParty.X = make([]*curve.Point, round.s.N())
+	round.thisParty.ASch = make([]*curve.Point, round.s.N())
+	for idxJ := range round.s.Parties() {
 		round.thisParty.X[idxJ] = curve.NewIdentityPoint().ScalarBaseMult(round.p.xSent[idxJ])
 		round.thisParty.ASch[idxJ] = curve.NewIdentityPoint().ScalarBaseMult(round.p.aSchnorr[idxJ])
 	}
@@ -41,25 +42,25 @@ func (round *round1) GenerateMessages() ([]message.Message, error) {
 	round.thisParty.PaillierPublic = round.p.paillierSecret.PublicKey()
 
 	// save our own share
-	round.xReceived = make([]*curve.Scalar, round.c.N())
-	round.xReceived[round.c.SelfIndex()] = round.p.xSent[round.c.SelfIndex()]
+	round.xReceived = make([]*curve.Scalar, round.s.N())
+	round.xReceived[round.selfIdx] = round.p.xSent[round.selfIdx]
 
 	// Sample ρ
 	round.thisParty.rho = round.p.rho
 
 	// commit to data in message 2
-	round.thisParty.commitment, round.decommitment, err = round.session.Commit(round.c.SelfID(),
+	round.thisParty.commitment, round.decommitment, err = round.h.Commit(round.selfID,
 		round.thisParty.X, round.thisParty.ASch, round.thisParty.Y, round.thisParty.BSch, round.thisParty.Pedersen, round.thisParty.rho)
 	if err != nil {
 		return nil, err
 	}
 
-	return []message.Message{&pb.Message{
-		Type: pb.MessageType_Refresh1,
-		From: round.c.SelfID(),
-		To:   0,
+	return []*pb.Message{{
+		Type:      pb.MessageType_TypeRefresh1,
+		From:      round.selfID,
+		Broadcast: pb.Broadcast_Reliable,
 		Content: &pb.Message_Refresh1{
-			Refresh1: &pb.RefreshMessage1{
+			Refresh1: &pb.Refresh1{
 				Hash: round.thisParty.commitment,
 			},
 		},
@@ -71,15 +72,12 @@ func (round *round1) Finalize() (round.Round, error) {
 }
 
 func (round *round1) MessageType() pb.MessageType {
-	return pb.MessageType_Keygen2
+	return pb.MessageType_TypeKeygen2
 }
 
 func (round *round1) RequiredMessageCount() int {
-	return round.c.N()
+	return round.s.N()
 }
-func (round *round1) IsProcessed(id uint32) bool {
-	if _, ok := round.parties[id]; !ok {
-		return false
-	}
-	return round.parties[id].Messages[round.MessageType()] == nil
+func (round *round1) IsProcessed(id party.ID) bool {
+	return true
 }

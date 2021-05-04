@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
@@ -13,27 +13,27 @@ type round2 struct {
 	*round1
 }
 
-func (round *round2) ProcessMessage(msg message.Message) error {
-	m := msg.(*pb.Message)
-	j := m.GetFrom()
+func (round *round2) ProcessMessage(msg *pb.Message) error {
+	j := msg.GetFrom()
 	partyJ, ok := round.parties[j]
 	if !ok {
 		return errors.New("sender not registered")
 	}
 
-	partyJ.commitment = m.GetKeygen1().GetHash()
+	partyJ.commitment = msg.GetKeygen1().GetHash()
+	partyJ.keygen1 = msg.GetKeygen1()
 
-	return partyJ.AddMessage(msg)
+	return nil
 }
 
-func (round *round2) GenerateMessages() ([]message.Message, error) {
+func (round *round2) GenerateMessages() ([]*pb.Message, error) {
 	// Broadcast the message we created in round1
-	return []message.Message{&pb.Message{
-		Type: pb.MessageType_Keygen2,
-		From: round.c.SelfID(),
-		To:   0,
+	return []*pb.Message{{
+		Type:      pb.MessageType_TypeKeygen2,
+		From:      round.selfID,
+		Broadcast: pb.Broadcast_Basic,
 		Content: &pb.Message_Keygen2{
-			Keygen2: &pb.KeygenMessage2{
+			Keygen2: &pb.Keygen2{
 				Rid: round.thisParty.rid,
 				X:   pb.NewPoint(round.thisParty.X),
 				A:   pb.NewPoint(round.thisParty.A),
@@ -48,18 +48,13 @@ func (round *round2) Finalize() (round.Round, error) {
 }
 
 func (round *round2) MessageType() pb.MessageType {
-	return pb.MessageType_Keygen1
+	return pb.MessageType_TypeKeygen1
 }
 
 func (round *round2) RequiredMessageCount() int {
-	return round.c.N() - 1
+	return round.s.N() - 1
 }
 
-func (round *round2) IsProcessed(id uint32) bool {
-	//TODO
-	return true
+func (round *round2) IsProcessed(id party.ID) bool {
+	return round.parties[id].keygen1 != nil
 }
-
-//func (round *round1) NextRound() state.Round {
-//	return &round2{round}
-//}

@@ -12,17 +12,17 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-type BaseConfig struct {
+type Config struct {
 	curve    elliptic.Curve
 	partyIDs party.IDSlice
-	selfID   uint32
+	selfID   party.ID
 	selfIdx  int
 	n        int
 
 	sidExtra, ssidExtra []byte
 }
 
-func NewConfig(selfID uint32, partyIDs []uint32) (*BaseConfig, error) {
+func NewConfig(selfID string, partyIDs []string) (*Config, error) {
 	sorted := make(party.IDSlice, len(partyIDs))
 	copy(sorted, partyIDs)
 	sort.Sort(sorted)
@@ -45,7 +45,7 @@ func NewConfig(selfID uint32, partyIDs []uint32) (*BaseConfig, error) {
 		return nil, errors.New("selfID not included in partyIDs")
 	}
 
-	return &BaseConfig{
+	return &Config{
 		curve:    curve.Curve,
 		partyIDs: sorted,
 		selfID:   selfID,
@@ -55,29 +55,29 @@ func NewConfig(selfID uint32, partyIDs []uint32) (*BaseConfig, error) {
 }
 
 // SelfID is the ID of the party
-func (c BaseConfig) SelfID() uint32 {
+func (c Config) SelfID() party.ID {
 	return c.selfID
 }
 
 // SelfIndex returns the index in Parties of SelfID when Parties is sorted
-func (c BaseConfig) SelfIndex() int {
+func (c Config) SelfIndex() int {
 	return c.selfIdx
 }
 
 // N returns the number of parties participating in the protocol
-func (c BaseConfig) N() int {
+func (c Config) N() int {
 	return c.n
 }
 
 // SID generates a new hash of the session ID.
 // It bind the information about the parties and the curve used.
-func (c BaseConfig) SID() []byte {
+func (c Config) SID() []byte {
 	out := make([]byte, params.HashBytes)
 	_, _ = c.hashSID().Read(out)
 	return out
 }
 
-func (c BaseConfig) hashSID() sha3.ShakeHash {
+func (c Config) hashSID() sha3.ShakeHash {
 	h := sha3.NewShake256()
 	_, _ = h.Write([]byte(c.curve.Params().Name)) // 𝔾
 	_, _ = h.Write(c.curve.Params().N.Bytes())    // q
@@ -90,8 +90,7 @@ func (c BaseConfig) hashSID() sha3.ShakeHash {
 
 	// write all ids
 	for _, pid := range c.partyIDs {
-		binary.BigEndian.PutUint32(idBuf, pid)
-		_, _ = h.Write(idBuf) // id
+		_, _ = h.Write([]byte(pid)) // id
 	}
 
 	if len(c.sidExtra) != 0 {
@@ -102,7 +101,7 @@ func (c BaseConfig) hashSID() sha3.ShakeHash {
 
 // SSID generates a new hash of the secure (?) session ID.
 // It depends on the SID, as well as any other relevant parameters.
-func (c BaseConfig) SSID() []byte {
+func (c Config) SSID() []byte {
 	out := make([]byte, params.HashBytes)
 	h := c.hashSID()
 
@@ -114,20 +113,20 @@ func (c BaseConfig) SSID() []byte {
 	return out
 }
 
-func (c *BaseConfig) SetSSIDExtra(extra []byte) {
+func (c *Config) SetSSIDExtra(extra []byte) {
 	c.ssidExtra = extra
 }
 
-func (c *BaseConfig) SetSIDExtra(extra []byte) {
+func (c *Config) SetSIDExtra(extra []byte) {
 	c.sidExtra = extra
 }
 
 // Curve returns the elliptic.Curve used
-func (c BaseConfig) Curve() elliptic.Curve {
+func (c Config) Curve() elliptic.Curve {
 	return c.curve
 }
 
 // Parties is a sorted list of party IDs
-func (c BaseConfig) Parties() party.IDSlice {
+func (c Config) Parties() party.IDSlice {
 	return c.partyIDs
 }

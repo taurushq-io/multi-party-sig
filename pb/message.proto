@@ -8,51 +8,58 @@ import "types.proto";
 import "zk.proto";
 
 enum MessageType {
-  Invalid = 0;
+  TypeInvalid = 0;
 
-  Keygen1 = 1;
-  Keygen2 = 2;
-  Keygen3 = 3;
+  TypeKeygen1 = 1;
+  TypeKeygen2 = 2;
+  TypeKeygen3 = 3;
 
-  Refresh1 = 4;
-  Refresh2 = 5;
-  Refresh3 = 6;
+  TypeRefresh1 = 4;
+  TypeRefresh2 = 5;
+  TypeRefresh3 = 6;
+}
+
+enum Broadcast {
+  None = 0;
+  Basic = 1;
+  Reliable = 2;
 }
 
 message Message {
   MessageType type = 1;
-  uint32 from = 2;
-  uint32 to = 3;
+  string from = 2;
+  string to = 3;
+  Broadcast broadcast = 4;
   oneof content {
-    KeygenMessage1 keygen1 = 4;
-    KeygenMessage2 keygen2 = 5;
-    KeygenMessage3 keygen3 = 6;
-    RefreshMessage1 refresh1 = 7;
-    RefreshMessage2 refresh2 = 8;
-    RefreshMessage3 refresh3 = 9;
+    Keygen1 keygen1 = 11;
+    Keygen2 keygen2 = 12;
+    Keygen3 keygen3 = 13;
+    Refresh1 refresh1 = 21;
+    Refresh2 refresh2 = 22;
+    Refresh3 refresh3 = 23;
   }
 }
 
-message KeygenMessage1 {
+message Keygen1 {
   bytes hash = 1;
 }
 
-message KeygenMessage2 {
+message Keygen2 {
   bytes rid = 1;
   Point X = 2;
   Point A = 3;
   bytes u = 4;
 }
 
-message KeygenMessage3 {
+message Keygen3 {
   Scalar schX = 1;
 }
 
-message RefreshMessage1 {
+message Refresh1 {
   bytes hash = 1;
 }
 
-message RefreshMessage2 {
+message Refresh2 {
   repeated Point X = 1;
   repeated Point A = 2;
   Point Y = 3;
@@ -64,10 +71,22 @@ message RefreshMessage2 {
   bytes u = 9;
 }
 
-message RefreshMessage3 {
+message Refresh3 {
   ZKMod mod = 1;
   ZKPrm prm = 2;
   Ciphertext c = 3;
   repeated Scalar schX = 4;
   Scalar schY = 5;
+}
+
+// Sign1 should actually be two messages, the first is broadcast and the second it p2p
+message Sign1 {
+  Ciphertext Ki = 1;
+  Ciphertext Gi = 2;
+  ZKEnc enc = 3;
+}
+
+message Sign2 {
+  Point Gamma_i = 1;
+
 }

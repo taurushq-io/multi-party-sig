@@ -9,6 +9,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 	"golang.org/x/crypto/sha3"
 )
@@ -241,11 +242,9 @@ func (hash *Hash) Clone() *Hash {
 }
 
 // CloneWithID returns a copy of the Hash in its current state, but also writes the ID to the new state.
-func (hash *Hash) CloneWithID(id uint32) *Hash {
-	b := make([]byte, 4)
-	binary.BigEndian.PutUint32(b, id)
+func (hash *Hash) CloneWithID(id party.ID) *Hash {
 	h2 := hash.h.Clone()
-	_, _ = h2.Write(b)
+	_, _ = h2.Write([]byte(id))
 	return &Hash{h: h2}
 }
 

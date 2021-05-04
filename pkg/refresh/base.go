@@ -4,55 +4,55 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
-	"golang.org/x/crypto/sha3"
 )
 
 type base struct {
-	session *session.Session
-	c       *session.BaseConfig
-	p       *Parameters
+	s *session.Session
+	p *Parameters
+	h *hash.Hash
 
+	selfID    party.ID
+	selfIdx   int
 	thisParty *localParty
-	parties   map[uint32]*localParty
+	parties   map[party.ID]*localParty
 }
 
-func NewRound(config *session.BaseConfig, parameters *Parameters) (*round1, error) {
-	if err := parameters.Verify(config); err != nil {
-		return nil, err
+func NewRound(session *session.Session, selfID party.ID, secret *session.Secret, parameters *Parameters) (*round1, error) {
+	if parameters == nil {
+		parameters = &Parameters{}
 	}
-	parameters.fill(config)
-	if !parameters.verify(config) {
+	parameters.fill(session.Parties())
+	if !parameters.verify(session.N()) {
 		return nil, errors.New("parameters were not correctly generated")
 	}
 
-	c := *config
-
-	h := sha3.NewShake256()
-	for _, j := range c.Parties() {
-		_, _ = h.Write(parameters.PublicSharesECDSA[j].BytesCompressed())
-	}
-	out := make([]byte, params.HashBytes)
-	_, _ = h.Read(out)
-	c.SetSSIDExtra(out)
-
-	parties := make(map[uint32]*localParty, config.N())
-	for _, j := range config.Parties() {
-		parties[j] = newParty(j, parameters.PublicSharesECDSA[j])
+	err := session.Validate(secret)
+	if err != nil {
+		return nil, fmt.Errorf("newRound: config: %w", err)
 	}
 
-	s, err := session.New(&c)
+	parties := make(map[party.ID]*localParty, session.N())
+	public := session.Public()
+	for idx, j := range session.Parties() {
+		parties[j] = newParty(j, idx, public[j].ShareECDSA())
+	}
+
+	h, err := session.Hash()
 	if err != nil {
 		return nil, fmt.Errorf("newRound: config: %w", err)
 	}
 
 	return &round1{
 		base: &base{
-			session:   s,
-			c:         &c,
+			s:         session,
 			p:         parameters,
-			thisParty: parties[c.SelfID()],
+			h:         h,
+			selfID:    selfID,
+			selfIdx:   session.Parties().GetIndex(selfID),
+			thisParty: parties[selfID],
 			parties:   parties,
 		},
 	}, nil

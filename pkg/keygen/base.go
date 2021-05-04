@@ -4,45 +4,55 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
 )
 
 type roundBase struct {
-	session *session.Session
-	c       *session.BaseConfig
-	p       *Parameters
+	s *session.Session
+	p *Parameters
+	h *hash.Hash
 
+	selfID    party.ID
 	thisParty *localParty
-	parties   map[uint32]*localParty
+	parties   map[party.ID]*localParty
 }
 
-func NewRound(config *session.BaseConfig, params *Parameters) (*round1, error) {
-	if err := params.Verify(); err != nil {
+func NewRound(session *session.Session, selfID party.ID, parameters *Parameters) (*round1, error) {
+	if parameters == nil {
+		parameters = &Parameters{}
+	}
+	if err := parameters.Verify(); err != nil {
 		return nil, fmt.Errorf("newRound: config: %w", err)
 	}
-	params.fill()
-	if !params.verify() {
+	parameters.fill()
+	if !parameters.verify() {
 		return nil, errors.New("params were not correctly generated")
 	}
 
-	c := *config
-
-	s, err := session.New(&c)
+	err := session.Validate(nil)
 	if err != nil {
-		return nil, fmt.Errorf("newRound: config: %w", err)
+		return nil, fmt.Errorf("newRound: session: %w", err)
 	}
 
-	parties := make(map[uint32]*localParty, c.N())
-	for _, j := range c.Parties() {
+	parties := make(map[party.ID]*localParty, session.N())
+	for _, j := range session.Parties() {
 		parties[j] = newParty(j)
+	}
+
+	h, err := session.Hash()
+	if err != nil {
+		return nil, fmt.Errorf("newRound: session.Hash: %w", err)
 	}
 
 	return &round1{
 		roundBase: &roundBase{
-			session:   s,
-			c:         &c,
-			p:         params,
-			thisParty: parties[c.SelfID()],
+			s:         session,
+			p:         parameters,
+			h:         h,
+			selfID:    selfID,
+			thisParty: parties[selfID],
 			parties:   parties,
 		}}, nil
 }

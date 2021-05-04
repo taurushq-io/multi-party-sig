@@ -5,7 +5,7 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	zkmod "github.com/taurusgroup/cmp-ecdsa/pkg/refresh/mod"
 	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/refresh/prm"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
@@ -18,30 +18,29 @@ type output struct {
 	x *curve.Scalar
 }
 
-func (round *output) ProcessMessage(msg message.Message) error {
+func (round *output) ProcessMessage(msg *pb.Message) error {
 	j := msg.GetFrom()
 	partyJ, ok := round.parties[j]
 	if !ok {
 		return errors.New("sender not registered")
 	}
-	m := msg.(*pb.Message)
-	body := m.GetRefresh3()
+	body := msg.GetRefresh3()
 
 	// verify schnorr Y
-	if !zksch.Verify(round.session.HashForID(j), partyJ.BSch, partyJ.Y, body.GetSchY().Unmarshal()) {
+	if !zksch.Verify(round.h.CloneWithID(j), partyJ.BSch, partyJ.Y, body.GetSchY().Unmarshal()) {
 		return errors.New("schnorr Y failed")
 	}
 
 	// verify all Schnorr X
-	for k := range round.c.Parties() {
+	for k := range round.s.Parties() {
 		schX := body.GetSchX()[k].Unmarshal()
-		if !zksch.Verify(round.session.HashForID(j), partyJ.ASch[k], partyJ.X[k], schX) {
+		if !zksch.Verify(round.h.CloneWithID(j), partyJ.ASch[k], partyJ.X[k], schX) {
 			return errors.New("schnorr X failed")
 		}
 	}
 
 	// get idx of j
-	idxJ := round.c.Parties().GetIndex(j)
+	idxJ := round.s.Parties().GetIndex(j)
 
 	// decrypt share
 	xJdec := round.p.paillierSecret.Dec(body.GetC().Unmarshal())
@@ -53,35 +52,35 @@ func (round *output) ProcessMessage(msg message.Message) error {
 
 	// verify share
 	X := curve.NewIdentityPoint().ScalarBaseMult(xJ)
-	if X.Equal(partyJ.X[round.c.SelfIndex()]) != 1 {
+	if X.Equal(partyJ.X[round.selfIdx]) != 1 {
 		return errors.New("decrypted share is bad")
 	}
 	round.xReceived[idxJ] = xJ
 
 	// verify zkmod
 	modPublic := zkmod.Public{N: partyJ.Pedersen.N}
-	if !modPublic.Verify(round.session.HashForID(j), body.GetMod()) {
+	if !modPublic.Verify(round.h.CloneWithID(j), body.GetMod()) {
 		return errors.New("mod failed")
 	}
 
 	// verify zkprm
 	prmPublic := zkprm.Public{Pedersen: partyJ.Pedersen}
-	if !prmPublic.Verify(round.session.HashForID(j), body.GetPrm()) {
+	if !prmPublic.Verify(round.h.CloneWithID(j), body.GetPrm()) {
 		return errors.New("prm failed")
 	}
 
 	return partyJ.AddMessage(msg)
 }
 
-func (round *output) GenerateMessages() ([]message.Message, error) {
+func (round *output) GenerateMessages() ([]*pb.Message, error) {
 	round.x = curve.NewScalar()
 	for _, xJ := range round.xReceived {
 		round.x.Add(round.x, xJ)
 	}
 
-	updatedPublic := make([]*curve.Point, round.c.N())
+	updatedPublic := make([]*curve.Point, round.s.N())
 	// set old public key
-	for idxJ, j := range round.c.Parties() {
+	for idxJ, j := range round.s.Parties() {
 		updatedPublic[idxJ] = curve.NewIdentityPoint().Set(round.parties[j].Public)
 	}
 
@@ -95,7 +94,7 @@ func (round *output) GenerateMessages() ([]message.Message, error) {
 	//TODO for debug
 	round.X = curve.NewIdentityPoint()
 	// update new public key
-	for idxJ, j := range round.c.Parties() {
+	for idxJ, j := range round.s.Parties() {
 		round.parties[j].PublicNew = updatedPublic[idxJ]
 		round.X.Add(round.X, updatedPublic[idxJ])
 	}
@@ -109,13 +108,13 @@ func (round *output) Finalize() (round.Round, error) {
 }
 
 func (round *output) MessageType() pb.MessageType {
-	return pb.MessageType_Refresh3
+	return pb.MessageType_TypeRefresh3
 }
 
 func (round *output) RequiredMessageCount() int {
 	return 0
 }
 
-func (round *output) IsProcessed(id uint32) bool {
+func (round *output) IsProcessed(id party.ID) bool {
 	panic("implement me")
 }

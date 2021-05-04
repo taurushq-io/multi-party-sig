@@ -2,13 +2,11 @@ package keygen
 
 import (
 	"bytes"
-	"errors"
-	"sort"
+	"fmt"
 	"testing"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
@@ -16,20 +14,17 @@ import (
 )
 
 type testParty struct {
-	idx int
-	id  uint32
-	p   *Parameters
-	c   *session.BaseConfig
-	r   round.Round
+	idx    int
+	id     party.ID
+	p      *Parameters
+	s      *session.Session
+	secret *session.Secret
+	r      round.Round
 }
 
-func feedMessages(parties []*testParty, msgs []message.Message) error {
+func feedMessages(parties []*testParty, msgs []*pb.Message) error {
 	for _, msg := range msgs {
-		m, ok := msg.(*pb.Message)
-		if !ok {
-			return errors.New("not a pb.Message")
-		}
-		b, err := proto.Marshal(m)
+		b, err := proto.Marshal(msg)
 		if err != nil {
 			return err
 		}
@@ -54,39 +49,33 @@ func feedMessages(parties []*testParty, msgs []message.Message) error {
 
 func TestRound(t *testing.T) {
 	N := 10
-	partyIDs := make(party.IDSlice, N)
-	for i := range partyIDs {
-		partyIDs[i] = uint32((3 * i) % (2 * N))
-	}
-	sort.Sort(partyIDs)
 
 	share := curve.NewScalar()
 
+	s, secrets := session.FakeInitSession(N, N-1)
+
 	parties := make([]*testParty, N)
-	for idxJ, j := range partyIDs {
-		c, err := session.NewConfig(j, partyIDs)
-		if err != nil {
-			t.Error(err)
-		}
+	for idxJ, j := range s.Parties() {
 
 		p := &Parameters{PrivateECDSA: curve.NewScalarRandom()}
 		share.Add(share, p.PrivateECDSA)
 
-		r, err := NewRound(c, p)
+		r, err := NewRound(s, j, p)
 		if err != nil {
 			t.Error(err)
 		}
 		parties[idxJ] = &testParty{
-			idx: idxJ,
-			id:  j,
-			p:   &Parameters{},
-			c:   c,
-			r:   r,
+			idx:    idxJ,
+			id:     j,
+			p:      &Parameters{},
+			s:      s,
+			secret: secrets[j],
+			r:      r,
 		}
 	}
 
 	// get the first messages
-	msgs1 := make([]message.Message, 0, N)
+	msgs1 := make([]*pb.Message, 0, N)
 	for _, pj := range parties {
 		msgs1New, err := pj.r.GenerateMessages()
 		if err != nil {
@@ -105,7 +94,7 @@ func TestRound(t *testing.T) {
 	}
 
 	// get the second set of  messages
-	msgs2 := make([]message.Message, 0, N*N)
+	msgs2 := make([]*pb.Message, 0, N*N)
 	for _, pj := range parties {
 		r, ok := pj.r.(*round2)
 		if !ok {
@@ -130,7 +119,7 @@ func TestRound(t *testing.T) {
 	}
 
 	// get the third set of  messages
-	msgs3 := make([]message.Message, 0, N)
+	msgs3 := make([]*pb.Message, 0, N)
 	for _, pj := range parties {
 		r, ok := pj.r.(*round3)
 		if !ok {
@@ -167,7 +156,7 @@ func TestRound(t *testing.T) {
 	}
 
 	// get the second set of  messages
-	msgs4 := make([]message.Message, 0, N)
+	msgs4 := make([]*pb.Message, 0, N)
 	for _, pj := range parties {
 		r, ok := pj.r.(*output)
 		if !ok {
@@ -194,4 +183,5 @@ func TestRound(t *testing.T) {
 			t.Error("X is different")
 		}
 	}
+	fmt.Println(pub.Bytes())
 }
