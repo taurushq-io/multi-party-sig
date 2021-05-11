@@ -1,6 +1,7 @@
 package session
 
 import (
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"encoding/binary"
 	"errors"
@@ -121,7 +122,7 @@ func (s Session) Threshold() int {
 }
 
 // PublicKey returns the ECDSA public key for the session
-func (s Session) PublicKey() (*curve.Point, error) {
+func (s Session) PublicKey() (*ecdsa.PublicKey, error) {
 	return getPublicKey(s.public)
 }
 
@@ -232,7 +233,7 @@ func (s *Session) Hash() (*hash.Hash, error) {
 	return h, nil
 }
 
-func getPublicKey(parties map[party.ID]*Public) (*curve.Point, error) {
+func getPublicKey(parties map[party.ID]*Public) (*ecdsa.PublicKey, error) {
 	pk := curve.NewIdentityPoint()
 	for _, pi := range parties {
 		if pi.state() < StateKeygen {
@@ -240,7 +241,7 @@ func getPublicKey(parties map[party.ID]*Public) (*curve.Point, error) {
 		}
 		pk.Add(pk, pi.ecdsaShare)
 	}
-	return pk, nil
+	return pk.ToPublicKey(), nil
 }
 
 func (s *Session) state() State {

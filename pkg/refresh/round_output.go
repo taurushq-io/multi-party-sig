@@ -27,20 +27,20 @@ func (round *output) ProcessMessage(msg *pb.Message) error {
 	body := msg.GetRefresh3()
 
 	// verify schnorr Y
-	if !zksch.Verify(round.h.CloneWithID(j), partyJ.BSch, partyJ.Y, body.GetSchY().Unmarshal()) {
+	if !zksch.Verify(round.H.CloneWithID(j), partyJ.BSch, partyJ.Y, body.GetSchY().Unmarshal()) {
 		return errors.New("schnorr Y failed")
 	}
 
 	// verify all Schnorr X
-	for k := range round.s.Parties() {
+	for k := range round.S.Parties() {
 		schX := body.GetSchX()[k].Unmarshal()
-		if !zksch.Verify(round.h.CloneWithID(j), partyJ.ASch[k], partyJ.X[k], schX) {
+		if !zksch.Verify(round.H.CloneWithID(j), partyJ.ASch[k], partyJ.X[k], schX) {
 			return errors.New("schnorr X failed")
 		}
 	}
 
 	// get idx of j
-	idxJ := round.s.Parties().GetIndex(j)
+	idxJ := round.S.Parties().GetIndex(j)
 
 	// decrypt share
 	xJdec := round.p.paillierSecret.Dec(body.GetC().Unmarshal())
@@ -52,20 +52,20 @@ func (round *output) ProcessMessage(msg *pb.Message) error {
 
 	// verify share
 	X := curve.NewIdentityPoint().ScalarBaseMult(xJ)
-	if X.Equal(partyJ.X[round.selfIdx]) != 1 {
+	if X.Equal(partyJ.X[round.SelfIndex]) != 1 {
 		return errors.New("decrypted share is bad")
 	}
 	round.xReceived[idxJ] = xJ
 
 	// verify zkmod
 	modPublic := zkmod.Public{N: partyJ.Pedersen.N}
-	if !modPublic.Verify(round.h.CloneWithID(j), body.GetMod()) {
+	if !modPublic.Verify(round.H.CloneWithID(j), body.GetMod()) {
 		return errors.New("mod failed")
 	}
 
 	// verify zkprm
 	prmPublic := zkprm.Public{Pedersen: partyJ.Pedersen}
-	if !prmPublic.Verify(round.h.CloneWithID(j), body.GetPrm()) {
+	if !prmPublic.Verify(round.H.CloneWithID(j), body.GetPrm()) {
 		return errors.New("prm failed")
 	}
 
@@ -78,9 +78,9 @@ func (round *output) GenerateMessages() ([]*pb.Message, error) {
 		round.x.Add(round.x, xJ)
 	}
 
-	updatedPublic := make([]*curve.Point, round.s.N())
+	updatedPublic := make([]*curve.Point, round.S.N())
 	// set old public key
-	for idxJ, j := range round.s.Parties() {
+	for idxJ, j := range round.S.Parties() {
 		updatedPublic[idxJ] = curve.NewIdentityPoint().Set(round.parties[j].Public)
 	}
 
@@ -94,7 +94,7 @@ func (round *output) GenerateMessages() ([]*pb.Message, error) {
 	//TODO for debug
 	round.X = curve.NewIdentityPoint()
 	// update new public key
-	for idxJ, j := range round.s.Parties() {
+	for idxJ, j := range round.S.Parties() {
 		round.parties[j].PublicNew = updatedPublic[idxJ]
 		round.X.Add(round.X, updatedPublic[idxJ])
 	}

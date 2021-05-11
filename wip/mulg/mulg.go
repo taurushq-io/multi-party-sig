@@ -101,7 +101,7 @@ func NewProof(proverPailler *paillier.PublicKey, verifierPedersen *pedersen.Para
 	z2.Mul(e, m)
 	z2.Add(&z2, gamma)
 
-	N0 := proverPailler.N()
+	N0 := proverPailler.N
 	w.Exp(rho, e, N0)
 	w.Mul(&w, r)
 	w.Mod(&w, N0)

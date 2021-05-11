@@ -97,9 +97,9 @@ func NewProof(prover, verifierPaillier *paillier.PublicKey, verifierPedersen *pe
 
 	affineNonce := func(r, rho, e *big.Int, pk *paillier.PublicKey) *big.Int {
 		var result big.Int
-		result.Exp(rho, e, pk.N())
+		result.Exp(rho, e, pk.N)
 		result.Mul(&result, r)
-		result.Mod(&result, pk.N())
+		result.Mod(&result, pk.N)
 		return &result
 	}
 

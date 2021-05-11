@@ -15,15 +15,20 @@ import (
 type (
 	Public struct {
 		// C = Enc₀(?;?)
+		// Kⱼ = Encⱼ(kⱼ; )
 		C *paillier.Ciphertext
 
 		// D = (x ⨀ C) ⨁ Enc₀(y;ρ)
+		//   = (xᵢ ⨀ Kⱼ) ⨁ Encⱼ(- βᵢⱼ; sᵢⱼ)
 		D *paillier.Ciphertext
 
 		// Y = Enc₁(y;ρ')
+		//   = Encᵢ(βᵢⱼ,rᵢⱼ)
+		// y is Bob's additive share
 		Y *paillier.Ciphertext
 
 		// X = gˣ
+		// x is Alice's multiplicative share
 		X *curve.Point
 
 		// Prover = N₁
@@ -33,15 +38,17 @@ type (
 	}
 	Private struct {
 		// X ∈ ± 2ˡ
+		// Bob's multiplicative share
 		X *big.Int
 
 		// Y ∈ ± 2ˡº
+		// Bob's additive share βᵢⱼ
 		Y *big.Int
 
-		// Rho = Nonce D
+		// Rho = Nonce D = sᵢⱼ
 		Rho *big.Int
 
-		// RhoY = Nonce Y
+		// RhoY = Nonce Y = rᵢⱼ
 		RhoY *big.Int
 	}
 )
@@ -66,8 +73,8 @@ type Commitment struct {
 }
 
 func (public Public) Prove(hash *hash.Hash, private Private) (*pb.ZKAffG, error) {
-	N0 := public.Verifier.N()
-	N1 := public.Prover.N()
+	N0 := public.Verifier.N
+	N1 := public.Prover.N
 
 	verifier := public.Verifier
 	prover := public.Prover
@@ -236,8 +243,8 @@ func affine(a, b, c *big.Int) *pb.Int {
 
 func affineNonce(r, rho, e *big.Int, pk *paillier.PublicKey) *pb.Int {
 	var result big.Int
-	result.Exp(rho, e, pk.N())
+	result.Exp(rho, e, pk.N)
 	result.Mul(&result, r)
-	result.Mod(&result, pk.N())
+	result.Mod(&result, pk.N)
 	return pb.NewInt(&result)
 }

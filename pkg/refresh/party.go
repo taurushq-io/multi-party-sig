@@ -7,14 +7,13 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
 // localParty is the state we store for a remote party.
 // The messages are embedded to make access to the attributes easier.
 type localParty struct {
-	*party.Base
-
-	index int
+	*round.Party
 
 	PaillierPublic *paillier.PublicKey
 	Pedersen       *pedersen.Parameters
@@ -36,12 +35,11 @@ type localParty struct {
 	refresh3 *pb.Refresh3
 }
 
-func newParty(id party.ID, index int, public *curve.Point) *localParty {
+func newParty(id party.ID, public *curve.Point) *localParty {
 	var X curve.Point
 	X.Set(public)
 	return &localParty{
-		Base:   party.NewBaseParty(id),
-		index:  index,
+		Party:  round.NewBaseParty(id),
 		Public: &X,
 	}
 }

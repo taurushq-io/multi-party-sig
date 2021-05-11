@@ -9,7 +9,12 @@ import (
 )
 
 type round1 struct {
-	*base
+	*round.BaseRound
+
+	p *Parameters
+
+	thisParty *localParty
+	parties   map[party.ID]*localParty
 
 	// xReceived are the decrypted shares received from each party
 	xReceived []*curve.Scalar
@@ -31,9 +36,9 @@ func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 	round.thisParty.BSch = curve.NewIdentityPoint().ScalarBaseMult(round.p.bSchnorr)
 
 	// generate shares
-	round.thisParty.X = make([]*curve.Point, round.s.N())
-	round.thisParty.ASch = make([]*curve.Point, round.s.N())
-	for idxJ := range round.s.Parties() {
+	round.thisParty.X = make([]*curve.Point, round.S.N())
+	round.thisParty.ASch = make([]*curve.Point, round.S.N())
+	for idxJ := range round.S.Parties() {
 		round.thisParty.X[idxJ] = curve.NewIdentityPoint().ScalarBaseMult(round.p.xSent[idxJ])
 		round.thisParty.ASch[idxJ] = curve.NewIdentityPoint().ScalarBaseMult(round.p.aSchnorr[idxJ])
 	}
@@ -42,14 +47,14 @@ func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 	round.thisParty.PaillierPublic = round.p.paillierSecret.PublicKey()
 
 	// save our own share
-	round.xReceived = make([]*curve.Scalar, round.s.N())
-	round.xReceived[round.selfIdx] = round.p.xSent[round.selfIdx]
+	round.xReceived = make([]*curve.Scalar, round.S.N())
+	round.xReceived[round.SelfIndex] = round.p.xSent[round.SelfIndex]
 
 	// Sample ρ
 	round.thisParty.rho = round.p.rho
 
 	// commit to data in message 2
-	round.thisParty.commitment, round.decommitment, err = round.h.Commit(round.selfID,
+	round.thisParty.commitment, round.decommitment, err = round.H.Commit(round.SelfID,
 		round.thisParty.X, round.thisParty.ASch, round.thisParty.Y, round.thisParty.BSch, round.thisParty.Pedersen, round.thisParty.rho)
 	if err != nil {
 		return nil, err
@@ -57,7 +62,7 @@ func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 
 	return []*pb.Message{{
 		Type:      pb.MessageType_TypeRefresh1,
-		From:      round.selfID,
+		From:      round.SelfID,
 		Broadcast: pb.Broadcast_Reliable,
 		Content: &pb.Message_Refresh1{
 			Refresh1: &pb.Refresh1{
@@ -76,7 +81,7 @@ func (round *round1) MessageType() pb.MessageType {
 }
 
 func (round *round1) RequiredMessageCount() int {
-	return round.s.N()
+	return round.S.N()
 }
 func (round *round1) IsProcessed(id party.ID) bool {
 	return true

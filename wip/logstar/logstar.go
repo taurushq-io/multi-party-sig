@@ -65,7 +65,7 @@ func NewProof(prover *paillier.PublicKey, verifier *pedersen.Parameters, C *pail
 	z1.Mul(e, x)
 	z1.Add(&z1, alpha)
 
-	N0 := prover.N()
+	N0 := prover.N
 	z2.Exp(rho, e, N0)
 	z2.Mul(&z2, r)
 	z2.Mod(&z2, N0)

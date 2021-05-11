@@ -53,7 +53,7 @@ type (
 )
 
 func (public Public) Prove(hash *hash.Hash, private Private) (*pb.ZKLogStar, error) {
-	N := public.Prover.N()
+	N := public.Prover.N
 
 	if public.G == nil {
 		public.G = curve.NewBasePoint()

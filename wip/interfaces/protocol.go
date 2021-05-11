@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
@@ -125,7 +124,7 @@ func (p *Protocol) messageLoop(ctx context.Context) (err error) {
 	}
 }
 
-func (p *Protocol) AddMessage(msg message.Message) error {
+func (p *Protocol) AddMessage(msg *pb.Message) error {
 	currentMsgType := p.currentRound.MessageType()
 	newMessageType := msg.GetType()
 	if currentMsgType > newMessageType {

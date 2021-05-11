@@ -7,7 +7,7 @@ import (
 )
 
 type PublicKey struct {
-	n, nSquared, nHalf *big.Int
+	N, NSquared, nHalf *big.Int
 }
 
 func NewPublicKey(n *big.Int) *PublicKey {
@@ -17,8 +17,8 @@ func NewPublicKey(n *big.Int) *PublicKey {
 	nSquared.Mul(&nNew, &nNew)
 	nHalf.Rsh(&nNew, 1)
 	return &PublicKey{
-		n:        &nNew,
-		nSquared: &nSquared,
+		N:        &nNew,
+		NSquared: &nSquared,
 		nHalf:    &nHalf,
 	}
 }
@@ -35,25 +35,11 @@ func (pk *PublicKey) Enc(m, nonce *big.Int) (*Ciphertext, *big.Int) {
 
 // Equal returns true if pk = other.
 func (pk *PublicKey) Equal(other *PublicKey) bool {
-	return pk.n.Cmp(other.n) == 0
+	return pk.N.Cmp(other.N) == 0
 }
 
 // Nonce returns a suitable nonce ρ for encryption.
 // ρ ∈ ℤₙˣ
 func (pk *PublicKey) Nonce() *big.Int {
-	return sample.UnitModN(pk.n)
-}
-
-// N returns the big.Int N of the public key.
-// For efficiency, the value returned is a pointer to the same underlying N.
-// WARNING: Do not modify the returned value.
-func (pk *PublicKey) N() *big.Int {
-	return pk.n
-}
-
-// N2 returns the big.Int N² of the public key.
-// For efficiency, the value returned is a pointer to the same underlying N².
-// WARNING: Do not modify the returned value.
-func (pk *PublicKey) N2() *big.Int {
-	return pk.nSquared
+	return sample.UnitModN(pk.N)
 }

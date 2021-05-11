@@ -4,12 +4,13 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
 // localParty is the state we store for a remote party.
 // The messages are embedded to make access to the attributes easier.
 type localParty struct {
-	*party.Base
+	*round.Party
 
 	commitment []byte // H(msg2, decommitment)
 
@@ -24,7 +25,7 @@ type localParty struct {
 
 func newParty(id party.ID) *localParty {
 	return &localParty{
-		Base: party.NewBaseParty(id),
+		Party: round.NewBaseParty(id),
 	}
 }
 

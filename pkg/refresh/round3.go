@@ -81,7 +81,7 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 
 	// Verify decommit
 	decommitment := body.GetU()
-	if !round.h.Decommit(j, partyJ.commitment, decommitment,
+	if !round.H.Decommit(j, partyJ.commitment, decommitment,
 		partyJ.X, partyJ.ASch, partyJ.Y, partyJ.BSch, partyJ.Pedersen, partyJ.rho) {
 		return errors.New("failed to decommit")
 	}
@@ -99,14 +99,14 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 	}
 
 	// Write rho to the hash state
-	if _, err := round.h.Write(round.rho); err != nil {
+	if _, err := round.H.Write(round.rho); err != nil {
 		return nil, err
 	}
 
 	partyI := round.thisParty
 
 	// Prove N is a blum prime with zkmod
-	mod, err := zkmod.Public{N: partyI.Pedersen.N}.Prove(round.h.CloneWithID(round.selfID), zkmod.Private{
+	mod, err := zkmod.Public{N: partyI.Pedersen.N}.Prove(round.H.CloneWithID(round.SelfID), zkmod.Private{
 		P:   round.p.p,
 		Q:   round.p.q,
 		Phi: round.p.phi,
@@ -116,7 +116,7 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 	}
 
 	// prove s, t are correct as aux parameters with zkprm
-	prm, err := zkprm.Public{Pedersen: partyI.Pedersen}.Prove(round.h.CloneWithID(round.selfID), zkprm.Private{
+	prm, err := zkprm.Public{Pedersen: partyI.Pedersen}.Prove(round.H.CloneWithID(round.SelfID), zkprm.Private{
 		Lambda: round.p.lambda,
 		Phi:    round.p.phi,
 	})
@@ -125,16 +125,16 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 	}
 
 	// Compute ZKPoK for Y = gʸ
-	schY, err := zksch.Prove(round.h.CloneWithID(round.selfID), partyI.BSch, partyI.Y, round.p.bSchnorr, round.p.y)
+	schY, err := zksch.Prove(round.H.CloneWithID(round.SelfID), partyI.BSch, partyI.Y, round.p.bSchnorr, round.p.y)
 	if err != nil {
 		return nil, errors.New("failed to generate schnorr")
 	}
 
 	// Compute all ZKPoK Xⱼ = [xⱼ] G
-	schXproto := make([]*pb.Scalar, round.s.N())
+	schXproto := make([]*pb.Scalar, round.S.N())
 	var schX *curve.Scalar
-	for j := range round.s.Parties() {
-		schX, err = zksch.Prove(round.h.CloneWithID(round.selfID), partyI.ASch[j], partyI.X[j], round.p.aSchnorr[j], round.p.xSent[j])
+	for j := range round.S.Parties() {
+		schX, err = zksch.Prove(round.H.CloneWithID(round.SelfID), partyI.ASch[j], partyI.X[j], round.p.aSchnorr[j], round.p.xSent[j])
 		if err != nil {
 			return nil, errors.New("failed to generate schnorr")
 		}
@@ -142,9 +142,9 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 	}
 
 	// create messages with encrypted shares
-	msgs := make([]*pb.Message, 0, round.s.N()-1)
-	for j, idJ := range round.s.Parties() {
-		if idJ == round.selfID {
+	msgs := make([]*pb.Message, 0, round.S.N()-1)
+	for j, idJ := range round.S.Parties() {
+		if idJ == round.SelfID {
 			continue
 		}
 
@@ -155,7 +155,7 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 
 		msgs = append(msgs, &pb.Message{
 			Type: pb.MessageType_TypeKeygen3,
-			From: round.selfID,
+			From: round.SelfID,
 			To:   idJ,
 			Content: &pb.Message_Refresh3{
 				Refresh3: &pb.Refresh3{
@@ -183,7 +183,7 @@ func (round *round3) MessageType() pb.MessageType {
 }
 
 func (round *round3) RequiredMessageCount() int {
-	return round.s.N() - 1
+	return round.S.N() - 1
 }
 
 func (round *round3) IsProcessed(id party.ID) bool {

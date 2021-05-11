@@ -1,7 +1,6 @@
-package refresh
+package sign
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -9,14 +8,14 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
 )
 
-func NewRound(session *session.Session, selfID party.ID, secret *session.Secret, parameters *Parameters) (*round1, error) {
-	if parameters == nil {
-		parameters = &Parameters{}
-	}
-	parameters.fill(session.Parties())
-	if !parameters.verify(session.N()) {
-		return nil, errors.New("parameters were not correctly generated")
-	}
+func NewRound(session *session.Session, selfID party.ID, secret *session.Secret, message []byte /*, parameters *Parameters*/) (*round1, error) {
+	//if parameters == nil {
+	//	parameters = &Parameters{}
+	//}
+	//parameters.fill(session.Parties())
+	//if !parameters.verify(session.N()) {
+	//	return nil, errors.New("parameters were not correctly generated")
+	//}
 
 	err := session.Validate(secret)
 	if err != nil {
@@ -26,7 +25,7 @@ func NewRound(session *session.Session, selfID party.ID, secret *session.Secret,
 	parties := make(map[party.ID]*localParty, session.N())
 	public := session.Public()
 	for _, j := range session.Parties() {
-		parties[j] = newParty(j, public[j].ShareECDSA())
+		parties[j] = newParty(j, public[j])
 	}
 
 	base, err := round.NewBaseRound(session, selfID)
@@ -36,8 +35,11 @@ func NewRound(session *session.Session, selfID party.ID, secret *session.Secret,
 
 	return &round1{
 		BaseRound: base,
-		p:         parameters,
+		paillier:  secret.Paillier(),
+		ecdsa:     secret.ShareECDSA(),
+		//p:         parameters,
 		thisParty: parties[selfID],
 		parties:   parties,
+		message:   message,
 	}, nil
 }

@@ -83,9 +83,9 @@ func NewProof(prover *paillier.PublicKey, verifier *pedersen.Parameters, C *pail
 	var w curve.Scalar
 	w.MultiplyAdd(curve.NewScalarBigInt(e), b, beta)
 
-	z2.Exp(rho, e, prover.N())
+	z2.Exp(rho, e, prover.N)
 	z2.Mul(&z2, r)
-	z2.Mod(&z2, prover.N())
+	z2.Mod(&z2, prover.N)
 
 	z3.Mul(e, mu)
 	z3.Add(&z3, gamma)

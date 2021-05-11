@@ -17,13 +17,15 @@ func TestAffG(t *testing.T) {
 	verifierPaillier := zkcommon.VerifierPaillierPublic
 	verifierPedersen := zkcommon.Pedersen
 	prover := zkcommon.ProverPaillierPublic
-	x := sample.IntervalL()
-	y := sample.IntervalLPrime()
-	c := big.NewInt(12)
 
+	c := big.NewInt(12)
 	C, _ := verifierPaillier.Enc(c, nil)
+
 	var X curve.Point
+	x := sample.IntervalL()
 	X.ScalarBaseMult(curve.NewScalarBigInt(x))
+
+	y := sample.IntervalLPrime()
 	Y, rhoY := prover.Enc(y, nil)
 
 	var tmp paillier.Ciphertext

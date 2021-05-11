@@ -41,7 +41,7 @@ type Commitment struct {
 }
 
 func (public Public) Prove(hash *hash.Hash, private Private) (*pb.ZKEnc, error) {
-	N := public.Prover.N()
+	N := public.Prover.N
 
 	alpha := sample.IntervalLEps()
 	r := sample.UnitModN(N)

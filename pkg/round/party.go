@@ -1,4 +1,4 @@
-package party
+package round
 
 import (
 	"errors"
@@ -6,10 +6,12 @@ import (
 	"sync"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 )
 
-type Base struct {
-	ID       ID
+type Party struct {
+	ID party.ID
+
 	Messages map[pb.MessageType]*pb.Message
 	handled  map[pb.MessageType]bool
 
@@ -21,15 +23,15 @@ var (
 	ErrDuplicateMessage = errors.New("message already received")
 )
 
-func NewBaseParty(id ID) *Base {
-	return &Base{
+func NewBaseParty(id party.ID) *Party {
+	return &Party{
 		ID:       id,
 		Messages: map[pb.MessageType]*pb.Message{},
 		handled:  map[pb.MessageType]bool{},
 	}
 }
 
-func (p *Base) AddMessage(msg *pb.Message) error {
+func (p *Party) AddMessage(msg *pb.Message) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -47,9 +49,3 @@ func (p *Base) AddMessage(msg *pb.Message) error {
 
 	return nil
 }
-
-//func (p *Base) Handled(messageType pb.MessageType) bool {
-//	p.mu.Lock()
-//	defer p.mu.Unlock()
-//
-//}

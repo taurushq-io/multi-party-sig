@@ -23,7 +23,7 @@ func (round *output) ProcessMessage(msg *pb.Message) error {
 	}
 	body := msg.GetKeygen3()
 
-	if !zksch.Verify(round.h.CloneWithID(j), partyJ.A, partyJ.X, body.GetSchX().Unmarshal()) {
+	if !zksch.Verify(round.H.CloneWithID(j), partyJ.A, partyJ.X, body.GetSchX().Unmarshal()) {
 		return errors.New("schnorr verification failed")
 	}
 
@@ -48,7 +48,7 @@ func (round *output) MessageType() pb.MessageType {
 }
 
 func (round *output) RequiredMessageCount() int {
-	return round.s.N() - 1
+	return round.S.N() - 1
 }
 
 func (round *output) IsProcessed(id party.ID) bool {

@@ -41,7 +41,7 @@ func TestPaillier(t *testing.T) {
 
 		// Test multiplication
 		res := new(big.Int).Mul(c, r1)
-		res.Mod(res, pk.n)
+		res.Mod(res, pk.N)
 		require.Equal(t, 0, res.Cmp(sk.Dec(&ct1times2)))
 	}
 }

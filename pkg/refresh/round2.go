@@ -28,7 +28,7 @@ func (round *round2) GenerateMessages() ([]*pb.Message, error) {
 	// Broadcast the message we created in round1
 	return []*pb.Message{{
 		Type:      pb.MessageType_TypeRefresh2,
-		From:      round.selfID,
+		From:      round.SelfID,
 		Broadcast: pb.Broadcast_Basic,
 		Content: &pb.Message_Refresh2{
 			Refresh2: &pb.Refresh2{
@@ -57,7 +57,7 @@ func (round *round2) MessageType() pb.MessageType {
 }
 
 func (round *round2) RequiredMessageCount() int {
-	return round.s.N() - 1
+	return round.S.N() - 1
 }
 
 func (round *round2) IsProcessed(id party.ID) bool {

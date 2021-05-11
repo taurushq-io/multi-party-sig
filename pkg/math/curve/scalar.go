@@ -84,10 +84,33 @@ func (s *Scalar) SetBigInt(i *big.Int) *Scalar {
 	return s
 }
 
-// SetBigInt sets s = x, and returns s.
+// SetBytes sets s = x, and returns s.
 func (s *Scalar) SetBytes(in []byte) *Scalar {
 	s.s.SetBytes(in)
 	s.s.Mod(&s.s, Q)
+	return s
+}
+
+// SetHash converts a hash value to a Scalar. There is some disagreement
+// about how this is done. [NSA] suggests that this is done in the obvious
+// manner, but [SECG] truncates the hash to the bit-length of the curve order
+// first. We follow [SECG] because that's what OpenSSL does. Additionally,
+// OpenSSL right shifts excess bits from the number if the hash is too large
+// and we mirror that too.
+//
+// Taken from crypto/ecdsa
+func (s *Scalar) SetHash(hash []byte) *Scalar {
+	orderBits := Q.BitLen()
+	orderBytes := (orderBits + 7) / 8
+	if len(hash) > orderBytes {
+		hash = hash[:orderBytes]
+	}
+
+	s.s.SetBytes(hash)
+	excess := len(hash)*8 - orderBits
+	if excess > 0 {
+		s.s.Rsh(&s.s, uint(excess))
+	}
 	return s
 }
 

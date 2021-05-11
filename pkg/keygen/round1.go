@@ -8,9 +8,16 @@ import (
 )
 
 type round1 struct {
-	*roundBase
+	*round.BaseRound
+
+	p *Parameters
+
+	thisParty *localParty
+	parties   map[party.ID]*localParty
 
 	decommitment []byte // uᵢ
+
+	broadcastHashes [][]byte
 }
 
 func (round *round1) ProcessMessage(msg *pb.Message) error {
@@ -27,14 +34,14 @@ func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 	round.thisParty.rid = round.p.rid
 
 	// commit to data in message 2
-	round.thisParty.commitment, round.decommitment, err = round.h.Commit(round.selfID, round.thisParty.rid, round.thisParty.X, round.thisParty.A)
+	round.thisParty.commitment, round.decommitment, err = round.H.Commit(round.SelfID, round.thisParty.rid, round.thisParty.X, round.thisParty.A)
 	if err != nil {
 		return nil, err
 	}
 
 	return []*pb.Message{{
 		Type:      pb.MessageType_TypeKeygen1,
-		From:      round.selfID,
+		From:      round.SelfID,
 		Broadcast: pb.Broadcast_Reliable,
 		Content: &pb.Message_Keygen1{
 			Keygen1: &pb.Keygen1{

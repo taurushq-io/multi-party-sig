@@ -43,7 +43,7 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 
 	commitment := partyJ.commitment
 	decommitment := body.GetU()
-	if !round.h.Decommit(j, commitment, decommitment, rid, X, A) {
+	if !round.H.Decommit(j, commitment, decommitment, rid, X, A) {
 		return errors.New("failed to decommit")
 	}
 
@@ -66,20 +66,20 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 	}
 
 	// include the agreed upon rid in the session
-	if _, err := round.h.Write(round.rid); err != nil {
+	if _, err := round.H.Write(round.rid); err != nil {
 		return nil, err
 	}
 
 	// Schnorr proof
 	partyI := round.thisParty
-	proofX, err := zksch.Prove(round.h.CloneWithID(round.selfID), partyI.A, partyI.X, round.p.a, round.p.PrivateECDSA)
+	proofX, err := zksch.Prove(round.H.CloneWithID(round.SelfID), partyI.A, partyI.X, round.p.a, round.p.PrivateECDSA)
 	if err != nil {
 		return nil, errors.New("failed to generate schnorr")
 	}
 
 	return []*pb.Message{{
 		Type:      pb.MessageType_TypeKeygen3,
-		From:      round.selfID,
+		From:      round.SelfID,
 		Broadcast: pb.Broadcast_Basic,
 		Content: &pb.Message_Keygen3{
 			Keygen3: &pb.Keygen3{
@@ -90,7 +90,7 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 }
 
 func (round *round3) Finalize() (round.Round, error) {
-	for _, id := range round.s.Parties() {
+	for _, id := range round.S.Parties() {
 		if !round.IsProcessed(id) {
 		}
 	}
@@ -106,7 +106,7 @@ func (round *round3) MessageType() pb.MessageType {
 }
 
 func (round *round3) RequiredMessageCount() int {
-	return round.s.N() - 1
+	return round.S.N() - 1
 }
 
 func (round *round3) IsProcessed(id party.ID) bool {

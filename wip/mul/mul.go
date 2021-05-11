@@ -35,7 +35,7 @@ func (commitment *Commitment) Challenge() *big.Int {
 // NewProof generates a proof that the
 func NewProof(verifier *paillier.PublicKey, X, Y, C *paillier.Ciphertext,
 	x *big.Int, rho, rhoX *big.Int) *Proof {
-	N := verifier.N()
+	N := verifier.N
 
 	alpha := sample.UnitModN(N)
 

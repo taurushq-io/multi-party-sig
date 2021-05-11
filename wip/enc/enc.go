@@ -42,7 +42,7 @@ func (commitment *Commitment) Challenge() *big.Int {
 func NewProof(
 	prover *paillier.PublicKey, verifier *pedersen.Parameters, K *paillier.Ciphertext,
 	k, rho *big.Int) *Proof {
-	N := prover.N()
+	N := prover.N
 
 	alpha := sample.PlusMinus(params.LPlusEpsilon, false)
 	mu := sample.PlusMinus(params.L, true)

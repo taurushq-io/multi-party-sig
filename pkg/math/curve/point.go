@@ -1,6 +1,7 @@
 package curve
 
 import (
+	"crypto/ecdsa"
 	"errors"
 	"math/big"
 )
@@ -35,6 +36,12 @@ func (v *Point) BytesCompressed() []byte {
 func (v *Point) Set(u *Point) *Point {
 	v.x.Set(&u.x)
 	v.y.Set(&u.y)
+	return v
+}
+
+func (v *Point) SetPublicKey(pk *ecdsa.PublicKey) *Point {
+	v.x.Set(pk.X)
+	v.y.Set(pk.Y)
 	return v
 }
 
@@ -128,4 +135,26 @@ func (v *Point) setCoords(x, y *big.Int) *Point {
 // IsIdentity returns true if the point is ∞
 func (v *Point) IsIdentity() bool {
 	return v.x.Sign() == 0 && v.y.Sign() == 0
+}
+
+// ToPublicKey returns an "official" ECDSA public key
+func (v *Point) ToPublicKey() *ecdsa.PublicKey {
+	return &ecdsa.PublicKey{
+		Curve: Curve,
+		X:     &v.x,
+		Y:     &v.y,
+	}
+}
+
+func (v *Point) X() *Scalar {
+	var s Scalar
+	s.SetBigInt(&v.x)
+
+	//qHalf := big.NewInt(0).Set(Q)
+	//qHalf.Rsh(qHalf, 1)
+	//if s.s.Cmp(qHalf) == 1 {
+	//	s.Negate(&s)
+	//}
+
+	return &s
 }

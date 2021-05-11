@@ -67,7 +67,7 @@ func NewProof(
 	z2.Mul(e, mu)
 	z2.Add(&z2, nu)
 
-	N0 := prover.N()
+	N0 := prover.N
 	w.Exp(rho, e, N0)
 	w.Mul(&w, r)
 	w.Mod(&w, N0)

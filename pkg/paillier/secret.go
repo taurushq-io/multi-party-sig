@@ -12,7 +12,7 @@ type SecretKey struct {
 func NewSecretKey(phi *big.Int, pk *PublicKey) *SecretKey {
 	return &SecretKey{
 		phi:    phi,
-		phiInv: new(big.Int).ModInverse(phi, pk.n),
+		phiInv: new(big.Int).ModInverse(phi, pk.N),
 		pk:     pk,
 	}
 }
@@ -38,8 +38,8 @@ func (sk *SecretKey) PublicKey() *PublicKey {
 
 // Dec decrypts c and returns the plaintext m ∈ ± (N-2)/2
 func (sk *SecretKey) Dec(c *Ciphertext) *big.Int {
-	n := sk.pk.n
-	nSquared := sk.pk.nSquared
+	n := sk.pk.N
+	nSquared := sk.pk.NSquared
 	phi := sk.Phi()
 	phiInv := sk.PhiInv()
 

@@ -203,7 +203,7 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 			if t == nil {
 				return errNilValue
 			}
-			_, err = hash.h.Write(t.N().FillBytes(bufPaillier))
+			_, err = hash.h.Write(t.N.FillBytes(bufPaillier))
 		case *pedersen.Parameters:
 			if t == nil {
 				return errNilValue

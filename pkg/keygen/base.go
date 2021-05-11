@@ -4,20 +4,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
 )
-
-type roundBase struct {
-	s *session.Session
-	p *Parameters
-	h *hash.Hash
-
-	selfID    party.ID
-	thisParty *localParty
-	parties   map[party.ID]*localParty
-}
 
 func NewRound(session *session.Session, selfID party.ID, parameters *Parameters) (*round1, error) {
 	if parameters == nil {
@@ -41,18 +31,15 @@ func NewRound(session *session.Session, selfID party.ID, parameters *Parameters)
 		parties[j] = newParty(j)
 	}
 
-	h, err := session.Hash()
+	base, err := round.NewBaseRound(session, selfID)
 	if err != nil {
-		return nil, fmt.Errorf("newRound: session.Hash: %w", err)
+		return nil, err
 	}
 
 	return &round1{
-		roundBase: &roundBase{
-			s:         session,
-			p:         parameters,
-			h:         h,
-			selfID:    selfID,
-			thisParty: parties[selfID],
-			parties:   parties,
-		}}, nil
+		BaseRound: base,
+		p:         parameters,
+		thisParty: parties[selfID],
+		parties:   parties,
+	}, nil
 }

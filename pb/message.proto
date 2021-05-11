@@ -10,13 +10,18 @@ import "zk.proto";
 enum MessageType {
   TypeInvalid = 0;
 
-  TypeKeygen1 = 1;
-  TypeKeygen2 = 2;
-  TypeKeygen3 = 3;
+  TypeKeygen1 = 11;
+  TypeKeygen2 = 12;
+  TypeKeygen3 = 13;
 
-  TypeRefresh1 = 4;
-  TypeRefresh2 = 5;
-  TypeRefresh3 = 6;
+  TypeRefresh1 = 21;
+  TypeRefresh2 = 22;
+  TypeRefresh3 = 23;
+
+  TypeSign1 = 31;
+  TypeSign2 = 32;
+  TypeSign3 = 33;
+  TypeSign4 = 34;
 }
 
 enum Broadcast {
@@ -34,11 +39,18 @@ message Message {
     Keygen1 keygen1 = 11;
     Keygen2 keygen2 = 12;
     Keygen3 keygen3 = 13;
+
     Refresh1 refresh1 = 21;
     Refresh2 refresh2 = 22;
     Refresh3 refresh3 = 23;
+
+    Sign1 sign1 = 31;
+    Sign2 sign2 = 32;
+    Sign3 sign3 = 33;
+    Sign4 sign4 = 34;
   }
 }
+
 
 message Keygen1 {
   bytes hash = 1;
@@ -49,6 +61,8 @@ message Keygen2 {
   Point X = 2;
   Point A = 3;
   bytes u = 4;
+
+  bytes prevHash = 10;
 }
 
 message Keygen3 {
@@ -69,6 +83,8 @@ message Refresh2 {
   Int T = 7;
   bytes rho = 8;
   bytes u = 9;
+
+  bytes prevHash = 10;
 }
 
 message Refresh3 {
@@ -79,14 +95,29 @@ message Refresh3 {
   Scalar schY = 5;
 }
 
-// Sign1 should actually be two messages, the first is broadcast and the second it p2p
 message Sign1 {
-  Ciphertext Ki = 1;
-  Ciphertext Gi = 2;
-  ZKEnc enc = 3;
+  ZKEnc enc = 1;
+  Ciphertext K = 2;
+  Ciphertext G = 3;
 }
 
 message Sign2 {
-  Point Gamma_i = 1;
+  Point Gamma = 1;
+  Ciphertext D = 2;
+  Ciphertext F = 3;
+  Ciphertext DHat = 4;
+  Ciphertext FHat = 5;
+  ZKAffG ProofAffG = 6;
+  ZKAffG ProofAffGHat = 7;
+  ZKLogStar ProofLog = 8;
+}
 
+message Sign3 {
+  Scalar Delta = 1;
+  Point DeltaGroup = 2;
+  ZKLogStar ProofLog = 3;
+}
+
+message Sign4 {
+  Scalar Sigma = 1;
 }
