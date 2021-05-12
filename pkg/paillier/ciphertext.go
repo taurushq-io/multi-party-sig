@@ -11,7 +11,7 @@ type Ciphertext struct {
 	c big.Int
 }
 
-const cipherTextWordSize = params.PaillierBits/bits.UintSize + 1
+const cipherTextWordSize = 4*params.PaillierBits/bits.UintSize + 8
 
 var one = big.NewInt(1)
 
@@ -24,13 +24,13 @@ func (ct *Ciphertext) Enc(pk *PublicKey, m *big.Int, nonce *big.Int) (*Ciphertex
 		nonce = pk.Nonce()
 	}
 
-	ct.c.Set(pk.N)                  // N
-	ct.c.Add(&ct.c, one)            // N + 1
-	ct.c.Exp(&ct.c, m, pk.NSquared) // (N+1)ᵐ mod N²
+	tmp.Set(pk.N)                 // N
+	tmp.Add(tmp, one)             // N + 1
+	ct.c.Exp(tmp, m, pk.NSquared) // (N+1)ᵐ mod N²
 
 	tmp.Exp(nonce, pk.N, pk.NSquared) // rho ^ N mod N²
 
-	ct.c.Mul(&ct.c, &tmp) // (N+1)ᵐ rho ^ N
+	ct.c.Mul(&ct.c, tmp) // (N+1)ᵐ rho ^ N
 	ct.c.Mod(&ct.c, pk.NSquared)
 
 	return ct, nonce
@@ -66,12 +66,12 @@ func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *big.Int) (*Ciphertext, *bi
 		nonce = pk.Nonce()
 	}
 	tmp.Exp(nonce, pk.N, pk.NSquared) // tmp = r^N
-	ct.c.Mul(&ct.c, &tmp)             // ct = ct * tmp
+	ct.c.Mul(&ct.c, tmp)              // ct = ct * tmp
 	ct.c.Mod(&ct.c, pk.NSquared)      // ct = ct*r^N
 	return ct, nonce
 }
 
-//Not sure we need this now
+// Int returns a big.Int
 func (ct *Ciphertext) Int() *big.Int {
 	return &ct.c
 }
@@ -87,9 +87,16 @@ func (ct *Ciphertext) SetInt(n *big.Int) {
 	ct.c.Set(n)
 }
 
-func newCipherTextInt() big.Int {
+func NewCiphertext() *Ciphertext {
+	var ct Ciphertext
+	buf := make([]big.Word, 0, cipherTextWordSize+2)
+	ct.c.SetBits(buf)
+	return &ct
+}
+
+func newCipherTextInt() *big.Int {
 	tmpBuf := make([]big.Word, 0, cipherTextWordSize)
 	var tmp big.Int
 	tmp.SetBits(tmpBuf)
-	return tmp
+	return &tmp
 }

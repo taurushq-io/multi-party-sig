@@ -179,7 +179,7 @@ func TestRound(t *testing.T) {
 	// check pub key is the same for all
 	pub := curve.NewIdentityPoint().ScalarBaseMult(share)
 	for _, p := range parties {
-		if pub.Equal(p.r.(*output).X) != 1 {
+		if !pub.Equal(p.r.(*output).X) {
 			t.Error("X is different")
 		}
 	}

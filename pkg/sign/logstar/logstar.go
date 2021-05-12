@@ -139,11 +139,11 @@ func (public Public) Verify(hash *hash.Hash, proof *pb.ZKLogStar) bool {
 		return false
 	}
 
-	var rhsCt paillier.Ciphertext
+	rhsCt := paillier.NewCiphertext()
 	lhsCt, _ := prover.Enc(z1, z2)
 	rhsCt.Mul(prover, public.C, e)
-	rhsCt.Add(prover, &rhsCt, A)
-	if !lhsCt.Equal(&rhsCt) {
+	rhsCt.Add(prover, rhsCt, A)
+	if !lhsCt.Equal(rhsCt) {
 		return false
 	}
 
@@ -151,7 +151,7 @@ func (public Public) Verify(hash *hash.Hash, proof *pb.ZKLogStar) bool {
 	rhs := curve.NewIdentityPoint().Add(Y, lhs)
 
 	lhs.ScalarMult(curve.NewScalarBigInt(z1), public.G)
-	if lhs.Equal(rhs) != 1 {
+	if !lhs.Equal(rhs) {
 		return false
 	}
 

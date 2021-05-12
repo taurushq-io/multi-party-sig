@@ -1,4 +1,4 @@
-package zkcommon
+package zk
 
 import (
 	"math/big"

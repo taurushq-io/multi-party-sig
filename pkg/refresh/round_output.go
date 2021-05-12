@@ -52,7 +52,7 @@ func (round *output) ProcessMessage(msg *pb.Message) error {
 
 	// verify share
 	X := curve.NewIdentityPoint().ScalarBaseMult(xJ)
-	if X.Equal(partyJ.X[round.SelfIndex]) != 1 {
+	if !X.Equal(partyJ.X[round.SelfIndex]) {
 		return errors.New("decrypted share is bad")
 	}
 	round.xReceived[idxJ] = xJ

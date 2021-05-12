@@ -99,8 +99,8 @@ func NewCiphertext(c *paillier.Ciphertext) *Ciphertext {
 }
 
 func (x *Ciphertext) Unmarshal() *paillier.Ciphertext {
-	var c paillier.Ciphertext
+	c := paillier.NewCiphertext()
 	n := x.C.Unmarshal()
 	c.SetInt(n)
-	return &c
+	return c
 }

@@ -22,6 +22,9 @@ enum MessageType {
   TypeSign2 = 32;
   TypeSign3 = 33;
   TypeSign4 = 34;
+
+  TypeAbort1 = 41;
+  TypeAbort2 = 42;
 }
 
 enum Broadcast {
@@ -48,6 +51,9 @@ message Message {
     Sign2 sign2 = 32;
     Sign3 sign3 = 33;
     Sign4 sign4 = 34;
+
+    Abort1 abort1 = 41;
+    Abort2 abort2 = 42;
   }
 }
 
@@ -120,4 +126,16 @@ message Sign3 {
 
 message Sign4 {
   Scalar Sigma = 1;
+}
+
+message Abort1 {
+  map <string, ZKAffG> proofAffg = 1;
+  ZKMul proofMul = 2;
+  map <string, ZKDec> proofDec = 3;
+}
+
+message Abort2 {
+  map <string, ZKAffG> proofAffg = 1;
+  map <string, ZKMulStar> proofMul = 2;
+  map <string, ZKDec> proofDec = 3;
 }

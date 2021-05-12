@@ -68,7 +68,6 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 		Prover: partyJ.Paillier,
 		Aux:    round.thisParty.Pedersen,
 	}
-
 	if !zkLogPublic.Verify(round.H.CloneWithID(j), body.ProofLog) {
 		return errors.New("zklog r3 failed")
 	}
@@ -109,42 +108,48 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 		round.chi.Add(round.chi, partyJ.ChiMtA.Beta)
 	}
 
-	zkLogPublic := zklogstar.Public{
-		C:      round.thisParty.K,
-		X:      round.thisParty.Delta,
-		G:      round.Gamma,
-		Prover: round.thisParty.Paillier,
-	}
-	zkLogPrivate := zklogstar.Private{
-		X:   round.k.BigInt(),
-		Rho: round.kRand,
-	}
 	messages := make([]*pb.Message, 0, round.S.N()-1)
 	for j, partyJ := range round.parties {
 		if j == round.SelfID {
 			continue
 		}
 
-		zkLogPublic.Aux = partyJ.Pedersen
-		proofLog, err := zkLogPublic.Prove(round.H.CloneWithID(round.SelfID), zkLogPrivate)
+		msg, err := round.message3(partyJ)
 		if err != nil {
 			return nil, err
 		}
 
-		msg := &pb.Message{
-			Type: pb.MessageType_TypeSign3,
-			From: round.SelfID,
-			To:   j,
-			Content: &pb.Message_Sign3{Sign3: &pb.Sign3{
-				Delta:      pb.NewScalar(round.thisParty.delta),
-				DeltaGroup: pb.NewPoint(round.thisParty.Delta),
-				ProofLog:   proofLog,
-			}},
-		}
 		messages = append(messages, msg)
 	}
 
 	return messages, nil
+}
+
+func (round *round3) message3(partyJ *localParty) (*pb.Message, error) {
+	proofLog, err := zklogstar.Public{
+		C:      round.thisParty.K,
+		X:      round.thisParty.Delta,
+		G:      round.Gamma,
+		Prover: round.thisParty.Paillier,
+		Aux:    partyJ.Pedersen,
+	}.Prove(round.H.CloneWithID(round.SelfID), zklogstar.Private{
+		X:   round.k.BigInt(),
+		Rho: round.kRand,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Message{
+		Type: pb.MessageType_TypeSign3,
+		From: round.SelfID,
+		To:   partyJ.ID,
+		Content: &pb.Message_Sign3{Sign3: &pb.Sign3{
+			Delta:      pb.NewScalar(round.thisParty.delta),
+			DeltaGroup: pb.NewPoint(round.thisParty.Delta),
+			ProofLog:   proofLog,
+		}},
+	}, nil
 }
 
 func (round *round3) Finalize() (round.Round, error) {

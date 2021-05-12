@@ -180,12 +180,12 @@ func TestRound(t *testing.T) {
 	}
 
 	chi2 := curve.NewScalar().Multiply(x, k)
-	if chi2.Equal(chi) != 1 {
+	if !chi2.Equal(chi) {
 		t.Error("chi")
 	}
 
 	delta2 := curve.NewScalar().Multiply(gamma, k)
-	if delta2.Equal(delta) != 1 {
+	if !delta2.Equal(delta) {
 		t.Error("delta")
 	}
 
@@ -243,19 +243,19 @@ func TestRound(t *testing.T) {
 
 		msgs5 = append(msgs5, msgs5New...)
 
-		if r.r.Equal(rx) != 1 {
+		if !r.r.Equal(rx) {
 			t.Error("r not the same")
 		}
 
-		if r.R.Equal(R) != 1 {
+		if !r.R.Equal(R) {
 			t.Error("r not the same")
 		}
 
-		if r.signature.R.Equal(R) != 1 {
+		if !r.signature.R.Equal(R) {
 			t.Error("R not the same")
 		}
 
-		if r.signature.S.Equal(sigma) != 1 {
+		if !r.signature.S.Equal(sigma) {
 			t.Error("sigma not the same")
 		}
 

@@ -43,59 +43,64 @@ func (round *round2) ProcessMessage(msg *pb.Message) error {
 
 func (round *round2) GenerateMessages() ([]*pb.Message, error) {
 	// Broadcast the message we created in round1
-
-	zkLogPublic := zklogstar.Public{
-		C:      round.thisParty.G,
-		X:      round.thisParty.Gamma,
-		Prover: round.thisParty.Paillier,
-	}
-
-	zkLogPrivate := zklogstar.Private{
-		X:   round.gamma.BigInt(),
-		Rho: round.gammaRand,
-	}
-
 	messages := make([]*pb.Message, 0, round.S.N()-1)
 	for j, partyJ := range round.parties {
 		if j == round.SelfID {
 			continue
 		}
+
 		partyJ.DeltaMtA = mta.New(round.gamma, partyJ.K, partyJ.Paillier, round.thisParty.Paillier)
 		partyJ.ChiMtA = mta.New(round.ecdsa, partyJ.K, partyJ.Paillier, round.thisParty.Paillier)
-		proofDelta, err := partyJ.DeltaMtA.ProveAffG(round.thisParty.Gamma, round.H.CloneWithID(round.SelfID), partyJ.Pedersen)
-		if err != nil {
-			return nil, err
-		}
-		proofChi, err := partyJ.ChiMtA.ProveAffG(round.thisParty.ECDSA, round.H.CloneWithID(round.SelfID), partyJ.Pedersen)
+
+		msg2, err := round.message2(partyJ)
 		if err != nil {
 			return nil, err
 		}
 
-		zkLogPublic.Aux = partyJ.Pedersen
-		proofLog, err := zkLogPublic.Prove(round.H.CloneWithID(round.SelfID), zkLogPrivate)
-		if err != nil {
-			return nil, err
-		}
-
-		msg := &pb.Message{
-			Type: pb.MessageType_TypeSign2,
-			From: round.SelfID,
-			To:   j,
-			Content: &pb.Message_Sign2{Sign2: &pb.Sign2{
-				Gamma:        pb.NewPoint(round.thisParty.Gamma),
-				D:            pb.NewCiphertext(partyJ.DeltaMtA.D),
-				F:            pb.NewCiphertext(partyJ.DeltaMtA.F),
-				DHat:         pb.NewCiphertext(partyJ.ChiMtA.D),
-				FHat:         pb.NewCiphertext(partyJ.ChiMtA.F),
-				ProofAffG:    proofDelta,
-				ProofAffGHat: proofChi,
-				ProofLog:     proofLog,
-			}},
-		}
-		messages = append(messages, msg)
+		messages = append(messages, msg2)
 	}
 
 	return messages, nil
+}
+
+func (round *round2) message2(partyJ *localParty) (*pb.Message, error) {
+	proofDelta, err := partyJ.DeltaMtA.ProveAffG(round.thisParty.Gamma, round.H.CloneWithID(round.SelfID), partyJ.Pedersen)
+	if err != nil {
+		return nil, err
+	}
+	proofChi, err := partyJ.ChiMtA.ProveAffG(round.thisParty.ECDSA, round.H.CloneWithID(round.SelfID), partyJ.Pedersen)
+	if err != nil {
+		return nil, err
+	}
+
+	proofLog, err := zklogstar.Public{
+		C:      round.thisParty.G,
+		X:      round.thisParty.Gamma,
+		Prover: round.thisParty.Paillier,
+		Aux:    partyJ.Pedersen,
+	}.Prove(round.H.CloneWithID(round.SelfID), zklogstar.Private{
+		X:   round.gamma.BigInt(),
+		Rho: round.gammaRand,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Message{
+		Type: pb.MessageType_TypeSign2,
+		From: round.SelfID,
+		To:   partyJ.ID,
+		Content: &pb.Message_Sign2{Sign2: &pb.Sign2{
+			Gamma:        pb.NewPoint(round.thisParty.Gamma),
+			D:            pb.NewCiphertext(partyJ.DeltaMtA.D),
+			F:            pb.NewCiphertext(partyJ.DeltaMtA.F),
+			DHat:         pb.NewCiphertext(partyJ.ChiMtA.D),
+			FHat:         pb.NewCiphertext(partyJ.ChiMtA.F),
+			ProofAffG:    proofDelta,
+			ProofAffGHat: proofChi,
+			ProofLog:     proofLog,
+		}},
+	}, nil
 }
 
 func (round *round2) Finalize() (round.Round, error) {

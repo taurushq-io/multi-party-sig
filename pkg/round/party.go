@@ -36,12 +36,12 @@ func (p *Party) AddMessage(msg *pb.Message) error {
 	defer p.mu.Unlock()
 
 	if p.ID != msg.GetFrom() {
-		return fmt.Errorf("peer %d: %w", p.ID, ErrWrongRecipient)
+		return fmt.Errorf("peer %s: %w", p.ID, ErrWrongRecipient)
 	}
 	t := msg.GetType()
 	_, ok := p.Messages[t]
 	if ok {
-		return fmt.Errorf("peer %d: %w", p.ID, ErrDuplicateMessage)
+		return fmt.Errorf("peer %s: %w", p.ID, ErrDuplicateMessage)
 	}
 
 	p.Messages[t] = msg

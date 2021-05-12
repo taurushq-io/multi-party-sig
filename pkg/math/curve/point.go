@@ -91,11 +91,11 @@ func (v *Point) Negate(p *Point) *Point {
 }
 
 // Equal returns 1 if v is equivalent to u, and 0 otherwise.
-func (v *Point) Equal(u *Point) int {
+func (v *Point) Equal(u *Point) bool {
 	if v.x.Cmp(&u.x) == 0 && v.y.Cmp(&u.y) == 0 {
-		return 1
+		return true
 	}
-	return 0
+	return false
 }
 
 // ScalarBaseMult sets v = x * B, where B is the canonical generator, and
@@ -149,12 +149,6 @@ func (v *Point) ToPublicKey() *ecdsa.PublicKey {
 func (v *Point) X() *Scalar {
 	var s Scalar
 	s.SetBigInt(&v.x)
-
-	//qHalf := big.NewInt(0).Set(Q)
-	//qHalf.Rsh(qHalf, 1)
-	//if s.s.Cmp(qHalf) == 1 {
-	//	s.Negate(&s)
-	//}
 
 	return &s
 }

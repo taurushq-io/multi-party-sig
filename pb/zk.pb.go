@@ -479,6 +479,275 @@ func (x *ZKAffG) GetWy() *Int {
 	return nil
 }
 
+type ZKMulStar struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	A  *Ciphertext `protobuf:"bytes,1,opt,name=A,proto3" json:"A,omitempty"`
+	Bx *Point      `protobuf:"bytes,2,opt,name=Bx,proto3" json:"Bx,omitempty"`
+	E  *Int        `protobuf:"bytes,4,opt,name=E,proto3" json:"E,omitempty"`
+	S  *Int        `protobuf:"bytes,5,opt,name=S,proto3" json:"S,omitempty"`
+	Z1 *Int        `protobuf:"bytes,8,opt,name=Z1,proto3" json:"Z1,omitempty"`
+	Z2 *Int        `protobuf:"bytes,9,opt,name=Z2,proto3" json:"Z2,omitempty"`
+	W  *Int        `protobuf:"bytes,12,opt,name=W,proto3" json:"W,omitempty"`
+}
+
+func (x *ZKMulStar) Reset() {
+	*x = ZKMulStar{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_zk_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ZKMulStar) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ZKMulStar) ProtoMessage() {}
+
+func (x *ZKMulStar) ProtoReflect() protoreflect.Message {
+	mi := &file_zk_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ZKMulStar.ProtoReflect.Descriptor instead.
+func (*ZKMulStar) Descriptor() ([]byte, []int) {
+	return file_zk_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ZKMulStar) GetA() *Ciphertext {
+	if x != nil {
+		return x.A
+	}
+	return nil
+}
+
+func (x *ZKMulStar) GetBx() *Point {
+	if x != nil {
+		return x.Bx
+	}
+	return nil
+}
+
+func (x *ZKMulStar) GetE() *Int {
+	if x != nil {
+		return x.E
+	}
+	return nil
+}
+
+func (x *ZKMulStar) GetS() *Int {
+	if x != nil {
+		return x.S
+	}
+	return nil
+}
+
+func (x *ZKMulStar) GetZ1() *Int {
+	if x != nil {
+		return x.Z1
+	}
+	return nil
+}
+
+func (x *ZKMulStar) GetZ2() *Int {
+	if x != nil {
+		return x.Z2
+	}
+	return nil
+}
+
+func (x *ZKMulStar) GetW() *Int {
+	if x != nil {
+		return x.W
+	}
+	return nil
+}
+
+type ZKMul struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	A *Ciphertext `protobuf:"bytes,1,opt,name=A,proto3" json:"A,omitempty"`
+	B *Ciphertext `protobuf:"bytes,2,opt,name=B,proto3" json:"B,omitempty"`
+	Z *Int        `protobuf:"bytes,3,opt,name=Z,proto3" json:"Z,omitempty"`
+	U *Int        `protobuf:"bytes,4,opt,name=U,proto3" json:"U,omitempty"`
+	V *Int        `protobuf:"bytes,5,opt,name=V,proto3" json:"V,omitempty"`
+}
+
+func (x *ZKMul) Reset() {
+	*x = ZKMul{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_zk_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ZKMul) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ZKMul) ProtoMessage() {}
+
+func (x *ZKMul) ProtoReflect() protoreflect.Message {
+	mi := &file_zk_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ZKMul.ProtoReflect.Descriptor instead.
+func (*ZKMul) Descriptor() ([]byte, []int) {
+	return file_zk_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ZKMul) GetA() *Ciphertext {
+	if x != nil {
+		return x.A
+	}
+	return nil
+}
+
+func (x *ZKMul) GetB() *Ciphertext {
+	if x != nil {
+		return x.B
+	}
+	return nil
+}
+
+func (x *ZKMul) GetZ() *Int {
+	if x != nil {
+		return x.Z
+	}
+	return nil
+}
+
+func (x *ZKMul) GetU() *Int {
+	if x != nil {
+		return x.U
+	}
+	return nil
+}
+
+func (x *ZKMul) GetV() *Int {
+	if x != nil {
+		return x.V
+	}
+	return nil
+}
+
+type ZKDec struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	S     *Int        `protobuf:"bytes,1,opt,name=S,proto3" json:"S,omitempty"`
+	T     *Int        `protobuf:"bytes,2,opt,name=T,proto3" json:"T,omitempty"`
+	A     *Ciphertext `protobuf:"bytes,3,opt,name=A,proto3" json:"A,omitempty"`
+	Gamma *Scalar     `protobuf:"bytes,4,opt,name=Gamma,proto3" json:"Gamma,omitempty"`
+	Z1    *Int        `protobuf:"bytes,5,opt,name=Z1,proto3" json:"Z1,omitempty"`
+	Z2    *Int        `protobuf:"bytes,6,opt,name=Z2,proto3" json:"Z2,omitempty"`
+	W     *Int        `protobuf:"bytes,7,opt,name=W,proto3" json:"W,omitempty"`
+}
+
+func (x *ZKDec) Reset() {
+	*x = ZKDec{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_zk_proto_msgTypes[7]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ZKDec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ZKDec) ProtoMessage() {}
+
+func (x *ZKDec) ProtoReflect() protoreflect.Message {
+	mi := &file_zk_proto_msgTypes[7]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ZKDec.ProtoReflect.Descriptor instead.
+func (*ZKDec) Descriptor() ([]byte, []int) {
+	return file_zk_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ZKDec) GetS() *Int {
+	if x != nil {
+		return x.S
+	}
+	return nil
+}
+
+func (x *ZKDec) GetT() *Int {
+	if x != nil {
+		return x.T
+	}
+	return nil
+}
+
+func (x *ZKDec) GetA() *Ciphertext {
+	if x != nil {
+		return x.A
+	}
+	return nil
+}
+
+func (x *ZKDec) GetGamma() *Scalar {
+	if x != nil {
+		return x.Gamma
+	}
+	return nil
+}
+
+func (x *ZKDec) GetZ1() *Int {
+	if x != nil {
+		return x.Z1
+	}
+	return nil
+}
+
+func (x *ZKDec) GetZ2() *Int {
+	if x != nil {
+		return x.Z2
+	}
+	return nil
+}
+
+func (x *ZKDec) GetW() *Int {
+	if x != nil {
+		return x.W
+	}
+	return nil
+}
+
 var File_zk_proto protoreflect.FileDescriptor
 
 var file_zk_proto_rawDesc = []byte{
@@ -536,10 +805,43 @@ var file_zk_proto_rawDesc = []byte{
 	0x28, 0x0b, 0x32, 0x07, 0x2e, 0x70, 0x62, 0x2e, 0x49, 0x6e, 0x74, 0x52, 0x02, 0x5a, 0x34, 0x12,
 	0x15, 0x0a, 0x01, 0x57, 0x18, 0x0c, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x07, 0x2e, 0x70, 0x62, 0x2e,
 	0x49, 0x6e, 0x74, 0x52, 0x01, 0x57, 0x12, 0x17, 0x0a, 0x02, 0x57, 0x79, 0x18, 0x0d, 0x20, 0x01,
-	0x28, 0x0b, 0x32, 0x07, 0x2e, 0x70, 0x62, 0x2e, 0x49, 0x6e, 0x74, 0x52, 0x02, 0x57, 0x79, 0x42,
-	0x25, 0x5a, 0x23, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x61,
-	0x75, 0x72, 0x75, 0x73, 0x67, 0x72, 0x6f, 0x75, 0x70, 0x2f, 0x63, 0x6d, 0x70, 0x2d, 0x65, 0x63,
-	0x64, 0x73, 0x61, 0x2f, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x28, 0x0b, 0x32, 0x07, 0x2e, 0x70, 0x62, 0x2e, 0x49, 0x6e, 0x74, 0x52, 0x02, 0x57, 0x79, 0x22,
+	0xbb, 0x01, 0x0a, 0x09, 0x5a, 0x4b, 0x4d, 0x75, 0x6c, 0x53, 0x74, 0x61, 0x72, 0x12, 0x1c, 0x0a,
+	0x01, 0x41, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0e, 0x2e, 0x70, 0x62, 0x2e, 0x43, 0x69,
+	0x70, 0x68, 0x65, 0x72, 0x74, 0x65, 0x78, 0x74, 0x52, 0x01, 0x41, 0x12, 0x19, 0x0a, 0x02, 0x42,
+	0x78, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x09, 0x2e, 0x70, 0x62, 0x2e, 0x50, 0x6f, 0x69,
+	0x6e, 0x74, 0x52, 0x02, 0x42, 0x78, 0x12, 0x15, 0x0a, 0x01, 0x45, 0x18, 0x04, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x07, 0x2e, 0x70, 0x62, 0x2e, 0x49, 0x6e, 0x74, 0x52, 0x01, 0x45, 0x12, 0x15, 0x0a,
+	0x01, 0x53, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x07, 0x2e, 0x70, 0x62, 0x2e, 0x49, 0x6e,
+	0x74, 0x52, 0x01, 0x53, 0x12, 0x17, 0x0a, 0x02, 0x5a, 0x31, 0x18, 0x08, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x07, 0x2e, 0x70, 0x62, 0x2e, 0x49, 0x6e, 0x74, 0x52, 0x02, 0x5a, 0x31, 0x12, 0x17, 0x0a,
+	0x02, 0x5a, 0x32, 0x18, 0x09, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x07, 0x2e, 0x70, 0x62, 0x2e, 0x49,
+	0x6e, 0x74, 0x52, 0x02, 0x5a, 0x32, 0x12, 0x15, 0x0a, 0x01, 0x57, 0x18, 0x0c, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x07, 0x2e, 0x70, 0x62, 0x2e, 0x49, 0x6e, 0x74, 0x52, 0x01, 0x57, 0x22, 0x88, 0x01,
+	0x0a, 0x05, 0x5a, 0x4b, 0x4d, 0x75, 0x6c, 0x12, 0x1c, 0x0a, 0x01, 0x41, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x0b, 0x32, 0x0e, 0x2e, 0x70, 0x62, 0x2e, 0x43, 0x69, 0x70, 0x68, 0x65, 0x72, 0x74, 0x65,
+	0x78, 0x74, 0x52, 0x01, 0x41, 0x12, 0x1c, 0x0a, 0x01, 0x42, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x0e, 0x2e, 0x70, 0x62, 0x2e, 0x43, 0x69, 0x70, 0x68, 0x65, 0x72, 0x74, 0x65, 0x78, 0x74,
+	0x52, 0x01, 0x42, 0x12, 0x15, 0x0a, 0x01, 0x5a, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x07,
+	0x2e, 0x70, 0x62, 0x2e, 0x49, 0x6e, 0x74, 0x52, 0x01, 0x5a, 0x12, 0x15, 0x0a, 0x01, 0x55, 0x18,
+	0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x07, 0x2e, 0x70, 0x62, 0x2e, 0x49, 0x6e, 0x74, 0x52, 0x01,
+	0x55, 0x12, 0x15, 0x0a, 0x01, 0x56, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x07, 0x2e, 0x70,
+	0x62, 0x2e, 0x49, 0x6e, 0x74, 0x52, 0x01, 0x56, 0x22, 0xbe, 0x01, 0x0a, 0x05, 0x5a, 0x4b, 0x44,
+	0x65, 0x63, 0x12, 0x15, 0x0a, 0x01, 0x53, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x07, 0x2e,
+	0x70, 0x62, 0x2e, 0x49, 0x6e, 0x74, 0x52, 0x01, 0x53, 0x12, 0x15, 0x0a, 0x01, 0x54, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x07, 0x2e, 0x70, 0x62, 0x2e, 0x49, 0x6e, 0x74, 0x52, 0x01, 0x54,
+	0x12, 0x1c, 0x0a, 0x01, 0x41, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0e, 0x2e, 0x70, 0x62,
+	0x2e, 0x43, 0x69, 0x70, 0x68, 0x65, 0x72, 0x74, 0x65, 0x78, 0x74, 0x52, 0x01, 0x41, 0x12, 0x20,
+	0x0a, 0x05, 0x47, 0x61, 0x6d, 0x6d, 0x61, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0a, 0x2e,
+	0x70, 0x62, 0x2e, 0x53, 0x63, 0x61, 0x6c, 0x61, 0x72, 0x52, 0x05, 0x47, 0x61, 0x6d, 0x6d, 0x61,
+	0x12, 0x17, 0x0a, 0x02, 0x5a, 0x31, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x07, 0x2e, 0x70,
+	0x62, 0x2e, 0x49, 0x6e, 0x74, 0x52, 0x02, 0x5a, 0x31, 0x12, 0x17, 0x0a, 0x02, 0x5a, 0x32, 0x18,
+	0x06, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x07, 0x2e, 0x70, 0x62, 0x2e, 0x49, 0x6e, 0x74, 0x52, 0x02,
+	0x5a, 0x32, 0x12, 0x15, 0x0a, 0x01, 0x57, 0x18, 0x07, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x07, 0x2e,
+	0x70, 0x62, 0x2e, 0x49, 0x6e, 0x74, 0x52, 0x01, 0x57, 0x42, 0x25, 0x5a, 0x23, 0x67, 0x69, 0x74,
+	0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x61, 0x75, 0x72, 0x75, 0x73, 0x67, 0x72,
+	0x6f, 0x75, 0x70, 0x2f, 0x63, 0x6d, 0x70, 0x2d, 0x65, 0x63, 0x64, 0x73, 0x61, 0x2f, 0x70, 0x62,
+	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -554,54 +856,77 @@ func file_zk_proto_rawDescGZIP() []byte {
 	return file_zk_proto_rawDescData
 }
 
-var file_zk_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_zk_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_zk_proto_goTypes = []interface{}{
 	(*ZKMod)(nil),      // 0: pb.ZKMod
 	(*ZKPrm)(nil),      // 1: pb.ZKPrm
 	(*ZKEnc)(nil),      // 2: pb.ZKEnc
 	(*ZKLogStar)(nil),  // 3: pb.ZKLogStar
 	(*ZKAffG)(nil),     // 4: pb.ZKAffG
-	(*Int)(nil),        // 5: pb.Int
-	(*Ciphertext)(nil), // 6: pb.Ciphertext
-	(*Point)(nil),      // 7: pb.Point
+	(*ZKMulStar)(nil),  // 5: pb.ZKMulStar
+	(*ZKMul)(nil),      // 6: pb.ZKMul
+	(*ZKDec)(nil),      // 7: pb.ZKDec
+	(*Int)(nil),        // 8: pb.Int
+	(*Ciphertext)(nil), // 9: pb.Ciphertext
+	(*Point)(nil),      // 10: pb.Point
+	(*Scalar)(nil),     // 11: pb.Scalar
 }
 var file_zk_proto_depIdxs = []int32{
-	5,  // 0: pb.ZKMod.w:type_name -> pb.Int
-	5,  // 1: pb.ZKMod.x:type_name -> pb.Int
-	5,  // 2: pb.ZKMod.z:type_name -> pb.Int
-	5,  // 3: pb.ZKPrm.a:type_name -> pb.Int
-	5,  // 4: pb.ZKPrm.z:type_name -> pb.Int
-	5,  // 5: pb.ZKEnc.S:type_name -> pb.Int
-	6,  // 6: pb.ZKEnc.A:type_name -> pb.Ciphertext
-	5,  // 7: pb.ZKEnc.C:type_name -> pb.Int
-	5,  // 8: pb.ZKEnc.Z1:type_name -> pb.Int
-	5,  // 9: pb.ZKEnc.Z2:type_name -> pb.Int
-	5,  // 10: pb.ZKEnc.Z3:type_name -> pb.Int
-	5,  // 11: pb.ZKLogStar.S:type_name -> pb.Int
-	6,  // 12: pb.ZKLogStar.A:type_name -> pb.Ciphertext
-	7,  // 13: pb.ZKLogStar.Y:type_name -> pb.Point
-	5,  // 14: pb.ZKLogStar.D:type_name -> pb.Int
-	5,  // 15: pb.ZKLogStar.Z1:type_name -> pb.Int
-	5,  // 16: pb.ZKLogStar.Z2:type_name -> pb.Int
-	5,  // 17: pb.ZKLogStar.Z3:type_name -> pb.Int
-	6,  // 18: pb.ZKAffG.A:type_name -> pb.Ciphertext
-	7,  // 19: pb.ZKAffG.Bx:type_name -> pb.Point
-	6,  // 20: pb.ZKAffG.By:type_name -> pb.Ciphertext
-	5,  // 21: pb.ZKAffG.E:type_name -> pb.Int
-	5,  // 22: pb.ZKAffG.S:type_name -> pb.Int
-	5,  // 23: pb.ZKAffG.F:type_name -> pb.Int
-	5,  // 24: pb.ZKAffG.T:type_name -> pb.Int
-	5,  // 25: pb.ZKAffG.Z1:type_name -> pb.Int
-	5,  // 26: pb.ZKAffG.Z2:type_name -> pb.Int
-	5,  // 27: pb.ZKAffG.Z3:type_name -> pb.Int
-	5,  // 28: pb.ZKAffG.Z4:type_name -> pb.Int
-	5,  // 29: pb.ZKAffG.W:type_name -> pb.Int
-	5,  // 30: pb.ZKAffG.Wy:type_name -> pb.Int
-	31, // [31:31] is the sub-list for method output_type
-	31, // [31:31] is the sub-list for method input_type
-	31, // [31:31] is the sub-list for extension type_name
-	31, // [31:31] is the sub-list for extension extendee
-	0,  // [0:31] is the sub-list for field type_name
+	8,  // 0: pb.ZKMod.w:type_name -> pb.Int
+	8,  // 1: pb.ZKMod.x:type_name -> pb.Int
+	8,  // 2: pb.ZKMod.z:type_name -> pb.Int
+	8,  // 3: pb.ZKPrm.a:type_name -> pb.Int
+	8,  // 4: pb.ZKPrm.z:type_name -> pb.Int
+	8,  // 5: pb.ZKEnc.S:type_name -> pb.Int
+	9,  // 6: pb.ZKEnc.A:type_name -> pb.Ciphertext
+	8,  // 7: pb.ZKEnc.C:type_name -> pb.Int
+	8,  // 8: pb.ZKEnc.Z1:type_name -> pb.Int
+	8,  // 9: pb.ZKEnc.Z2:type_name -> pb.Int
+	8,  // 10: pb.ZKEnc.Z3:type_name -> pb.Int
+	8,  // 11: pb.ZKLogStar.S:type_name -> pb.Int
+	9,  // 12: pb.ZKLogStar.A:type_name -> pb.Ciphertext
+	10, // 13: pb.ZKLogStar.Y:type_name -> pb.Point
+	8,  // 14: pb.ZKLogStar.D:type_name -> pb.Int
+	8,  // 15: pb.ZKLogStar.Z1:type_name -> pb.Int
+	8,  // 16: pb.ZKLogStar.Z2:type_name -> pb.Int
+	8,  // 17: pb.ZKLogStar.Z3:type_name -> pb.Int
+	9,  // 18: pb.ZKAffG.A:type_name -> pb.Ciphertext
+	10, // 19: pb.ZKAffG.Bx:type_name -> pb.Point
+	9,  // 20: pb.ZKAffG.By:type_name -> pb.Ciphertext
+	8,  // 21: pb.ZKAffG.E:type_name -> pb.Int
+	8,  // 22: pb.ZKAffG.S:type_name -> pb.Int
+	8,  // 23: pb.ZKAffG.F:type_name -> pb.Int
+	8,  // 24: pb.ZKAffG.T:type_name -> pb.Int
+	8,  // 25: pb.ZKAffG.Z1:type_name -> pb.Int
+	8,  // 26: pb.ZKAffG.Z2:type_name -> pb.Int
+	8,  // 27: pb.ZKAffG.Z3:type_name -> pb.Int
+	8,  // 28: pb.ZKAffG.Z4:type_name -> pb.Int
+	8,  // 29: pb.ZKAffG.W:type_name -> pb.Int
+	8,  // 30: pb.ZKAffG.Wy:type_name -> pb.Int
+	9,  // 31: pb.ZKMulStar.A:type_name -> pb.Ciphertext
+	10, // 32: pb.ZKMulStar.Bx:type_name -> pb.Point
+	8,  // 33: pb.ZKMulStar.E:type_name -> pb.Int
+	8,  // 34: pb.ZKMulStar.S:type_name -> pb.Int
+	8,  // 35: pb.ZKMulStar.Z1:type_name -> pb.Int
+	8,  // 36: pb.ZKMulStar.Z2:type_name -> pb.Int
+	8,  // 37: pb.ZKMulStar.W:type_name -> pb.Int
+	9,  // 38: pb.ZKMul.A:type_name -> pb.Ciphertext
+	9,  // 39: pb.ZKMul.B:type_name -> pb.Ciphertext
+	8,  // 40: pb.ZKMul.Z:type_name -> pb.Int
+	8,  // 41: pb.ZKMul.U:type_name -> pb.Int
+	8,  // 42: pb.ZKMul.V:type_name -> pb.Int
+	8,  // 43: pb.ZKDec.S:type_name -> pb.Int
+	8,  // 44: pb.ZKDec.T:type_name -> pb.Int
+	9,  // 45: pb.ZKDec.A:type_name -> pb.Ciphertext
+	11, // 46: pb.ZKDec.Gamma:type_name -> pb.Scalar
+	8,  // 47: pb.ZKDec.Z1:type_name -> pb.Int
+	8,  // 48: pb.ZKDec.Z2:type_name -> pb.Int
+	8,  // 49: pb.ZKDec.W:type_name -> pb.Int
+	50, // [50:50] is the sub-list for method output_type
+	50, // [50:50] is the sub-list for method input_type
+	50, // [50:50] is the sub-list for extension type_name
+	50, // [50:50] is the sub-list for extension extendee
+	0,  // [0:50] is the sub-list for field type_name
 }
 
 func init() { file_zk_proto_init() }
@@ -671,6 +996,42 @@ func file_zk_proto_init() {
 				return nil
 			}
 		}
+		file_zk_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ZKMulStar); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_zk_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ZKMul); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_zk_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ZKDec); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -678,7 +1039,7 @@ func file_zk_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_zk_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

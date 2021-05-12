@@ -6,13 +6,13 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
-	"github.com/taurusgroup/cmp-ecdsa/wip/zkcommon"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk"
 	"google.golang.org/protobuf/proto"
 )
 
 func TestEnc(t *testing.T) {
-	verifier := zkcommon.Pedersen
-	prover := zkcommon.ProverPaillierPublic
+	verifier := zk.Pedersen
+	prover := zk.ProverPaillierPublic
 
 	k := sample.IntervalL()
 	K, rho := prover.Enc(k, nil)

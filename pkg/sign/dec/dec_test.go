@@ -1,4 +1,4 @@
-package zklogstar
+package zkdec
 
 import (
 	"testing"
@@ -11,30 +11,29 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func TestLogStar(t *testing.T) {
-	verifier := zk.Pedersen
+func TestDec(t *testing.T) {
+	verifierPedersen := zk.Pedersen
 	prover := zk.ProverPaillierPublic
 
-	G := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarRandom())
+	y := sample.IntervalL()
+	x := curve.NewScalarBigInt(y)
 
-	x := sample.IntervalL()
-	C, rho := prover.Enc(x, nil)
-	X := curve.NewIdentityPoint().ScalarMult(curve.NewScalarBigInt(x), G)
+	C, rho := prover.Enc(y, nil)
+
 	public := Public{
 		C:      C,
-		X:      X,
-		G:      G,
+		X:      x,
 		Prover: prover,
-		Aux:    verifier,
+		Aux:    verifierPedersen,
+	}
+	private := Private{
+		Y:   y,
+		Rho: rho,
 	}
 
-	proof, err := public.Prove(hash.New(nil), Private{
-		X:   x,
-		Rho: rho,
-	})
+	proof, err := public.Prove(hash.New(nil), private)
 	if err != nil {
 		t.Error(err)
-		return
 	}
 
 	out, err := proto.Marshal(proof)
@@ -42,13 +41,12 @@ func TestLogStar(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	proof2 := &pb.ZKLogStar{}
+	proof2 := &pb.ZKDec{}
 	err = proto.Unmarshal(out, proof2)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-
 	if !public.Verify(hash.New(nil), proof2) {
 		t.Error("failed to verify")
 	}

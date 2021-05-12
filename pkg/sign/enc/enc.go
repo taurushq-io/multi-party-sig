@@ -1,7 +1,6 @@
 package zkenc
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
@@ -108,17 +107,15 @@ func (public Public) Verify(hash *hash.Hash, proof *pb.ZKEnc) bool {
 		return false
 	}
 
-	var rhsCt paillier.Ciphertext
+	rhsCt := paillier.NewCiphertext()
 	lhsCt, _ := prover.Enc(z1, z2)
 	rhsCt.Mul(prover, public.K, e)
-	rhsCt.Add(prover, &rhsCt, A)
-	if !lhsCt.Equal(&rhsCt) {
-		fmt.Println("fail ct")
+	rhsCt.Add(prover, rhsCt, A)
+	if !lhsCt.Equal(rhsCt) {
 		return false
 	}
 
 	if !public.Aux.Verify(z1, z3, C, S, e) {
-		fmt.Println("fail ped")
 		return false
 	}
 

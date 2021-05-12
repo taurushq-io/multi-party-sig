@@ -68,7 +68,7 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 
 	// Δ' = [δ]G
 	deltaComputed := curve.NewIdentityPoint().ScalarBaseMult(round.delta)
-	if deltaComputed.Equal(round.Delta) != 1 {
+	if !deltaComputed.Equal(round.Delta) {
 		round.abort = true
 		return round.GenerateMessagesAbort()
 	}
@@ -92,6 +92,9 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 }
 
 func (round *round4) GenerateMessagesAbort() ([]*pb.Message, error) {
+	//proofAffG := make(map[party.ID]*pb.ZKAffG, round.S.N())
+	//proofDec := make(map[party.ID]*pb.ZKDec, round.S.N())
+
 	return nil, nil
 }
 

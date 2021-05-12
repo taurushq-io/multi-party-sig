@@ -1,4 +1,4 @@
-package zkaffg
+package zkmulstar
 
 import (
 	"math/big"
@@ -13,10 +13,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func TestAffG(t *testing.T) {
+func TestMulG(t *testing.T) {
 	verifierPaillier := zk.VerifierPaillierPublic
 	verifierPedersen := zk.Pedersen
-	prover := zk.ProverPaillierPublic
 
 	c := big.NewInt(12)
 	C, _ := verifierPaillier.Enc(c, nil)
@@ -25,28 +24,21 @@ func TestAffG(t *testing.T) {
 	x := sample.IntervalL()
 	X.ScalarBaseMult(curve.NewScalarBigInt(x))
 
-	y := sample.IntervalLPrime()
-	Y, rhoY := prover.Enc(y, nil)
-
-	tmp := paillier.NewCiphertext()
-	tmp.Mul(verifierPaillier, C, x)
-	D, rho := verifierPaillier.Enc(y, nil)
-	D.Add(verifierPaillier, D, tmp)
+	D := paillier.NewCiphertext()
+	D.Mul(verifierPaillier, C, x)
+	rho := verifierPaillier.Nonce()
+	D.Randomize(verifierPaillier, rho)
 
 	public := Public{
 		C:        C,
 		D:        D,
-		Y:        Y,
 		X:        &X,
-		Prover:   prover,
 		Verifier: verifierPaillier,
 		Aux:      verifierPedersen,
 	}
 	private := Private{
-		X:    x,
-		Y:    y,
-		Rho:  rho,
-		RhoY: rhoY,
+		X:   x,
+		Rho: rho,
 	}
 	proof, err := public.Prove(hash.New(nil), private)
 	if err != nil {
@@ -58,7 +50,7 @@ func TestAffG(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	proof2 := &pb.ZKAffG{}
+	proof2 := &pb.ZKMulStar{}
 	err = proto.Unmarshal(out, proof2)
 	if err != nil {
 		t.Error(err)

@@ -39,15 +39,14 @@ type MtA struct {
 }
 
 func New(secretI *curve.Scalar, Kj *paillier.Ciphertext, paillierJ, paillierI *paillier.PublicKey) *MtA {
-	var tempC paillier.Ciphertext
 
 	betaNeg := sample.IntervalLPrime()
 
 	F, r := paillierI.Enc(betaNeg, nil)
 
 	D, s := paillierJ.Enc(betaNeg, nil)
-	tempC.Mul(paillierJ, Kj, secretI.BigInt())
-	D.Add(paillierJ, &tempC, D)
+	tempC := paillier.NewCiphertext().Mul(paillierJ, Kj, secretI.BigInt())
+	D.Add(paillierJ, tempC, D)
 
 	Beta := curve.NewScalar().SetBigInt(betaNeg.Neg(betaNeg))
 

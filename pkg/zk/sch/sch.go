@@ -7,8 +7,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 )
 
-const domain = "CMP-SCH"
-
 type Commitment struct {
 	// A = gᵃ
 	A *curve.Point
@@ -62,5 +60,5 @@ func Verify(hash *hash.Hash, A, X *curve.Point, proof *curve.Scalar) bool {
 	rhs.ScalarMult(e, X)
 	rhs.Add(&rhs, A)
 
-	return lhs.Equal(&rhs) == 1
+	return lhs.Equal(&rhs)
 }

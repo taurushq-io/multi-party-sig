@@ -1,48 +1,50 @@
-package zklogstar
+package zkmul
 
 import (
 	"testing"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk"
 	"google.golang.org/protobuf/proto"
 )
 
-func TestLogStar(t *testing.T) {
-	verifier := zk.Pedersen
+func TestMul(t *testing.T) {
 	prover := zk.ProverPaillierPublic
+	x := sample.IntervalLN()
+	X, rhoX := prover.Enc(x, nil)
 
-	G := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarRandom())
+	y := sample.IntervalLN()
+	Y, _ := prover.Enc(y, nil)
 
-	x := sample.IntervalL()
-	C, rho := prover.Enc(x, nil)
-	X := curve.NewIdentityPoint().ScalarMult(curve.NewScalarBigInt(x), G)
+	C := paillier.NewCiphertext().Mul(prover, Y, x)
+	_, rho := C.Randomize(prover, nil)
+
 	public := Public{
-		C:      C,
 		X:      X,
-		G:      G,
+		Y:      Y,
+		C:      C,
 		Prover: prover,
-		Aux:    verifier,
+	}
+	private := Private{
+		X:    x,
+		Rho:  rho,
+		RhoX: rhoX,
 	}
 
-	proof, err := public.Prove(hash.New(nil), Private{
-		X:   x,
-		Rho: rho,
-	})
+	proof, err := public.Prove(hash.New(nil), private)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-
 	out, err := proto.Marshal(proof)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	proof2 := &pb.ZKLogStar{}
+	proof2 := &pb.ZKMul{}
 	err = proto.Unmarshal(out, proof2)
 	if err != nil {
 		t.Error(err)

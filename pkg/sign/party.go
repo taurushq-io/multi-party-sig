@@ -1,7 +1,6 @@
 package sign
 
 import (
-	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -44,11 +43,6 @@ type localParty struct {
 
 	// sigma = σᵢ = kᵢ m + r χᵢ
 	sigma *curve.Scalar
-
-	sign1 *pb.Sign1
-	sign2 *pb.Sign2
-	sign3 *pb.Sign3
-	sign4 *pb.Sign4
 }
 
 func newParty(id party.ID, public *session.Public) *localParty {

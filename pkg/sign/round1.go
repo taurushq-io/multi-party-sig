@@ -49,39 +49,49 @@ func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 
 	messages := make([]*pb.Message, 0, round.S.N()-1)
 
-	zkEncPublic := zkenc.Public{
-		K:      round.thisParty.K,
-		Prover: round.thisParty.Paillier,
-	}
-	zkEncPrivate := zkenc.Private{
-		K:   round.k.BigInt(),
-		Rho: round.kRand,
-	}
 	for j, partyJ := range round.parties {
 		if j == round.SelfID {
 			continue
 		}
-		zkEncPublic.Aux = partyJ.Pedersen
 
-		proof, err := zkEncPublic.Prove(round.H.CloneWithID(round.SelfID), zkEncPrivate)
+		msg1, err := round.message1(partyJ)
 		if err != nil {
 			return nil, err
 		}
-		messages = append(messages, &pb.Message{
-			Type: pb.MessageType_TypeSign1,
-			From: round.SelfID,
-			To:   j,
-			Content: &pb.Message_Sign1{
-				Sign1: &pb.Sign1{
-					K:   pb.NewCiphertext(round.thisParty.K),
-					G:   pb.NewCiphertext(round.thisParty.G),
-					Enc: proof,
-				},
-			},
-		})
+
+		messages = append(messages, msg1)
 	}
 
 	return messages, nil
+}
+
+func (round *round1) message1(partyJ *localParty) (*pb.Message, error) {
+	zkEncPublic := zkenc.Public{
+		K:      round.thisParty.K,
+		Prover: round.thisParty.Paillier,
+		Aux:    partyJ.Pedersen,
+	}
+
+	proof, err := zkEncPublic.Prove(round.H.CloneWithID(round.SelfID), zkenc.Private{
+		K:   round.k.BigInt(),
+		Rho: round.kRand,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Message{
+		Type: pb.MessageType_TypeSign1,
+		From: round.SelfID,
+		To:   partyJ.ID,
+		Content: &pb.Message_Sign1{
+			Sign1: &pb.Sign1{
+				Enc: proof,
+				K:   pb.NewCiphertext(round.thisParty.K),
+				G:   pb.NewCiphertext(round.thisParty.G),
+			},
+		},
+	}, nil
 }
 
 func (round *round1) Finalize() (round.Round, error) {

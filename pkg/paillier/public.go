@@ -18,7 +18,7 @@ func NewPublicKey(n *big.Int) *PublicKey {
 	nHalf.Rsh(&nNew, 1)
 	return &PublicKey{
 		N:        &nNew,
-		NSquared: &nSquared,
+		NSquared: nSquared,
 		nHalf:    &nHalf,
 	}
 }
@@ -29,7 +29,7 @@ func NewPublicKey(n *big.Int) *PublicKey {
 //
 // ct = (1+N)ᵐρᴺ (mod N²)
 func (pk *PublicKey) Enc(m, nonce *big.Int) (*Ciphertext, *big.Int) {
-	var ct Ciphertext
+	ct := NewCiphertext()
 	return ct.Enc(pk, m, nonce)
 }
 

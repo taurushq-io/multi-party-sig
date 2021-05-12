@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"math/big"
-	randInt "math/rand"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
@@ -130,9 +129,4 @@ func Pedersen(n, phi *big.Int) (s, t, lambda *big.Int) {
 	s.Exp(t, lambda, n)
 
 	return
-}
-
-// ID returns a random ID (may be 0)
-func ID() uint32 {
-	return randInt.Uint32()
 }

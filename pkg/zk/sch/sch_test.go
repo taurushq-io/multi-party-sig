@@ -3,14 +3,21 @@ package zksch
 import (
 	"testing"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 )
 
 func TestSch(t *testing.T) {
 	x := curve.NewScalarRandom()
 	X := new(curve.Point).ScalarBaseMult(x)
-	proof := NewProof(X, x)
-	if !proof.Verify(X) {
+	a := curve.NewScalarRandom()
+	A := new(curve.Point).ScalarBaseMult(a)
+
+	proof, err := Prove(hash.New(nil), A, X, a, x)
+	if err != nil {
+		t.Error(err)
+	}
+	if !Verify(hash.New(nil), A, X, proof) {
 		t.Error("failed to verify")
 	}
 }

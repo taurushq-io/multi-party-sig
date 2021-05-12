@@ -53,3 +53,31 @@ message ZKAffG {
   Int W = 12;
   Int Wy = 13;
 }
+
+message ZKMulStar {
+  Ciphertext A = 1;
+  Point Bx = 2;
+  Int E = 4;
+  Int S = 5;
+  Int Z1 = 8;
+  Int Z2 = 9;
+  Int W = 12;
+}
+
+message ZKMul {
+  Ciphertext A = 1;
+  Ciphertext B = 2;
+  Int Z = 3;
+  Int U = 4;
+  Int V = 5;
+}
+
+message ZKDec {
+  Int S = 1;
+  Int T = 2;
+  Ciphertext A = 3;
+  Scalar Gamma = 4;
+  Int Z1 = 5;
+  Int Z2 = 6;
+  Int W = 7;
+}

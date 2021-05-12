@@ -50,18 +50,3 @@ func TestStatisticalDistance(t *testing.T) {
 		fmt.Println(2048 - diff.BitLen())
 	}
 }
-
-func TestBits(t *testing.T) {
-	var m, c big.Int
-	_, _, n, _ := Paillier()
-	u := UnitModN(n)
-
-	mNat := make([]big.Word, 65)
-	cNat := make([]big.Word, 32)
-	m.SetBits(mNat)
-	c.SetBits(cNat)
-	c.SetInt64(1 << 48)
-	m.Exp(u, &c, n)
-	fmt.Print(cap(m.Bits()))
-
-}

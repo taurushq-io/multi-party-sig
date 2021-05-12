@@ -52,7 +52,7 @@ func (s *Secret) validForParty(p *Public) error {
 		}
 
 		pk := curve.NewIdentityPoint().ScalarBaseMult(s.ecdsaShare)
-		if pk.Equal(p.ecdsaShare) != 1 {
+		if !pk.Equal(p.ecdsaShare) {
 			return errors.New("ecdsa key mismatch")
 		}
 	}

@@ -22,13 +22,6 @@ func NewScalarBigInt(n *big.Int) *Scalar {
 	return s.SetBigInt(n)
 }
 
-// NewScalarUInt returns a Scalar from the uint32 n
-func NewScalarUInt(n uint32) *Scalar {
-	var s Scalar
-	s.s.SetInt64(int64(n))
-	return &s
-}
-
 // MultiplyAdd sets s = x * y + z mod l, and returns s.
 func (s *Scalar) MultiplyAdd(x, y, z *Scalar) *Scalar {
 	s.s.Mul(&x.s, &y.s)
@@ -121,11 +114,11 @@ func (s *Scalar) Bytes() []byte {
 }
 
 // Equal returns 1 if s and t are equal, and 0 otherwise.
-func (s *Scalar) Equal(t *Scalar) int {
+func (s *Scalar) Equal(t *Scalar) bool {
 	if s.s.Cmp(&t.s) == 0 {
-		return 1
+		return true
 	}
-	return 0
+	return false
 }
 
 // Invert sets s to the inverse of a nonzero scalar v, and returns s.

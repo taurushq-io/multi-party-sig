@@ -20,7 +20,7 @@ type round1 struct {
 	broadcastHashes [][]byte
 }
 
-func (round *round1) ProcessMessage(msg *pb.Message) error {
+func (round *round1) ProcessMessage(*pb.Message) error {
 	// In the first round, no messages are expected.
 	return nil
 }

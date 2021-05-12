@@ -5,6 +5,7 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 )
 
 func TestMod(t *testing.T) {
@@ -12,9 +13,11 @@ func TestMod(t *testing.T) {
 	s, T, lambda := sample.Pedersen(n, phi)
 
 	public := Public{
-		N: n,
-		S: s,
-		T: T,
+		&pedersen.Parameters{
+			N: n,
+			S: s,
+			T: T,
+		},
 	}
 
 	proof, err := public.Prove(hash.New(nil), Private{

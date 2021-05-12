@@ -6,14 +6,14 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	zkaffg "github.com/taurusgroup/cmp-ecdsa/pkg/sign/affg"
-	"github.com/taurusgroup/cmp-ecdsa/wip/zkcommon"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk"
 )
 
 func Test_newMtA(t *testing.T) {
-	verifierPaillier := zkcommon.VerifierPaillierPublic
-	verifierPaillierSecret := zkcommon.VerifierPaillierSecret
-	verifierPedersen := zkcommon.Pedersen
-	proverPaillier := zkcommon.ProverPaillierPublic
+	verifierPaillier := zk.VerifierPaillierPublic
+	verifierPaillierSecret := zk.VerifierPaillierSecret
+	verifierPedersen := zk.Pedersen
+	proverPaillier := zk.ProverPaillierPublic
 
 	gammaI := curve.NewScalarRandom()
 	GammaI := curve.NewIdentityPoint().ScalarBaseMult(gammaI)
@@ -48,7 +48,7 @@ func Test_newMtA(t *testing.T) {
 	alphaS := curve.NewScalar().SetBigInt(alpha)
 
 	alphaPlusBeta := curve.NewScalar().Add(alphaS, m.Beta)
-	if gammaIkJ.Equal(alphaPlusBeta) != 1 {
+	if !gammaIkJ.Equal(alphaPlusBeta) {
 		t.Error("MtA bad")
 		return
 	}

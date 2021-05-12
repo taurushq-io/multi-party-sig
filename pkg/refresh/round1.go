@@ -23,7 +23,7 @@ type round1 struct {
 	decommitment hash.Decommitment // uᵢ
 }
 
-func (round *round1) ProcessMessage(msg *pb.Message) error {
+func (round *round1) ProcessMessage(*pb.Message) error {
 	// In the first round, no messages are expected.
 	return nil
 }

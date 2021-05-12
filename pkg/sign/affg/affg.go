@@ -10,6 +10,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk"
 )
 
 type (
@@ -90,10 +91,9 @@ func (public Public) Prove(hash *hash.Hash, private Private) (*pb.ZKAffG, error)
 	delta := sample.IntervalLEpsN()
 	mu := sample.IntervalLN()
 
-	var tmpCt paillier.Ciphertext
 	A, _ := verifier.Enc(beta, r)
-	tmpCt.Mul(verifier, public.C, alpha)
-	A.Add(verifier, A, &tmpCt)
+	tmpCt := paillier.NewCiphertext().Mul(verifier, public.C, alpha)
+	A.Add(verifier, A, tmpCt)
 
 	var Bx curve.Point
 	Bx.ScalarBaseMult(curve.NewScalarBigInt(alpha))
@@ -122,12 +122,12 @@ func (public Public) Prove(hash *hash.Hash, private Private) (*pb.ZKAffG, error)
 		S:  pb.NewInt(commitment.S),
 		F:  pb.NewInt(commitment.F),
 		T:  pb.NewInt(commitment.T),
-		Z1: affine(alpha, e, private.X),
-		Z2: affine(beta, e, private.Y),
-		Z3: affine(gamma, e, m),
-		Z4: affine(delta, e, mu),
-		W:  affineNonce(r, private.Rho, e, verifier),
-		Wy: affineNonce(rY, private.RhoY, e, prover),
+		Z1: zk.Affine(alpha, e, private.X),
+		Z2: zk.Affine(beta, e, private.Y),
+		Z3: zk.Affine(gamma, e, m),
+		Z4: zk.Affine(delta, e, mu),
+		W:  zk.AffineNonce(r, private.Rho, e, verifier),
+		Wy: zk.AffineNonce(rY, private.RhoY, e, prover),
 	}, nil
 }
 func (public Public) Verify(hash *hash.Hash, proof *pb.ZKAffG) bool {
@@ -170,42 +170,44 @@ func (public Public) Verify(hash *hash.Hash, proof *pb.ZKAffG) bool {
 		return false
 	}
 
-	var lhsCt, rhsCt paillier.Ciphertext
-
+	lhsCt, rhsCt := paillier.NewCiphertext(), paillier.NewCiphertext()
 	{
 		// lhsCt = z1•c + Enc_N0(z2;w)
 		rhsCt.Enc(verifier, z2, w)
 		lhsCt.Mul(verifier, public.C, z1)
-		lhsCt.Add(verifier, &lhsCt, &rhsCt)
+		lhsCt.Add(verifier, lhsCt, rhsCt)
 
 		// rhsCt = A + e•D
 		rhsCt.Mul(verifier, public.D, e)
-		rhsCt.Add(verifier, &rhsCt, A)
+		rhsCt.Add(verifier, rhsCt, A)
 
-		if !lhsCt.Equal(&rhsCt) {
+		if !lhsCt.Equal(rhsCt) {
 			return false
 		}
 	}
 
 	{
 		var lhsPt, rhsPt curve.Point
+		// lhsPt = [z₁]G
 		lhsPt.ScalarBaseMult(curve.NewScalarBigInt(z1))
+
+		// rhsPt = Bₓ + [e]G
 		rhsPt.ScalarBaseMult(curve.NewScalarBigInt(e))
 		rhsPt.Add(&rhsPt, Bx)
-		if lhsPt.Equal(&rhsPt) != 0 {
+		if lhsPt.Equal(&rhsPt) {
 			return false
 		}
 	}
 
 	{
-		// lhsCt = Enc_N1(z2;wy)
+		// lhsCt = Enc₁(z₂; wy)
 		lhsCt.Enc(prover, z2, wY)
 
-		// rhsCt = By + e•Y
+		// rhsCt = By ⊕ (e ⊙ Y)
 		rhsCt.Mul(prover, public.Y, e)
-		rhsCt.Add(prover, &rhsCt, By)
+		rhsCt.Add(prover, rhsCt, By)
 
-		if !lhsCt.Equal(&rhsCt) {
+		if !lhsCt.Equal(rhsCt) {
 			return false
 		}
 	}
@@ -232,19 +234,4 @@ func challenge(hash *hash.Hash, public Public, commitment Commitment) (*big.Int,
 	}
 
 	return hash.ReadFqNegative()
-}
-
-func affine(a, b, c *big.Int) *pb.Int {
-	var result big.Int
-	result.Mul(b, c)
-	result.Add(&result, a)
-	return pb.NewInt(&result)
-}
-
-func affineNonce(r, rho, e *big.Int, pk *paillier.PublicKey) *pb.Int {
-	var result big.Int
-	result.Exp(rho, e, pk.N)
-	result.Mul(&result, r)
-	result.Mod(&result, pk.N)
-	return pb.NewInt(&result)
 }
