@@ -64,10 +64,8 @@ func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 		Type:      pb.MessageType_TypeRefresh1,
 		From:      round.SelfID,
 		Broadcast: pb.Broadcast_Reliable,
-		Content: &pb.Message_Refresh1{
-			Refresh1: &pb.Refresh1{
-				Hash: round.thisParty.commitment,
-			},
+		Refresh1: &pb.Refresh1{
+			Hash: round.thisParty.commitment,
 		},
 	}}, nil
 }
@@ -78,11 +76,4 @@ func (round *round1) Finalize() (round.Round, error) {
 
 func (round *round1) MessageType() pb.MessageType {
 	return pb.MessageType_TypeKeygen2
-}
-
-func (round *round1) RequiredMessageCount() int {
-	return round.S.N()
-}
-func (round *round1) IsProcessed(id party.ID) bool {
-	return true
 }

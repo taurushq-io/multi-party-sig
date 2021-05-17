@@ -5,7 +5,6 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
@@ -17,10 +16,8 @@ type output struct {
 
 func (round *output) ProcessMessage(msg *pb.Message) error {
 	j := msg.GetFrom()
-	partyJ, ok := round.parties[j]
-	if !ok {
-		return errors.New("sender not registered")
-	}
+	partyJ := round.parties[j]
+
 	body := msg.GetKeygen3()
 
 	if !zksch.Verify(round.H.CloneWithID(j), partyJ.A, partyJ.X, body.GetSchX().Unmarshal()) {
@@ -45,12 +42,4 @@ func (round *output) Finalize() (round.Round, error) {
 
 func (round *output) MessageType() pb.MessageType {
 	return pb.MessageType_TypeKeygen3
-}
-
-func (round *output) RequiredMessageCount() int {
-	return round.S.N() - 1
-}
-
-func (round *output) IsProcessed(id party.ID) bool {
-	return round.parties[id].keygen3 != nil
 }

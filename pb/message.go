@@ -18,6 +18,18 @@ func (x *Message) IsValid() bool {
 		return x.GetRefresh2() != nil
 	case MessageType_TypeRefresh3:
 		return x.GetRefresh3() != nil
+	case MessageType_TypeSign1:
+		return x.GetSign1() != nil
+	case MessageType_TypeSign2:
+		return x.GetSign2() != nil
+	case MessageType_TypeSign3:
+		return x.GetSign3() != nil
+	case MessageType_TypeSign4:
+		return x.GetSign4() != nil
+	case MessageType_TypeAbort1:
+		return x.GetAbort1() != nil
+	case MessageType_TypeAbort2:
+		return x.GetAbort2() != nil
 	}
 	return false
 }

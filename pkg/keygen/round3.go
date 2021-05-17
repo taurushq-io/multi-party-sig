@@ -21,10 +21,7 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 	var err error
 
 	j := msg.GetFrom()
-	partyJ, ok := round.parties[j]
-	if !ok {
-		return errors.New("sender not registered")
-	}
+	partyJ := round.parties[j]
 
 	body := msg.GetKeygen2()
 
@@ -81,20 +78,13 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 		Type:      pb.MessageType_TypeKeygen3,
 		From:      round.SelfID,
 		Broadcast: pb.Broadcast_Basic,
-		Content: &pb.Message_Keygen3{
-			Keygen3: &pb.Keygen3{
-				SchX: pb.NewScalar(proofX),
-			},
+		Keygen3: &pb.Keygen3{
+			SchX: pb.NewScalar(proofX),
 		},
 	}}, nil
 }
 
 func (round *round3) Finalize() (round.Round, error) {
-	for _, id := range round.S.Parties() {
-		if !round.IsProcessed(id) {
-		}
-	}
-
 	return &output{
 		round3: round,
 		X:      curve.NewIdentityPoint(),
@@ -103,10 +93,6 @@ func (round *round3) Finalize() (round.Round, error) {
 
 func (round *round3) MessageType() pb.MessageType {
 	return pb.MessageType_TypeKeygen2
-}
-
-func (round *round3) RequiredMessageCount() int {
-	return round.S.N() - 1
 }
 
 func (round *round3) IsProcessed(id party.ID) bool {

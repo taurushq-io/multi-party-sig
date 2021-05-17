@@ -2,12 +2,10 @@ package sign
 
 import (
 	"crypto/ecdsa"
-	"errors"
 	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/sign/signature"
 )
@@ -21,10 +19,8 @@ type output struct {
 
 func (round *output) ProcessMessage(msg *pb.Message) error {
 	j := msg.GetFrom()
-	partyJ, ok := round.parties[j]
-	if !ok {
-		return errors.New("sender not registered")
-	}
+	partyJ := round.parties[j]
+
 	body := msg.GetSign4()
 
 	partyJ.sigma = body.GetSigma().Unmarshal()
@@ -71,12 +67,4 @@ func (round *output) GenerateMessagesAbort() ([]*pb.Message, error) {
 
 func (round *output) MessageType() pb.MessageType {
 	return pb.MessageType_TypeSign4
-}
-
-func (round *output) RequiredMessageCount() int {
-	return 0
-}
-
-func (round *output) IsProcessed(id party.ID) bool {
-	panic("implement me")
 }

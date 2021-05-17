@@ -7,7 +7,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 	zkmod "github.com/taurusgroup/cmp-ecdsa/pkg/refresh/mod"
 	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/refresh/prm"
@@ -24,10 +23,8 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 	var err error
 
 	j := msg.GetFrom()
-	partyJ, ok := round.parties[j]
-	if !ok {
-		return errors.New("sender not registered")
-	}
+	partyJ := round.parties[j]
+
 	body := msg.GetRefresh2()
 
 	// Set rho
@@ -157,14 +154,12 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 			Type: pb.MessageType_TypeKeygen3,
 			From: round.SelfID,
 			To:   idJ,
-			Content: &pb.Message_Refresh3{
-				Refresh3: &pb.Refresh3{
-					Mod:  mod,
-					Prm:  prm,
-					C:    pb.NewCiphertext(C),
-					SchX: schXproto,
-					SchY: pb.NewScalar(schY),
-				},
+			Refresh3: &pb.Refresh3{
+				Mod:  mod,
+				Prm:  prm,
+				C:    pb.NewCiphertext(C),
+				SchX: schXproto,
+				SchY: pb.NewScalar(schY),
 			},
 		})
 	}
@@ -180,12 +175,4 @@ func (round *round3) Finalize() (round.Round, error) {
 
 func (round *round3) MessageType() pb.MessageType {
 	return pb.MessageType_TypeRefresh2
-}
-
-func (round *round3) RequiredMessageCount() int {
-	return round.S.N() - 1
-}
-
-func (round *round3) IsProcessed(id party.ID) bool {
-	panic("implement me")
 }

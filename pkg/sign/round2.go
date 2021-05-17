@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	zkenc "github.com/taurusgroup/cmp-ecdsa/pkg/sign/enc"
 	zklogstar "github.com/taurusgroup/cmp-ecdsa/pkg/sign/logstar"
@@ -17,10 +16,7 @@ type round2 struct {
 
 func (round *round2) ProcessMessage(msg *pb.Message) error {
 	j := msg.GetFrom()
-	partyJ, ok := round.parties[j]
-	if !ok {
-		return errors.New("sender not registered")
-	}
+	partyJ := round.parties[j]
 
 	sign1 := msg.GetSign1()
 
@@ -89,8 +85,7 @@ func (round *round2) message2(partyJ *localParty) (*pb.Message, error) {
 	return &pb.Message{
 		Type: pb.MessageType_TypeSign2,
 		From: round.SelfID,
-		To:   partyJ.ID,
-		Content: &pb.Message_Sign2{Sign2: &pb.Sign2{
+		To:   partyJ.ID, Sign2: &pb.Sign2{
 			Gamma:        pb.NewPoint(round.thisParty.Gamma),
 			D:            pb.NewCiphertext(partyJ.DeltaMtA.D),
 			F:            pb.NewCiphertext(partyJ.DeltaMtA.F),
@@ -99,7 +94,7 @@ func (round *round2) message2(partyJ *localParty) (*pb.Message, error) {
 			ProofAffG:    proofDelta,
 			ProofAffGHat: proofChi,
 			ProofLog:     proofLog,
-		}},
+		},
 	}, nil
 }
 
@@ -112,16 +107,3 @@ func (round *round2) Finalize() (round.Round, error) {
 func (round *round2) MessageType() pb.MessageType {
 	return pb.MessageType_TypeSign1
 }
-
-func (round *round2) RequiredMessageCount() int {
-	return round.S.N() - 1
-}
-
-func (round *round2) IsProcessed(id party.ID) bool {
-	panic("")
-	return true
-}
-
-//func (round *round1) NextRound() state.Round {
-//	return &round2{round}
-//}

@@ -38,23 +38,22 @@ message Message {
   string from = 2;
   string to = 3;
   Broadcast broadcast = 4;
-  oneof content {
-    Keygen1 keygen1 = 11;
-    Keygen2 keygen2 = 12;
-    Keygen3 keygen3 = 13;
 
-    Refresh1 refresh1 = 21;
-    Refresh2 refresh2 = 22;
-    Refresh3 refresh3 = 23;
+  Keygen1 keygen1 = 11;
+  Keygen2 keygen2 = 12;
+  Keygen3 keygen3 = 13;
 
-    Sign1 sign1 = 31;
-    Sign2 sign2 = 32;
-    Sign3 sign3 = 33;
-    Sign4 sign4 = 34;
+  Refresh1 refresh1 = 21;
+  Refresh2 refresh2 = 22;
+  Refresh3 refresh3 = 23;
 
-    Abort1 abort1 = 41;
-    Abort2 abort2 = 42;
-  }
+  Sign1 sign1 = 31;
+  Sign2 sign2 = 32;
+  Sign3 sign3 = 33;
+  Sign4 sign4 = 34;
+
+  Abort1 abort1 = 41;
+  Abort2 abort2 = 42;
 }
 
 

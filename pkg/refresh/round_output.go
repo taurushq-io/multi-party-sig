@@ -5,7 +5,6 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	zkmod "github.com/taurusgroup/cmp-ecdsa/pkg/refresh/mod"
 	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/refresh/prm"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
@@ -20,10 +19,8 @@ type output struct {
 
 func (round *output) ProcessMessage(msg *pb.Message) error {
 	j := msg.GetFrom()
-	partyJ, ok := round.parties[j]
-	if !ok {
-		return errors.New("sender not registered")
-	}
+	partyJ := round.parties[j]
+
 	body := msg.GetRefresh3()
 
 	// verify schnorr Y
@@ -109,12 +106,4 @@ func (round *output) Finalize() (round.Round, error) {
 
 func (round *output) MessageType() pb.MessageType {
 	return pb.MessageType_TypeRefresh3
-}
-
-func (round *output) RequiredMessageCount() int {
-	return 0
-}
-
-func (round *output) IsProcessed(id party.ID) bool {
-	panic("implement me")
 }

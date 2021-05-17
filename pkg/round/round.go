@@ -12,6 +12,6 @@ type Round interface {
 	GenerateMessages() ([]*pb.Message, error)
 	Finalize() (Round, error)
 	MessageType() pb.MessageType
-	RequiredMessageCount() int
-	IsProcessed(id string) bool
+	//RequiredMessageCount() int
+	//IsProcessed(id string) bool
 }

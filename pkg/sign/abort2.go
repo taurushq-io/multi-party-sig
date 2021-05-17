@@ -5,7 +5,6 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	zklogstar "github.com/taurusgroup/cmp-ecdsa/pkg/sign/logstar"
 )
@@ -16,10 +15,8 @@ type abort2 struct {
 
 func (round *abort2) ProcessMessage(msg *pb.Message) error {
 	j := msg.GetFrom()
-	partyJ, ok := round.parties[j]
-	if !ok {
-		return errors.New("sender not registered")
-	}
+	partyJ := round.parties[j]
+
 	body := msg.GetSign3()
 
 	Delta, err := body.DeltaGroup.Unmarshal()
@@ -100,11 +97,11 @@ func (round *abort2) GenerateMessages() ([]*pb.Message, error) {
 			Type: pb.MessageType_TypeSign3,
 			From: round.SelfID,
 			To:   j,
-			Content: &pb.Message_Sign3{Sign3: &pb.Sign3{
+			Sign3: &pb.Sign3{
 				Delta:      pb.NewScalar(round.thisParty.delta),
 				DeltaGroup: pb.NewPoint(round.thisParty.Delta),
 				ProofLog:   proofLog,
-			}},
+			},
 		}
 		messages = append(messages, msg)
 	}
@@ -120,12 +117,4 @@ func (round *abort2) Finalize() (round.Round, error) {
 
 func (round *abort2) MessageType() pb.MessageType {
 	return pb.MessageType_TypeSign3
-}
-
-func (round *abort2) RequiredMessageCount() int {
-	return round.S.N() - 1
-}
-
-func (round *abort2) IsProcessed(id party.ID) bool {
-	panic("implement me")
 }

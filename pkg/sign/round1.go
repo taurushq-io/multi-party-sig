@@ -34,18 +34,18 @@ type round1 struct {
 	gammaRand *big.Int
 }
 
-func (round *round1) ProcessMessage(msg *pb.Message) error {
+func (round *round1) ProcessMessage(*pb.Message) error {
 	// In the first round, no messages are expected.
 	return nil
 }
 
 func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 	round.gamma = curve.NewScalarRandom()
-	round.k = curve.NewScalarRandom()
-	round.thisParty.K, round.kRand = round.thisParty.Paillier.Enc(round.k.BigInt(), nil)
+	round.thisParty.Gamma = curve.NewIdentityPoint().ScalarBaseMult(round.gamma)
 	round.thisParty.G, round.gammaRand = round.thisParty.Paillier.Enc(round.gamma.BigInt(), nil)
 
-	round.thisParty.Gamma = curve.NewIdentityPoint().ScalarBaseMult(round.gamma)
+	round.k = curve.NewScalarRandom()
+	round.thisParty.K, round.kRand = round.thisParty.Paillier.Enc(round.k.BigInt(), nil)
 
 	messages := make([]*pb.Message, 0, round.S.N()-1)
 
@@ -84,12 +84,10 @@ func (round *round1) message1(partyJ *localParty) (*pb.Message, error) {
 		Type: pb.MessageType_TypeSign1,
 		From: round.SelfID,
 		To:   partyJ.ID,
-		Content: &pb.Message_Sign1{
-			Sign1: &pb.Sign1{
-				Enc: proof,
-				K:   pb.NewCiphertext(round.thisParty.K),
-				G:   pb.NewCiphertext(round.thisParty.G),
-			},
+		Sign1: &pb.Sign1{
+			Enc: proof,
+			K:   pb.NewCiphertext(round.thisParty.K),
+			G:   pb.NewCiphertext(round.thisParty.G),
 		},
 	}, nil
 }
@@ -100,11 +98,4 @@ func (round *round1) Finalize() (round.Round, error) {
 
 func (round *round1) MessageType() pb.MessageType {
 	return pb.MessageType_TypeInvalid
-}
-
-func (round *round1) RequiredMessageCount() int {
-	return round.S.N()
-}
-func (round *round1) IsProcessed(id party.ID) bool {
-	return true
 }
