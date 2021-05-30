@@ -72,3 +72,12 @@ func bigint() *big.Int {
 	x.SetBits(buf)
 	return &x
 }
+
+func (p *Parameters) Clone() *Parameters {
+	var n, s, t big.Int
+	return &Parameters{
+		N: n.Set(p.N),
+		S: s.Set(p.S),
+		T: t.Set(p.T),
+	}
+}

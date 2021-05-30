@@ -55,3 +55,12 @@ func (sk *SecretKey) Dec(c *Ciphertext) *big.Int {
 	}
 	return result
 }
+
+func (sk *SecretKey) Clone() *SecretKey {
+	var phi, phiInv big.Int
+	return &SecretKey{
+		phi:    phi.Set(sk.phi),
+		phiInv: phiInv.Set(sk.phiInv),
+		pk:     sk.pk.Clone(),
+	}
+}

@@ -10,7 +10,7 @@ import (
 )
 
 type Party struct {
-	ID party.ID
+	*party.Public
 
 	Messages map[pb.MessageType]*pb.Message
 	handled  map[pb.MessageType]bool
@@ -23,9 +23,9 @@ var (
 	ErrDuplicateMessage = errors.New("message already received")
 )
 
-func NewBaseParty(id party.ID) *Party {
+func NewBaseParty(public *party.Public) *Party {
 	return &Party{
-		ID:       id,
+		Public:   public,
 		Messages: map[pb.MessageType]*pb.Message{},
 		handled:  map[pb.MessageType]bool{},
 	}

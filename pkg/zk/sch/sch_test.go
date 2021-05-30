@@ -13,11 +13,11 @@ func TestSch(t *testing.T) {
 	a := curve.NewScalarRandom()
 	A := new(curve.Point).ScalarBaseMult(a)
 
-	proof, err := Prove(hash.New(nil), A, X, a, x)
+	proof, err := Prove(hash.New(), A, X, a, x)
 	if err != nil {
 		t.Error(err)
 	}
-	if !Verify(hash.New(nil), A, X, proof) {
+	if !Verify(hash.New(), A, X, proof) {
 		t.Error("failed to verify")
 	}
 }

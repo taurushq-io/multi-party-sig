@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
 type PublicKey struct {
@@ -42,4 +43,22 @@ func (pk *PublicKey) Equal(other *PublicKey) bool {
 // ρ ∈ ℤₙˣ
 func (pk *PublicKey) Nonce() *big.Int {
 	return sample.UnitModN(pk.N)
+}
+
+func (pk *PublicKey) IsValid() bool {
+	// log₂(N) = PaillierBits
+	if pk.N.BitLen() != params.PaillierBits {
+		return false
+	}
+
+	return true
+}
+
+func (pk *PublicKey) Clone() *PublicKey {
+	var N, NSquared, nHalf big.Int
+	return &PublicKey{
+		N:        N.Set(pk.N),
+		NSquared: NSquared.Set(pk.NSquared),
+		nHalf:    nHalf.Set(pk.nHalf),
+	}
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 	"golang.org/x/crypto/sha3"
 )
@@ -19,9 +18,13 @@ type Hash struct {
 	h sha3.ShakeHash
 }
 
-var errNilValue = errors.New("provided element was null")
+// New creates a Hash struct with initial data.
+func New() *Hash {
+	hash := &Hash{sha3.NewCShake128(nil, []byte("CMP"))}
+	return hash
+}
 
-const hashRate = 136
+var errNilValue = errors.New("provided element was null")
 
 func (hash *Hash) hashToBytes(size int, components ...[]byte) ([]byte, error) {
 	var err error
@@ -52,12 +55,12 @@ func (hash *Hash) hashToBytes(size int, components ...[]byte) ([]byte, error) {
 // To prevent statistical bias, we sample double the size.
 func (hash *Hash) ReadScalar() (*curve.Scalar, error) {
 	var scalar curve.Scalar
-	out, err := hash.hashToBytes(curve.ByteSize * 2)
+	out := make([]byte, params.BytesScalar)
+	_, err := hash.h.Read(out)
 	if err != nil {
 		return nil, err
 	}
-	scalar.SetBytes(out)
-	return &scalar, nil
+	return scalar.SetBytes(out), nil
 }
 
 // ReadFqNegative generates a big.Int in the interval ±q, by reading from hash.Hash.
@@ -100,6 +103,9 @@ func (hash *Hash) ReadIntModN(n *big.Int) (*big.Int, error) {
 
 // ReadBytes returns numBytes by reading from hash.Hash.
 func (hash *Hash) ReadBytes(in []byte) ([]byte, error) {
+	if len(in) < params.HashBytes {
+		panic("hash: tried to read less than 256 bits")
+	}
 	_, err := hash.h.Read(in)
 	if err != nil {
 		return nil, err
@@ -155,7 +161,6 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 	bufScalar := make([]byte, params.BytesScalar)
 
 	for _, d := range data {
-	SwitchLoop:
 		switch t := d.(type) {
 		case []byte:
 			_, err = hash.h.Write(t)
@@ -178,14 +183,14 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 
 			for _, k := range keys {
 				if _, err = hash.h.Write(t[uint32(k)].BytesCompressed()); err != nil {
-					break SwitchLoop
+					return err
 				}
 			}
 		case []*curve.Point:
 			// TODO maybe write the length?
 			for _, p := range t {
 				if _, err = hash.h.Write(p.BytesCompressed()); err != nil {
-					break SwitchLoop
+					return err
 				}
 			}
 		case *big.Int:
@@ -209,10 +214,10 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 				return errNilValue
 			}
 			if _, err = hash.h.Write(t.N.FillBytes(bufPaillier)); err != nil {
-				break SwitchLoop
+				return err
 			}
 			if _, err = hash.h.Write(t.S.FillBytes(bufPaillier)); err != nil {
-				break SwitchLoop
+				return err
 			}
 			_, err = hash.h.Write(t.T.FillBytes(bufPaillier))
 		default:
@@ -242,47 +247,8 @@ func (hash *Hash) Clone() *Hash {
 }
 
 // CloneWithID returns a copy of the Hash in its current state, but also writes the ID to the new state.
-func (hash *Hash) CloneWithID(id party.ID) *Hash {
+func (hash *Hash) CloneWithID(id string) *Hash {
 	h2 := hash.h.Clone()
 	_, _ = h2.Write([]byte(id))
 	return &Hash{h: h2}
-}
-
-// New creates a Hash struct with initial data.
-func New(init []byte) *Hash {
-	hash := &Hash{sha3.NewShake256()}
-
-	// TODO We should probably not do this since the N is reserved
-	N := []byte("CMP")
-	initBlock := make([]byte, 0, 9*2+len(N)+len(init))
-	initBlock = append(initBlock, leftEncode(uint64(len(N)*8))...)
-	initBlock = append(initBlock, N...)
-	initBlock = append(initBlock, leftEncode(uint64(len(init)*8))...)
-	initBlock = append(initBlock, init...)
-
-	_, _ = hash.h.Write(bytepad(initBlock, hashRate))
-
-	return hash
-}
-
-func bytepad(input []byte, w int) []byte {
-	// leftEncode always returns max 9 bytes
-	buf := make([]byte, 0, 9+len(input)+w)
-	buf = append(buf, leftEncode(uint64(w))...)
-	buf = append(buf, input...)
-	padlen := w - (len(buf) % w)
-	return append(buf, make([]byte, padlen)...)
-}
-
-func leftEncode(value uint64) []byte {
-	var b [9]byte
-	binary.BigEndian.PutUint64(b[1:], value)
-	// Trim all but last leading zero bytes
-	i := byte(1)
-	for i < 8 && b[i] == 0 {
-		i++
-	}
-	// Prepend number of encoded bytes
-	b[i-1] = 9 - i
-	return b[i-1:]
 }
