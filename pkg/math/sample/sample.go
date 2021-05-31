@@ -11,6 +11,8 @@ import (
 
 var ErrMaxIters = errors.New("failed to generate after 255 iters")
 
+const maxIters = 255
+
 func mustSample(max *big.Int) *big.Int {
 	n, err := rand.Int(rand.Reader, max)
 	if err != nil {
@@ -21,7 +23,7 @@ func mustSample(max *big.Int) *big.Int {
 
 func mustReadBits(buf []byte) {
 	var err error
-	for i := 0; i < 255; i++ {
+	for i := 0; i < maxIters; i++ {
 		if _, err = rand.Read(buf); err == nil {
 			return
 		}
@@ -29,11 +31,9 @@ func mustReadBits(buf []byte) {
 	panic(ErrMaxIters)
 }
 
-var one = big.NewInt(1)
-
 // Unit samples a random unit modulo order
 func Unit(order *big.Int) *big.Int {
-	for i := uint8(0); i < uint8(255); i++ {
+	for i := 0; i < maxIters; i++ {
 		n := mustSample(order)
 		if arith.IsCoprime(n, order) {
 			return n
@@ -45,8 +45,9 @@ func Unit(order *big.Int) *big.Int {
 // UnitModN returns a u ∈ ℤₙˣ
 func UnitModN(n *big.Int) *big.Int {
 	var u, gcd big.Int
+	one := big.NewInt(1)
 	buf := make([]byte, params.PaillierBits/8)
-	for i := 0; i < 255; i++ {
+	for i := 0; i < maxIters; i++ {
 		mustReadBits(buf)
 		u.SetBytes(buf)
 		u.Mod(&u, n)
@@ -62,7 +63,7 @@ func UnitModN(n *big.Int) *big.Int {
 func QNR(n *big.Int) *big.Int {
 	var w big.Int
 	buf := make([]byte, params.PaillierBits/8)
-	for i := 0; i < 255; i++ {
+	for i := 0; i < maxIters; i++ {
 		mustReadBits(buf)
 		w.SetBytes(buf)
 		w.Mod(&w, n)
@@ -94,24 +95,14 @@ func BlumPrime() *big.Int {
 // Paillier generate the necessary integers for a Paillier key pair.
 // p, q are Blum primes ( = 3 mod 4)
 // n = pq
-// phi = (p-1)(q-1)
-func Paillier() (p, q, n, phi *big.Int) {
-	n, phi = new(big.Int), new(big.Int)
-
+func Paillier() (p, q *big.Int) {
 	p, q = BlumPrime(), BlumPrime()
-
-	phi.Sub(p, one)
-	n.Sub(q, one) // n as tmp receiver
-	phi.Mul(phi, n)
-
-	n.Mul(p, q)
 	return
 }
 
-var two = big.NewInt(2)
-
 // Pedersen generates the s, t, λ such that s = tˡ
 func Pedersen(n, phi *big.Int) (s, t, lambda *big.Int) {
+	two := big.NewInt(2)
 	// sample lambda without statistical bias
 	lambdaBuf := make([]byte, (params.PaillierBits+params.L)/8)
 	mustReadBits(lambdaBuf)

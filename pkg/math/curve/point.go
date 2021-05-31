@@ -3,7 +3,10 @@ package curve
 import (
 	"crypto/ecdsa"
 	"errors"
+	"io"
 	"math/big"
+
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
 type Point struct {
@@ -151,4 +154,23 @@ func (v *Point) X() *Scalar {
 	s.SetBigInt(&v.x)
 
 	return &s
+}
+
+// WriteTo implements io.WriterTo and should be used within the hash.Hash function.
+// It writes the full uncompressed point to w, ie 64 bytes
+func (v *Point) WriteTo(w io.Writer) (int64, error) {
+	nAll := int64(0)
+	buf := make([]byte, params.BytesScalar)
+
+	v.x.FillBytes(buf)
+	n, err := w.Write(buf)
+	nAll += int64(n)
+	if err != nil {
+		return nAll, err
+	}
+
+	v.y.FillBytes(buf)
+	n, err = w.Write(buf)
+	nAll += int64(n)
+	return nAll, err
 }

@@ -27,6 +27,9 @@ func TestHash_WriteAny(t *testing.T) {
 		}
 	}
 
+	X := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarRandom())
+	a([]*curve.Point{X, X, X, X})
+
 	a(big.NewInt(35))
 	a(curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarRandom()))
 	a([]byte{1, 4, 6})

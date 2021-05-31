@@ -2,40 +2,46 @@ package party
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 )
 
 type Public struct {
+	// ID of the party this data is associated with
 	ID ID
 
+	// SSID is the hash of the session ID this data is associated to
+	// Should never be nil
+	SSID []byte
+
+	// ECDSA public key, may be nil if the keygen has not run yet
+	ECDSA *curve.Point
+
+	// Paillier public key, may be nil if the keygen has not run yet
 	Paillier *paillier.PublicKey
-	ECDSA    *curve.Point
+
+	// Pedersen auxiliary parameters, may be nil if the keygen has not run yet
 	Pedersen *pedersen.Parameters
 }
 
-// NewPublic returns a Public struct.
-// If public is nil, then no fields are set since this would lead to an inconsistent state
-func NewPublic(id ID, public *curve.Point, ped *pedersen.Parameters) *Public {
-	p := &Public{ID: id}
+func (p Public) preKeygen() bool {
+	return p.ECDSA == nil && p.Paillier == nil && p.Pedersen == nil
+}
 
-	if public == nil {
-		return p
-	}
-	p.ECDSA = curve.NewIdentityPoint().Set(public)
-
-	if ped != nil {
-		p.Pedersen = ped.Clone()
-		p.Paillier = paillier.NewPublicKey(ped.N)
-	}
-
-	return p
+// KeygenDone returns true if all fields resulting from a keygen are non nil
+func (p Public) KeygenDone() bool {
+	return p.ECDSA != nil && p.Paillier != nil && p.Pedersen != nil
 }
 
 func (p *Public) Clone() *Public {
-	p2 := &Public{ID: p.ID}
+	p2 := &Public{
+		ID:   p.ID,
+		SSID: append([]byte{}, p.SSID...),
+	}
 
 	if p.Paillier != nil {
 		p2.Paillier = paillier.NewPublicKey(p.Paillier.N)
@@ -49,21 +55,50 @@ func (p *Public) Clone() *Public {
 	return p2
 }
 
-func (p *Public) IsValid() error {
-	if p.ECDSA == nil && (p.Pedersen != nil || p.Paillier != nil) {
-		return errors.New("ECDSA key cannot be nil if other parameters are present")
+// Validate returns an error if Public is invalid. Otherwise return nil.
+func (p *Public) Validate() error {
+	if p.ID == "" {
+		return errors.New("party.Public: ID cannot be empty")
 	}
 
-	if p.ECDSA != nil && p.ECDSA.IsIdentity() {
-		return errors.New("ecdsa key is 0")
+	if p.preKeygen() {
+		return nil
 	}
 
-	if p.Paillier != nil && !p.Paillier.IsValid() {
-		return errors.New("paillier key invalid")
+	// check SSID length
+	if len(p.SSID) != params.HashBytes {
+		return errors.New("party.Public: SSID has wrong length")
 	}
 
-	if p.Pedersen != nil && !p.Pedersen.IsValid() {
-		return errors.New("pedersen parameters invalid")
+	// nil checks
+	if p.ECDSA == nil {
+		return errors.New("party.Public: ECDSA public share cannot be nil")
+	}
+	if p.Paillier == nil {
+		return errors.New("party.Public: Paillier public key cannot be nil")
+	}
+	if p.Pedersen == nil {
+		return errors.New("party.Public: Pedersen parameters cannot be nil")
+	}
+
+	// ECDSA is not identity
+	if p.ECDSA.IsIdentity() {
+		return errors.New("party.Public: ECDSA public key is identity")
+	}
+
+	// Paillier check
+	if err := p.Paillier.Validate(); err != nil {
+		return fmt.Errorf("party.Public: %w", err)
+	}
+
+	// Pedersen check
+	if err := p.Pedersen.Validate(); err != nil {
+		return fmt.Errorf("party.Public: %w", err)
+	}
+
+	// Both N's are the same
+	if p.Paillier.N.Cmp(p.Pedersen.N) != 0 {
+		return errors.New("party.Public: Pedersen and Paillier should share the same N")
 	}
 
 	return nil

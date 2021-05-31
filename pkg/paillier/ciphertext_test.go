@@ -2,16 +2,13 @@ package paillier
 
 import (
 	"crypto/rand"
-	"encoding/json"
-	"fmt"
 	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 )
 
-func TestPaillier(t *testing.T) {
+func TestCiphertext_Enc(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		pk, sk := KeyGen()
 
@@ -43,24 +40,5 @@ func TestPaillier(t *testing.T) {
 		res := new(big.Int).Mul(c, r1)
 		res.Mod(res, pk.N)
 		require.Equal(t, 0, res.Cmp(sk.Dec(&ct1times2)))
-	}
-}
-
-func TestPaillierJson(t *testing.T) {
-	_, sk := KeyGen()
-	d, err := json.Marshal(sk)
-	require.NoError(t, err)
-	skNew := &SecretKey{}
-	err = json.Unmarshal(d, skNew)
-	require.NoError(t, err)
-	println(sk)
-}
-func TestSample(t *testing.T) {
-	_, _, n, _ := sample.Paillier()
-	pk := NewPublicKey(n)
-	for i := 0; i < 10; i++ {
-		m, _ := rand.Int(rand.Reader, n)
-		c, nonce := pk.Enc(m, nil)
-		fmt.Println(4096-c.Int().BitLen(), 2048-nonce.BitLen())
 	}
 }

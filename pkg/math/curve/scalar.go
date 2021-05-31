@@ -2,6 +2,7 @@ package curve
 
 import (
 	"crypto/rand"
+	"io"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
@@ -24,10 +25,11 @@ func NewScalarBigInt(n *big.Int) *Scalar {
 
 // MultiplyAdd sets s = x * y + z mod l, and returns s.
 func (s *Scalar) MultiplyAdd(x, y, z *Scalar) *Scalar {
-	s.s.Mul(&x.s, &y.s)
-	s.s.Add(&s.s, &z.s)
-	s.s.Mod(&s.s, Q)
-	return s
+	var r Scalar
+	r.s.Mul(&x.s, &y.s)
+	r.s.Add(&r.s, &z.s)
+	r.s.Mod(&r.s, Q)
+	return s.Set(&r)
 }
 
 // Add sets s = x + y mod l, and returns s.
@@ -129,15 +131,15 @@ func (s *Scalar) Invert(t *Scalar) *Scalar {
 	return s
 }
 
-// Random sets s to a random value.
-func (s *Scalar) Random() *Scalar {
-	n, err := rand.Int(rand.Reader, Q)
-	if err != nil {
-		panic("failed to generate random Point")
-	}
-	s.s.Set(n)
-	return s
-}
+//// Random sets s to a random value.
+//func (s *Scalar) Random() *Scalar {
+//	n, err := rand.Int(rand.Reader, Q)
+//	if err != nil {
+//		panic("failed to generate random Point")
+//	}
+//	s.s.Set(n)
+//	return s
+//}
 
 func (s *Scalar) IsZero() bool {
 	return s.s.Sign() == 0
@@ -147,9 +149,24 @@ func (s *Scalar) IsZero() bool {
 // the sampling failed
 func NewScalarRandom() *Scalar {
 	var s Scalar
-	return s.Random()
+	n, err := rand.Int(rand.Reader, Q)
+	if err != nil {
+		panic("failed to generate random Point")
+	}
+	return s.SetBigInt(n)
 }
 
 func (s *Scalar) BigInt() *big.Int {
 	return &s.s
+}
+
+// WriteTo implements io.WriterTo and should be used within the hash.Hash function.
+func (s *Scalar) WriteTo(w io.Writer) (int64, error) {
+	nAll := int64(0)
+	buf := make([]byte, params.BytesScalar)
+
+	s.s.FillBytes(buf)
+	n, err := w.Write(buf)
+	nAll += int64(n)
+	return nAll, err
 }

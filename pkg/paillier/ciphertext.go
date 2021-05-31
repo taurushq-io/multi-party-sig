@@ -1,6 +1,7 @@
 package paillier
 
 import (
+	"io"
 	"math/big"
 	"math/bits"
 
@@ -13,12 +14,13 @@ type Ciphertext struct {
 
 const cipherTextWordSize = 4*params.PaillierBits/bits.UintSize + 8
 
-var one = big.NewInt(1)
+//var one = big.NewInt(1)
 
 // Enc sets the receiver to the encryption of m under the key pk, using the given nonce.
 // If nonce is nil then a new one is generated and returned
 func (ct *Ciphertext) Enc(pk *PublicKey, m *big.Int, nonce *big.Int) (*Ciphertext, *big.Int) {
 	tmp := newCipherTextInt()
+	one := big.NewInt(1)
 
 	if nonce == nil {
 		nonce = pk.Nonce()
@@ -26,12 +28,12 @@ func (ct *Ciphertext) Enc(pk *PublicKey, m *big.Int, nonce *big.Int) (*Ciphertex
 
 	tmp.Set(pk.N)                 // N
 	tmp.Add(tmp, one)             // N + 1
-	ct.c.Exp(tmp, m, pk.NSquared) // (N+1)ᵐ mod N²
+	ct.c.Exp(tmp, m, pk.nSquared) // (N+1)ᵐ mod N²
 
-	tmp.Exp(nonce, pk.N, pk.NSquared) // rho ^ N mod N²
+	tmp.Exp(nonce, pk.N, pk.nSquared) // rho ^ N mod N²
 
 	ct.c.Mul(&ct.c, tmp) // (N+1)ᵐ rho ^ N
-	ct.c.Mod(&ct.c, pk.NSquared)
+	ct.c.Mod(&ct.c, pk.nSquared)
 
 	return ct, nonce
 }
@@ -40,7 +42,7 @@ func (ct *Ciphertext) Enc(pk *PublicKey, m *big.Int, nonce *big.Int) (*Ciphertex
 // ct = ct₁•ct₂ (mod N²)
 func (ct *Ciphertext) Add(pk *PublicKey, ct1, ct2 *Ciphertext) *Ciphertext {
 	ct.c.Mul(&ct1.c, &ct2.c)
-	ct.c.Mod(&ct.c, pk.NSquared)
+	ct.c.Mod(&ct.c, pk.nSquared)
 
 	return ct
 }
@@ -48,7 +50,7 @@ func (ct *Ciphertext) Add(pk *PublicKey, ct1, ct2 *Ciphertext) *Ciphertext {
 // Mul sets ct to the homomorphic multiplication of k ⊙ ctₐ
 // ct = ctₐᵏ (mod N²)
 func (ct *Ciphertext) Mul(pk *PublicKey, ctA *Ciphertext, k *big.Int) *Ciphertext {
-	ct.c.Exp(&ctA.c, k, pk.NSquared)
+	ct.c.Exp(&ctA.c, k, pk.nSquared)
 	return ct
 }
 
@@ -65,9 +67,9 @@ func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *big.Int) (*Ciphertext, *bi
 	if nonce == nil {
 		nonce = pk.Nonce()
 	}
-	tmp.Exp(nonce, pk.N, pk.NSquared) // tmp = r^N
+	tmp.Exp(nonce, pk.N, pk.nSquared) // tmp = r^N
 	ct.c.Mul(&ct.c, tmp)              // ct = ct * tmp
-	ct.c.Mod(&ct.c, pk.NSquared)      // ct = ct*r^N
+	ct.c.Mod(&ct.c, pk.nSquared)      // ct = ct*r^N
 	return ct, nonce
 }
 
@@ -99,4 +101,12 @@ func newCipherTextInt() *big.Int {
 	var tmp big.Int
 	tmp.SetBits(tmpBuf)
 	return &tmp
+}
+
+// WriteTo implements io.WriterTo and should be used within the hash.Hash function.
+func (ct *Ciphertext) WriteTo(w io.Writer) (int64, error) {
+	buf := make([]byte, params.BytesCiphertext)
+	ct.c.FillBytes(buf)
+	n, err := w.Write(buf)
+	return int64(n), err
 }
