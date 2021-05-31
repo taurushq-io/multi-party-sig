@@ -6,27 +6,26 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 )
 
 func TestExponent_Evaluate(t *testing.T) {
 	var lhs curve.Point
 	var rhs1, rhs2 curve.Point
 	for x := 0; x < 5; x++ {
-		N := uint32(1000)
+		N := 1000
 		secret := curve.NewScalarRandom()
 		poly := NewPolynomial(N, secret)
 		polyExp := NewPolynomialExponent(poly)
 
-		randomIndex := curve.NewScalarUInt(sample.ID())
+		randomIndex := curve.NewScalarRandom()
 
 		lhs.ScalarBaseMult(poly.Evaluate(randomIndex))
 		polyExp.evaluateHorner(randomIndex, &rhs1)
 		polyExp.evaluateClassic(randomIndex, &rhs2)
 
-		assert.Equal(t, 1, lhs.Equal(&rhs1), fmt.Sprint(x))
-		assert.Equal(t, 1, lhs.Equal(&rhs2), fmt.Sprint(x))
-		assert.Equal(t, 1, rhs1.Equal(&rhs2), fmt.Sprint(x))
+		assert.Truef(t, lhs.Equal(&rhs1), fmt.Sprint(x))
+		assert.Truef(t, lhs.Equal(&rhs2), fmt.Sprint(x))
+		assert.Truef(t, rhs1.Equal(&rhs2), fmt.Sprint(x))
 	}
 }
 
@@ -61,9 +60,9 @@ func TestExponent_Evaluate(t *testing.T) {
 
 func TestSum(t *testing.T) {
 	N := 20
-	Deg := uint32(10)
+	Deg := 10
 
-	randomIndex := curve.NewScalarUInt(sample.ID())
+	randomIndex := curve.NewScalarRandom()
 
 	// compute f1(x) + f2(x) + ...
 	evaluationScalar := curve.NewScalar()
@@ -87,6 +86,6 @@ func TestSum(t *testing.T) {
 	evaluationSum := summedExp.Evaluate(randomIndex)
 
 	evaluationFromScalar := curve.NewIdentityPoint().ScalarBaseMult(evaluationScalar)
-	assert.Equal(t, 1, evaluationSum.Equal(evaluationFromScalar))
-	assert.Equal(t, 1, evaluationSum.Equal(evaluationPartial))
+	assert.True(t, evaluationSum.Equal(evaluationFromScalar))
+	assert.True(t, evaluationSum.Equal(evaluationPartial))
 }
