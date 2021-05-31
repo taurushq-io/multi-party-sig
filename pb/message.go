@@ -1,5 +1,15 @@
 package pb
 
+import "github.com/taurusgroup/cmp-ecdsa/pkg/party"
+
+func (x *Message) GetFromID() party.ID {
+	return party.ID(x.From)
+}
+
+func (x *Message) GetToID() party.ID {
+	return party.ID(x.To)
+}
+
 func (x *Message) IsValid() bool {
 	if x.To == "" {
 

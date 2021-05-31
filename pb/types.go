@@ -1,10 +1,10 @@
 package pb
 
 import (
-	"errors"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 )
 
@@ -38,13 +38,11 @@ func (x *Scalar) Unmarshal() *curve.Scalar {
 func NewPoint(v *curve.Point) *Point {
 	if v.IsIdentity() {
 		return &Point{
-			Point:      nil,
-			IsIdentity: true,
+			Point: nil,
 		}
 	}
 	return &Point{
-		Point:      v.Bytes(),
-		IsIdentity: false,
+		Point: v.Bytes(),
 	}
 }
 
@@ -68,25 +66,9 @@ func UnmarshalPoints(ps []*Point) ([]*curve.Point, error) {
 	return pts, nil
 }
 
-func (x *Point) IsValid() bool {
-	if x == nil {
-		return false
-	}
-	if len(x.Point) == 0 {
-		return x.IsIdentity
-	}
-	return true
-}
-
 func (x *Point) Unmarshal() (*curve.Point, error) {
-	if x == nil {
-		return nil, errors.New("proto: Point: nil")
-	}
-	if !x.IsValid() {
-		return nil, errors.New("proto: Point: invalid")
-	}
 	var p curve.Point
-	if x.IsIdentity {
+	if x.Point == nil {
 		return &p, nil
 	}
 	return p.SetBytes(x.Point)
@@ -103,4 +85,21 @@ func (x *Ciphertext) Unmarshal() *paillier.Ciphertext {
 	n := x.C.Unmarshal()
 	c.SetInt(n)
 	return c
+}
+
+func NewPolynomialExponent(p *polynomial.Exponent) *PolynomialExponent {
+	return &PolynomialExponent{Coefficients: NewPointSlice(p.Coefficients())}
+}
+
+func (x *PolynomialExponent) Unmarshall() (*polynomial.Exponent, error) {
+	var p polynomial.Exponent
+	var err error
+	points := make([]*curve.Point, len(x.Coefficients))
+	for i := range points {
+		points[i], err = x.Coefficients[i].Unmarshal()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return p.SetCoefficients(points), nil
 }

@@ -6,7 +6,6 @@ option go_package = "github.com/taurusgroup/cmp-ecdsa/pb";
 
 message Point {
   bytes point = 1;
-  bool isIdentity = 2;
 }
 
 message Scalar {
@@ -19,4 +18,8 @@ message Int {
 
 message Ciphertext {
   Int c = 1;
+}
+
+message PolynomialExponent {
+  repeated Point coefficients = 1;
 }

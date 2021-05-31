@@ -25,6 +25,11 @@ enum MessageType {
 
   TypeAbort1 = 41;
   TypeAbort2 = 42;
+
+  TypeRefreshThreshold1 = 51;
+  TypeRefreshThreshold2 = 52;
+  TypeRefreshThreshold3 = 53;
+  TypeRefreshThreshold4 = 54;
 }
 
 enum Broadcast {
@@ -54,6 +59,13 @@ message Message {
 
   Abort1 abort1 = 41;
   Abort2 abort2 = 42;
+
+
+
+  RefreshT1 refreshT1 = 51;
+  RefreshT2 refreshT2 = 52;
+  RefreshT3 refreshT3 = 53;
+  RefreshT4 refreshT4 = 54;
 }
 
 
@@ -137,4 +149,29 @@ message Abort2 {
   map <string, ZKAffG> proofAffg = 1;
   map <string, ZKMulStar> proofMul = 2;
   map <string, ZKDec> proofDec = 3;
+}
+
+message RefreshT1 {
+  bytes hash = 1;
+}
+
+message RefreshT2 {
+  bytes hashOfHashes = 1;
+}
+
+message RefreshT3 {
+  bytes rho = 1;
+  PolynomialExponent f = 2;
+  repeated Point A = 3;
+  Int N = 4;
+  Int S = 5;
+  Int T = 6;
+  bytes u = 7;
+}
+
+message RefreshT4 {
+  ZKMod mod = 1;
+  ZKPrm prm = 2;
+  Ciphertext c = 3;
+  repeated Scalar schF = 4;
 }
