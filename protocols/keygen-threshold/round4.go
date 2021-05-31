@@ -1,4 +1,4 @@
-package refresh
+package keygen_threshold
 
 import (
 	"errors"
@@ -9,23 +9,23 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
-	zkmod2 "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mod"
-	zkprm2 "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm"
+	zkmod "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mod"
+	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm"
 	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
 
-type round3 struct {
-	*round2
+type round4 struct {
+	*round3
 	rho []byte
 }
 
-func (round *round3) ProcessMessage(msg *pb.Message) error {
+func (round *round4) ProcessMessage(msg *pb.Message) error {
 	var err error
 
 	j := msg.GetFromID()
 	partyJ := round.parties[j]
 
-	body := msg.GetRefresh2()
+	body := msg.GetRefreshT3()
 
 	// Set rho
 	rho := body.GetRho()
@@ -35,19 +35,24 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 	partyJ.rho = rho
 
 	// Save all X, A
-	if partyJ.X, err = pb.UnmarshalPoints(body.GetX()); err != nil {
+	if partyJ.polyExp, err = body.F.Unmarshall(); err != nil {
 		return err
 	}
-	if partyJ.ASch, err = pb.UnmarshalPoints(body.GetA()); err != nil {
-		return err
+	// check that the constant coefficient is 0
+	if !partyJ.polyExp.Constant().Equal(curve.NewIdentityPoint()) {
+		return errors.New("exponent polynomial has constant coefficient != Id")
+	}
+	// check deg(Fⱼ) = t
+	if partyJ.polyExp.Degree() != round.S.Threshold {
+		return errors.New("exponent polynomial has wrong degree")
 	}
 
-	// Save Y, B
-	if partyJ.Y, err = body.GetY().Unmarshal(); err != nil {
+	// Save Schnorr commitments
+	if partyJ.A, err = pb.UnmarshalPoints(body.GetA()); err != nil {
 		return err
 	}
-	if partyJ.BSch, err = body.GetB().Unmarshal(); err != nil {
-		return err
+	if len(partyJ.A) != round.S.Threshold {
+		return errors.New("wrong number of Schnorr commitments")
 	}
 
 	// Set Paillier
@@ -67,26 +72,17 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 		return errors.New("pedersen invalid")
 	}
 
-	// Verify shares sum to 0
-	sum := curve.NewIdentityPoint()
-	for _, X := range partyJ.X {
-		sum.Add(sum, X)
-	}
-	if !sum.IsIdentity() {
-		return errors.New("sum of public keys is not 0")
-	}
-
 	// Verify decommit
 	decommitment := body.GetU()
 	if !round.H.Decommit(j, partyJ.commitment, decommitment,
-		partyJ.X, partyJ.ASch, partyJ.Y, partyJ.BSch, partyJ.Pedersen, partyJ.rho) {
+		partyJ.rho, partyJ.polyExp, partyJ.A, partyJ.Pedersen) {
 		return errors.New("failed to decommit")
 	}
 
 	return partyJ.AddMessage(msg)
 }
 
-func (round *round3) GenerateMessages() ([]*pb.Message, error) {
+func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 	// ρ = ⊕ⱼ ρⱼ
 	round.rho = make([]byte, params.SecBytes)
 	for _, partyJ := range round.parties {
@@ -103,35 +99,31 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 	partyI := round.thisParty
 
 	// Prove N is a blum prime with zkmod
-	mod, err := zkmod2.Public{N: partyI.Pedersen.N}.Prove(round.H.CloneWithID(round.SelfID), zkmod2.Private{
-		P:   round.p.p,
-		Q:   round.p.q,
-		Phi: round.p.phi,
+	mod, err := zkmod.Public{N: partyI.Pedersen.N}.Prove(round.H.CloneWithID(round.SelfID), zkmod.Private{
+		P:   round.p,
+		Q:   round.q,
+		Phi: round.phi,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	// prove s, t are correct as aux parameters with zkprm
-	prm, err := zkprm2.Public{Pedersen: partyI.Pedersen}.Prove(round.H.CloneWithID(round.SelfID), zkprm2.Private{
-		Lambda: round.p.lambda,
-		Phi:    round.p.phi,
+	prm, err := zkprm.Public{Pedersen: partyI.Pedersen}.Prove(round.H.CloneWithID(round.SelfID), zkprm.Private{
+		Lambda: round.lambda,
+		Phi:    round.phi,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	// Compute ZKPoK for Y = gʸ
-	schY, err := zksch.Prove(round.H.CloneWithID(round.SelfID), partyI.BSch, partyI.Y, round.p.bSchnorr, round.p.y)
-	if err != nil {
-		return nil, errors.New("failed to generate schnorr")
-	}
-
 	// Compute all ZKPoK Xⱼ = [xⱼ] G
-	schXproto := make([]*pb.Scalar, round.S.N())
+	schXproto := make([]*pb.Scalar, round.S.Threshold)
 	var schX *curve.Scalar
-	for j := range round.S.Parties() {
-		schX, err = zksch.Prove(round.H.CloneWithID(round.SelfID), partyI.ASch[j], partyI.X[j], round.p.aSchnorr[j], round.p.xSent[j])
+	for j := range schXproto {
+		x := round.poly.Coefficients()[j+1]
+		X := round.thisParty.polyExp.Coefficients()[j+1]
+		schX, err = zksch.Prove(round.H.CloneWithID(round.SelfID), partyI.A[j], X, round.schnorrRand[j], x)
 		if err != nil {
 			return nil, errors.New("failed to generate schnorr")
 		}
@@ -140,26 +132,28 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 
 	// create messages with encrypted shares
 	msgs := make([]*pb.Message, 0, round.S.N()-1)
-	for j, idJ := range round.S.Parties() {
+	for _, idJ := range round.S.Parties {
 		if idJ == round.SelfID {
 			continue
 		}
 
 		partyJ := round.parties[idJ]
 
+		// compute fᵢ(idJ)
+		index := curve.NewScalar().SetBytes([]byte(idJ))
+		share := round.poly.Evaluate(index)
 		// Encrypt share
-		C, _ := partyJ.Paillier.Enc(round.p.xSent[j].BigInt(), nil)
+		C, _ := partyJ.Paillier.Enc(share.BigInt(), nil)
 
 		msgs = append(msgs, &pb.Message{
 			Type: pb.MessageType_TypeKeygen3,
 			From: round.SelfID,
 			To:   idJ,
-			Refresh3: &pb.Refresh3{
+			RefreshT4: &pb.RefreshT4{
 				Mod:  mod,
 				Prm:  prm,
 				C:    pb.NewCiphertext(C),
-				SchX: schXproto,
-				SchY: pb.NewScalar(schY),
+				SchF: schXproto,
 			},
 		})
 	}
@@ -167,12 +161,12 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 	return msgs, nil
 }
 
-func (round *round3) Finalize() (round.Round, error) {
+func (round *round4) Finalize() (round.Round, error) {
 	return &output{
-		round3: round,
+		round4: round,
 	}, nil
 }
 
-func (round *round3) MessageType() pb.MessageType {
-	return pb.MessageType_TypeRefresh2
+func (round *round4) MessageType() pb.MessageType {
+	return pb.MessageType_TypeRefreshThreshold4
 }

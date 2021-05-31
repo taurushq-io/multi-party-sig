@@ -16,7 +16,7 @@ type output struct {
 }
 
 func (round *output) ProcessMessage(msg *pb.Message) error {
-	j := msg.GetFrom()
+	j := msg.GetFromID()
 	partyJ := round.parties[j]
 
 	body := msg.GetRefresh3()

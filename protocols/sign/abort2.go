@@ -10,7 +10,7 @@ type abort2 struct {
 }
 
 func (round *abort2) ProcessMessage(msg *pb.Message) error {
-	j := msg.GetFrom()
+	j := msg.GetFromID()
 	partyJ := round.parties[j]
 
 	return partyJ.AddMessage(msg)

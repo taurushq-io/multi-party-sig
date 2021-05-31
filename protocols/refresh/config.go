@@ -48,7 +48,7 @@ func (p *Parameters) fill(parties party.IDSlice) {
 	if p.p == nil && p.q == nil {
 		p.p, p.q, n, p.phi = sample.Paillier()
 		paillierPublic := paillier.NewPublicKey(n)
-		p.paillierSecret = paillier.NewSecretKey(p.phi, paillierPublic)
+		p.paillierSecret = paillier.NewSecretKeyFromPrimes(p.phi, paillierPublic)
 	} else {
 		n = new(big.Int).Mul(p.p, p.q)
 	}

@@ -1,9 +1,12 @@
 package pedersen
 
 import (
+	"errors"
+	"fmt"
+	"io"
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
 type Parameters struct {
@@ -12,40 +15,43 @@ type Parameters struct {
 	T *big.Int // T = Sˡ mod N
 }
 
-func (p *Parameters) IsValid() bool {
-	// S, T < N
-	if p.S.Cmp(p.N) != -1 || p.T.Cmp(p.N) != -1 {
-		return false
-	}
-
-	// S, T > 0
-	if p.S.Sign() != 1 || p.T.Sign() != 1 {
-		return false
-	}
-
-	// S, T != 1
+func (p *Parameters) Validate() error {
 	one := big.NewInt(1)
-	if p.S.Cmp(one) == 0 || p.T.Cmp(one) == 0 {
-		return false
-	}
+	gcd := big.NewInt(1)
+	ints := []*big.Int{p.S, p.T}
+	names := []string{"S", "T"}
+	for i := 0; i < 2; i++ {
+		s := ints[i]
+		id := names[i]
 
-	// gcd(S, N) == gcd(T, N) == 1
-	if !arith.IsCoprime(p.S, p.N) || !arith.IsCoprime(p.T, p.N) {
-		return false
+		// s < N
+		if s.Cmp(p.N) != -1 {
+			return fmt.Errorf("pedersen.Parameters: %d is >= N", id)
+		}
+
+		// s ⩾ 1
+		if s.Cmp(one) != 1 {
+			return fmt.Errorf("pedersen.Parameters: %d < 1", id)
+		}
+
+		// gcd(s,N) == 1
+		if gcd.GCD(nil, nil, s, p.N).Cmp(one) != 0 {
+			return fmt.Errorf("pedersen.Parameters: gcd(%d, N) ≠ 1", id)
+		}
 	}
 
 	if p.S.Cmp(p.T) == 0 {
-		return false
+		return errors.New("pedersen.Parameters: S == T")
 	}
-	return true
+	return nil
 }
 
 // Commit computes sˣ tʸ (mod N)
-func (p *Parameters) Commit(a, b *big.Int) *big.Int {
+func (p *Parameters) Commit(x, y *big.Int) *big.Int {
 	result, tmp := bigint(), bigint()
 
-	result.Exp(p.S, a, p.N)
-	tmp.Exp(p.T, b, p.N)
+	result.Exp(p.S, x, p.N)
+	tmp.Exp(p.T, y, p.N)
 	result.Mul(result, tmp)
 	result.Mod(result, p.N)
 	return result
@@ -80,4 +86,46 @@ func (p *Parameters) Clone() *Parameters {
 		S: s.Set(p.S),
 		T: t.Set(p.T),
 	}
+}
+
+// WriteTo implements io.WriterTo and should be used within the hash.Hash function.
+func (p *Parameters) WriteTo(w io.Writer) (int64, error) {
+	nAll := int64(0)
+	buf := make([]byte, params.BytesPaillier)
+
+	// write N
+	p.N.FillBytes(buf)
+	n, err := w.Write(buf)
+	nAll += int64(n)
+	if err != nil {
+		return nAll, err
+	}
+
+	// write signs
+	signs := byte(0)
+	if p.S.Sign() == -1 {
+		signs |= 1
+	}
+	if p.T.Sign() == -1 {
+		signs |= 2
+	}
+	n, err = w.Write([]byte{signs})
+	nAll += int64(n)
+	if err != nil {
+		return nAll, err
+	}
+
+	// write S
+	p.S.FillBytes(buf)
+	n, err = w.Write(buf)
+	nAll += int64(n)
+	if err != nil {
+		return nAll, err
+	}
+
+	// write T
+	p.T.FillBytes(buf)
+	n, err = w.Write(buf)
+	nAll += int64(n)
+	return nAll, err
 }

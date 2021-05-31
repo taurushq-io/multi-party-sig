@@ -25,7 +25,7 @@ type round4 struct {
 }
 
 func (round *round4) ProcessMessage(msg *pb.Message) error {
-	j := msg.GetFrom()
+	j := msg.GetFromID()
 	partyJ := round.parties[j]
 
 	body := msg.GetSign3()

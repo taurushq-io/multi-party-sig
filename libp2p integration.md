@@ -201,13 +201,13 @@ If we want to prove this scheme secure, then we would need to change the idea th
 Indeed, it currently assumes refresh is run after keygen.
 We would need to change the ideal functionality, and adapt the protocol to the $t,n$ case.
 
-We define the basic SSID as $ssid = (sid, ...)$ where $sid = (q, G, \{P^{(j)}\}_{j=1}^n)$ and where $...$ is the public information that all parties know.
+We define the basic SSID as $ssid = (sid, ...)$ where $sid = (q, G, n, t, \{P^{(j)}\}_{j=1}^n)$ and where $...$ is the public information that all parties know.
 When the SSID is used as header for the message, it will most likely be its hash so that we don't send too much information in each message.
 Moreover, the computation of this hash should be the same for all parties (ie deterministic).
 
 ### Threshold Keygen
 
-Interpret $ssid = (sid)$
+Interpret $ssid = (sid) = (q, G, n, t, \{P^{(j)}\}_{j=1}^n)$
 
 #### Round 1
 
@@ -266,11 +266,11 @@ Save
 
 - Secret $sk^{(i)}, p^{(i)}, q^{(i)}$
 - Public $\{pk^{(j)}\}_{j=1}^n, \{s_1^{(j)}\}_{j=1}^n, \{s_2^{(j)}\}_{j=1}^n$
-- $ssid' = sid, t, rid, \{pk^{(j)}\}_{j=1}^n, \{N^{(j)}\}_{j=1}^n, \{s_1^{(j)}\}_{j=1}^n, \{s_2^{(j)}\}_{j=1}^n$
+- $ssid' = sid, rid, \{pk^{(j)}\}_{j=1}^n, \{N^{(j)}\}_{j=1}^n, \{s_1^{(j)}\}_{j=1}^n, \{s_2^{(j)}\}_{j=1}^n$
 
 ### Threshold Refresh
 
-Interpret $ssid = (sid, t, rid, \{pk'^{(j)}\}_{j=1}^n, \{N'^{(j)}\}_{j=1}^n, \{s_1'^{(j)}\}_{j=1}^n, \{s_2'^{(j)}\}_{j=1}^n)$
+Interpret $ssid = (sid, rid, \{pk'^{(j)}\}_{j=1}^n, \{N'^{(j)}\}_{j=1}^n, \{s_1'^{(j)}\}_{j=1}^n, \{s_2'^{(j)}\}_{j=1}^n)$
 
 #### Round 1
 
@@ -328,11 +328,11 @@ Save
 
 - Secret $sk^{(i)}, p^{(i)}, q^{(i)}$
 - Public $\{pk^{(j)}\}_{j=1}^n, \{s_1^{(j)}\}_{j=1}^n, \{s_2^{(j)}\}_{j=1}^n$
-- $ssid' = sid, t, rid, \{pk^{(j)}\}_{j=1}^n, \{N^{(j)}\}_{j=1}^n, \{s_1^{(j)}\}_{j=1}^n, \{s_2^{(j)}\}_{j=1}^n$
+- $ssid' = sid, rid, \{pk^{(j)}\}_{j=1}^n, \{N^{(j)}\}_{j=1}^n, \{s_1^{(j)}\}_{j=1}^n, \{s_2^{(j)}\}_{j=1}^n$
 
 ### Signing
 
-Interpret $ssid = (sid, t, rid, \{pk^{(j)}\}_{j=1}^n, \{N^{(j)}\}_{j=1}^n, \{s_1^{(j)}\}_{j=1}^n, \{s_2^{(j)}\}_{j=1}^n, \{P^{(j)}\}_{j \in S}, m)$,
+Interpret $ssid = (sid, rid, \{pk^{(j)}\}_{j=1}^n, \{N^{(j)}\}_{j=1}^n, \{s_1^{(j)}\}_{j=1}^n, \{s_2^{(j)}\}_{j=1}^n, \{P^{(j)}\}_{j \in S}, m)$,
 where $S$ is a subset of $\{ 1, \ldots, n \}$ of size at least $t+1$, and $m$ is the message to be signed.
 
 The protocol goes exactly as before, except that the `Session` will use $S$ to determine Lagrange coefficients and apply them to the set of public keys, as well as the signer's secret share.

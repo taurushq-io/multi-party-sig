@@ -35,7 +35,7 @@ func (p *Party) AddMessage(msg *pb.Message) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	if p.ID != msg.GetFrom() {
+	if p.ID != party.ID(msg.GetFromID()) {
 		return fmt.Errorf("peer %s: %w", p.ID, ErrWrongRecipient)
 	}
 	t := msg.GetType()

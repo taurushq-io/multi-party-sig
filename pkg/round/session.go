@@ -1,6 +1,7 @@
 package round
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"encoding/binary"
@@ -11,264 +12,314 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 )
 
-// State represents the latest stage accomplished
-type State int
-
-const (
-	StateError State = iota
-	StateInit
-	StateKeygen
-	StateRefresh
+var (
+	ErrSelfIDNotIncluded = errors.New("list of Party.ID does not contain self ID")
 )
 
 // Session contains information related to the current protocol session.
 // It simplifies hashing using ssid to various types, and contains the (t,n) parameters
 type Session struct {
-	group     elliptic.Curve
-	parties   party.IDSlice
-	threshold int
-	RID       []byte
-	Public    map[party.ID]*party.Public
+	// group for signature
+	group elliptic.Curve
+
+	// Parties is the full list of party's IDs
+	Parties party.IDSlice
+
+	// Threshold is the integer t which defines the maximum number of corruptions tolerated for this session.
+	Threshold int
+
+	// Public maps party.ID to party.Public. It contains all public information associated to a party.
+	// When keygen has not yet run, all party.Public should contain only the ID and SSID
+	Public map[party.ID]*party.Public
+
+	// Secret contains the
+	Secret *party.Secret
+
+	PublicKey *ecdsa.PublicKey
+
+	// SSID returns the hash of the SSID
+	// It corresponds to H(G, n, t, P₁, ..., Pₙ, aux_info)
+	ssid []byte
 }
 
-func NewSessionKeygen(partyIDs []string, threshold int) (*Session, error) {
-	n := len(partyIDs)
-	public := make(map[party.ID]*party.Public, n)
-	for _, id := range partyIDs {
-		public[id] = &party.Public{ID: id}
+// NewSession creates a session from stored keygen material. It performs no copy of the initial
+func NewSession(publicKey ecdsa.PublicKey, SSID []byte, threshold int, publicInfo map[party.ID]*party.Public, secret *party.Secret) (*Session, error) {
+	n := len(publicInfo)
+
+	parties := make(party.IDSlice, 0, n)
+	for id := range publicInfo {
+		parties = append(parties, id)
 	}
-	parties := make(party.IDSlice, n)
-	copy(parties, partyIDs)
 	parties.Sort()
+
 	s := &Session{
-		group:     curve.Curve,
-		parties:   parties,
-		threshold: threshold,
-		Public:    public,
+		group:     publicKey.Curve,
+		Parties:   parties,
+		Threshold: threshold,
+		Public:    publicInfo,
+		Secret:    secret,
+		PublicKey: &publicKey,
+		ssid:      SSID,
 	}
-	if err := s.Validate(nil); err != nil {
+
+	// Check that all public info have right information
+	if err := s.Validate(); err != nil {
 		return nil, err
 	}
 	return s, nil
 }
 
-func (s Session) NewFromKeygenResult(rid []byte, publicShares map[party.ID]*curve.Point) (*Session, error) {
-	if s.state() != StateInit {
-		return nil, errors.New("bad state transition")
+// NewSessionKeygen returns a new Session where the fields without any Keygen material.
+// It only sets:
+//   - ID for all parties from partyIDs (making sure there are no duplicates and it includes selfID)
+//   - SSID which is the hash of the SID = (G, P₁, ..., Pₙ
+func NewSessionKeygen(selfID party.ID, group elliptic.Curve, partyIDs party.IDSlice, threshold int) (*Session, error) {
+	var err error
+	n := len(partyIDs)
+
+	parties := make(party.IDSlice, n)
+	copy(parties, partyIDs)
+	parties.Sort()
+
+	s := &Session{
+		group:     group,
+		Parties:   parties,
+		Threshold: threshold,
 	}
 
-	public := make(map[party.ID]*party.Public, len(s.parties))
-	for _, id := range s.parties {
-		public[id] = party.NewPublic(id, publicShares[id], nil)
+	// get ssid hash
+	s.ssid, err = s.RecomputeSSID()
+	if err != nil {
+		return nil, fmt.Errorf("session.NewSessionKeygen: failed to get hash of SID: %w", err)
 	}
 
-	s2 := &Session{
-		group:     s.group,
-		parties:   s.parties.Copy(),
-		threshold: s.threshold,
-		RID:       append([]byte{}, rid...),
-		Public:    public,
+	// Create empty public info map
+	s.Public = make(map[party.ID]*party.Public, n)
+	for _, id := range parties {
+		s.Public[id] = &party.Public{
+			ID:   id,
+			SSID: s.ssid,
+		}
 	}
 
-	if err := s2.Validate(nil); err != nil {
+	// initialize secret
+	s.Secret = &party.Secret{ID: selfID}
+
+	if err = s.Validate(); err != nil {
 		return nil, err
 	}
-	return s2, nil
+	return s, nil
 }
 
-func (s Session) NewFromRefreshResult(publicShares map[party.ID]*curve.Point, ped map[party.ID]*pedersen.Parameters) (*Session, error) {
-	if s.state() < StateKeygen {
-		return nil, errors.New("bad state transition")
+// RecomputeSSID regenerates the hash of the SSID
+func (s *Session) RecomputeSSID() ([]byte, error) {
+	// initialize hash function with sid information
+	hSID, err := s.Hash()
+	if err != nil {
+		return nil, fmt.Errorf("session: failed to initialize hash function with SID: %w", err)
 	}
-
-	public := make(map[party.ID]*party.Public, len(s.parties))
-	for _, id := range s.parties {
-		public[id] = party.NewPublic(id, publicShares[id], ped[id])
+	// get ssid hash
+	ssid, err := hSID.ReadBytes(make([]byte, params.HashBytes))
+	if err != nil {
+		return nil, fmt.Errorf("session: failed to get hash of SID: %w", err)
 	}
-
-	s2 := &Session{
-		group:     s.group,
-		parties:   s.parties.Copy(),
-		threshold: s.threshold,
-		RID:       append([]byte{}, s.RID...),
-		Public:    public,
-	}
-
-	if err := s2.Validate(nil); err != nil {
-		return nil, err
-	}
-	return s2, nil
+	return ssid, nil
 }
 
-func (s Session) Parties() party.IDSlice {
-	return s.parties
+// KeygenDone checks if the secret is set. If so, then we assume we are in a post-keygen state.
+// This does not perform any other validation on the state of the public party info.
+// You should run Session.Validate() for that.
+func (s Session) KeygenDone() bool {
+	return s.Secret != nil && len(s.Secret.RID) != 0 && s.Secret.ECDSA != nil && s.Secret.Paillier != nil
 }
 
+// N returns the total number of parties in this session. This is the N of a TSS.
 func (s Session) N() int {
-	return len(s.parties)
+	return len(s.Parties)
 }
 
-// Threshold returns the maximum number of corrupted parties allowed
-func (s Session) Threshold() int {
-	return s.threshold
-}
-
-// PublicKey returns the ECDSA public key for the session
-func (s Session) PublicKey() (*ecdsa.PublicKey, error) {
-	return getPublicKey(s.Public)
-}
-
-// Validate checks all the parameters. If secret is not nil then it also checks if the secret agrees with the public data.
-func (s Session) Validate(secret *party.Secret) error {
+// Validate checks all the parameters and returns an error if an inconsistency was detected.
+// Makes sure of the following:
+//   - Public info and Secret are compatible
+//   - SSID is computed correctly and is the same for all Public data
+//   - PublicKey corresponds to the Lagrange interpolation of the Public ECDSA shares
+//   - Paillier and Pedersen parameters are good.
+func (s Session) Validate() error {
 	// group
 	if s.group == nil {
-		return errors.New("group is nil")
+		return errors.New("session: group is nil")
 	}
 
-	if !s.parties.Sorted() {
-		return errors.New("party list was not sorted")
+	// check the list of parties is sorted
+	if !s.Parties.Sorted() {
+		return errors.New("session: party list was not sorted")
 	}
 
-	n := len(s.parties)
-	for _, j := range s.parties {
+	// check that the list of parties corresponds with the map of party.Public
+	if len(s.Parties) != len(s.Public) {
+		return errors.New("session: Parties and Public length mismatch")
+	}
+
+	// verify our ID is present
+	if !s.Parties.Contains(s.Secret.ID) {
+		return fmt.Errorf("session: selfID: %s, err: %w", s.Secret.ID, ErrSelfIDNotIncluded)
+	}
+
+	// check threshold ∈ [1, n-1]
+	n := len(s.Parties)
+	if s.Threshold < 1 || s.Threshold >= n {
+		return fmt.Errorf("session: threshold setting (%d,%d) invalid", s.Threshold, n)
+	}
+
+	// check non nil
+	if s.Secret == nil ||
+		len(s.Parties) == 0 ||
+		len(s.Public) == 0 ||
+		len(s.ssid) != params.HashBytes {
+		return errors.New("session: some parameters were nil")
+	}
+
+	// validate secret
+	publicI, ok := s.Public[s.Secret.ID]
+	if !ok {
+		return errors.New("session: Secret does not have a corresponding Public")
+	}
+
+	// do a full validation of secret if keygen is done
+	if err := s.Secret.ValidatePublic(publicI); err != nil {
+		return fmt.Errorf("session: secret data: %w", err)
+	}
+
+	keygenDone := s.KeygenDone()
+	// basic check for each party
+	for _, j := range s.Parties {
 		publicJ, ok := s.Public[j]
 		if !ok {
-			return fmt.Errorf("party %s: list mismatch with public parameters", j)
+			return fmt.Errorf("session: party %s not included in Public", j)
 		}
 		if j != publicJ.ID {
-			return fmt.Errorf("party %s: id mismatch", j)
+			return fmt.Errorf("session: party %s: ID mismatch", j)
 		}
-		if err := publicJ.IsValid(); err != nil {
-			return fmt.Errorf("party %s: %w", j, err)
+		if !bytes.Equal(publicJ.SSID, s.ssid) {
+			return fmt.Errorf("session: party %s: SSID mismatch", j)
 		}
+
+		// do a full validation of publicJ if keygen is done
+		if publicJ.KeygenDone() != keygenDone {
+			return fmt.Errorf("session: party %s: no keygen data", j)
+		}
+		// validate public
+		if err := publicJ.Validate(); err != nil {
+			return fmt.Errorf("session: party %s: %w", j, err)
+		}
+
 	}
 
-	if len(s.Public) != n {
-		return errors.New("duplicated party id")
+	// check ssid again
+	ssid, err := s.RecomputeSSID()
+	if err != nil {
+		return fmt.Errorf("session: failed to generate ssid: %w", err)
+	}
+	if !bytes.Equal(ssid, s.ssid) {
+		return errors.New("session: ssid mismatch")
 	}
 
-	if s.threshold < 1 || s.threshold >= n {
-		return errors.New("invalid threshold")
+	newKey, err := s.ComputePublicKey()
+	if err != nil {
+		return err
 	}
-
-	st := s.state()
-	if st >= StateKeygen {
-		if len(s.RID) != params.SecBytes {
-			return errors.New("RID wrong length")
-		}
-	}
-
-	if secret != nil {
-		publicI, ok := s.Public[secret.ID]
-		if !ok {
-			return errors.New("secret data does not correspond to any of the public party data")
-		}
-
-		if err := secret.IsValid(publicI); err != nil {
-			return fmt.Errorf("secret data: %w", err)
-		}
+	if !s.PublicKey.Equal(newKey) {
+		return errors.New("session: public key mismatch")
 	}
 
 	return nil
 }
 
-func (s *Session) SSID() []byte {
-	out := make([]byte, params.HashBytes)
-	h, err := s.Hash()
-	if err != nil {
-		panic(err)
-	}
-	_, _ = h.ReadBytes(out)
-	return out
-}
-
+// Hash returns a new hash.Hash function initialized with the full SSID.
+// It assumes that the state is in a correct, and can panic if it is not.
+// Calling hash.Sum() on the resulting hash function returns the hash of the SSID.
 func (s *Session) Hash() (*hash.Hash, error) {
 	var err error
+	intBuffer := make([]byte, 8)
 
 	h := hash.New()
 
+	// Write group information
 	if _, err = h.Write([]byte(s.group.Params().Name)); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("session.Hash: write group: %w", err)
 	} // 𝔾
 	if _, err = h.Write(s.group.Params().N.Bytes()); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("session.Hash: write q: %w", err)
 	} // q
 	if _, err = h.Write(s.group.Params().Gx.Bytes()); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("session.Hash: write gx: %w", err)
 	} // gₓ
 
-	if len(s.RID) != 0 {
-		if _, err = h.Write(s.RID); err != nil {
-			return nil, err
-		}
-	}
-
-	idBuf := make([]byte, 8)
 	// write n
-	binary.BigEndian.PutUint64(idBuf, uint64(len(s.parties)))
-	if _, err = h.Write(idBuf); err != nil {
-		return nil, err
+	binary.BigEndian.PutUint64(intBuffer, uint64(len(s.Parties)))
+	if _, err = h.Write(intBuffer); err != nil {
+		return nil, fmt.Errorf("session.Hash: write n: %w", err)
 	}
+
 	// write t
-	binary.BigEndian.PutUint64(idBuf, uint64(s.threshold))
-	if _, err = h.Write(idBuf); err != nil {
-		return nil, err
+	binary.BigEndian.PutUint64(intBuffer, uint64(s.Threshold))
+	if _, err = h.Write(intBuffer); err != nil {
+		return nil, fmt.Errorf("session.Hash: write t: %w", err)
 	}
 
-	// write all IDs
-	for _, pid := range s.parties {
-		partyI := s.Public[pid]
-		pState := PartyPublicState(partyI)
-		if pState == StateError {
-			return nil, errors.New("invalid parameters")
+	// write P₁, ..., Pₙ
+	for _, partyID := range s.Parties {
+		if _, err = h.Write([]byte(partyID)); err != nil {
+			return nil, fmt.Errorf("session.Hash: write party %s: %w", partyID, err)
 		}
-		if _, err = h.Write([]byte(pid)); err != nil {
-			return nil, err
+	}
+
+	// stop here if we are in the keygen phase.
+	if !s.KeygenDone() {
+		return h, nil
+	}
+
+	// RID (since secret is already set)
+	if _, err = h.Write(s.Secret.RID); err != nil {
+		return nil, fmt.Errorf("session.Hash: write RID: %w", err)
+	}
+
+	// write all public info from parties in order
+	for _, partyID := range s.Parties {
+		partyI := s.Public[partyID]
+
+		// Write ECDSA public key
+		if _, err = h.Write(partyI.ECDSA.Bytes()); err != nil {
+			return nil, fmt.Errorf("session.Hash: party %s, write ECDSA: %w", partyID, err)
 		}
 
-		if pState >= StateKeygen {
-			if _, err = h.Write(partyI.ECDSA.Bytes()); err != nil {
-				return nil, err
-			}
-		}
-
-		if pState == StateRefresh {
-			if err = h.WriteAny(partyI.Pedersen); err != nil {
-				return nil, err
-			}
+		// write N,S,T
+		// we don't write the paillier key since it is assumed to be the same as the N from the Pedersen parameters.
+		if err = h.WriteAny(partyI.Pedersen); err != nil {
+			return nil, fmt.Errorf("session.Hash: party %s, write Pedersen: %w", partyID, err)
 		}
 	}
 
 	return h, nil
 }
 
-func getPublicKey(parties map[party.ID]*party.Public) (*ecdsa.PublicKey, error) {
-	pk := curve.NewIdentityPoint()
-	for _, pi := range parties {
-		if PartyPublicState(pi) < StateKeygen {
-			return nil, errors.New("state does not have a public key")
-		}
-		pk.Add(pk, pi.ECDSA)
+// ComputePublicKey returns an ecdsa.PublicKey computed via Lagrange interpolation
+// of all public shares.
+func (s *Session) ComputePublicKey() (*ecdsa.PublicKey, error) {
+	sum := curve.NewIdentityPoint()
+	tmp := curve.NewIdentityPoint()
+	for partyID, partyJ := range s.Public {
+		lagrange := s.Parties.Lagrange(partyID)
+		tmp.ScalarMult(lagrange, partyJ.ECDSA)
+		sum.Add(sum, tmp)
 	}
-	return pk.ToPublicKey(), nil
+	return sum.ToPublicKey(), nil
 }
 
-func (s *Session) state() State {
-	st := PartyPublicState(s.Public[s.parties[0]])
-
-	for _, p := range s.Public {
-		if st != PartyPublicState(p) {
-			st = StateError
-			break
-		}
-	}
-
-	return st
-}
-
+// Clone performs a deep copy of a all fields. In particular, it copies all public party data
+// as well as the secret.
 func (s *Session) Clone() *Session {
 	public2 := make(map[party.ID]*party.Public, len(s.Public))
 	for j, publicJ := range s.Public {
@@ -277,75 +328,26 @@ func (s *Session) Clone() *Session {
 
 	s2 := &Session{
 		group:     s.group,
-		parties:   s.parties.Copy(),
-		threshold: s.threshold,
-		RID:       append([]byte{}, s.RID...),
+		Parties:   s.Parties.Copy(),
+		Threshold: s.Threshold,
 		Public:    public2,
+		Secret:    s.Secret.Clone(),
+		PublicKey: &(*s.PublicKey),
+		ssid:      append([]byte{}, s.ssid...),
 	}
 	return s2
 }
 
-func (s *Session) CloneForKeygen() *Session {
-	public2 := make(map[party.ID]*party.Public, len(s.Public))
-	for _, j := range s.parties {
-		public2[j] = &party.Public{
-			ID: j,
-		}
-	}
-
-	s2 := &Session{
-		group:     s.group,
-		parties:   s.parties.Copy(),
-		threshold: s.threshold,
-		RID:       nil,
-		Public:    public2,
-	}
-	return s2
+// SelfID returns the ID of the party we have the secrets for
+func (s Session) SelfID() party.ID {
+	return s.Secret.ID
 }
 
-func (s *Session) CloneForRefresh() *Session {
-	public2 := make(map[party.ID]*party.Public, len(s.Public))
-	for j, publicJ := range s.Public {
-		public2[j] = &party.Public{
-			ID:    j,
-			ECDSA: curve.NewIdentityPoint().Set(publicJ.ECDSA),
-		}
+// SetSSID overwrites the session SSID hash and sets it for all public info of parties.
+// No check is performed, so you should probably run Session.Validate() to make sure it is correct.
+func (s *Session) SetSSID(ssid []byte) {
+	s.ssid = ssid
+	for _, p := range s.Public {
+		p.SSID = ssid
 	}
-
-	s2 := &Session{
-		group:     s.group,
-		parties:   s.parties.Copy(),
-		threshold: s.threshold,
-		RID:       append([]byte{}, s.RID...),
-		Public:    public2,
-	}
-	return s2
-}
-
-func PartyPublicState(p *party.Public) State {
-	if p.ECDSA == nil && p.Paillier == nil && p.Pedersen == nil {
-		return StateInit
-	}
-	if p.ECDSA != nil && p.Paillier == nil && p.Pedersen == nil {
-		return StateKeygen
-	}
-	if p.ECDSA != nil && p.Paillier != nil && p.Pedersen != nil {
-		return StateKeygen
-	}
-
-	return StateError
-}
-
-func PartySecretState(s *party.Secret) State {
-	if s.ECDSA == nil && s.Paillier == nil {
-		return StateInit
-	}
-	if s.ECDSA != nil && s.Paillier == nil {
-		return StateKeygen
-	}
-	if s.ECDSA != nil && s.Paillier != nil {
-		return StateKeygen
-	}
-
-	return StateError
 }

@@ -12,8 +12,6 @@ type BaseRound struct {
 	S *Session
 	H *hash.Hash
 
-	Secret *party.Secret
-
 	SelfID    party.ID
 	SelfIndex int
 }
@@ -34,21 +32,21 @@ func (b BaseRound) MessageType() pb.MessageType {
 	return pb.MessageType_TypeInvalid
 }
 
-func NewBaseRound(session *Session, secret *party.Secret) (*BaseRound, error) {
-	if err := session.Validate(secret); err != nil {
+func NewBaseRound(session *Session) (*BaseRound, error) {
+	s2 := session.Clone()
+	if err := s2.Validate(); err != nil {
 		return nil, err
 	}
 
-	h, err := session.Hash()
+	h, err := s2.Hash()
 	if err != nil {
 		return nil, fmt.Errorf("newRound: session.Hash: %w", err)
 	}
 
 	return &BaseRound{
-		S:         session,
+		S:         s2,
 		H:         h,
-		Secret:    secret,
-		SelfID:    secret.ID,
-		SelfIndex: session.Parties().GetIndex(secret.ID),
+		SelfID:    s2.SelfID(),
+		SelfIndex: s2.Parties.GetIndex(s2.SelfID()),
 	}, nil
 }

@@ -6,15 +6,17 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 )
 
 func TestMod(t *testing.T) {
-	p, q, n, phi := sample.Paillier()
-	public := Public{N: n}
+	p, q := sample.Paillier()
+	sk := paillier.NewSecretKeyFromPrimes(p, q)
+	public := Public{N: sk.PublicKey().N}
 	p2, err := public.Prove(hash.New(), Private{
 		P:   p,
 		Q:   q,
-		Phi: phi,
+		Phi: sk.Phi,
 	})
 	if err != nil {
 		t.Error("failed")

@@ -4,25 +4,20 @@ import (
 	"testing"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 )
 
 func TestMod(t *testing.T) {
-	_, _, n, phi := sample.Paillier()
-	s, T, lambda := sample.Pedersen(n, phi)
+	sk := paillier.NewSecretKey()
+	ped, lambda := sk.GeneratePedersen()
 
 	public := Public{
-		&pedersen.Parameters{
-			N: n,
-			S: s,
-			T: T,
-		},
+		ped,
 	}
 
 	proof, err := public.Prove(hash.New(), Private{
 		Lambda: lambda,
-		Phi:    phi,
+		Phi:    sk.Phi,
 	})
 
 	if err != nil {

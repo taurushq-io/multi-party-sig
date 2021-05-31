@@ -67,7 +67,7 @@ func (public Public) Verify(hash *hash.Hash, proof *pb.ZKPrm) bool {
 	if !proof.IsValid() {
 		return false
 	}
-	if !public.Pedersen.IsValid() {
+	if err = public.Pedersen.Validate(); err != nil {
 		return false
 	}
 

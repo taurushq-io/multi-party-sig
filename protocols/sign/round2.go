@@ -15,7 +15,7 @@ type round2 struct {
 }
 
 func (round *round2) ProcessMessage(msg *pb.Message) error {
-	j := msg.GetFrom()
+	j := msg.GetFromID()
 	partyJ := round.parties[j]
 
 	sign1 := msg.GetSign1()
