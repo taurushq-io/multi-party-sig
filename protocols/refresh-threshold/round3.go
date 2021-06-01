@@ -26,7 +26,7 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 	// Broadcast the message we created in round1
 	return []*pb.Message{{
-		Type:      pb.MessageType_TypeRefresh2,
+		Type:      pb.MessageType_TypeRefreshThreshold3,
 		From:      round.SelfID,
 		Broadcast: pb.Broadcast_Basic,
 		RefreshT3: &pb.RefreshT3{

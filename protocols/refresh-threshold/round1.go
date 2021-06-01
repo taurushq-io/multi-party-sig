@@ -18,6 +18,9 @@ import (
 type round1 struct {
 	*round.BaseRound
 
+	// keygen determines whether we are creating new key material or refreshing
+	keygen bool
+
 	thisParty *localParty
 	parties   map[party.ID]*localParty
 
@@ -46,8 +49,8 @@ func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 	var err error
 
 	// generate Schnorr randomness and commitments
-	round.thisParty.A = make([]*curve.Point, round.S.Threshold)
-	round.schnorrRand = make([]*curve.Scalar, round.S.Threshold)
+	round.thisParty.A = make([]*curve.Point, round.S.Threshold+1)
+	round.schnorrRand = make([]*curve.Scalar, round.S.Threshold+1)
 	for i := range round.thisParty.A {
 		round.schnorrRand[i] = curve.NewScalarRandom()
 		round.thisParty.A[i] = curve.NewIdentityPoint().ScalarBaseMult(round.schnorrRand[i])
@@ -60,8 +63,12 @@ func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 	round.S.Secret.Paillier = skPaillier
 	round.thisParty.Paillier = pkPaillier
 
-	// sample fᵢ(X) deg(fᵢ) = t, fᵢ(0) = 0
+	// sample fᵢ(X) deg(fᵢ) = t, fᵢ(0) = constant
+	// if keygen then constant = secret, otherwise it is 0
 	constant := curve.NewScalar()
+	if round.keygen {
+		constant = curve.NewScalarRandom()
+	}
 	round.poly = polynomial.NewPolynomial(round.S.Threshold, constant)
 	selfScalar := curve.NewScalar().SetBytes([]byte(round.SelfID))
 	round.thisParty.shareReceived = round.poly.Evaluate(selfScalar)
@@ -83,9 +90,9 @@ func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 	}
 
 	return []*pb.Message{{
-		Type:      pb.MessageType_TypeRefresh1,
+		Type:      pb.MessageType_TypeRefreshThreshold1,
 		From:      round.SelfID,
-		Broadcast: pb.Broadcast_Reliable,
+		Broadcast: pb.Broadcast_Basic,
 		RefreshT1: &pb.RefreshT1{
 			Hash: round.thisParty.commitment,
 		},

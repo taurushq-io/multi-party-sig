@@ -19,7 +19,8 @@ type localParty struct {
 
 	commitment hash.Commitment // H(msg2, decommitment)
 
-	// rho = ρᵢ
+	// rho = ρⱼ
+	// if keygen, then this is RIDⱼ
 	rho []byte
 
 	// polyExp = Fⱼ(X) = fⱼ(X)•G

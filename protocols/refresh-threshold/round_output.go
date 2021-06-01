@@ -1,6 +1,7 @@
 package refresh_threshold
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
@@ -23,10 +24,14 @@ func (round *output) ProcessMessage(msg *pb.Message) error {
 	body := msg.GetRefreshT4()
 
 	// verify Schnorr proofs
-	if len(body.SchF) != round.S.Threshold {
+	if len(body.SchF) != round.S.Threshold+1 {
 		return fmt.Errorf("refresh.output.ProcessMessage(): party %s: wrong number of Schnorr commitments", j)
 	}
 	for l := range body.SchF {
+		// if in refresh, we know the constant coefficient is 0 so no need to check
+		if !round.keygen && l == 0 {
+			continue
+		}
 		schX := body.SchF[l].Unmarshal()
 		X := partyJ.polyExp.Coefficients()[l+1]
 		if !zksch.Verify(round.H.CloneWithID(j), partyJ.A[l], X, schX) {
@@ -101,6 +106,10 @@ func (round *output) GenerateMessages() ([]*pb.Message, error) {
 
 	if err = round.S.Validate(); err != nil {
 		return nil, fmt.Errorf("refresh.output.GenerateMessages(): validate new session: %w", err)
+	}
+
+	if !round.S.KeygenDone() {
+		return nil, errors.New("refresh.output.GenerateMessages(): session is not in post keygen state")
 	}
 
 	return nil, nil

@@ -39,7 +39,7 @@ func (round *round4) ProcessMessage(msg *pb.Message) error {
 		return err
 	}
 	// check that the constant coefficient is 0
-	if !partyJ.polyExp.Constant().Equal(curve.NewIdentityPoint()) {
+	if !round.keygen && !partyJ.polyExp.Constant().Equal(curve.NewIdentityPoint()) {
 		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: exponent polynomial has non 0 constant", j)
 	}
 	// check deg(Fⱼ) = t
@@ -51,7 +51,7 @@ func (round *round4) ProcessMessage(msg *pb.Message) error {
 	if partyJ.A, err = pb.UnmarshalPoints(body.GetA()); err != nil {
 		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: unmarshal points: %w", j, err)
 	}
-	if len(partyJ.A) != round.S.Threshold {
+	if len(partyJ.A) != len(partyJ.polyExp.Coefficients()) {
 		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: wrong number of Schnorr commitments", j)
 	}
 
@@ -90,6 +90,10 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 			round.rho[i] ^= partyJ.rho[i]
 		}
 	}
+	// set RID if we are in keygen
+	if round.keygen {
+		round.S.Secret.RID = append([]byte{}, round.rho...)
+	}
 
 	// Write rho to the hash state
 	if _, err := round.H.Write(round.rho); err != nil {
@@ -120,11 +124,16 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 	}
 
 	// Compute all ZKPoK Xⱼ = [xⱼ] G
-	schXproto := make([]*pb.Scalar, round.S.Threshold)
+	schXproto := make([]*pb.Scalar, round.S.Threshold+1)
 	var schX *curve.Scalar
 	for j := range schXproto {
-		x := round.poly.Coefficients()[j+1]
-		X := round.thisParty.polyExp.Coefficients()[j+1]
+		// skip the first index in keygen mode
+		if !round.keygen && j == 0 {
+			schXproto[j] = pb.NewScalar(curve.NewScalar())
+			continue
+		}
+		x := round.poly.Coefficients()[j]
+		X := round.thisParty.polyExp.Coefficients()[j]
 		schX, err = zksch.Prove(round.H.CloneWithID(round.SelfID), partyI.A[j], X, round.schnorrRand[j], x)
 		if err != nil {
 			return nil, fmt.Errorf("refresh.round4.GenerateMessages(): failed to generate sch proof for coef %d: %w", j, err)
@@ -148,7 +157,7 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 		C, _ := partyJ.Paillier.Enc(share.BigInt(), nil)
 
 		msgs = append(msgs, &pb.Message{
-			Type: pb.MessageType_TypeKeygen3,
+			Type: pb.MessageType_TypeRefreshThreshold4,
 			From: round.SelfID,
 			To:   idJ,
 			RefreshT4: &pb.RefreshT4{

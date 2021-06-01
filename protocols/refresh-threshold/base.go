@@ -29,6 +29,7 @@ func NewRound(session *round.Session) (*round1, error) {
 
 	return &round1{
 		BaseRound: base,
+		keygen:    !base.S.KeygenDone(),
 		thisParty: parties[base.SelfID],
 		parties:   parties,
 	}, nil

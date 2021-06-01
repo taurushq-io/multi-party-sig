@@ -23,6 +23,37 @@ func GenerateShares(parties party.IDSlice, t int) (shares []*curve.Scalar, sum *
 	return
 }
 
+func FakeEmpty(n, threshold int) []*Session {
+	partyIDs := party.RandomIDs(n)
+
+	secrets := make(map[party.ID]*party.Secret, n)
+	public := make(map[party.ID]*party.Public, n)
+
+	for _, pid := range partyIDs {
+		secrets[pid] = &party.Secret{
+			ID: pid,
+		}
+		public[pid] = &party.Public{
+			ID: pid,
+		}
+	}
+
+	sessions := make([]*Session, n)
+	for i, pid := range partyIDs {
+		sessions[i] = &Session{
+			group:     curve.Curve,
+			PartyIDs:  partyIDs,
+			Threshold: threshold,
+			Public:    public,
+			Secret:    secrets[pid],
+		}
+		if err := sessions[i].RecomputeSSID(); err != nil {
+			panic(err)
+		}
+	}
+	return sessions
+}
+
 func FakeKeygen(n, threshold int) []*Session {
 	partyIDs := party.RandomIDs(n)
 
