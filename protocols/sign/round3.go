@@ -1,6 +1,7 @@
 package sign
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
@@ -19,15 +20,22 @@ type round3 struct {
 	chi *curve.Scalar
 }
 
+// ProcessMessage implements round.Round
+//
+//
 func (round *round3) ProcessMessage(msg *pb.Message) error {
 	j := msg.GetFromID()
 	partyJ := round.parties[j]
 
 	body := msg.GetSign2()
 
+	if !bytes.Equal(body.HashKG, round.hashOfAllKjGj) {
+		return fmt.Errorf("sign.round3.ProcessMessage(): party %s: provided hash is different", j)
+	}
+
 	gamma, err := body.Gamma.Unmarshal()
 	if err != nil {
-		return err
+		return fmt.Errorf("sign.round3.ProcessMessage(): party %s: unmarshal gamma: %w", j, err)
 	}
 
 	D := body.D.Unmarshal()
@@ -74,20 +82,23 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 	shareAlphaDeltaInt := round.S.Secret.Paillier.Dec(D)
 	shareAlphaDelta := curve.NewScalarBigInt(shareAlphaDeltaInt)
 	//if shareAlphaDeltaInt.Cmp(shareAlphaDelta.BigInt()) != 0 {
-	//	return fmt.Errorf("refresh.round3.ProcessMessage(): party %s: decrypted share alpha for delta is not in correct range", j)
+	//	return fmt.Errorf("refresh_old.round3.ProcessMessage(): party %s: decrypted share alpha for delta is not in correct range", j)
 	//}
 	partyJ.ShareAlphaDelta = shareAlphaDelta
 
 	shareAlphaChiInt := round.S.Secret.Paillier.Dec(DHat)
 	shareAlphaChi := curve.NewScalarBigInt(shareAlphaChiInt)
 	//if shareAlphaChiInt.Cmp(shareAlphaChi.BigInt()) != 0 {
-	//	return fmt.Errorf("refresh.round3.ProcessMessage(): party %s: decrypted share alpha for chi is not in correct range", j)
+	//	return fmt.Errorf("refresh_old.round3.ProcessMessage(): party %s: decrypted share alpha for chi is not in correct range", j)
 	//}
 	partyJ.ShareAlphaChi = shareAlphaChi
 
 	return partyJ.AddMessage(msg)
 }
 
+// GenerateMessages implements round.Round
+//
+//
 func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 	// Γ = ∑ⱼ Γⱼ
 	round.Gamma = curve.NewIdentityPoint()
@@ -160,6 +171,9 @@ func (round *round3) message3(partyJ *localParty) (*pb.Message, error) {
 	}, nil
 }
 
+// Finalize implements round.Round
+//
+//
 func (round *round3) Finalize() (round.Round, error) {
 	return &round4{
 		round3: round,

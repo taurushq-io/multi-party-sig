@@ -50,8 +50,8 @@ func feedMessages(parties []*testParty, msgs []*pb.Message) error {
 }
 
 func TestRound(t *testing.T) {
-	N := 3
-	T := 2
+	N := 5
+	T := 3
 
 	message := []byte("hello")
 	messageHash := make([]byte, 64)

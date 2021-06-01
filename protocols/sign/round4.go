@@ -27,6 +27,9 @@ type round4 struct {
 	abort bool
 }
 
+// ProcessMessage implements round.Round
+//
+//
 func (round *round4) ProcessMessage(msg *pb.Message) error {
 	j := msg.GetFromID()
 	partyJ := round.parties[j]
@@ -36,6 +39,10 @@ func (round *round4) ProcessMessage(msg *pb.Message) error {
 	Delta, err := body.GetDeltaGroup().Unmarshal()
 	if err != nil {
 		return fmt.Errorf("sign.round4.ProcessMessage(): unmarshal Delta: %w", err)
+	}
+	delta, err := body.GetDelta().Unmarshal()
+	if err != nil {
+		return fmt.Errorf("sign.round4.ProcessMessage(): unmarshal delta: %w", err)
 	}
 
 	zkLogPublic := zklogstar2.Public{
@@ -51,11 +58,14 @@ func (round *round4) ProcessMessage(msg *pb.Message) error {
 	}
 
 	partyJ.Delta = Delta
-	partyJ.delta = body.GetDelta().Unmarshal()
+	partyJ.delta = delta
 
 	return partyJ.AddMessage(msg)
 }
 
+// GenerateMessages implements round.Round
+//
+//
 func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 	// δ = ∑ⱼ δⱼ
 	round.delta = curve.NewScalar()
@@ -99,6 +109,9 @@ func (round *round4) GenerateMessagesAbort() ([]*pb.Message, error) {
 	return nil, nil
 }
 
+// Finalize implements round.Round
+//
+//
 func (round *round4) Finalize() (round.Round, error) {
 	if round.abort {
 		panic("abort1")

@@ -1,9 +1,16 @@
 package refresh
 
 import (
+	"crypto/rand"
+	"fmt"
+	"math/big"
+
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
@@ -11,72 +18,100 @@ import (
 type round1 struct {
 	*round.BaseRound
 
-	p *Parameters
+	// keygen determines whether we are creating new key material or refreshing
+	keygen bool
 
 	thisParty *localParty
 	parties   map[party.ID]*localParty
 
-	// xReceived are the decrypted shares received from each party
-	xReceived []*curve.Scalar
-
 	// decommitment of the 2nd message
 	decommitment hash.Decommitment // uᵢ
+
+	// lambda is λᵢ used to generate the Pedersen parameters
+	lambda *big.Int
+
+	// poly is fᵢ(X)
+	poly *polynomial.Polynomial
+
+	// schnorrRand is an array to t+1 random aₗ ∈ 𝔽 used to compute Schnorr commitments of
+	// the coefficients of the exponent polynomial Fᵢ(X)
+	schnorrRand []*curve.Scalar
 }
 
 var _ round.Round = (*round1)(nil)
 
+// ProcessMessage implements round.Round
+//
+//
 func (round *round1) ProcessMessage(*pb.Message) error {
 	// In the first round, no messages are expected.
 	return nil
 }
 
+// GenerateMessages implements round.Round
+//
+//
 func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 	var err error
 
-	// generate elGamal + schnorr commitments
-	round.thisParty.Y = curve.NewIdentityPoint().ScalarBaseMult(round.p.y)
-	round.thisParty.BSch = curve.NewIdentityPoint().ScalarBaseMult(round.p.bSchnorr)
-
-	// generate shares
-	round.thisParty.X = make([]*curve.Point, round.S.N())
-	round.thisParty.ASch = make([]*curve.Point, round.S.N())
-	for idxJ := range round.S.PartyIDs() {
-		round.thisParty.X[idxJ] = curve.NewIdentityPoint().ScalarBaseMult(round.p.xSent[idxJ])
-		round.thisParty.ASch[idxJ] = curve.NewIdentityPoint().ScalarBaseMult(round.p.aSchnorr[idxJ])
+	// generate Schnorr randomness and commitments
+	round.thisParty.A = make([]*curve.Point, round.S.Threshold+1)
+	round.schnorrRand = make([]*curve.Scalar, round.S.Threshold+1)
+	for i := range round.thisParty.A {
+		round.schnorrRand[i] = curve.NewScalarRandom()
+		round.thisParty.A[i] = curve.NewIdentityPoint().ScalarBaseMult(round.schnorrRand[i])
 	}
 
-	round.thisParty.Pedersen = round.p.ped
-	round.thisParty.Paillier = round.p.paillierSecret.PublicKey()
-	round.Secret.Paillier = round.p.paillierSecret
+	// generate Paillier and Pedersen
+	skPaillier := paillier.NewSecretKey()
+	pkPaillier := skPaillier.PublicKey()
+	round.thisParty.Pedersen, round.lambda = skPaillier.GeneratePedersen()
+	round.S.Secret.Paillier = skPaillier
+	round.thisParty.Paillier = pkPaillier
 
-	// save our own share
-	round.xReceived = make([]*curve.Scalar, round.S.N())
-	round.xReceived[round.SelfIndex] = round.p.xSent[round.SelfIndex]
+	// sample fᵢ(X) deg(fᵢ) = t, fᵢ(0) = constant
+	// if keygen then constant = secret, otherwise it is 0
+	constant := curve.NewScalar()
+	if round.keygen {
+		constant = curve.NewScalarRandom()
+	}
+	round.poly = polynomial.NewPolynomial(round.S.Threshold, constant)
+	selfScalar := curve.NewScalar().SetBytes([]byte(round.SelfID))
+	round.thisParty.shareReceived = round.poly.Evaluate(selfScalar)
+
+	// set Fᵢ(X) = fᵢ(X)•G
+	round.thisParty.polyExp = polynomial.NewPolynomialExponent(round.poly)
 
 	// Sample ρ
-	round.thisParty.rho = round.p.rho
+	round.thisParty.rho = make([]byte, params.SecBytes)
+	if _, err = rand.Read(round.thisParty.rho); err != nil {
+		return nil, fmt.Errorf("refresh_old.round1.GenerateMessages(): sample rho: %w", err)
+	}
 
 	// commit to data in message 2
 	round.thisParty.commitment, round.decommitment, err = round.H.Commit(round.SelfID,
-		round.thisParty.X, round.thisParty.ASch, round.thisParty.Y, round.thisParty.BSch, round.thisParty.Pedersen, round.thisParty.rho)
+		round.thisParty.rho, round.thisParty.polyExp, round.thisParty.A, round.thisParty.Pedersen)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("refresh_old.round1.GenerateMessages(): commit: %w", err)
 	}
 
 	return []*pb.Message{{
 		Type:      pb.MessageType_TypeRefresh1,
 		From:      round.SelfID,
-		Broadcast: pb.Broadcast_Reliable,
+		Broadcast: pb.Broadcast_Basic,
 		Refresh1: &pb.Refresh1{
 			Hash: round.thisParty.commitment,
 		},
 	}}, nil
 }
 
+// Finalize implements round.Round
+//
+//
 func (round *round1) Finalize() (round.Round, error) {
-	return &round2{round}, nil
+	return &round2{round, nil}, nil
 }
 
 func (round *round1) MessageType() pb.MessageType {
-	return pb.MessageType_TypeKeygen2
+	return pb.MessageType_TypeInvalid
 }

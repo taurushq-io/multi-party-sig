@@ -21,13 +21,19 @@ type output struct {
 	signature *signature2.Signature
 }
 
+// ProcessMessage implements round.Round
+//
+//
 func (round *output) ProcessMessage(msg *pb.Message) error {
 	j := msg.GetFromID()
 	partyJ := round.parties[j]
 
 	body := msg.GetSign4()
 
-	sigma := body.GetSigma().Unmarshal()
+	sigma, err := body.GetSigma().Unmarshal()
+	if err != nil {
+		return fmt.Errorf("sign.output.ProcessMessage(): party %s: unmarshal sigma: %w", j, err)
+	}
 	if sigma.IsZero() {
 		return fmt.Errorf("sign.output.ProcessMessage(): party %s: sigma is 0", j)
 	}
@@ -36,6 +42,9 @@ func (round *output) ProcessMessage(msg *pb.Message) error {
 	return nil
 }
 
+// GenerateMessages implements round.Round
+//
+//
 func (round *output) GenerateMessages() ([]*pb.Message, error) {
 	// compute σ = ∑ⱼ σⱼ
 	round.sigma = curve.NewScalar()
@@ -60,6 +69,9 @@ func (round *output) GenerateMessages() ([]*pb.Message, error) {
 	return nil, nil
 }
 
+// Finalize implements round.Round
+//
+//
 func (round *output) Finalize() (round.Round, error) {
 	if round.abort {
 		return &abort2{round}, nil

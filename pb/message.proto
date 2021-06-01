@@ -10,26 +10,26 @@ import "zk.proto";
 enum MessageType {
   TypeInvalid = 0;
 
-  TypeKeygen1 = 11;
-  TypeKeygen2 = 12;
-  TypeKeygen3 = 13;
+  TypeRefresh1 = 11;
+  TypeRefresh2 = 12;
+  TypeRefresh3 = 13;
+  TypeRefresh4 = 14;
 
-  TypeRefresh1 = 21;
-  TypeRefresh2 = 22;
-  TypeRefresh3 = 23;
+  TypeSign1 = 21;
+  TypeSign2 = 22;
+  TypeSign3 = 23;
+  TypeSign4 = 24;
 
-  TypeSign1 = 31;
-  TypeSign2 = 32;
-  TypeSign3 = 33;
-  TypeSign4 = 34;
+  TypeAbort1 = 31;
+  TypeAbort2 = 32;
 
-  TypeAbort1 = 41;
-  TypeAbort2 = 42;
+  TypeKeygenOld1 = 111;
+  TypeKeygenOld2 = 112;
+  TypeKeygenOld3 = 113;
 
-  TypeRefreshThreshold1 = 51;
-  TypeRefreshThreshold2 = 52;
-  TypeRefreshThreshold3 = 53;
-  TypeRefreshThreshold4 = 54;
+  TypeRefreshOld1 = 121;
+  TypeRefreshOld2 = 122;
+  TypeRefreshOld3 = 123;
 }
 
 enum Broadcast {
@@ -44,72 +44,64 @@ message Message {
   string to = 3;
   Broadcast broadcast = 4;
 
-  Keygen1 keygen1 = 11;
-  Keygen2 keygen2 = 12;
-  Keygen3 keygen3 = 13;
+  Refresh1 refresh1 = 11;
+  Refresh2 refresh2 = 12;
+  Refresh3 refresh3 = 13;
+  Refresh4 refresh4 = 14;
 
-  Refresh1 refresh1 = 21;
-  Refresh2 refresh2 = 22;
-  Refresh3 refresh3 = 23;
+  Sign1 sign1 = 21;
+  Sign2 sign2 = 22;
+  Sign3 sign3 = 23;
+  Sign4 sign4 = 24;
 
-  Sign1 sign1 = 31;
-  Sign2 sign2 = 32;
-  Sign3 sign3 = 33;
-  Sign4 sign4 = 34;
+  Abort1 abort1 = 31;
+  Abort2 abort2 = 32;
 
-  Abort1 abort1 = 41;
-  Abort2 abort2 = 42;
+  KeygenOld1 keygenOld1 = 111;
+  KeygenOld2 keygenOld2 = 112;
+  KeygenOld3 keygenOld3 = 113;
 
-
-
-  RefreshT1 refreshT1 = 51;
-  RefreshT2 refreshT2 = 52;
-  RefreshT3 refreshT3 = 53;
-  RefreshT4 refreshT4 = 54;
-}
-
-
-message Keygen1 {
-  bytes hash = 1;
-}
-
-message Keygen2 {
-  bytes rid = 1;
-  Point X = 2;
-  Point A = 3;
-  bytes u = 4;
-
-  bytes prevHash = 10;
-}
-
-message Keygen3 {
-  Scalar schX = 1;
+  RefreshOld1 refreshOld1 = 121;
+  RefreshOld2 refreshOld2 = 122;
+  RefreshOld3 refreshOld3 = 123;
 }
 
 message Refresh1 {
+  // hash = V_i = H(rho_i, F_i(X), {A_i,l}, N_i, s_i, t_i, u_i)
   bytes hash = 1;
 }
 
 message Refresh2 {
-  repeated Point X = 1;
-  repeated Point A = 2;
-  Point Y = 3;
-  Point B = 4;
-  Int N = 5;
-  Int S = 6;
-  Int T = 7;
-  bytes rho = 8;
-  bytes u = 9;
-
-  bytes prevHash = 10;
+  // hashOfHashes = H(V_1, ..., V_n)
+  // This is essentially an echo of all messages from Refresh1.
+  // If one party received something different then everybody must abort.
+  bytes hashOfHashes = 1;
 }
 
 message Refresh3 {
+  // rho = rho_i
+  bytes rho = 1;
+  // f = F_i(X) VSS polynomial
+  PolynomialExponent f = 2;
+  // A = {A_i,l}_l Schnorr commitments for the coefficients of F_i
+  repeated Point A = 3;
+  // N Paillier and Pedersen
+  Int N = 4;
+  // S Pedersen
+  Int S = 5;
+  // T Pedersen
+  Int T = 6;
+  // U decommitment bytes
+  bytes u = 7;
+}
+
+message Refresh4 {
   ZKMod mod = 1;
   ZKPrm prm = 2;
+  // c = Enc_i(x) is the encryption of the receivers share
   Ciphertext c = 3;
-  repeated Scalar schX = 4;
-  Scalar schY = 5;
+  // schF are the Schnorr proofs of knowledge of the coefficients of the VSS polynomial
+  repeated Scalar schF = 4;
 }
 
 message Sign1 {
@@ -119,14 +111,15 @@ message Sign1 {
 }
 
 message Sign2 {
-  Point Gamma = 1;
-  Ciphertext D = 2;
-  Ciphertext F = 3;
-  Ciphertext DHat = 4;
-  Ciphertext FHat = 5;
-  ZKAffG ProofAffG = 6;
-  ZKAffG ProofAffGHat = 7;
-  ZKLogStar ProofLog = 8;
+  bytes hashKG = 1;
+  Point Gamma = 2;
+  Ciphertext D = 3;
+  Ciphertext F = 4;
+  Ciphertext DHat = 5;
+  Ciphertext FHat = 6;
+  ZKAffG ProofAffG = 7;
+  ZKAffG ProofAffGHat = 8;
+  ZKLogStar ProofLog = 9;
 }
 
 message Sign3 {
@@ -151,27 +144,44 @@ message Abort2 {
   map <string, ZKDec> proofDec = 3;
 }
 
-message RefreshT1 {
+message KeygenOld1 {
   bytes hash = 1;
 }
 
-message RefreshT2 {
-  bytes hashOfHashes = 1;
+message KeygenOld2 {
+  bytes rid = 1;
+  Point X = 2;
+  Point A = 3;
+  bytes u = 4;
+
+  bytes prevHash = 10;
 }
 
-message RefreshT3 {
-  bytes rho = 1;
-  PolynomialExponent f = 2;
-  repeated Point A = 3;
-  Int N = 4;
-  Int S = 5;
-  Int T = 6;
-  bytes u = 7;
+message KeygenOld3 {
+  Scalar schX = 1;
 }
 
-message RefreshT4 {
+message RefreshOld1 {
+  bytes hash = 1;
+}
+
+message RefreshOld2 {
+  repeated Point X = 1;
+  repeated Point A = 2;
+  Point Y = 3;
+  Point B = 4;
+  Int N = 5;
+  Int S = 6;
+  Int T = 7;
+  bytes rho = 8;
+  bytes u = 9;
+  bytes prevHash = 10;
+}
+
+message RefreshOld3 {
   ZKMod mod = 1;
   ZKPrm prm = 2;
   Ciphertext c = 3;
-  repeated Scalar schF = 4;
+  repeated Scalar schX = 4;
+  Scalar schY = 5;
 }

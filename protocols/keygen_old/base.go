@@ -1,4 +1,4 @@
-package keygen
+package keygen_old
 
 import (
 	"errors"

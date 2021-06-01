@@ -13,12 +13,10 @@ import (
 )
 
 type testParty struct {
-	idx    int
-	id     party.ID
-	p      *Parameters
-	s      *round.Session
-	secret *party.Secret
-	r      round.Round
+	idx int
+	id  party.ID
+	s   *round.Session
+	r   round.Round
 }
 
 func feedMessages(t *testing.T, parties []*testParty, msgs []*pb.Message) {
@@ -28,10 +26,10 @@ func feedMessages(t *testing.T, parties []*testParty, msgs []*pb.Message) {
 		for _, p := range parties {
 			var m2 pb.Message
 			require.NoError(t, proto.Unmarshal(b, &m2), "failed to unmarshal message")
-			if m2.From == p.id {
+			if m2.GetFromID() == p.id {
 				continue
 			}
-			if m2.To != "" && m2.To != p.id {
+			if m2.To != "" && m2.GetToID() != p.id {
 				continue
 			}
 			require.NoError(t, p.r.ProcessMessage(&m2))
@@ -42,19 +40,18 @@ func feedMessages(t *testing.T, parties []*testParty, msgs []*pb.Message) {
 func TestRound(t *testing.T) {
 	N := 3
 
-	s, secrets := round.FakeKeygenSession(N, N-1)
+	sessions := round.FakeKeygen(N, N-1)
 
+	s1 := sessions[0]
 	parties := make([]*testParty, N)
-	for idxJ, j := range s.Parties() {
-		r, err := NewRound(s, secrets[j], nil)
+	for idxJ, j := range s1.PartyIDs {
+		r, err := NewRound(sessions[idxJ])
 		require.NoError(t, err, "round creation should not result in an error")
 		parties[idxJ] = &testParty{
-			idx:    idxJ,
-			id:     j,
-			p:      &Parameters{},
-			s:      s,
-			secret: secrets[j],
-			r:      r,
+			idx: idxJ,
+			id:  j,
+			s:   sessions[idxJ],
+			r:   r,
 		}
 	}
 
@@ -98,7 +95,7 @@ func TestRound(t *testing.T) {
 
 	feedMessages(t, parties, msgs2)
 
-	// get the third set of  messages
+	// get the second set of  messages
 	msgs3 := make([]*pb.Message, 0, N*N)
 	for _, pj := range parties {
 		r, ok := pj.r.(*round3)
@@ -111,6 +108,31 @@ func TestRound(t *testing.T) {
 			t.Error(err)
 		}
 		msgs3 = append(msgs3, msgs3New...)
+
+		newR, err := pj.r.Finalize()
+		if err != nil {
+			t.Error(err)
+		}
+		pj.r = newR
+	}
+
+	fmt.Println("R3 done")
+
+	feedMessages(t, parties, msgs3)
+
+	// get the third set of  messages
+	msgs4 := make([]*pb.Message, 0, N*N)
+	for _, pj := range parties {
+		r, ok := pj.r.(*round4)
+		if !ok {
+			t.Errorf("not the right round")
+		}
+
+		msgs4New, err := r.GenerateMessages()
+		if err != nil {
+			t.Error(err)
+		}
+		msgs4 = append(msgs4, msgs4New...)
 
 		newR, err := pj.r.Finalize()
 		if err != nil {
@@ -132,40 +154,16 @@ func TestRound(t *testing.T) {
 		}
 	}
 
-	fmt.Println("R3 done")
-
-	feedMessages(t, parties, msgs3)
-
-	// get the second set of  messages
-	msgs4 := make([]*pb.Message, 0, N)
-	for _, pj := range parties {
-		r, ok := pj.r.(*output)
-		if !ok {
-			t.Errorf("not the right round")
-		}
-
-		msgs4New, err := r.GenerateMessages()
-		if err != nil {
-			t.Error(err)
-		}
-		msgs4 = append(msgs4, msgs4New...)
-
-		// last round returns nil
-		_, err = pj.r.Finalize()
-		if err != nil {
-			t.Error(err)
-		}
-	}
-
 	//// check pub key is the same for all
-	origPk, err := s.PublicKey()
-	require.NoError(t, err, "original session should yield a public key")
+	origPk := s1.PublicKey
 	for _, p := range parties {
 		newSession := p.r.(*output).S
-		newSecret := p.r.(*output).Secret
-		newPk, err := newSession.PublicKey()
-		require.NoError(t, err, "new session should yield a public key")
+		err := newSession.RecomputeSSID()
+		assert.NoError(t, err, "failed to recompute ssid")
+		//newSecret := newSession.Secret
+		newPk := newSession.PublicKey
+		//require.NoError(t, err, "new session should yield a public key")
 		assert.True(t, newPk.Equal(origPk), "new public key should be the same")
-		assert.NoError(t, newSession.Validate(newSecret), "new session validation should pass")
+		assert.NoError(t, newSession.Validate(), "new session validation should pass")
 	}
 }

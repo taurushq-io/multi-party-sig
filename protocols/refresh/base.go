@@ -4,51 +4,36 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
-func NewRound(session *round.Session, secret *party.Secret, parameters *Parameters) (*round1, error) {
-	// Set remaining parameters
-	if parameters == nil {
-		parameters = &Parameters{}
-	}
-	parameters.fill(session.PartyIDs())
-	if !parameters.verify(session.N()) {
-		return nil, errors.New("parameters were not correctly generated")
+func NewRound(session *round.Session) (*round1, error) {
+	if !session.KeygenDone() {
+		return nil, errors.New("refresh_old.NewRound: session has no keygen data")
 	}
 
-	err := session.Validate(secret)
+	// clone the session so we don't overwrite anything
+	s := session.Clone()
+
+	// Create round with a clone of the original secret
+	base, err := round.NewBaseRound(s)
 	if err != nil {
-		return nil, fmt.Errorf("newRound: config: %w", err)
+		return nil, fmt.Errorf("refresh_old.NewRound: %w", err)
 	}
 
-	newSecret := &party.Secret{
-		ID:    secret.ID,
-		ECDSA: curve.NewScalar().Set(secret.ECDSA),
-	}
-
-	newSession := session.CloneForRefresh()
-
-	parties := make(map[party.ID]*localParty, newSession.N())
-	for j, publicJ := range newSession.Public {
+	parties := make(map[party.ID]*localParty, s.N())
+	for j, publicJ := range s.Public {
 		// Set the public data to a clone of the current data
 		parties[j] = &localParty{
 			Party: round.NewBaseParty(publicJ),
 		}
 	}
 
-	// Create round with a clone of the original secret
-	base, err := round.NewBaseRound(newSession, newSecret)
-	if err != nil {
-		return nil, err
-	}
-
 	return &round1{
 		BaseRound: base,
-		p:         parameters,
-		thisParty: parties[newSecret.ID],
+		keygen:    !s.KeygenDone(),
+		thisParty: parties[base.SelfID],
 		parties:   parties,
 	}, nil
 }

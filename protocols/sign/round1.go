@@ -6,6 +6,7 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	zkenc2 "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
@@ -30,11 +31,17 @@ type round1 struct {
 	gammaRand *big.Int
 }
 
+// ProcessMessage implements round.Round
+//
+//
 func (round *round1) ProcessMessage(*pb.Message) error {
 	// In the first round, no messages are expected.
 	return nil
 }
 
+// GenerateMessages implements round.Round
+//
+//
 func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 	round.gamma = curve.NewScalarRandom()
 	round.thisParty.Gamma = curve.NewIdentityPoint().ScalarBaseMult(round.gamma)
@@ -88,8 +95,14 @@ func (round *round1) message1(partyJ *localParty) (*pb.Message, error) {
 	}, nil
 }
 
+// Finalize implements round.Round
+//
+//
 func (round *round1) Finalize() (round.Round, error) {
-	return &round2{round}, nil
+	return &round2{
+		round1:        round,
+		hashOfAllKjGj: make([]byte, params.HashBytes),
+	}, nil
 }
 
 func (round *round1) MessageType() pb.MessageType {

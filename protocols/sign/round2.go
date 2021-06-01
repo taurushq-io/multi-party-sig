@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	zkenc "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
 	zklogstar2 "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
@@ -12,8 +13,15 @@ import (
 
 type round2 struct {
 	*round1
+
+	// hashOfAllKjGj = H(K₁, G₁, ..., Kₙ, Gₙ)
+	// part of the echo of the first message
+	hashOfAllKjGj []byte
 }
 
+// ProcessMessage implements round.Round
+//
+//
 func (round *round2) ProcessMessage(msg *pb.Message) error {
 	j := msg.GetFromID()
 	partyJ := round.parties[j]
@@ -37,7 +45,15 @@ func (round *round2) ProcessMessage(msg *pb.Message) error {
 	return partyJ.AddMessage(msg)
 }
 
+// GenerateMessages implements round.Round
+//
+//
 func (round *round2) GenerateMessages() ([]*pb.Message, error) {
+	// compute H(K₁, G₁, ..., Kₙ, Gₙ)
+	if err := round.computeHashKJ(); err != nil {
+		return nil, err
+	}
+
 	// Broadcast the message we created in round1
 	messages := make([]*pb.Message, 0, round.S.N()-1)
 	for j, partyJ := range round.parties {
@@ -57,6 +73,25 @@ func (round *round2) GenerateMessages() ([]*pb.Message, error) {
 	}
 
 	return messages, nil
+}
+
+func (round *round2) computeHashKJ() error {
+	// The papers says that we need to reliably broadcast this data, however unless we use
+	// a system like white-city, we can't actually do this.
+	// In the next round, if someone has a different hash, then we must abort, but there is no way of knowing who
+	// was the culprit. We could maybe assume that we have an honest majority, but this clashes with the base assumptions.
+	h := round.H.Clone()
+	for _, id := range round.S.SignerIDs {
+		partyJ := round.parties[id]
+		if err := h.WriteAny(partyJ.K, partyJ.G); err != nil {
+			return fmt.Errorf("sign.round2.GenerateMessages(): hash of K,J: %w", err)
+		}
+	}
+	round.hashOfAllKjGj = make([]byte, params.HashBytes)
+	if _, err := h.ReadBytes(round.hashOfAllKjGj); err != nil {
+		return fmt.Errorf("sign.round2.GenerateMessages(): hash of K,J: %w", err)
+	}
+	return nil
 }
 
 func (round *round2) message2(partyJ *localParty) (*pb.Message, error) {
@@ -86,6 +121,7 @@ func (round *round2) message2(partyJ *localParty) (*pb.Message, error) {
 		Type: pb.MessageType_TypeSign2,
 		From: round.SelfID,
 		To:   partyJ.ID, Sign2: &pb.Sign2{
+			HashKG:       round.hashOfAllKjGj,
 			Gamma:        pb.NewPoint(round.thisParty.Gamma),
 			D:            pb.NewCiphertext(partyJ.DeltaMtA.D),
 			F:            pb.NewCiphertext(partyJ.DeltaMtA.F),
@@ -98,6 +134,9 @@ func (round *round2) message2(partyJ *localParty) (*pb.Message, error) {
 	}, nil
 }
 
+// Finalize implements round.Round
+//
+//
 func (round *round2) Finalize() (round.Round, error) {
 	return &round3{
 		round2: round,
