@@ -6,7 +6,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk"
-	zkaffg2 "github.com/taurusgroup/cmp-ecdsa/pkg/zk/affg"
+	zkaffg "github.com/taurusgroup/cmp-ecdsa/pkg/zk/affg"
 )
 
 func Test_newMtA(t *testing.T) {
@@ -28,7 +28,7 @@ func Test_newMtA(t *testing.T) {
 		return
 	}
 
-	zkPublic := zkaffg2.Public{
+	zkPublic := zkaffg.Public{
 		C:        Kj,
 		D:        m.D,
 		Y:        m.F,

@@ -8,6 +8,14 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
+var (
+	_ round.Round = (*round1)(nil)
+	_ round.Round = (*round2)(nil)
+	_ round.Round = (*round3)(nil)
+	_ round.Round = (*round4)(nil)
+	_ round.Round = (*output)(nil)
+)
+
 func NewRound(session *round.Session) (*round1, error) {
 
 	if !session.KeygenDone() {

@@ -14,18 +14,21 @@ type round3 struct {
 
 // ProcessMessage implements round.Round
 //
-//
+// - verify H(ssid, V₁, ..., Vₙ) against received hash
 func (round *round3) ProcessMessage(msg *pb.Message) error {
 	j := msg.GetFromID()
 	partyJ := round.parties[j]
 
 	if !bytes.Equal(msg.GetRefresh2().HashOfHashes, round.hashOfHashes) {
-		return fmt.Errorf("refresh_old.round3.ProcessMessage(): party %s sent different hash than ours", j)
+		return fmt.Errorf("refresh.round3.ProcessMessage(): party %s sent different hash than ours", j)
 	}
 
 	return partyJ.AddMessage(msg)
 }
 
+// GenerateMessages implements round.Round
+//
+// - send all committed data
 func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 	// Broadcast the message we created in round1
 	return []*pb.Message{{
@@ -45,8 +48,6 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 }
 
 // Finalize implements round.Round
-//
-//
 func (round *round3) Finalize() (round.Round, error) {
 	return &round4{
 		round3: round,

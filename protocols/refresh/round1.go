@@ -38,11 +38,7 @@ type round1 struct {
 	schnorrRand []*curve.Scalar
 }
 
-var _ round.Round = (*round1)(nil)
-
 // ProcessMessage implements round.Round
-//
-//
 func (round *round1) ProcessMessage(*pb.Message) error {
 	// In the first round, no messages are expected.
 	return nil
@@ -50,7 +46,18 @@ func (round *round1) ProcessMessage(*pb.Message) error {
 
 // GenerateMessages implements round.Round
 //
-//
+// - sample { aₗ }ₗ  <- 𝔽 for l = 0, ..., t
+// - set { Aᵢ = aₗ⋅G}ₗ for l = 0, ..., t
+// - sample Paillier pᵢ, qᵢ
+// - sample Pedersen Nᵢ, Sᵢ, Tᵢ
+// - sample fᵢ(X) <- 𝔽[X], deg(fᵢ) = t
+//   - if keygen, fᵢ(0) = xᵢ (additive share of full ECDSA secret key)
+//   - if refresh, fᵢ(0) = 0
+// - compute Fᵢ(X) = fᵢ(X)⋅G
+// - sample rhoᵢ <- {0,1}ᵏ
+//   - if keygen, this is RIDᵢ
+//   - if refresh, this is used to bind the zk proof to a random value
+// - commit to message
 func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 	var err error
 
@@ -82,23 +89,23 @@ func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 	// set Fᵢ(X) = fᵢ(X)•G
 	round.thisParty.polyExp = polynomial.NewPolynomialExponent(round.poly)
 
-	// Sample ρ
+	// Sample ρᵢ
 	round.thisParty.rho = make([]byte, params.SecBytes)
 	if _, err = rand.Read(round.thisParty.rho); err != nil {
-		return nil, fmt.Errorf("refresh_old.round1.GenerateMessages(): sample rho: %w", err)
+		return nil, fmt.Errorf("refresh.round1.GenerateMessages(): sample rho: %w", err)
 	}
 
 	// commit to data in message 2
 	round.thisParty.commitment, round.decommitment, err = round.H.Commit(round.SelfID,
 		round.thisParty.rho, round.thisParty.polyExp, round.thisParty.A, round.thisParty.Pedersen)
 	if err != nil {
-		return nil, fmt.Errorf("refresh_old.round1.GenerateMessages(): commit: %w", err)
+		return nil, fmt.Errorf("refresh.round1.GenerateMessages(): commit: %w", err)
 	}
 
 	return []*pb.Message{{
 		Type:      pb.MessageType_TypeRefresh1,
 		From:      round.SelfID,
-		Broadcast: pb.Broadcast_Basic,
+		Broadcast: pb.Broadcast_Reliable,
 		Refresh1: &pb.Refresh1{
 			Hash: round.thisParty.commitment,
 		},
@@ -106,8 +113,6 @@ func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 }
 
 // Finalize implements round.Round
-//
-//
 func (round *round1) Finalize() (round.Round, error) {
 	return &round2{round, nil}, nil
 }

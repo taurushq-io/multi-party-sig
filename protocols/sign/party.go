@@ -4,7 +4,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
-	mta2 "github.com/taurusgroup/cmp-ecdsa/protocols/sign/mta"
+	"github.com/taurusgroup/cmp-ecdsa/protocols/sign/mta"
 )
 
 // localParty is the state we store for a remote party.
@@ -12,8 +12,8 @@ import (
 type localParty struct {
 	*round.Party
 
-	DeltaMtA *mta2.MtA
-	ChiMtA   *mta2.MtA
+	DeltaMtA *mta.MtA
+	ChiMtA   *mta.MtA
 
 	// K = Kⱼ = encⱼ(kⱼ)
 	K *paillier.Ciphertext

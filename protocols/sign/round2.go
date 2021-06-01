@@ -7,21 +7,22 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	zkenc "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
-	zklogstar2 "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
-	mta2 "github.com/taurusgroup/cmp-ecdsa/protocols/sign/mta"
+	zklogstar "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
+	"github.com/taurusgroup/cmp-ecdsa/protocols/sign/mta"
 )
 
 type round2 struct {
 	*round1
 
-	// hashOfAllKjGj = H(K₁, G₁, ..., Kₙ, Gₙ)
+	// hashOfAllKjGj = H(ssid, K₁, G₁, ..., Kₙ, Gₙ)
 	// part of the echo of the first message
 	hashOfAllKjGj []byte
 }
 
 // ProcessMessage implements round.Round
 //
-//
+// - store Kⱼ, Gⱼ
+// - verify zkenc(Kⱼ)
 func (round *round2) ProcessMessage(msg *pb.Message) error {
 	j := msg.GetFromID()
 	partyJ := round.parties[j]
@@ -47,9 +48,9 @@ func (round *round2) ProcessMessage(msg *pb.Message) error {
 
 // GenerateMessages implements round.Round
 //
-//
+// - compute H(ssid, K₁, G₁, ..., Kₙ, Gₙ)
 func (round *round2) GenerateMessages() ([]*pb.Message, error) {
-	// compute H(K₁, G₁, ..., Kₙ, Gₙ)
+	// compute H(ssid, K₁, G₁, ..., Kₙ, Gₙ)
 	if err := round.computeHashKJ(); err != nil {
 		return nil, err
 	}
@@ -61,8 +62,8 @@ func (round *round2) GenerateMessages() ([]*pb.Message, error) {
 			continue
 		}
 
-		partyJ.DeltaMtA = mta2.New(round.gamma, partyJ.K, partyJ.Paillier, round.thisParty.Paillier)
-		partyJ.ChiMtA = mta2.New(round.S.Secret.ECDSA, partyJ.K, partyJ.Paillier, round.thisParty.Paillier)
+		partyJ.DeltaMtA = mta.New(round.gamma, partyJ.K, partyJ.Paillier, round.thisParty.Paillier)
+		partyJ.ChiMtA = mta.New(round.S.Secret.ECDSA, partyJ.K, partyJ.Paillier, round.thisParty.Paillier)
 
 		msg2, err := round.message2(partyJ)
 		if err != nil {
@@ -104,12 +105,12 @@ func (round *round2) message2(partyJ *localParty) (*pb.Message, error) {
 		return nil, fmt.Errorf("sign.round2.GenerateMessages(): failed to generate affg hat proof: %w", err)
 	}
 
-	proofLog, err := zklogstar2.Public{
+	proofLog, err := zklogstar.Public{
 		C:      round.thisParty.G,
 		X:      round.thisParty.Gamma,
 		Prover: round.thisParty.Paillier,
 		Aux:    partyJ.Pedersen,
-	}.Prove(round.H.CloneWithID(round.SelfID), zklogstar2.Private{
+	}.Prove(round.H.CloneWithID(round.SelfID), zklogstar.Private{
 		X:   round.gamma.BigInt(),
 		Rho: round.gammaRand,
 	})
@@ -135,8 +136,6 @@ func (round *round2) message2(partyJ *localParty) (*pb.Message, error) {
 }
 
 // Finalize implements round.Round
-//
-//
 func (round *round2) Finalize() (round.Round, error) {
 	return &round3{
 		round2: round,

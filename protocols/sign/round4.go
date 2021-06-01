@@ -6,7 +6,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
-	zklogstar2 "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
+	zklogstar "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
 )
 
 type round4 struct {
@@ -23,13 +23,12 @@ type round4 struct {
 
 	// r = R|ₓ
 	r *curve.Scalar
-
-	abort bool
 }
 
 // ProcessMessage implements round.Round
 //
-//
+// - Get Δⱼ, δⱼ, ϕ''ᵢⱼ
+// - Verify Π(log*)(ϕ''ᵢⱼ, Δⱼ, Γ)
 func (round *round4) ProcessMessage(msg *pb.Message) error {
 	j := msg.GetFromID()
 	partyJ := round.parties[j]
@@ -45,14 +44,13 @@ func (round *round4) ProcessMessage(msg *pb.Message) error {
 		return fmt.Errorf("sign.round4.ProcessMessage(): unmarshal delta: %w", err)
 	}
 
-	zkLogPublic := zklogstar2.Public{
+	zkLogPublic := zklogstar.Public{
 		C:      partyJ.K,
 		X:      Delta,
 		G:      round.Gamma,
 		Prover: partyJ.Paillier,
 		Aux:    round.thisParty.Pedersen,
 	}
-
 	if !zkLogPublic.Verify(round.H.CloneWithID(j), body.ProofLog) {
 		return fmt.Errorf("sign.round4.ProcessMessage(): party %s: log proof failed to verify", j)
 	}
@@ -65,7 +63,10 @@ func (round *round4) ProcessMessage(msg *pb.Message) error {
 
 // GenerateMessages implements round.Round
 //
-//
+// - set δ = ∑ⱼ δⱼ
+// - set Δ = ∑ⱼ Δⱼ
+// - verify Δ = [δ]G
+// - compute σᵢ = rχᵢ + kᵢm
 func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 	// δ = ∑ⱼ δⱼ
 	round.delta = curve.NewScalar()
@@ -76,11 +77,10 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 		round.Delta.Add(round.Delta, partyJ.Delta)
 	}
 
-	// Δ' = [δ]G
+	// Δ == [δ]G
 	deltaComputed := curve.NewIdentityPoint().ScalarBaseMult(round.delta)
 	if !deltaComputed.Equal(round.Delta) {
-		round.abort = true
-		return round.GenerateMessagesAbort()
+		return nil, fmt.Errorf("sign.round4.GenerateMessages(): computed Δ is inconsistent with [δ]G")
 	}
 
 	deltaInv := curve.NewScalar().Invert(round.delta)                    // δ⁻¹
@@ -102,21 +102,8 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 	}}, nil
 }
 
-func (round *round4) GenerateMessagesAbort() ([]*pb.Message, error) {
-	//proofAffG := make(map[party.ID]*pb.ZKAffG, round.S.N())
-	//proofDec := make(map[party.ID]*pb.ZKDec, round.S.N())
-
-	return nil, nil
-}
-
 // Finalize implements round.Round
-//
-//
 func (round *round4) Finalize() (round.Round, error) {
-	if round.abort {
-		panic("abort1")
-		return &abort1{round}, nil
-	}
 	return &output{
 		round4: round,
 	}, nil

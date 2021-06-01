@@ -8,7 +8,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
-	signature2 "github.com/taurusgroup/cmp-ecdsa/protocols/sign/signature"
+	"github.com/taurusgroup/cmp-ecdsa/protocols/sign/signature"
 )
 
 type output struct {
@@ -18,12 +18,12 @@ type output struct {
 	sigma *curve.Scalar
 
 	// signature wraps (R,S)
-	signature *signature2.Signature
+	signature *signature.Signature
 }
 
 // ProcessMessage implements round.Round
 //
-//
+// - σⱼ != 0
 func (round *output) ProcessMessage(msg *pb.Message) error {
 	j := msg.GetFromID()
 	partyJ := round.parties[j]
@@ -44,7 +44,8 @@ func (round *output) ProcessMessage(msg *pb.Message) error {
 
 // GenerateMessages implements round.Round
 //
-//
+// - compute σ = ∑ⱼ σⱼ
+// - verify signature
 func (round *output) GenerateMessages() ([]*pb.Message, error) {
 	// compute σ = ∑ⱼ σⱼ
 	round.sigma = curve.NewScalar()
@@ -52,7 +53,7 @@ func (round *output) GenerateMessages() ([]*pb.Message, error) {
 		round.sigma.Add(round.sigma, partyJ.sigma)
 	}
 
-	round.signature = &signature2.Signature{
+	round.signature = &signature.Signature{
 		R: round.R,
 		S: round.sigma,
 	}
@@ -63,23 +64,13 @@ func (round *output) GenerateMessages() ([]*pb.Message, error) {
 	}
 	pk := curve.NewIdentityPoint().SetPublicKey(round.S.PublicKey)
 	if !round.signature.Verify(pk, round.S.Message) {
-		round.abort = true
-		return round.GenerateMessagesAbort()
+		return nil, errors.New("sign.output.GenerateMessages(): failed to validate signature with Go stdlib")
 	}
 	return nil, nil
 }
 
 // Finalize implements round.Round
-//
-//
 func (round *output) Finalize() (round.Round, error) {
-	if round.abort {
-		return &abort2{round}, nil
-	}
-	return nil, nil
-}
-
-func (round *output) GenerateMessagesAbort() ([]*pb.Message, error) {
 	return nil, nil
 }
 

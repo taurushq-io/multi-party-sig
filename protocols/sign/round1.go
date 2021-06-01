@@ -9,7 +9,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
-	zkenc2 "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
+	zkenc "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
 )
 
 type round1 struct {
@@ -32,8 +32,6 @@ type round1 struct {
 }
 
 // ProcessMessage implements round.Round
-//
-//
 func (round *round1) ProcessMessage(*pb.Message) error {
 	// In the first round, no messages are expected.
 	return nil
@@ -41,13 +39,21 @@ func (round *round1) ProcessMessage(*pb.Message) error {
 
 // GenerateMessages implements round.Round
 //
-//
+// - sample kᵢ, γᵢ <- 𝔽,
+// - Γᵢ = [γᵢ]⋅G
+// - Gᵢ = Encᵢ(γᵢ;νᵢ)
+// - Kᵢ = Encᵢ(kᵢ;ρᵢ)
 func (round *round1) GenerateMessages() ([]*pb.Message, error) {
+	// γᵢ <- 𝔽,
 	round.gamma = curve.NewScalarRandom()
+	// Γᵢ = [γᵢ]⋅G
 	round.thisParty.Gamma = curve.NewIdentityPoint().ScalarBaseMult(round.gamma)
+	// Gᵢ = Encᵢ(γᵢ;νᵢ)
 	round.thisParty.G, round.gammaRand = round.thisParty.Paillier.Enc(round.gamma.BigInt(), nil)
 
+	// kᵢ <- 𝔽,
 	round.k = curve.NewScalarRandom()
+	// Kᵢ = Encᵢ(kᵢ;ρᵢ)
 	round.thisParty.K, round.kRand = round.thisParty.Paillier.Enc(round.k.BigInt(), nil)
 
 	messages := make([]*pb.Message, 0, round.S.N()-1)
@@ -69,13 +75,12 @@ func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 }
 
 func (round *round1) message1(partyJ *localParty) (*pb.Message, error) {
-	zkEncPublic := zkenc2.Public{
+	zkEncPublic := zkenc.Public{
 		K:      round.thisParty.K,
 		Prover: round.thisParty.Paillier,
 		Aux:    partyJ.Pedersen,
 	}
-
-	proof, err := zkEncPublic.Prove(round.H.CloneWithID(round.SelfID), zkenc2.Private{
+	proof, err := zkEncPublic.Prove(round.H.CloneWithID(round.SelfID), zkenc.Private{
 		K:   round.k.BigInt(),
 		Rho: round.kRand,
 	})
@@ -83,6 +88,13 @@ func (round *round1) message1(partyJ *localParty) (*pb.Message, error) {
 		return nil, fmt.Errorf("sign.round1.GenerateMessages(): failed to generate enc proof: %w", err)
 	}
 
+	// NOTE
+	// The protocol instructs us to broadcast Kᵢ and Gᵢ, but the protocol we implement
+	// cannot handle identify aborts since we are in a point to point model.
+	// We do as described in [LN18].
+	//
+	// In the next round, we send a hash H of all the {Kⱼ,Gⱼ}ⱼ.
+	// In two rounds, we compare the hashes H received and if they are different then we abort.
 	return &pb.Message{
 		Type: pb.MessageType_TypeSign1,
 		From: round.SelfID,
@@ -96,8 +108,6 @@ func (round *round1) message1(partyJ *localParty) (*pb.Message, error) {
 }
 
 // Finalize implements round.Round
-//
-//
 func (round *round1) Finalize() (round.Round, error) {
 	return &round2{
 		round1:        round,

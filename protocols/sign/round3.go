@@ -7,8 +7,8 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
-	zkaffg2 "github.com/taurusgroup/cmp-ecdsa/pkg/zk/affg"
-	zklogstar2 "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
+	zkaffg "github.com/taurusgroup/cmp-ecdsa/pkg/zk/affg"
+	zklogstar "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
 )
 
 type round3 struct {
@@ -22,7 +22,9 @@ type round3 struct {
 
 // ProcessMessage implements round.Round
 //
-//
+// - verify H(ssid, K₁, G₁, ..., Kₙ, Gₙ)
+// - store MtA data
+// - verify zkproofs affg (2x) zklog*
 func (round *round3) ProcessMessage(msg *pb.Message) error {
 	j := msg.GetFromID()
 	partyJ := round.parties[j]
@@ -41,7 +43,7 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 	D := body.D.Unmarshal()
 	DHat := body.DHat.Unmarshal()
 
-	zkAffgPublic := zkaffg2.Public{
+	zkAffgPublic := zkaffg.Public{
 		C:        round.thisParty.K,
 		D:        D,
 		Y:        body.F.Unmarshal(),
@@ -54,7 +56,7 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 		return fmt.Errorf("sign.round3.ProcessMessage(): party %s: affg proof failed to verify", j)
 	}
 
-	zkAffgPublicHat := zkaffg2.Public{
+	zkAffgPublicHat := zkaffg.Public{
 		C:        round.thisParty.K,
 		D:        DHat,
 		Y:        body.FHat.Unmarshal(),
@@ -67,7 +69,7 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 		return fmt.Errorf("sign.round3.ProcessMessage(): party %s: affg hat proof failed to verify", j)
 	}
 
-	zkLogPublic := zklogstar2.Public{
+	zkLogPublic := zklogstar.Public{
 		C:      partyJ.G,
 		X:      gamma,
 		Prover: partyJ.Paillier,
@@ -82,14 +84,14 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 	shareAlphaDeltaInt := round.S.Secret.Paillier.Dec(D)
 	shareAlphaDelta := curve.NewScalarBigInt(shareAlphaDeltaInt)
 	//if shareAlphaDeltaInt.Cmp(shareAlphaDelta.BigInt()) != 0 {
-	//	return fmt.Errorf("refresh_old.round3.ProcessMessage(): party %s: decrypted share alpha for delta is not in correct range", j)
+	//	return fmt.Errorf("refresh.round3.ProcessMessage(): party %s: decrypted share alpha for delta is not in correct range", j)
 	//}
 	partyJ.ShareAlphaDelta = shareAlphaDelta
 
 	shareAlphaChiInt := round.S.Secret.Paillier.Dec(DHat)
 	shareAlphaChi := curve.NewScalarBigInt(shareAlphaChiInt)
 	//if shareAlphaChiInt.Cmp(shareAlphaChi.BigInt()) != 0 {
-	//	return fmt.Errorf("refresh_old.round3.ProcessMessage(): party %s: decrypted share alpha for chi is not in correct range", j)
+	//	return fmt.Errorf("refresh.round3.ProcessMessage(): party %s: decrypted share alpha for chi is not in correct range", j)
 	//}
 	partyJ.ShareAlphaChi = shareAlphaChi
 
@@ -98,7 +100,10 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 
 // GenerateMessages implements round.Round
 //
-//
+// - Γ = ∑ⱼ Γⱼ
+// - Δᵢ = [kᵢ]Γ
+// - δᵢ = γᵢ kᵢ + ∑ⱼ ( αᵢⱼ + βᵢⱼ )
+// - χᵢ = xᵢ kᵢ + ∑ⱼ ( α̂ᵢⱼ +  ̂βᵢⱼ )
 func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 	// Γ = ∑ⱼ Γⱼ
 	round.Gamma = curve.NewIdentityPoint()
@@ -123,7 +128,7 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 		round.thisParty.delta.Add(round.thisParty.delta, partyJ.ShareAlphaDelta)
 		round.thisParty.delta.Add(round.thisParty.delta, partyJ.DeltaMtA.Beta)
 
-		// χᵢ += α̂ᵢⱼ  ̂βᵢⱼ
+		// χᵢ += α̂ᵢⱼ +  ̂βᵢⱼ
 		round.chi.Add(round.chi, partyJ.ShareAlphaChi)
 		round.chi.Add(round.chi, partyJ.ChiMtA.Beta)
 	}
@@ -146,13 +151,13 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 }
 
 func (round *round3) message3(partyJ *localParty) (*pb.Message, error) {
-	proofLog, err := zklogstar2.Public{
+	proofLog, err := zklogstar.Public{
 		C:      round.thisParty.K,
 		X:      round.thisParty.Delta,
 		G:      round.Gamma,
 		Prover: round.thisParty.Paillier,
 		Aux:    partyJ.Pedersen,
-	}.Prove(round.H.CloneWithID(round.SelfID), zklogstar2.Private{
+	}.Prove(round.H.CloneWithID(round.SelfID), zklogstar.Private{
 		X:   round.k.BigInt(),
 		Rho: round.kRand,
 	})
@@ -172,8 +177,6 @@ func (round *round3) message3(partyJ *localParty) (*pb.Message, error) {
 }
 
 // Finalize implements round.Round
-//
-//
 func (round *round3) Finalize() (round.Round, error) {
 	return &round4{
 		round3: round,

@@ -21,10 +21,14 @@ type round4 struct {
 
 // ProcessMessage implements round.Round
 //
-//
+// - store Fⱼ(X)
+//   - if keygen, verify Fⱼ(0) != ∞
+//   - if refresh, verify Fⱼ(0) == ∞
+// - verify length of Schnorr commitments
+// - validate Paillier
+// - validate Pedersen
+// - validate commitments
 func (round *round4) ProcessMessage(msg *pb.Message) error {
-	var err error
-
 	j := msg.GetFromID()
 	partyJ := round.parties[j]
 
@@ -33,58 +37,74 @@ func (round *round4) ProcessMessage(msg *pb.Message) error {
 	// Set rho
 	rho := body.GetRho()
 	if len(rho) != params.SecBytes {
-		return fmt.Errorf("refresh_old.round4.ProcessMessage(): party %s: rho is wrong lenght", j)
+		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: rho is wrong lenght", j)
 	}
-	partyJ.rho = rho
 
 	// Save all X, A
-	if partyJ.polyExp, err = body.F.Unmarshall(); err != nil {
+	polyExp, err := body.F.Unmarshall()
+	if err != nil {
 		return err
 	}
 	// check that the constant coefficient is 0
-	if !round.keygen && !partyJ.polyExp.Constant().Equal(curve.NewIdentityPoint()) {
-		return fmt.Errorf("refresh_old.round4.ProcessMessage(): party %s: exponent polynomial has non 0 constant", j)
+	if !round.keygen && !polyExp.Constant().Equal(curve.NewIdentityPoint()) {
+		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: exponent polynomial has non 0 constant", j)
 	}
 	// check deg(Fⱼ) = t
-	if partyJ.polyExp.Degree() != round.S.Threshold {
-		return fmt.Errorf("refresh_old.round4.ProcessMessage(): party %s: exponent polynomial has wrong degree", j)
+	if polyExp.Degree() != round.S.Threshold {
+		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: exponent polynomial has wrong degree", j)
 	}
 
 	// Save Schnorr commitments
-	if partyJ.A, err = pb.UnmarshalPoints(body.GetA()); err != nil {
-		return fmt.Errorf("refresh_old.round4.ProcessMessage(): party %s: unmarshal points: %w", j, err)
+	A, err := pb.UnmarshalPoints(body.GetA())
+	if err != nil {
+		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: unmarshal points: %w", j, err)
 	}
-	if len(partyJ.A) != len(partyJ.polyExp.Coefficients()) {
-		return fmt.Errorf("refresh_old.round4.ProcessMessage(): party %s: wrong number of Schnorr commitments", j)
+	if len(A) != len(polyExp.Coefficients()) {
+		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: wrong number of Schnorr commitments", j)
 	}
 
 	// Set Paillier
 	Nj := body.GetN().Unmarshal()
-	if Nj.BitLen() != params.PaillierBits {
-		return fmt.Errorf("refresh_old.round4.ProcessMessage(): party %s: Paillier public key has wrong number of bits", j)
+	paillierPublicKey := paillier.NewPublicKey(Nj)
+	if err = paillierPublicKey.Validate(); err != nil {
+		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: %w", j, err)
 	}
-	partyJ.Paillier = paillier.NewPublicKey(Nj)
 
 	// Set Pedersen
-	partyJ.Pedersen = &pedersen.Parameters{
+	ped := &pedersen.Parameters{
 		N: Nj,
 		S: body.GetS().Unmarshal(),
 		T: body.GetT().Unmarshal(),
 	}
-	if err = partyJ.Pedersen.Validate(); err != nil {
-		return fmt.Errorf("refresh_old.round4.ProcessMessage(): party %s: %w", j, err)
+	if err = ped.Validate(); err != nil {
+		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: %w", j, err)
 	}
 
 	// Verify decommit
 	decommitment := body.GetU()
 	if !round.H.Decommit(j, partyJ.commitment, decommitment,
-		partyJ.rho, partyJ.polyExp, partyJ.A, partyJ.Pedersen) {
-		return fmt.Errorf("refresh_old.round4.ProcessMessage(): party %s: failed to decommit", j)
+		rho, partyJ.polyExp, A, ped) {
+		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: failed to decommit", j)
 	}
 
+	partyJ.rho = rho
+	partyJ.Pedersen = ped
+	partyJ.Paillier = paillierPublicKey
+	partyJ.polyExp = polyExp
+	partyJ.A = A
 	return partyJ.AddMessage(msg)
 }
 
+// GenerateMessages implements round.Round
+//
+// - set ρ = ⊕ⱼ ρⱼ and update hash state
+//   - if keygen, write this to the session
+// - prove Nᵢ is Blum
+// - prove Pedersen parameters
+// - prove Schnorr for all coefficients of fᵢ(X)
+//   - if refresh skip constant coefficient
+//
+// - send proofs and encryption of share for Pⱼ
 func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 	// ρ = ⊕ⱼ ρⱼ
 	round.rho = make([]byte, params.SecBytes)
@@ -100,7 +120,7 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 
 	// Write rho to the hash state
 	if _, err := round.H.Write(round.rho); err != nil {
-		return nil, fmt.Errorf("refresh_old.round4.GenerateMessages(): write rho to hash: %w", err)
+		return nil, fmt.Errorf("refresh.round4.GenerateMessages(): write rho to hash: %w", err)
 	}
 
 	partyI := round.thisParty
@@ -114,7 +134,7 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 		Phi: skPaillier.Phi,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("refresh_old.round4.GenerateMessages(): failed to generate mod proof: %w", err)
+		return nil, fmt.Errorf("refresh.round4.GenerateMessages(): failed to generate mod proof: %w", err)
 	}
 
 	// prove s, t are correct as aux parameters with zkprm
@@ -123,7 +143,7 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 		Phi:    skPaillier.Phi,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("refresh_old.round4.GenerateMessages(): failed to generate prm proof: %w", err)
+		return nil, fmt.Errorf("refresh.round4.GenerateMessages(): failed to generate prm proof: %w", err)
 	}
 
 	// Compute all ZKPoK Xⱼ = [xⱼ] G
@@ -139,7 +159,7 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 		X := round.thisParty.polyExp.Coefficients()[j]
 		schX, err = zksch.Prove(round.H.CloneWithID(round.SelfID), partyI.A[j], X, round.schnorrRand[j], x)
 		if err != nil {
-			return nil, fmt.Errorf("refresh_old.round4.GenerateMessages(): failed to generate sch proof for coef %d: %w", j, err)
+			return nil, fmt.Errorf("refresh.round4.GenerateMessages(): failed to generate sch proof for coef %d: %w", j, err)
 		}
 		schXproto[j] = pb.NewScalar(schX)
 	}
@@ -176,8 +196,6 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 }
 
 // Finalize implements round.Round
-//
-//
 func (round *round4) Finalize() (round.Round, error) {
 	return &output{
 		round4: round,

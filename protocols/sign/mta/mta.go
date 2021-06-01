@@ -9,7 +9,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
-	zkaffg2 "github.com/taurusgroup/cmp-ecdsa/pkg/zk/affg"
+	zkaffg "github.com/taurusgroup/cmp-ecdsa/pkg/zk/affg"
 )
 
 type MtA struct {
@@ -66,7 +66,7 @@ func New(secretI *curve.Scalar, Kj *paillier.Ciphertext, paillierJ, paillierI *p
 }
 
 func (m *MtA) ProveAffG(publicI *curve.Point, h *hash.Hash, aux *pedersen.Parameters) (*pb.ZKAffG, error) {
-	zkPublic := zkaffg2.Public{
+	zkPublic := zkaffg.Public{
 		C:        m.encKj,
 		D:        m.D,
 		Y:        m.F,
@@ -75,7 +75,7 @@ func (m *MtA) ProveAffG(publicI *curve.Point, h *hash.Hash, aux *pedersen.Parame
 		Verifier: m.receiver,
 		Aux:      aux,
 	}
-	zkPrivate := zkaffg2.Private{
+	zkPrivate := zkaffg.Private{
 		X:    m.secretI.BigInt(),
 		Y:    m.betaNeg,
 		Rho:  m.randD,

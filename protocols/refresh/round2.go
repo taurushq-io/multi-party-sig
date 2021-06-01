@@ -10,13 +10,13 @@ import (
 
 type round2 struct {
 	*round1
-	// hashOfHashes = H(commitment₁, ..., commitmentₙ)
+	// hashOfHashes = H(ssid, commitment₁, ..., commitmentₙ)
 	hashOfHashes []byte
 }
 
 // ProcessMessage implements round.Round
 //
-//
+// - store commitment Vⱼ
 func (round *round2) ProcessMessage(msg *pb.Message) error {
 	j := msg.GetFromID()
 	partyJ := round.parties[j]
@@ -26,6 +26,12 @@ func (round *round2) ProcessMessage(msg *pb.Message) error {
 	return partyJ.AddMessage(msg)
 }
 
+// GenerateMessages implements round.Round
+//
+// Since we assume a simple P2P network, we use an extra round to "echo"
+// the hash. Everybody sends a hash of all hashes.
+//
+// - send H(ssid, V₁, ..., Vₙ)
 func (round *round2) GenerateMessages() ([]*pb.Message, error) {
 	var err error
 	// Broadcast the message we created in round1
@@ -33,7 +39,7 @@ func (round *round2) GenerateMessages() ([]*pb.Message, error) {
 	for _, partyID := range round.S.PartyIDs {
 		_, err = h.Write(round.parties[partyID].commitment)
 		if err != nil {
-			return nil, fmt.Errorf("refresh_old.round2.GenerateMessages(): write commitments to hash: %w", err)
+			return nil, fmt.Errorf("refresh.round2.GenerateMessages(): write commitments to hash: %w", err)
 		}
 	}
 	round.hashOfHashes, err = h.ReadBytes(make([]byte, params.HashBytes))
@@ -50,8 +56,6 @@ func (round *round2) GenerateMessages() ([]*pb.Message, error) {
 }
 
 // Finalize implements round.Round
-//
-//
 func (round *round2) Finalize() (round.Round, error) {
 	return &round3{
 		round2: round,
