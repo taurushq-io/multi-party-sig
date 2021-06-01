@@ -22,14 +22,6 @@ enum MessageType {
 
   TypeAbort1 = 31;
   TypeAbort2 = 32;
-
-  TypeKeygenOld1 = 111;
-  TypeKeygenOld2 = 112;
-  TypeKeygenOld3 = 113;
-
-  TypeRefreshOld1 = 121;
-  TypeRefreshOld2 = 122;
-  TypeRefreshOld3 = 123;
 }
 
 enum Broadcast {
@@ -56,14 +48,6 @@ message Message {
 
   Abort1 abort1 = 31;
   Abort2 abort2 = 32;
-
-  KeygenOld1 keygenOld1 = 111;
-  KeygenOld2 keygenOld2 = 112;
-  KeygenOld3 keygenOld3 = 113;
-
-  RefreshOld1 refreshOld1 = 121;
-  RefreshOld2 refreshOld2 = 122;
-  RefreshOld3 refreshOld3 = 123;
 }
 
 message Refresh1 {
@@ -142,46 +126,4 @@ message Abort2 {
   map <string, ZKAffG> proofAffg = 1;
   map <string, ZKMulStar> proofMul = 2;
   map <string, ZKDec> proofDec = 3;
-}
-
-message KeygenOld1 {
-  bytes hash = 1;
-}
-
-message KeygenOld2 {
-  bytes rid = 1;
-  Point X = 2;
-  Point A = 3;
-  bytes u = 4;
-
-  bytes prevHash = 10;
-}
-
-message KeygenOld3 {
-  Scalar schX = 1;
-}
-
-message RefreshOld1 {
-  bytes hash = 1;
-}
-
-message RefreshOld2 {
-  repeated Point X = 1;
-  repeated Point A = 2;
-  Point Y = 3;
-  Point B = 4;
-  Int N = 5;
-  Int S = 6;
-  Int T = 7;
-  bytes rho = 8;
-  bytes u = 9;
-  bytes prevHash = 10;
-}
-
-message RefreshOld3 {
-  ZKMod mod = 1;
-  ZKPrm prm = 2;
-  Ciphertext c = 3;
-  repeated Scalar schX = 4;
-  Scalar schY = 5;
 }
