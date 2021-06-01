@@ -4,27 +4,32 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk"
 )
 
 func TestMod(t *testing.T) {
-	p, q := sample.Paillier()
-	sk := paillier.NewSecretKeyFromPrimes(p, q)
+	p, q := zk.ProverPaillierSecret.P, zk.ProverPaillierSecret.Q
+	sk := zk.ProverPaillierSecret
 	public := Public{N: sk.PublicKey().N}
-	p2, err := public.Prove(hash.New(), Private{
+	proof, err := public.Prove(hash.New(), Private{
 		P:   p,
 		Q:   q,
 		Phi: sk.Phi,
 	})
-	if err != nil {
-		t.Error("failed")
-		return
+	require.NoError(t, err, "failed to create proof")
+	assert.True(t, public.Verify(hash.New(), proof), "failed to verify proof")
+
+	proof.W = pb.NewInt(big.NewInt(0))
+	for idx := range proof.X {
+		proof.X[idx] = pb.NewInt(big.NewInt(0))
 	}
-	if !public.Verify(hash.New(), p2) {
-		t.Error("failed")
-	}
+
+	assert.False(t, public.Verify(hash.New(), proof), "proof should have failed")
 }
 
 func Test_set4thRoot(t *testing.T) {
@@ -49,8 +54,7 @@ func Test_set4thRoot(t *testing.T) {
 		y.Mod(y, n)
 	}
 
-	root.Exp(root, four, n)
-	if root.Cmp(y) != 0 {
-		t.Error("wrong root")
-	}
+	assert.NotEqual(t, root, big.NewInt(1), "root cannot be 1")
+	root.Exp(root, big.NewInt(4), n)
+	assert.Equal(t, root, y, "root^4 should be equal to y")
 }

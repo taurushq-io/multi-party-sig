@@ -59,21 +59,22 @@ func (hash *Hash) ReadFqNegative() (*big.Int, error) {
 	return &n, nil
 }
 
-// ReadIntModN generates a positive big.Int in the interval [0,n[, by reading from hash.Hash.
-// To prevent statistical bias, we sample double the size.
-func (hash *Hash) ReadIntModN(n *big.Int) (*big.Int, error) {
-	var r big.Int
-	lenBytes := (n.BitLen() + 7) / 8
-	out := make([]byte, 2*lenBytes)
-	_, err := hash.h.Read(out)
-	if err != nil {
-		return nil, fmt.Errorf("hash.ReadIntModN: %w", err)
+// ReadIntsModN generates a positive big.Int in the interval [0,n[, by reading from hash.Hash.
+// TODO How much bigger should the buffer be in order to minimize statistical bias?
+func (hash *Hash) ReadIntsModN(n *big.Int, num int) ([]*big.Int, error) {
+	intBuffer := make([]byte, params.BytesPaillier)
+	out := make([]*big.Int, num)
+	for i := range out {
+		var r big.Int
+		if _, err := hash.h.Read(intBuffer); err != nil {
+			return nil, fmt.Errorf("hash.ReadIntsModN: %w", err)
+		}
+		r.SetBytes(intBuffer)
+		r.Mod(&r, n)
+		out[i] = &r
 	}
 
-	r.SetBytes(out)
-	r.Mod(&r, n)
-
-	return &r, nil
+	return out, nil
 }
 
 // ReadBytes returns numBytes by reading from hash.Hash.

@@ -10,8 +10,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
-var four = big.NewInt(4)
-
 type (
 	Public struct {
 		// N = p*q
@@ -33,7 +31,7 @@ func isQRmodPQ(y, p, q *big.Int) bool {
 // fourthRoot returns the 4th root modulo n, or a quadratic residue qr, given that:
 //   - n = p•q
 //   - phi = (p-1)(q-1)
-//   - p,q = 3 (mod 4)  =>  n = 1 (mod 3)
+//   - p,q = 3 (mod 4)  =>  n = 1 (mod 4)
 //   - Jacobi(qr, p) == Jacobi(qr, q) == 1
 //
 // Set e to
@@ -43,12 +41,13 @@ func isQRmodPQ(y, p, q *big.Int) bool {
 //
 // Then, (qrᵉ)⁴ = qr
 func fourthRoot(qr, phi, n *big.Int) *big.Int {
-	var e big.Int
-	e.Add(phi, four)
-	e.Mul(&e, &e)
-	e.Rsh(&e, 6)
-	e.Mod(&e, phi)
-	return e.Exp(qr, &e, n)
+	var result big.Int
+	e := big.NewInt(4)
+	e.Add(phi, e)
+	e.Mul(e, e)
+	e.Rsh(e, 6)
+	e.Mod(e, phi)
+	return result.Exp(qr, e, n)
 }
 
 // makeQuadraticResidue return a, b and y' such that:
@@ -105,10 +104,6 @@ func (public Public) Prove(hash *hash.Hash, private Private) (*pb.ZKMod, error) 
 	n, p, q, phi := public.N, private.P, private.Q, private.Phi
 	w := sample.QNR(n)
 
-	if err = hash.WriteInt(n, w); err != nil {
-		return nil, fmt.Errorf("zkmod: prove: %w", err)
-	}
-
 	nInverse := new(big.Int).ModInverse(n, phi)
 
 	Xs := make([]*pb.Int, params.StatParam)
@@ -116,12 +111,17 @@ func (public Public) Prove(hash *hash.Hash, private Private) (*pb.ZKMod, error) 
 	Bs := make([]bool, params.StatParam)
 	Zs := make([]*pb.Int, params.StatParam)
 
+	if err = hash.WriteInt(n, w); err != nil {
+		return nil, fmt.Errorf("zkmod: prove: %w", err)
+	}
+	ys, err := hash.ReadIntsModN(n, params.StatParam)
+	if err != nil {
+		return nil, fmt.Errorf("zkmod: prove: %w", err)
+	}
+
 	var z big.Int
-	y := new(big.Int)
 	for i := 0; i < params.StatParam; i++ {
-		if y, err = hash.ReadIntModN(n); err != nil {
-			return nil, fmt.Errorf("zkmod: prove: %w", err)
-		}
+		y := ys[i]
 
 		// Z = y^{n⁻¹ (mod n)}
 		z.Exp(y, nInverse, n)
@@ -145,30 +145,35 @@ func (public Public) Prove(hash *hash.Hash, private Private) (*pb.ZKMod, error) 
 func (public Public) Verify(hash *hash.Hash, proof *pb.ZKMod) bool {
 	var err error
 	n := public.N
-	// check if n is odd or prime
+	// check if n is odd and prime
 	if n.Bit(0) == 0 || n.ProbablyPrime(20) {
 		return false
 	}
 
-	if len(proof.X) != params.StatParam ||
-		len(proof.A) != params.StatParam ||
-		len(proof.B) != params.StatParam ||
-		len(proof.Z) != params.StatParam {
+	if !proof.IsValid() {
 		return false
 	}
 
 	w := proof.GetW().Unmarshal()
+	if big.Jacobi(w, n) != -1 || w.Cmp(n) != -1 {
+		return false
+	}
+
+	// get [yᵢ] <- ℤₙ
 	if err = hash.WriteInt(n, w); err != nil {
+		return false
+	}
+	ys, err := hash.ReadIntsModN(n, params.StatParam)
+	if err != nil {
 		return false
 	}
 
 	var lhs, rhs big.Int
-	y, z, x := new(big.Int), new(big.Int), new(big.Int)
+	z, x := new(big.Int), new(big.Int)
+	four := big.NewInt(4)
 	for i := 0; i < params.StatParam; i++ {
 		// get yᵢ
-		if y, err = hash.ReadIntModN(n); err != nil {
-			return false
-		}
+		y := ys[i]
 
 		x = proof.X[i].Unmarshal()
 		z = proof.Z[i].Unmarshal()

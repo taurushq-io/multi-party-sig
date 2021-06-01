@@ -16,7 +16,25 @@ type BaseRound struct {
 	SelfIndex int
 }
 
-func (b BaseRound) ProcessMessage(msg *pb.Message) error {
+func NewBaseRound(session *Session) (*BaseRound, error) {
+	if err := session.Validate(); err != nil {
+		return nil, err
+	}
+
+	h, err := session.Hash()
+	if err != nil {
+		return nil, fmt.Errorf("round.NewBaseRound: %w", err)
+	}
+
+	return &BaseRound{
+		S:         session,
+		H:         h,
+		SelfID:    session.SelfID(),
+		SelfIndex: session.PartyIDs.GetIndex(session.SelfID()),
+	}, nil
+}
+
+func (b BaseRound) ProcessMessage(*pb.Message) error {
 	return nil
 }
 
@@ -30,23 +48,4 @@ func (b BaseRound) Finalize() (Round, error) {
 
 func (b BaseRound) MessageType() pb.MessageType {
 	return pb.MessageType_TypeInvalid
-}
-
-func NewBaseRound(session *Session) (*BaseRound, error) {
-	s2 := session.Clone()
-	if err := s2.Validate(); err != nil {
-		return nil, err
-	}
-
-	h, err := s2.Hash()
-	if err != nil {
-		return nil, fmt.Errorf("newRound: session.Hash: %w", err)
-	}
-
-	return &BaseRound{
-		S:         s2,
-		H:         h,
-		SelfID:    s2.SelfID(),
-		SelfIndex: s2.PartyIDs.GetIndex(s2.SelfID()),
-	}, nil
 }

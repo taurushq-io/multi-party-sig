@@ -104,7 +104,10 @@ func (public Public) Verify(hash *hash.Hash, proof *pb.ZKDec) bool {
 
 	S, T := proof.GetS().Unmarshal(), proof.GetT().Unmarshal()
 	A := proof.GetA().Unmarshal()
-	gamma := proof.GetGamma().Unmarshal()
+	gamma, err := proof.GetGamma().Unmarshal()
+	if err != nil {
+		return false
+	}
 	z1, z2, w := proof.Z1.Unmarshal(), proof.Z2.Unmarshal(), proof.GetW().Unmarshal()
 
 	e, err := challenge(hash, public, Commitment{

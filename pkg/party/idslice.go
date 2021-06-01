@@ -18,6 +18,7 @@ func (partyIDs IDSlice) Swap(i, j int)      { partyIDs[i], partyIDs[j] = partyID
 // Sort is a convenience method: x.Sort() calls Sort(x).
 func (partyIDs IDSlice) Sort() { sort.Sort(partyIDs) }
 
+// Sorted returns true if partyIDs is sorted
 func (partyIDs IDSlice) Sorted() bool {
 	for i := range partyIDs {
 		if i > 0 && partyIDs[i-1] == partyIDs[i] {
@@ -27,22 +28,30 @@ func (partyIDs IDSlice) Sorted() bool {
 	return true
 }
 
+// Contains returns true if partyIDs contains id.
+// Assumes that partyIDs is sorted.
 func (partyIDs IDSlice) Contains(id ID) bool {
-	idx := partyIDs.Search(id)
-	return partyIDs[idx] == id
+	_, ok := partyIDs.Search(id)
+	return ok
 }
 
+// GetIndex returns the index of id in partyIDs.
+// If no index was found, return -1.
+// Assumes that partyIDs is sorted.
 func (partyIDs IDSlice) GetIndex(id ID) int {
-	idx := partyIDs.Search(id)
-	if partyIDs[idx] == id {
+	if idx, ok := partyIDs.Search(id); ok {
 		return idx
 	}
 	return -1
 }
 
 // Search returns the result of applying SearchStrings to the receiver and x.
-func (partyIDs IDSlice) Search(x ID) int {
-	return sort.Search(len(partyIDs), func(i int) bool { return partyIDs[i] >= x })
+func (partyIDs IDSlice) Search(x ID) (int, bool) {
+	index := sort.Search(len(partyIDs), func(i int) bool { return partyIDs[i] >= x })
+	if index >= 0 && index < len(partyIDs) && partyIDs[index] == x {
+		return index, true
+	}
+	return 0, false
 }
 
 func (partyIDs IDSlice) Copy() IDSlice {

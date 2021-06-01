@@ -77,6 +77,7 @@ func QNR(n *big.Int) *big.Int {
 // BlumPrime returns an odd prime p of size params.BlumPrimeBits,
 // such that p == 3 (mod 4)
 func BlumPrime() *big.Int {
+	// TODO be more flexible on the number of bits in P, Q to avoid square root attack
 	for i := uint8(0); i < uint8(255); i++ {
 		p, err := rand.Prime(rand.Reader, params.BlumPrimeBits)
 		if err != nil {

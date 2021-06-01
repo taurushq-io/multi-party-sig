@@ -12,6 +12,12 @@ func (x *ZKMod) IsValid() bool {
 		len(x.Z) != params.StatParam {
 		return false
 	}
+
+	// W cannot be 0
+	if len(x.W.Int) == 0 {
+		return false
+	}
+
 	return true
 }
 

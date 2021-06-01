@@ -1,6 +1,7 @@
 package pb
 
 import (
+	"errors"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -8,32 +9,53 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 )
 
-// Unmarshal checks whether the Int is valid and returns an appropriate big.Int.
-// (Signs are preserved)
-func (x *Int) Unmarshal() *big.Int {
-	var n big.Int
-	_ = n.GobDecode(x.Int)
-	return &n
-}
+// Int
 
 func NewInt(n *big.Int) *Int {
+	if n.Sign() == 0 {
+		return &Int{Int: nil}
+	}
 	b, _ := n.GobEncode()
 	return &Int{
 		Int: b,
 	}
 }
 
+// Unmarshal checks whether the Int is valid and returns an appropriate big.Int.
+// (Signs are preserved)
+func (x Int) Unmarshal() *big.Int {
+	if len(x.Int) == 0 {
+		return big.NewInt(0)
+	}
+	var n big.Int
+	_ = n.GobDecode(x.Int)
+	return &n
+}
+
+// Scalar
+
 func NewScalar(s *curve.Scalar) *Scalar {
+	if s.IsZero() {
+		return &Scalar{Scalar: nil}
+	}
 	return &Scalar{
 		Scalar: s.Bytes(),
 	}
 }
 
-func (x *Scalar) Unmarshal() *curve.Scalar {
-	var s curve.Scalar
-	s.SetBytes(x.GetScalar())
-	return &s
+func (x *Scalar) Unmarshal() (*curve.Scalar, error) {
+	if len(x.Scalar) == 0 {
+		return curve.NewScalar(), nil
+	}
+	var i big.Int
+	i.SetBytes(x.Scalar)
+	if i.Cmp(curve.Q) != -1 {
+		return nil, errors.New("pb.Scalar.Unmarshal: Scalar is not reduced")
+	}
+	return curve.NewScalarBigInt(&i), nil
 }
+
+// Point
 
 func NewPoint(v *curve.Point) *Point {
 	if v.IsIdentity() {
@@ -74,6 +96,8 @@ func (x *Point) Unmarshal() (*curve.Point, error) {
 	return p.SetBytes(x.Point)
 }
 
+// Ciphertext
+
 func NewCiphertext(c *paillier.Ciphertext) *Ciphertext {
 	return &Ciphertext{
 		C: NewInt(c.Int()),
@@ -86,6 +110,8 @@ func (x *Ciphertext) Unmarshal() *paillier.Ciphertext {
 	c.SetInt(n)
 	return c
 }
+
+// PolynomialExponent
 
 func NewPolynomialExponent(p *polynomial.Exponent) *PolynomialExponent {
 	return &PolynomialExponent{Coefficients: NewPointSlice(p.Coefficients())}
