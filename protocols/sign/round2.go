@@ -1,11 +1,11 @@
 package sign
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
-	zkenc2 "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
+	zkenc "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
 	zklogstar2 "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
 	mta2 "github.com/taurusgroup/cmp-ecdsa/protocols/sign/mta"
 )
@@ -22,13 +22,13 @@ func (round *round2) ProcessMessage(msg *pb.Message) error {
 
 	K := sign1.GetK().Unmarshal()
 
-	public := zkenc2.Public{
+	public := zkenc.Public{
 		K:      K,
 		Prover: partyJ.Paillier,
 		Aux:    round.thisParty.Pedersen,
 	}
 	if !public.Verify(round.H.CloneWithID(j), sign1.GetEnc()) {
-		return errors.New("failed enc")
+		return fmt.Errorf("sign.round2.ProcessMessage(): party %s: enc proof failed to verify", j)
 	}
 
 	partyJ.K = K
@@ -46,7 +46,7 @@ func (round *round2) GenerateMessages() ([]*pb.Message, error) {
 		}
 
 		partyJ.DeltaMtA = mta2.New(round.gamma, partyJ.K, partyJ.Paillier, round.thisParty.Paillier)
-		partyJ.ChiMtA = mta2.New(round.Secret.ECDSA, partyJ.K, partyJ.Paillier, round.thisParty.Paillier)
+		partyJ.ChiMtA = mta2.New(round.S.Secret.ECDSA, partyJ.K, partyJ.Paillier, round.thisParty.Paillier)
 
 		msg2, err := round.message2(partyJ)
 		if err != nil {
@@ -62,11 +62,11 @@ func (round *round2) GenerateMessages() ([]*pb.Message, error) {
 func (round *round2) message2(partyJ *localParty) (*pb.Message, error) {
 	proofDelta, err := partyJ.DeltaMtA.ProveAffG(round.thisParty.Gamma, round.H.CloneWithID(round.SelfID), partyJ.Pedersen)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sign.round2.GenerateMessages(): failed to generate affg proof: %w", err)
 	}
 	proofChi, err := partyJ.ChiMtA.ProveAffG(round.thisParty.ECDSA, round.H.CloneWithID(round.SelfID), partyJ.Pedersen)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sign.round2.GenerateMessages(): failed to generate affg hat proof: %w", err)
 	}
 
 	proofLog, err := zklogstar2.Public{
@@ -79,7 +79,7 @@ func (round *round2) message2(partyJ *localParty) (*pb.Message, error) {
 		Rho: round.gammaRand,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sign.round2.GenerateMessages(): failed to generate log proof: %w", err)
 	}
 
 	return &pb.Message{

@@ -1,7 +1,7 @@
 package refresh_threshold
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -30,7 +30,7 @@ func (round *round4) ProcessMessage(msg *pb.Message) error {
 	// Set rho
 	rho := body.GetRho()
 	if len(rho) != params.SecBytes {
-		return errors.New("rho is wrong length")
+		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: rho is wrong lenght", j)
 	}
 	partyJ.rho = rho
 
@@ -40,25 +40,25 @@ func (round *round4) ProcessMessage(msg *pb.Message) error {
 	}
 	// check that the constant coefficient is 0
 	if !partyJ.polyExp.Constant().Equal(curve.NewIdentityPoint()) {
-		return errors.New("exponent polynomial has constant coefficient != Id")
+		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: exponent polynomial has non 0 constant", j)
 	}
 	// check deg(Fⱼ) = t
 	if partyJ.polyExp.Degree() != round.S.Threshold {
-		return errors.New("exponent polynomial has wrong degree")
+		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: exponent polynomial has wrong degree", j)
 	}
 
 	// Save Schnorr commitments
 	if partyJ.A, err = pb.UnmarshalPoints(body.GetA()); err != nil {
-		return err
+		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: unmarshal points: %w", j, err)
 	}
 	if len(partyJ.A) != round.S.Threshold {
-		return errors.New("wrong number of Schnorr commitments")
+		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: wrong number of Schnorr commitments", j)
 	}
 
 	// Set Paillier
 	Nj := body.GetN().Unmarshal()
 	if Nj.BitLen() != params.PaillierBits {
-		return errors.New("N is the wrong number of bits")
+		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: Paillier public key has wrong number of bits", j)
 	}
 	partyJ.Paillier = paillier.NewPublicKey(Nj)
 
@@ -69,14 +69,14 @@ func (round *round4) ProcessMessage(msg *pb.Message) error {
 		T: body.GetT().Unmarshal(),
 	}
 	if err = partyJ.Pedersen.Validate(); err != nil {
-		return err
+		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: %w", j, err)
 	}
 
 	// Verify decommit
 	decommitment := body.GetU()
 	if !round.H.Decommit(j, partyJ.commitment, decommitment,
 		partyJ.rho, partyJ.polyExp, partyJ.A, partyJ.Pedersen) {
-		return errors.New("failed to decommit")
+		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: failed to decommit", j)
 	}
 
 	return partyJ.AddMessage(msg)
@@ -93,7 +93,7 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 
 	// Write rho to the hash state
 	if _, err := round.H.Write(round.rho); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("refresh.round4.GenerateMessages(): write rho to hash: %w", err)
 	}
 
 	partyI := round.thisParty
@@ -107,7 +107,7 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 		Phi: skPaillier.Phi,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("refresh.round4.GenerateMessages(): failed to generate mod proof: %w", err)
 	}
 
 	// prove s, t are correct as aux parameters with zkprm
@@ -116,7 +116,7 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 		Phi:    skPaillier.Phi,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("refresh.round4.GenerateMessages(): failed to generate prm proof: %w", err)
 	}
 
 	// Compute all ZKPoK Xⱼ = [xⱼ] G
@@ -127,14 +127,14 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 		X := round.thisParty.polyExp.Coefficients()[j+1]
 		schX, err = zksch.Prove(round.H.CloneWithID(round.SelfID), partyI.A[j], X, round.schnorrRand[j], x)
 		if err != nil {
-			return nil, errors.New("failed to generate schnorr")
+			return nil, fmt.Errorf("refresh.round4.GenerateMessages(): failed to generate sch proof for coef %d: %w", j, err)
 		}
 		schXproto[j] = pb.NewScalar(schX)
 	}
 
 	// create messages with encrypted shares
 	msgs := make([]*pb.Message, 0, round.S.N()-1)
-	for _, idJ := range round.S.Parties {
+	for _, idJ := range round.S.PartyIDs {
 		if idJ == round.SelfID {
 			continue
 		}
@@ -170,5 +170,5 @@ func (round *round4) Finalize() (round.Round, error) {
 }
 
 func (round *round4) MessageType() pb.MessageType {
-	return pb.MessageType_TypeRefreshThreshold4
+	return pb.MessageType_TypeRefreshThreshold3
 }

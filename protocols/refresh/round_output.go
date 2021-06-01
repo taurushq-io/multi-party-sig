@@ -27,7 +27,7 @@ func (round *output) ProcessMessage(msg *pb.Message) error {
 	}
 
 	// verify all Schnorr X
-	for k := range round.S.Parties() {
+	for k := range round.S.PartyIDs() {
 		schX := body.GetSchX()[k].Unmarshal()
 		if !zksch.Verify(round.H.CloneWithID(j), partyJ.ASch[k], partyJ.X[k], schX) {
 			return errors.New("schnorr X failed")
@@ -35,7 +35,7 @@ func (round *output) ProcessMessage(msg *pb.Message) error {
 	}
 
 	// get idx of j
-	idxJ := round.S.Parties().GetIndex(j)
+	idxJ := round.S.PartyIDs().GetIndex(j)
 
 	// decrypt share
 	xJdec := round.Secret.Paillier.Dec(body.GetC().Unmarshal())
@@ -82,7 +82,7 @@ func (round *output) GenerateMessages() ([]*pb.Message, error) {
 	}
 
 	// update new public key
-	for idxJ, j := range round.S.Parties() {
+	for idxJ, j := range round.S.PartyIDs() {
 		round.parties[j].ECDSA.Add(round.parties[j].ECDSA, &updatedPublic[idxJ])
 	}
 

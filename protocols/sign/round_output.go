@@ -2,6 +2,7 @@ package sign
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
@@ -12,8 +13,11 @@ import (
 
 type output struct {
 	*round4
-	sigma *curve.Scalar // sigma = σ = km + rχ
+	// sigma = σ = km + rχ
+	// this is the full "s" part of the signature
+	sigma *curve.Scalar
 
+	// signature wraps (R,S)
 	signature *signature2.Signature
 }
 
@@ -23,12 +27,17 @@ func (round *output) ProcessMessage(msg *pb.Message) error {
 
 	body := msg.GetSign4()
 
-	partyJ.sigma = body.GetSigma().Unmarshal()
+	sigma := body.GetSigma().Unmarshal()
+	if sigma.IsZero() {
+		return fmt.Errorf("sign.output.ProcessMessage(): party %s: sigma is 0", j)
+	}
+	partyJ.sigma = sigma
 
 	return nil
 }
 
 func (round *output) GenerateMessages() ([]*pb.Message, error) {
+	// compute σ = ∑ⱼ σⱼ
 	round.sigma = curve.NewScalar()
 	for _, partyJ := range round.parties {
 		round.sigma.Add(round.sigma, partyJ.sigma)
@@ -39,15 +48,12 @@ func (round *output) GenerateMessages() ([]*pb.Message, error) {
 		S: round.sigma,
 	}
 
-	ecdsaPk, err := round.S.PublicKey()
-	if err != nil {
-		return nil, err
+	// Verify signature using Go's ECDSA lib
+	if !ecdsa.Verify(round.S.PublicKey, round.S.Message, round.r.BigInt(), round.sigma.BigInt()) {
+		return nil, errors.New("sign.output.GenerateMessages(): failed to validate signature with Go stdlib")
 	}
-	if !ecdsa.Verify(ecdsaPk, round.message, round.r.BigInt(), round.sigma.BigInt()) {
-		fmt.Println("fail")
-	}
-	pk := curve.NewIdentityPoint().SetPublicKey(ecdsaPk)
-	if !round.signature.Verify(pk, round.message) {
+	pk := curve.NewIdentityPoint().SetPublicKey(round.S.PublicKey)
+	if !round.signature.Verify(pk, round.S.Message) {
 		round.abort = true
 		return round.GenerateMessagesAbort()
 	}

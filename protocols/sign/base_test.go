@@ -15,11 +15,8 @@ import (
 )
 
 type testParty struct {
-	idx    int
-	id     party.ID
-	s      *round.Session
-	secret *party.Secret
-	round  round.Round
+	id    party.ID
+	round round.Round
 
 	k, gamma, x, delta, chi, sigma *curve.Scalar
 }
@@ -54,40 +51,33 @@ func feedMessages(parties []*testParty, msgs []*pb.Message) error {
 
 func TestRound(t *testing.T) {
 	N := 3
+	T := 2
 
 	message := []byte("hello")
 	messageHash := make([]byte, 64)
 	sha3.ShakeSum128(messageHash, message)
 
-	s, secrets := round.FakeRefreshSession(N, N-1)
+	sessions := round.FakeSign(N, T, messageHash)
+	s1 := sessions[0]
 
-	ecdsaPk, err := s.PublicKey()
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	ecdsaPk := s1.PublicKey
 	pk := curve.NewIdentityPoint().SetPublicKey(ecdsaPk)
 
 	x := curve.NewScalar()
 
-	parties := make([]*testParty, N)
-	for idxJ, j := range s.Parties() {
-		r, err := NewRound(s, secrets[j], messageHash)
+	parties := make([]*testParty, 0, T+1)
+	for _, s := range sessions {
+		r, err := NewRound(s)
 		if err != nil {
 			t.Error(err)
 		}
 
-		x.Add(secrets[j].ECDSA, x)
+		x.Add(s.Secret.ECDSA, x)
 
-		s2 := s.Clone()
-
-		parties[idxJ] = &testParty{
-			idx:    idxJ,
-			id:     j,
-			s:      s2,
-			secret: secrets[j],
-			round:  r,
-		}
+		parties = append(parties, &testParty{
+			id:    s.SelfID(),
+			round: r,
+		})
 	}
 
 	k := curve.NewScalar()

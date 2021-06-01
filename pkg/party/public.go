@@ -38,9 +38,11 @@ func (p Public) KeygenDone() bool {
 }
 
 func (p *Public) Clone() *Public {
+	ssid := make([]byte, params.HashBytes)
+	copy(ssid, p.SSID)
 	p2 := &Public{
 		ID:   p.ID,
-		SSID: append([]byte{}, p.SSID...),
+		SSID: ssid,
 	}
 
 	if p.Paillier != nil {

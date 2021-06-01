@@ -2,6 +2,7 @@ package refresh_threshold
 
 import (
 	"crypto/rand"
+	"fmt"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
@@ -29,6 +30,8 @@ type round1 struct {
 	// poly is fᵢ(X)
 	poly *polynomial.Polynomial
 
+	// schnorrRand is an array to t+1 random aₗ ∈ 𝔽 used to compute Schnorr commitments of
+	// the coefficients of the exponent polynomial Fᵢ(X)
 	schnorrRand []*curve.Scalar
 }
 
@@ -58,7 +61,8 @@ func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 	round.thisParty.Paillier = pkPaillier
 
 	// sample fᵢ(X) deg(fᵢ) = t, fᵢ(0) = 0
-	round.poly = polynomial.NewPolynomial(round.S.Threshold, curve.NewScalar())
+	constant := curve.NewScalar()
+	round.poly = polynomial.NewPolynomial(round.S.Threshold, constant)
 	selfScalar := curve.NewScalar().SetBytes([]byte(round.SelfID))
 	round.thisParty.shareReceived = round.poly.Evaluate(selfScalar)
 
@@ -67,13 +71,15 @@ func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 
 	// Sample ρ
 	round.thisParty.rho = make([]byte, params.SecBytes)
-	_, err = rand.Read(round.thisParty.rho)
+	if _, err = rand.Read(round.thisParty.rho); err != nil {
+		return nil, fmt.Errorf("refresh.round1.GenerateMessages(): sample rho: %w", err)
+	}
 
 	// commit to data in message 2
 	round.thisParty.commitment, round.decommitment, err = round.H.Commit(round.SelfID,
 		round.thisParty.rho, round.thisParty.polyExp, round.thisParty.A, round.thisParty.Pedersen)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("refresh.round1.GenerateMessages(): commit: %w", err)
 	}
 
 	return []*pb.Message{{

@@ -1,15 +1,22 @@
 package refresh_threshold
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
 func NewRound(session *round.Session) (*round1, error) {
+	if !session.KeygenDone() {
+		return nil, errors.New("refresh.NewRound: session has no keygen data")
+	}
+
 	// Create round with a clone of the original secret
 	base, err := round.NewBaseRound(session)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("refresh.NewRound: %w", err)
 	}
 
 	parties := make(map[party.ID]*localParty, base.S.N())
@@ -22,7 +29,7 @@ func NewRound(session *round.Session) (*round1, error) {
 
 	return &round1{
 		BaseRound: base,
-		thisParty: parties[base.S.SelfID()],
+		thisParty: parties[base.SelfID],
 		parties:   parties,
 	}, nil
 }

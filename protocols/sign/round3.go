@@ -1,7 +1,7 @@
 package sign
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -43,7 +43,7 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 		Aux:      round.thisParty.Pedersen,
 	}
 	if !zkAffgPublic.Verify(round.H.CloneWithID(j), body.ProofAffG) {
-		return errors.New("zkaffg failed")
+		return fmt.Errorf("sign.round3.ProcessMessage(): party %s: affg proof failed to verify", j)
 	}
 
 	zkAffgPublicHat := zkaffg2.Public{
@@ -56,7 +56,7 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 		Aux:      round.thisParty.Pedersen,
 	}
 	if !zkAffgPublicHat.Verify(round.H.CloneWithID(j), body.ProofAffGHat) {
-		return errors.New("zkaffghat failed")
+		return fmt.Errorf("sign.round3.ProcessMessage(): party %s: affg hat proof failed to verify", j)
 	}
 
 	zkLogPublic := zklogstar2.Public{
@@ -66,12 +66,24 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 		Aux:    round.thisParty.Pedersen,
 	}
 	if !zkLogPublic.Verify(round.H.CloneWithID(j), body.ProofLog) {
-		return errors.New("zklog r3 failed")
+		return fmt.Errorf("sign.round3.ProcessMessage(): party %s: log proof failed to verify", j)
 	}
 
 	partyJ.Gamma = gamma
-	partyJ.ShareAlphaDelta = curve.NewScalarBigInt(round.Secret.Paillier.Dec(D))
-	partyJ.ShareAlphaChi = curve.NewScalarBigInt(round.Secret.Paillier.Dec(DHat))
+
+	shareAlphaDeltaInt := round.S.Secret.Paillier.Dec(D)
+	shareAlphaDelta := curve.NewScalarBigInt(shareAlphaDeltaInt)
+	//if shareAlphaDeltaInt.Cmp(shareAlphaDelta.BigInt()) != 0 {
+	//	return fmt.Errorf("refresh.round3.ProcessMessage(): party %s: decrypted share alpha for delta is not in correct range", j)
+	//}
+	partyJ.ShareAlphaDelta = shareAlphaDelta
+
+	shareAlphaChiInt := round.S.Secret.Paillier.Dec(DHat)
+	shareAlphaChi := curve.NewScalarBigInt(shareAlphaChiInt)
+	//if shareAlphaChiInt.Cmp(shareAlphaChi.BigInt()) != 0 {
+	//	return fmt.Errorf("refresh.round3.ProcessMessage(): party %s: decrypted share alpha for chi is not in correct range", j)
+	//}
+	partyJ.ShareAlphaChi = shareAlphaChi
 
 	return partyJ.AddMessage(msg)
 }
@@ -90,7 +102,7 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 	round.thisParty.delta = curve.NewScalar().Multiply(round.gamma, round.k)
 
 	// χᵢ = xᵢ kᵢ
-	round.chi = curve.NewScalar().Multiply(round.Secret.ECDSA, round.k)
+	round.chi = curve.NewScalar().Multiply(round.S.Secret.ECDSA, round.k)
 
 	for j, partyJ := range round.parties {
 		if j == round.SelfID {
@@ -134,7 +146,7 @@ func (round *round3) message3(partyJ *localParty) (*pb.Message, error) {
 		Rho: round.kRand,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sign.round3.GenerateMessages(): failed to generate log proof: %w", err)
 	}
 
 	return &pb.Message{

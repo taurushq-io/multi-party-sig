@@ -23,7 +23,7 @@ func TestFakeKeygen(t *testing.T) {
 func TestGenerateShares(t *testing.T) {
 	N := 20
 	T := 5
-	partyIDs := party.RandomPartyIDs(N)
+	partyIDs := party.RandomIDs(N)
 
 	//subPartyIDs := partyIDs[:T+1]
 	shares, ecdsaSecret := GenerateShares(partyIDs, T)

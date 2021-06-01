@@ -1,6 +1,7 @@
 package sign
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
@@ -16,16 +17,16 @@ type round1 struct {
 	thisParty *localParty
 	parties   map[party.ID]*localParty
 
-	message []byte
-
-	// gamma = γᵢ
+	// gamma = γᵢ <- 𝔽
 	gamma *curve.Scalar
-	// k = kᵢ
+	// k = kᵢ  <- 𝔽
 	k *curve.Scalar
 
-	// kRand = ρᵢ
+	// kRand = ρᵢ <- ℤₙ
+	// used to encrypt Kᵢ = Encᵢ(kᵢ)
 	kRand *big.Int
-	// gammaRand = νᵢ
+	// gammaRand = νᵢ <- ℤₙ
+	// used to encrypt Gᵢ = Encᵢ(γᵢ)
 	gammaRand *big.Int
 }
 
@@ -72,7 +73,7 @@ func (round *round1) message1(partyJ *localParty) (*pb.Message, error) {
 		Rho: round.kRand,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sign.round1.GenerateMessages(): failed to generate enc proof: %w", err)
 	}
 
 	return &pb.Message{

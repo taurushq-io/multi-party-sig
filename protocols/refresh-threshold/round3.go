@@ -2,7 +2,7 @@ package refresh_threshold
 
 import (
 	"bytes"
-	"errors"
+	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
@@ -17,7 +17,7 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 	partyJ := round.parties[j]
 
 	if !bytes.Equal(msg.GetRefreshT2().HashOfHashes, round.hashOfHashes) {
-		return errors.New("hashes are incompatible")
+		return fmt.Errorf("refresh.round3.ProcessMessage(): party %s sent different hash than ours", j)
 	}
 
 	return partyJ.AddMessage(msg)
@@ -48,5 +48,5 @@ func (round *round3) Finalize() (round.Round, error) {
 }
 
 func (round *round3) MessageType() pb.MessageType {
-	return pb.MessageType_TypeRefreshThreshold3
+	return pb.MessageType_TypeRefreshThreshold2
 }

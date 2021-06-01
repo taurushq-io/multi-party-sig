@@ -44,7 +44,7 @@ func TestRound(t *testing.T) {
 
 	s1 := sessions[0]
 	parties := make([]*testParty, N)
-	for idxJ, j := range s1.Parties {
+	for idxJ, j := range s1.PartyIDs {
 		r, err := NewRound(sessions[idxJ])
 		require.NoError(t, err, "round creation should not result in an error")
 		parties[idxJ] = &testParty{
@@ -158,9 +158,8 @@ func TestRound(t *testing.T) {
 	origPk := s1.PublicKey
 	for _, p := range parties {
 		newSession := p.r.(*output).S
-		ssid, err := newSession.RecomputeSSID()
+		err := newSession.RecomputeSSID()
 		assert.NoError(t, err, "failed to recompute ssid")
-		newSession.SetSSID(ssid)
 		//newSecret := newSession.Secret
 		newPk := newSession.PublicKey
 		//require.NoError(t, err, "new session should yield a public key")

@@ -47,6 +47,6 @@ func NewBaseRound(session *Session) (*BaseRound, error) {
 		S:         s2,
 		H:         h,
 		SelfID:    s2.SelfID(),
-		SelfIndex: s2.Parties.GetIndex(s2.SelfID()),
+		SelfIndex: s2.PartyIDs.GetIndex(s2.SelfID()),
 	}, nil
 }

@@ -15,7 +15,11 @@ type Point struct {
 }
 
 // Bytes returns an uncompressed point encoding of v.
+// Returns nil if v == Identity
 func (v *Point) Bytes() []byte {
+	if v.IsIdentity() {
+		return nil
+	}
 	ret := make([]byte, 1+2*ByteSize)
 
 	ret[0] = 4 // uncompressed point
@@ -26,7 +30,11 @@ func (v *Point) Bytes() []byte {
 }
 
 // BytesCompressed returns a compressed point encoding of v.
+// Returns nil if v == Identity
 func (v *Point) BytesCompressed() []byte {
+	if v.IsIdentity() {
+		return nil
+	}
 	compressed := make([]byte, 1+ByteSize)
 	compressed[0] = byte(v.y.Bit(0)) | 2
 

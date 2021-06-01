@@ -24,7 +24,7 @@ func GenerateShares(parties party.IDSlice, t int) (shares []*curve.Scalar, sum *
 }
 
 func FakeKeygen(n, threshold int) []*Session {
-	partyIDs := party.RandomPartyIDs(n)
+	partyIDs := party.RandomIDs(n)
 
 	secrets := make(map[party.ID]*party.Secret, n)
 	public := make(map[party.ID]*party.Public, n)
@@ -59,32 +59,31 @@ func FakeKeygen(n, threshold int) []*Session {
 	for i, pid := range partyIDs {
 		sessions[i] = &Session{
 			group:     curve.Curve,
-			Parties:   partyIDs,
+			PartyIDs:  partyIDs,
 			Threshold: threshold,
 			Public:    public,
 			Secret:    secrets[pid],
 			PublicKey: ecdsaPublic,
 		}
-		ssid, err := sessions[i].RecomputeSSID()
-		if err != nil {
+		if err := sessions[i].RecomputeSSID(); err != nil {
 			panic(err)
 		}
-		sessions[i].SetSSID(ssid)
 	}
 	return sessions
 }
 
-//func RandomPartyIDs(n int) party.IDSlice {
-//	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-//
-//	partyIDs := make(party.IDSlice, n)
-//	for i := range partyIDs {
-//		b := make([]byte, 20)
-//		for j := range b {
-//			b[j] = letters[rand.Intn(len(letters))]
-//		}
-//		partyIDs[i] = string(b)
-//	}
-//	partyIDs.Sort()
-//	return partyIDs
-//}
+func FakeSign(n, threshold int, message []byte) []*Session {
+	keygenSessions := FakeKeygen(n, threshold)
+	parties := keygenSessions[0].PartyIDs[:threshold+1].Copy()
+	sessions := make([]*Session, 0, threshold+1)
+	for _, s := range keygenSessions {
+		if !parties.Contains(s.SelfID()) {
+			continue
+		}
+		if err := s.Sign(parties, message); err != nil {
+			panic(err)
+		}
+		sessions = append(sessions, s)
+	}
+	return sessions
+}

@@ -1,6 +1,8 @@
 package refresh_threshold
 
 import (
+	"fmt"
+
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
@@ -8,6 +10,7 @@ import (
 
 type round2 struct {
 	*round1
+	// hashOfHashes = H(commitment₁, ..., commitmentₙ)
 	hashOfHashes []byte
 }
 
@@ -24,10 +27,10 @@ func (round *round2) GenerateMessages() ([]*pb.Message, error) {
 	var err error
 	// Broadcast the message we created in round1
 	h := round.H.Clone()
-	for _, partyID := range round.S.Parties {
+	for _, partyID := range round.S.PartyIDs {
 		_, err = h.Write(round.parties[partyID].commitment)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("refresh.round2.GenerateMessages(): write commitments to hash: %w", err)
 		}
 	}
 	round.hashOfHashes, err = h.ReadBytes(make([]byte, params.HashBytes))

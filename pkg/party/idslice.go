@@ -1,6 +1,8 @@
 package party
 
 import (
+	"encoding/binary"
+	"io"
 	"math/rand"
 	"sort"
 
@@ -94,12 +96,8 @@ func (partyIDs IDSlice) Lagrange(index ID) *curve.Scalar {
 	return &num
 }
 
-//func (partyIDs IDSlice) LagrangeAll(indexes IDSlice) []*curve.Scalar {
-//
-//}
-
-// RandomPartyIDs returns a slice of random IDs with 20 alphanumeric characters
-func RandomPartyIDs(n int) IDSlice {
+// RandomIDs returns a slice of random IDs with 20 alphanumeric characters
+func RandomIDs(n int) IDSlice {
 	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 	partyIDs := make(IDSlice, n)
@@ -112,4 +110,25 @@ func RandomPartyIDs(n int) IDSlice {
 	}
 	partyIDs.Sort()
 	return partyIDs
+}
+
+// WriteTo implements io.WriterTo and should be used within the hash.Hash function.
+// It writes the full uncompressed point to w, ie 64 bytes
+func (partyIDs IDSlice) WriteTo(w io.Writer) (int64, error) {
+	var n int
+	nAll := int64(0)
+
+	err := binary.Write(w, binary.BigEndian, uint64(len(partyIDs)))
+	if err != nil {
+		return nAll, err
+	}
+	for _, id := range partyIDs {
+		n, err = w.Write([]byte(id))
+		nAll += int64(n)
+		if err != nil {
+			return nAll, err
+		}
+	}
+
+	return nAll, err
 }

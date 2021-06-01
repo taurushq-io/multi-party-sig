@@ -10,7 +10,7 @@ import (
 func TestIDSlice_Lagrange(t *testing.T) {
 	N := 10
 	//T := 8
-	allIDs := RandomPartyIDs(N)
+	allIDs := RandomIDs(N)
 	coefs := make([]*curve.Scalar, N)
 	for i, id := range allIDs {
 		coefs[i] = allIDs.Lagrange(id)

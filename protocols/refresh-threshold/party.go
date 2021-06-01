@@ -14,18 +14,17 @@ import (
 type localParty struct {
 	*round.Party
 
-	//X []*curve.Point // Xⱼ
 	// A are the schnorr commitments to the polynomial in the exponent
 	A []*curve.Point // Aⱼ
 
-	//Y    *curve.Point
-	//BSch *curve.Point
-
 	commitment hash.Commitment // H(msg2, decommitment)
 
-	rho []byte // ρᵢ
+	// rho = ρᵢ
+	rho []byte
 
+	// polyExp = Fⱼ(X) = fⱼ(X)•G
 	polyExp *polynomial.Exponent
 
+	// sharesReceived = xʲᵢ is the share received from party j
 	shareReceived *curve.Scalar
 }

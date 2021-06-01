@@ -10,9 +10,12 @@ import (
 )
 
 type Parameters struct {
-	N *big.Int // N = p•q, p ≡ q ≡ 3 mod 4
-	S *big.Int // S = r² mod N
-	T *big.Int // T = Sˡ mod N
+	// N = p•q, p ≡ q ≡ 3 mod 4
+	N *big.Int `json:"n"`
+	// S = r² mod N
+	S *big.Int `json:"s"`
+	// T = Sˡ mod N
+	T *big.Int `json:"t"`
 }
 
 func (p *Parameters) Validate() error {
@@ -26,17 +29,17 @@ func (p *Parameters) Validate() error {
 
 		// s < N
 		if s.Cmp(p.N) != -1 {
-			return fmt.Errorf("pedersen.Parameters: %d is >= N", id)
+			return fmt.Errorf("pedersen.Parameters: %s is >= N", id)
 		}
 
 		// s ⩾ 1
 		if s.Cmp(one) != 1 {
-			return fmt.Errorf("pedersen.Parameters: %d < 1", id)
+			return fmt.Errorf("pedersen.Parameters: %s < 1", id)
 		}
 
 		// gcd(s,N) == 1
 		if gcd.GCD(nil, nil, s, p.N).Cmp(one) != 0 {
-			return fmt.Errorf("pedersen.Parameters: gcd(%d, N) ≠ 1", id)
+			return fmt.Errorf("pedersen.Parameters: gcd(%s, N) ≠ 1", id)
 		}
 	}
 
@@ -128,4 +131,17 @@ func (p *Parameters) WriteTo(w io.Writer) (int64, error) {
 	n, err = w.Write(buf)
 	nAll += int64(n)
 	return nAll, err
+}
+
+func (p Parameters) Equal(o *Parameters) bool {
+	if p.N.Cmp(o.N) != 0 {
+		return false
+	}
+	if p.S.Cmp(o.S) != 0 {
+		return false
+	}
+	if p.T.Cmp(o.T) != 0 {
+		return false
+	}
+	return true
 }

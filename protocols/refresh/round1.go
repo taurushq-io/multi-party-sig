@@ -40,7 +40,7 @@ func (round *round1) GenerateMessages() ([]*pb.Message, error) {
 	// generate shares
 	round.thisParty.X = make([]*curve.Point, round.S.N())
 	round.thisParty.ASch = make([]*curve.Point, round.S.N())
-	for idxJ := range round.S.Parties() {
+	for idxJ := range round.S.PartyIDs() {
 		round.thisParty.X[idxJ] = curve.NewIdentityPoint().ScalarBaseMult(round.p.xSent[idxJ])
 		round.thisParty.ASch[idxJ] = curve.NewIdentityPoint().ScalarBaseMult(round.p.aSchnorr[idxJ])
 	}

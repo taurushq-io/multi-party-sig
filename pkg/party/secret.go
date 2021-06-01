@@ -10,16 +10,16 @@ import (
 )
 
 type Secret struct {
-	ID ID
+	ID ID `json:"id"`
 
 	// ECDSA is a party's share xᵢ of the secret ECDSA x
-	ECDSA *curve.Scalar
+	ECDSA *curve.Scalar `json:"ecdsa"`
 
 	// Paillier is a party's
-	Paillier *paillier.SecretKey
+	Paillier *paillier.SecretKey `json:"paillier"`
 
 	// RID is the random ID generated during the keygen
-	RID []byte
+	RID []byte `json:"rid"`
 }
 
 // Validate checks whether the Secret adheres to the protocol.

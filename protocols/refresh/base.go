@@ -14,7 +14,7 @@ func NewRound(session *round.Session, secret *party.Secret, parameters *Paramete
 	if parameters == nil {
 		parameters = &Parameters{}
 	}
-	parameters.fill(session.Parties())
+	parameters.fill(session.PartyIDs())
 	if !parameters.verify(session.N()) {
 		return nil, errors.New("parameters were not correctly generated")
 	}

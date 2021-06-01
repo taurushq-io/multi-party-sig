@@ -130,7 +130,7 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 	// Compute all ZKPoK Xⱼ = [xⱼ] G
 	schXproto := make([]*pb.Scalar, round.S.N())
 	var schX *curve.Scalar
-	for j := range round.S.Parties() {
+	for j := range round.S.PartyIDs() {
 		schX, err = zksch.Prove(round.H.CloneWithID(round.SelfID), partyI.ASch[j], partyI.X[j], round.p.aSchnorr[j], round.p.xSent[j])
 		if err != nil {
 			return nil, errors.New("failed to generate schnorr")
@@ -140,7 +140,7 @@ func (round *round3) GenerateMessages() ([]*pb.Message, error) {
 
 	// create messages with encrypted shares
 	msgs := make([]*pb.Message, 0, round.S.N()-1)
-	for j, idJ := range round.S.Parties() {
+	for j, idJ := range round.S.PartyIDs() {
 		if idJ == round.SelfID {
 			continue
 		}

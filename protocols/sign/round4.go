@@ -1,7 +1,7 @@
 package sign
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -11,13 +11,16 @@ import (
 
 type round4 struct {
 	*round3
-	// delta = δ
+	// delta = δ = ∑ⱼ δⱼ
+	// computed from received shares
 	delta *curve.Scalar
-	// Delta = Δ
+
+	// Delta = Δ = ∑ⱼ Δⱼ
 	Delta *curve.Point
 
 	// R = [δ⁻¹] Γ
 	R *curve.Point
+
 	// r = R|ₓ
 	r *curve.Scalar
 
@@ -32,7 +35,7 @@ func (round *round4) ProcessMessage(msg *pb.Message) error {
 
 	Delta, err := body.GetDeltaGroup().Unmarshal()
 	if err != nil {
-		return err
+		return fmt.Errorf("sign.round4.ProcessMessage(): unmarshal Delta: %w", err)
 	}
 
 	zkLogPublic := zklogstar2.Public{
@@ -44,7 +47,7 @@ func (round *round4) ProcessMessage(msg *pb.Message) error {
 	}
 
 	if !zkLogPublic.Verify(round.H.CloneWithID(j), body.ProofLog) {
-		return errors.New("zklog r4 failed")
+		return fmt.Errorf("sign.round4.ProcessMessage(): party %s: log proof failed to verify", j)
 	}
 
 	partyJ.Delta = Delta
@@ -74,7 +77,8 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 	round.R = curve.NewIdentityPoint().ScalarMult(deltaInv, round.Gamma) // R = [δ⁻¹] Γ
 	round.r = round.R.X()                                                // r = R|ₓ
 
-	km := curve.NewScalar().SetHash(round.message)
+	// km = H(m)⋅kᵢ
+	km := curve.NewScalar().SetHash(round.S.Message)
 	km.Multiply(km, round.k)
 
 	// σᵢ = rχᵢ + kᵢm
