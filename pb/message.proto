@@ -2,26 +2,30 @@ syntax = "proto3";
 
 package pb;
 
-option go_package = "github.com/taurusgroup/cmp-ecdsa/pb";
+//option go_package = "github.com/taurusgroup/cmp-ecdsa/pb";
+
+option (gogoproto.stable_marshaler_all) = true;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 import "types.proto";
 import "zk.proto";
 
 enum MessageType {
-  TypeInvalid = 0;
+  MessageTypeInvalid = 0;
 
-  TypeRefresh1 = 11;
-  TypeRefresh2 = 12;
-  TypeRefresh3 = 13;
-  TypeRefresh4 = 14;
+  MessageTypeRefresh1 = 11;
+  MessageTypeRefresh2 = 12;
+  MessageTypeRefresh3 = 13;
+  MessageTypeRefresh4 = 14;
 
-  TypeSign1 = 21;
-  TypeSign2 = 22;
-  TypeSign3 = 23;
-  TypeSign4 = 24;
+  MessageTypeSign1 = 21;
+  MessageTypeSign2 = 22;
+  MessageTypeSign3 = 23;
+  MessageTypeSign4 = 24;
 
-  TypeAbort1 = 31;
-  TypeAbort2 = 32;
+  MessageTypeAbort1 = 31;
+  MessageTypeAbort2 = 32;
 }
 
 enum Broadcast {
@@ -32,8 +36,8 @@ enum Broadcast {
 
 message Message {
   MessageType type = 1;
-  string from = 2;
-  string to = 3;
+  string from = 2 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/party.ID", (gogoproto.nullable) = false];
+  string to = 3 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/party.ID", (gogoproto.nullable) = false];
   Broadcast broadcast = 4;
 
   Refresh1 refresh1 = 11;
@@ -70,11 +74,11 @@ message Refresh3 {
   // A = {A_i,l}_l Schnorr commitments for the coefficients of F_i
   repeated Point A = 3;
   // N Paillier and Pedersen
-  Int N = 4;
+  bytes N = 4 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
   // S Pedersen
-  Int S = 5;
+  bytes S = 5 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
   // T Pedersen
-  Int T = 6;
+  bytes T = 6 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
   // U decommitment bytes
   bytes u = 7;
 }
@@ -83,24 +87,24 @@ message Refresh4 {
   ZKMod mod = 1;
   ZKPrm prm = 2;
   // c = Enc_i(x) is the encryption of the receivers share
-  Ciphertext c = 3;
+  bytes c = 3 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
   // schF are the Schnorr proofs of knowledge of the coefficients of the VSS polynomial
   repeated Scalar schF = 4;
 }
 
 message Sign1 {
   ZKEnc enc = 1;
-  Ciphertext K = 2;
-  Ciphertext G = 3;
+  bytes K = 2 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
+  bytes G = 3 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
 }
 
 message Sign2 {
   bytes hashKG = 1;
   Point Gamma = 2;
-  Ciphertext D = 3;
-  Ciphertext F = 4;
-  Ciphertext DHat = 5;
-  Ciphertext FHat = 6;
+  bytes D = 3 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
+  bytes F = 4 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
+  bytes DHat = 5 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
+  bytes FHat = 6 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
   ZKAffG ProofAffG = 7;
   ZKAffG ProofAffGHat = 8;
   ZKLogStar ProofLog = 9;
@@ -126,4 +130,13 @@ message Abort2 {
   map <string, ZKAffG> proofAffg = 1;
   map <string, ZKMulStar> proofMul = 2;
   map <string, ZKDec> proofDec = 3;
+}
+
+message Frost1 {
+  Point D = 1;
+  Point E = 2;
+}
+
+message Frost2 {
+  Scalar Z = 1;
 }

@@ -2,82 +2,84 @@ syntax = "proto3";
 
 package pb;
 
-option go_package = "github.com/taurusgroup/cmp-ecdsa/pb";
+//option go_package = "github.com/taurusgroup/cmp-ecdsa/pb";
+option (gogoproto.stable_marshaler_all) = true;
 
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "types.proto";
 
 message ZKMod {
-  Int w = 1;
-  repeated Int x = 2;
+  bytes w = 1 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes x = 2 [(gogoproto.casttypewith) = "IntSlice;IntSliceCaster"];
   repeated bool a = 3;
   repeated bool b = 4;
-  repeated Int z = 5;
+  bytes z = 5 [(gogoproto.casttypewith) = "IntSlice;IntSliceCaster"];
 }
 
 message ZKPrm {
-  repeated Int a = 1;
-  repeated Int z = 2;
+  bytes a = 1 [(gogoproto.casttypewith) = "IntSlice;IntSliceCaster"];
+  bytes z = 2 [(gogoproto.casttypewith) = "IntSlice;IntSliceCaster"];
 }
 
 message ZKEnc {
-  Int S = 1;
-  Ciphertext A = 2;
-  Int C = 3;
-  Int Z1 = 4;
-  Int Z2 = 5;
-  Int Z3 = 6;
+  bytes S = 1 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes A = 2 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
+  bytes C = 3 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes Z1 = 4 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes Z2 = 5 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes Z3 = 6 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
 }
 
 message ZKLogStar {
-  Int S = 1;
-  Ciphertext A = 2;
-  Point Y = 3;
-  Int D = 4;
-  Int Z1 = 5;
-  Int Z2 = 6;
-  Int Z3 = 7;
+  bytes S = 1 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes A = 2 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point;PointCaster"];
+  bytes Y = 3 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point;PointCaster"];
+  bytes D = 4 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes Z1 = 5 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes Z2 = 6 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes Z3 = 7 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
 }
 
 message ZKAffG {
-  Ciphertext A = 1;
-  Point Bx = 2;
-  Ciphertext By = 3;
-  Int E = 4;
-  Int S = 5;
-  Int F = 6;
-  Int T = 7;
-  Int Z1 = 8;
-  Int Z2 = 9;
-  Int Z3 = 10;
-  Int Z4 = 11;
-  Int W = 12;
-  Int Wy = 13;
+  bytes A = 1 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
+  bytes Bx = 2 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point;PointCaster"];
+  bytes By = 3 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
+  bytes E = 4 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes S = 5 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes F = 6 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes T = 7 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes Z1 = 8 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes Z2 = 9 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes Z3 = 10 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes Z4 = 11 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes W = 12 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes Wy = 13 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
 }
 
 message ZKMulStar {
-  Ciphertext A = 1;
-  Point Bx = 2;
-  Int E = 4;
-  Int S = 5;
-  Int Z1 = 8;
-  Int Z2 = 9;
-  Int W = 12;
+  bytes A = 1 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
+  bytes Bx = 2 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point;PointCaster"];
+  bytes E = 4 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes S = 5 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes Z1 = 8 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes Z2 = 9 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes W = 12 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
 }
 
 message ZKMul {
-  Ciphertext A = 1;
-  Ciphertext B = 2;
-  Int Z = 3;
-  Int U = 4;
-  Int V = 5;
+  bytes A = 1 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
+  bytes B = 2 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
+  bytes Z = 3 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes U = 4 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes V = 5 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
 }
 
 message ZKDec {
-  Int S = 1;
-  Int T = 2;
-  Ciphertext A = 3;
+  bytes S = 1 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes T = 2 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes A = 3 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
   Scalar Gamma = 4;
-  Int Z1 = 5;
-  Int Z2 = 6;
-  Int W = 7;
+  bytes Z1 = 5 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes Z2 = 6 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
+  bytes W = 7 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
 }

@@ -6,10 +6,10 @@ func (x *ZKMod) IsValid() bool {
 	if x == nil {
 		return false
 	}
-	if len(x.X) != params.StatParam ||
+	if len(*x.X) != params.StatParam ||
 		len(x.A) != params.StatParam ||
 		len(x.B) != params.StatParam ||
-		len(x.Z) != params.StatParam {
+		len(*x.Z) != params.StatParam {
 		return false
 	}
 

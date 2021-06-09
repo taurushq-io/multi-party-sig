@@ -1,0 +1,8 @@
+- `git clone https://github.com/gogo/protobuf $GOPATH/src/github.com/gogo/protobuf`
+- `cd $GOPATH/src/github.com/gogo/protobuf`
+- `git remote add trasc https://github.com/trasc/protobuf.git`
+- `git fetch trasc`
+- `git merge trasc/casttypewith`
+- `cd protoc-gen-gogoslick`
+- `go build`
+- `cp protoc-gen-gogoslick $GOPATH/bin`

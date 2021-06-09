@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package pb;
 
-option go_package = "github.com/taurusgroup/cmp-ecdsa/pb";
+//option go_package = "github.com/taurusgroup/cmp-ecdsa/pb";
 
 message Point {
   bytes point = 1;
@@ -13,11 +13,11 @@ message Scalar {
 }
 
 message Int {
-  bytes int = 1;
+  bytes int = 1 [(gogoproto.casttypewith) = "math/big.Int;IntCaster"];
 }
 
 message Ciphertext {
-  Int c = 1;
+  optional bytes C = 1 [(gogoproto.customtype) = "T"];
 }
 
 message PolynomialExponent {

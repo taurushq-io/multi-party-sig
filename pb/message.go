@@ -1,3 +1,4 @@
+//go:generate protoc -I=. -I=proto -I=$GOPATH/src -I=$GOPATH/src/github.com/gogo/protobuf/protobuf  --gogoslick_out=. message.proto
 package pb
 
 import "github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -13,27 +14,27 @@ func (x *Message) GetToID() party.ID {
 func (x *Message) IsValid() bool {
 	switch x.Type {
 	// refresh_old
-	case MessageType_TypeRefresh1:
+	case MessageTypeRefresh1:
 		return x.GetRefresh1() != nil
-	case MessageType_TypeRefresh2:
+	case MessageTypeRefresh2:
 		return x.GetRefresh2() != nil
-	case MessageType_TypeRefresh3:
+	case MessageTypeRefresh3:
 		return x.GetRefresh3() != nil
-	case MessageType_TypeRefresh4:
+	case MessageTypeRefresh4:
 		return x.GetRefresh4() != nil
 	// sign
-	case MessageType_TypeSign1:
+	case MessageTypeSign1:
 		return x.GetSign1() != nil
-	case MessageType_TypeSign2:
+	case MessageTypeSign2:
 		return x.GetSign2() != nil
-	case MessageType_TypeSign3:
+	case MessageTypeSign3:
 		return x.GetSign3() != nil
-	case MessageType_TypeSign4:
+	case MessageTypeSign4:
 		return x.GetSign4() != nil
 	// sign abort
-	case MessageType_TypeAbort1:
+	case MessageTypeAbort1:
 		return x.GetAbort1() != nil
-	case MessageType_TypeAbort2:
+	case MessageTypeAbort2:
 		return x.GetAbort2() != nil
 	}
 	return false

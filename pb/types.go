@@ -6,31 +6,31 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+	//"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 )
 
 // Int
 
-func NewInt(n *big.Int) *Int {
-	if n.Sign() == 0 {
-		return &Int{Int: nil}
-	}
-	b, _ := n.GobEncode()
-	return &Int{
-		Int: b,
-	}
-}
-
-// Unmarshal checks whether the Int is valid and returns an appropriate big.Int.
-// (Signs are preserved)
-func (x Int) Unmarshal() *big.Int {
-	if len(x.Int) == 0 {
-		return big.NewInt(0)
-	}
-	var n big.Int
-	_ = n.GobDecode(x.Int)
-	return &n
-}
+//func NewInt(n *big.Int) *Int {
+//	if n.Sign() == 0 {
+//		return &Int{Int: nil}
+//	}
+//	b, _ := n.GobEncode()
+//	return &Int{
+//		Int: b,
+//	}
+//}
+//
+//// Unmarshal checks whether the Int is valid and returns an appropriate big.Int.
+//// (Signs are preserved)
+//func (x Int) Unmarshal() *big.Int {
+//	if len(x.Int) == 0 {
+//		return big.NewInt(0)
+//	}
+//	var n big.Int
+//	_ = n.GobDecode(x.Int)
+//	return &n
+//}
 
 // Scalar
 
@@ -57,59 +57,59 @@ func (x *Scalar) Unmarshal() (*curve.Scalar, error) {
 
 // Point
 
-func NewPoint(v *curve.Point) *Point {
-	if v.IsIdentity() {
-		return &Point{
-			Point: nil,
-		}
-	}
-	return &Point{
-		Point: v.Bytes(),
-	}
-}
+//func NewPoint(v *curve.Point) *Point {
+//	if v.IsIdentity() {
+//		return &Point{
+//			Point: nil,
+//		}
+//	}
+//	return &Point{
+//		Point: v.Bytes(),
+//	}
+//}
+//
+//func NewPointSlice(v []*curve.Point) []*Point {
+//	points := make([]*Point, len(v))
+//	for i, p := range v {
+//		points[i] = NewPoint(p)
+//	}
+//	return points
+//}
+//
+//func UnmarshalPoints(ps []*Point) ([]*curve.Point, error) {
+//	var err error
+//	pts := make([]*curve.Point, len(ps))
+//	for i, p := range ps {
+//		pts[i], err = p.Unmarshal()
+//		if err != nil {
+//			return nil, err
+//		}
+//	}
+//	return pts, nil
+//}
 
-func NewPointSlice(v []*curve.Point) []*Point {
-	points := make([]*Point, len(v))
-	for i, p := range v {
-		points[i] = NewPoint(p)
-	}
-	return points
-}
-
-func UnmarshalPoints(ps []*Point) ([]*curve.Point, error) {
-	var err error
-	pts := make([]*curve.Point, len(ps))
-	for i, p := range ps {
-		pts[i], err = p.Unmarshal()
-		if err != nil {
-			return nil, err
-		}
-	}
-	return pts, nil
-}
-
-func (x *Point) Unmarshal() (*curve.Point, error) {
-	var p curve.Point
-	if x.Point == nil {
-		return &p, nil
-	}
-	return p.SetBytes(x.Point)
-}
+//func (x *Point) Unmarshal() (*curve.Point, error) {
+//	var p curve.Point
+//	if x.Point == nil {
+//		return &p, nil
+//	}
+//	return p.SetBytes(x.Point)
+//}
 
 // Ciphertext
 
-func NewCiphertext(c *paillier.Ciphertext) *Ciphertext {
-	return &Ciphertext{
-		C: NewInt(c.Int()),
-	}
-}
-
-func (x *Ciphertext) Unmarshal() *paillier.Ciphertext {
-	c := paillier.NewCiphertext()
-	n := x.C.Unmarshal()
-	c.SetInt(n)
-	return c
-}
+//func NewCiphertext(c *paillier.Ciphertext) *Ciphertext {
+//	return &Ciphertext{
+//		C: NewInt(c.Int()),
+//	}
+//}
+//
+//func (x *Ciphertext) Unmarshal() *paillier.Ciphertext {
+//	c := paillier.NewCiphertext()
+//	n := x.C.Unmarshal()
+//	c.SetInt(n)
+//	return c
+//}
 
 // PolynomialExponent
 
