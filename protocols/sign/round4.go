@@ -85,7 +85,7 @@ func (round *round4) GenerateMessages() ([]*pb.Message, error) {
 
 	deltaInv := curve.NewScalar().Invert(round.delta)                    // δ⁻¹
 	round.R = curve.NewIdentityPoint().ScalarMult(deltaInv, round.Gamma) // R = [δ⁻¹] Γ
-	round.r = round.R.X()                                                // r = R|ₓ
+	round.r = round.R.XScalar()                                          // r = R|ₓ
 
 	// km = H(m)⋅kᵢ
 	km := curve.NewScalar().SetHash(round.S.Message)

@@ -140,6 +140,7 @@ func (s Session) computeSSID() ([]byte, error) {
 	return ssid, nil
 }
 
+// SSID returns the hash of the SSID
 func (s Session) SSID() []byte {
 	return s.ssid
 }

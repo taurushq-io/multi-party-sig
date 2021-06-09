@@ -58,9 +58,9 @@ func (pk *PublicKey) Nonce() *big.Int {
 }
 
 func (pk *PublicKey) Validate() error {
-	// log₂(N) = PaillierBits
-	if bits := pk.N.BitLen(); bits != params.PaillierBits {
-		return fmt.Errorf("paillier.PublicKey: have: %d, need %d: %w", bits, params.PaillierBits, ErrPaillierLength)
+	// log₂(N) = BitsPaillier
+	if bits := pk.N.BitLen(); bits != params.BitsPaillier {
+		return fmt.Errorf("paillier.PublicKey: have: %d, need %d: %w", bits, params.BitsPaillier, ErrPaillierLength)
 	}
 	if pk.N.Bit(0) != 1 {
 		return ErrPaillierEven

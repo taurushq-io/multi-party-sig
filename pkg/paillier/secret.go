@@ -126,7 +126,7 @@ func (sk SecretKey) Validate() error {
 	}
 
 	// check bit lengths
-	const bitsWant = params.BlumPrimeBits
+	const bitsWant = params.BitsBlumPrime
 	if bits := sk.P.BitLen(); bits != bitsWant {
 		return fmt.Errorf("paillier.SecretKey: prime p have: %d, need %d: %w", bits, bitsWant, ErrPrimeBadLength)
 	}

@@ -109,7 +109,7 @@ func (s *Scalar) SetHash(hash []byte) *Scalar {
 	return s
 }
 
-// Bytes returns the canonical 32 bytes little-endian encoding of s.
+// Bytes returns the canonical 32 bytes big-endian encoding of s.
 func (s *Scalar) Bytes() []byte {
 	buf := make([]byte, params.BytesScalar)
 	return s.s.FillBytes(buf)

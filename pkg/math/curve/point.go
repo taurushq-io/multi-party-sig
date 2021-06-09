@@ -157,7 +157,8 @@ func (v *Point) ToPublicKey() *ecdsa.PublicKey {
 	}
 }
 
-func (v *Point) X() *Scalar {
+// XScalar returns the x coordinate of v as a scalar mod q
+func (v *Point) XScalar() *Scalar {
 	var s Scalar
 	s.SetBigInt(&v.x)
 

@@ -12,7 +12,7 @@ type Ciphertext struct {
 	c big.Int
 }
 
-const cipherTextWordSize = 4*params.PaillierBits/bits.UintSize + 8
+const cipherTextWordSize = 4*params.BitsPaillier/bits.UintSize + 8
 
 //var one = big.NewInt(1)
 

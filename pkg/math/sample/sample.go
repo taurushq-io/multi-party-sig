@@ -46,7 +46,7 @@ func Unit(order *big.Int) *big.Int {
 func UnitModN(n *big.Int) *big.Int {
 	var u, gcd big.Int
 	one := big.NewInt(1)
-	buf := make([]byte, params.PaillierBits/8)
+	buf := make([]byte, params.BitsPaillier/8)
 	for i := 0; i < maxIters; i++ {
 		mustReadBits(buf)
 		u.SetBytes(buf)
@@ -62,7 +62,7 @@ func UnitModN(n *big.Int) *big.Int {
 // QNR samples a random quadratic non-residue in Z_n.
 func QNR(n *big.Int) *big.Int {
 	var w big.Int
-	buf := make([]byte, params.PaillierBits/8)
+	buf := make([]byte, params.BitsPaillier/8)
 	for i := 0; i < maxIters; i++ {
 		mustReadBits(buf)
 		w.SetBytes(buf)
@@ -74,12 +74,12 @@ func QNR(n *big.Int) *big.Int {
 	panic(ErrMaxIters)
 }
 
-// BlumPrime returns an odd prime p of size params.BlumPrimeBits,
+// BlumPrime returns an odd prime p of size params.BitsBlumPrime,
 // such that p == 3 (mod 4)
 func BlumPrime() *big.Int {
 	// TODO be more flexible on the number of bits in P, Q to avoid square root attack
 	for i := uint8(0); i < uint8(255); i++ {
-		p, err := rand.Prime(rand.Reader, params.BlumPrimeBits)
+		p, err := rand.Prime(rand.Reader, params.BitsBlumPrime)
 		if err != nil {
 			continue
 		}
@@ -105,7 +105,7 @@ func Paillier() (p, q *big.Int) {
 func Pedersen(n, phi *big.Int) (s, t, lambda *big.Int) {
 	two := big.NewInt(2)
 	// sample lambda without statistical bias
-	lambdaBuf := make([]byte, (params.PaillierBits+params.L)/8)
+	lambdaBuf := make([]byte, (params.BitsPaillier+params.L)/8)
 	mustReadBits(lambdaBuf)
 	lambda = new(big.Int).SetBytes(lambdaBuf)
 	lambda.Mod(lambda, phi)

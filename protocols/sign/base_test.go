@@ -217,7 +217,7 @@ func TestRound(t *testing.T) {
 	km := curve.NewScalar().Multiply(m, k)
 	kInv := curve.NewScalar().Invert(k)
 	R := curve.NewIdentityPoint().ScalarBaseMult(kInv)
-	rx := R.X()
+	rx := R.XScalar()
 	sigma := curve.NewScalar().MultiplyAdd(rx, chi, km)
 	msgs5 := make([]*pb.Message, 0, N)
 	for _, pj := range parties {
