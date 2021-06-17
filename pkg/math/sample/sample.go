@@ -5,21 +5,13 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
 var ErrMaxIters = errors.New("failed to generate after 255 iters")
 
 const maxIters = 255
-
-func mustSample(max *big.Int) *big.Int {
-	n, err := rand.Int(rand.Reader, max)
-	if err != nil {
-		panic(err)
-	}
-	return n
-}
 
 func mustReadBits(buf []byte) {
 	var err error
@@ -31,22 +23,11 @@ func mustReadBits(buf []byte) {
 	panic(ErrMaxIters)
 }
 
-// Unit samples a random unit modulo order
-func Unit(order *big.Int) *big.Int {
-	for i := 0; i < maxIters; i++ {
-		n := mustSample(order)
-		if arith.IsCoprime(n, order) {
-			return n
-		}
-	}
-	panic(ErrMaxIters)
-}
-
 // UnitModN returns a u ∈ ℤₙˣ
 func UnitModN(n *big.Int) *big.Int {
 	var u, gcd big.Int
 	one := big.NewInt(1)
-	buf := make([]byte, params.BitsPaillier/8)
+	buf := make([]byte, params.BitsIntModN/8)
 	for i := 0; i < maxIters; i++ {
 		mustReadBits(buf)
 		u.SetBytes(buf)
@@ -62,7 +43,7 @@ func UnitModN(n *big.Int) *big.Int {
 // QNR samples a random quadratic non-residue in Z_n.
 func QNR(n *big.Int) *big.Int {
 	var w big.Int
-	buf := make([]byte, params.BitsPaillier/8)
+	buf := make([]byte, params.BitsIntModN/8)
 	for i := 0; i < maxIters; i++ {
 		mustReadBits(buf)
 		w.SetBytes(buf)
@@ -105,7 +86,7 @@ func Paillier() (p, q *big.Int) {
 func Pedersen(n, phi *big.Int) (s, t, lambda *big.Int) {
 	two := big.NewInt(2)
 	// sample lambda without statistical bias
-	lambdaBuf := make([]byte, (params.BitsPaillier+params.L)/8)
+	lambdaBuf := make([]byte, (params.BitsIntModN+params.L)/8)
 	mustReadBits(lambdaBuf)
 	lambda = new(big.Int).SetBytes(lambdaBuf)
 	lambda.Mod(lambda, phi)
@@ -121,4 +102,19 @@ func Pedersen(n, phi *big.Int) (s, t, lambda *big.Int) {
 	s.Exp(t, lambda, n)
 
 	return
+}
+
+func Scalar() *curve.Scalar {
+	var s curve.Scalar
+	buffer := make([]byte, params.BytesScalar)
+	mustReadBits(buffer)
+	s.SetBytes(buffer)
+	return &s
+}
+
+func ScalarPointPair() (*curve.Scalar, *curve.Point) {
+	var p curve.Point
+	s := Scalar()
+	p.ScalarBaseMult(s)
+	return s, &p
 }

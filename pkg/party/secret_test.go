@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
@@ -15,17 +16,15 @@ func TestSecret_Validate(t *testing.T) {
 	_, _ = rand.Read(ssid)
 	_, _ = rand.Read(rid)
 
-	x := curve.NewScalarRandom()
-	X := curve.NewIdentityPoint().ScalarBaseMult(x)
+	x, X := sample.ScalarPointPair()
 
 	sk := paillier.NewSecretKey()
-	pk := sk.PublicKey()
+	pk := sk.PublicKey
 	ped, _ := sk.GeneratePedersen()
 
 	id := ID("blabla")
 	public := &Public{
 		ID:       id,
-		SSID:     ssid,
 		ECDSA:    X,
 		Paillier: pk,
 		Pedersen: ped,
@@ -60,8 +59,7 @@ func TestSecret_Validate(t *testing.T) {
 		{"pre keygen", fields{
 			ID: id,
 		}, args{&Public{
-			ID:   id,
-			SSID: ssid,
+			ID: id,
 		}}, false},
 
 		{"no rid", fields{
@@ -102,7 +100,6 @@ func TestSecret_Validate(t *testing.T) {
 			RID:      rid,
 		}, args{&Public{
 			ID:       id,
-			SSID:     ssid,
 			ECDSA:    X,
 			Paillier: pk,
 			Pedersen: nil,
@@ -114,7 +111,6 @@ func TestSecret_Validate(t *testing.T) {
 			RID:      rid,
 		}, args{&Public{
 			ID:       id,
-			SSID:     ssid,
 			ECDSA:    X,
 			Paillier: nil,
 			Pedersen: ped,
@@ -126,7 +122,6 @@ func TestSecret_Validate(t *testing.T) {
 			RID:      rid,
 		}, args{&Public{
 			ID:       id,
-			SSID:     ssid,
 			ECDSA:    nil,
 			Paillier: pk,
 			Pedersen: ped,

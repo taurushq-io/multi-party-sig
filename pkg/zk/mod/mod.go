@@ -1,11 +1,10 @@
 package zkmod
 
 import (
-	"fmt"
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
@@ -88,7 +87,34 @@ func makeQuadraticResidue(y, w *big.Int, n, p, q *big.Int) (a, b bool, yPrime *b
 	return
 }
 
-// Prove generates a proof that:
+func (p *Proof) IsValid(public Public) bool {
+	if len(*p.X) != params.StatParam ||
+		len(p.A) != params.StatParam ||
+		len(p.B) != params.StatParam ||
+		len(*p.Z) != params.StatParam {
+		return false
+	}
+
+	// W cannot be 0
+	if p.W.Cmp(big.NewInt(0)) != 1 {
+		return false
+	}
+	// W < N
+	if p.W.Cmp(public.N) != -1 {
+		return false
+	}
+
+	if !arith.IsValidModN(public.N, *p.Z...) {
+		return false
+	}
+	if !arith.IsValidModN(public.N, *p.X...) {
+		return false
+	}
+
+	return true
+}
+
+// NewProof generates a proof that:
 //   - n = pq
 //   - p and q are odd primes
 //   - p, q == 3 (mod n)
@@ -98,75 +124,58 @@ func makeQuadraticResidue(y, w *big.Int, n, p, q *big.Int) (a, b bool, yPrime *b
 //  - z = y^{N⁻¹ mod ϕ(N)}
 //  - a, b s.t. y' = (-1)ᵃ wᵇ y
 //  - R = [(xᵢ aᵢ, bᵢ), zᵢ] for i = 1, ..., m
-func (public Public) Prove(hash *hash.Hash, private Private) (*pb.ZKMod, error) {
-	var err error
-
+func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	n, p, q, phi := public.N, private.P, private.Q, private.Phi
 	w := sample.QNR(n)
 
 	nInverse := new(big.Int).ModInverse(n, phi)
 
-	Xs := make([]*pb.Int, params.StatParam)
+	Xs := make([]*big.Int, params.StatParam)
 	As := make([]bool, params.StatParam)
 	Bs := make([]bool, params.StatParam)
-	Zs := make([]*pb.Int, params.StatParam)
+	Zs := make([]*big.Int, params.StatParam)
 
-	if err = hash.WriteInt(n, w); err != nil {
-		return nil, fmt.Errorf("zkmod: prove: %w", err)
-	}
-	ys, err := hash.ReadIntsModN(n, params.StatParam)
-	if err != nil {
-		return nil, fmt.Errorf("zkmod: prove: %w", err)
-	}
+	ys := challenge(hash, n, w)
 
-	var z big.Int
 	for i := 0; i < params.StatParam; i++ {
 		y := ys[i]
 
 		// Z = y^{n⁻¹ (mod n)}
-		z.Exp(y, nInverse, n)
+		z := new(big.Int).Exp(y, nInverse, n)
 
 		a, b, yPrime := makeQuadraticResidue(y, w, n, p, q)
 		// X = (y')¹/4
 		x := fourthRoot(yPrime, phi, n)
 
-		Xs[i], As[i], Bs[i], Zs[i] = pb.NewInt(x), a, b, pb.NewInt(&z)
+		Xs[i], As[i], Bs[i], Zs[i] = x, a, b, z
 	}
 
-	return &pb.ZKMod{
-		W: pb.NewInt(w),
-		X: Xs,
+	return &Proof{
+		W: w,
+		X: &Xs,
 		A: As,
 		B: Bs,
-		Z: Zs,
-	}, nil
+		Z: &Zs,
+	}
 }
 
-func (public Public) Verify(hash *hash.Hash, proof *pb.ZKMod) bool {
-	var err error
+func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 	n := public.N
 	// check if n is odd and prime
 	if n.Bit(0) == 0 || n.ProbablyPrime(20) {
 		return false
 	}
 
-	if !proof.IsValid() {
+	if !p.IsValid(public) {
 		return false
 	}
 
-	w := proof.GetW().Unmarshal()
-	if big.Jacobi(w, n) != -1 || w.Cmp(n) != -1 {
+	if big.Jacobi(p.W, n) != -1 || p.W.Cmp(n) != -1 {
 		return false
 	}
 
 	// get [yᵢ] <- ℤₙ
-	if err = hash.WriteInt(n, w); err != nil {
-		return false
-	}
-	ys, err := hash.ReadIntsModN(n, params.StatParam)
-	if err != nil {
-		return false
-	}
+	ys := challenge(hash, n, p.W)
 
 	var lhs, rhs big.Int
 	z, x := new(big.Int), new(big.Int)
@@ -175,8 +184,8 @@ func (public Public) Verify(hash *hash.Hash, proof *pb.ZKMod) bool {
 		// get yᵢ
 		y := ys[i]
 
-		x = proof.X[i].Unmarshal()
-		z = proof.Z[i].Unmarshal()
+		x = (*p.X)[i]
+		z = (*p.Z)[i]
 
 		{
 			// lhs = zⁿ mod n
@@ -192,10 +201,10 @@ func (public Public) Verify(hash *hash.Hash, proof *pb.ZKMod) bool {
 
 			// rhs = y' = (-1)ᵃ • wᵇ • y
 			rhs.Set(y)
-			if proof.B[i] {
-				rhs.Mul(&rhs, w)
+			if p.B[i] {
+				rhs.Mul(&rhs, p.W)
 			}
-			if proof.A[i] {
+			if p.A[i] {
 				rhs.Neg(&rhs)
 			}
 			rhs.Mod(&rhs, n)
@@ -206,4 +215,19 @@ func (public Public) Verify(hash *hash.Hash, proof *pb.ZKMod) bool {
 		}
 	}
 	return true
+}
+
+func challenge(h *hash.Hash, n, w *big.Int) []*big.Int {
+	_, _ = h.WriteAny(n, w)
+	intBuffer := make([]byte, params.BytesIntModN)
+	out := make([]*big.Int, params.StatParam)
+	for i := range out {
+		var r big.Int
+		_, _ = h.ReadBytes(intBuffer)
+		r.SetBytes(intBuffer)
+		r.Mod(&r, n)
+		out[i] = &r
+	}
+
+	return out
 }

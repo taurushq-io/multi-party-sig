@@ -6,24 +6,22 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
-type Parameters struct {
-	// N = p•q, p ≡ q ≡ 3 mod 4
-	N *big.Int `json:"n"`
-	// S = r² mod N
-	S *big.Int `json:"s"`
-	// T = Sˡ mod N
-	T *big.Int `json:"t"`
-}
-
 func (p *Parameters) Validate() error {
+	if p == nil || p.N == nil || p.S == nil || p.T == nil {
+		return errors.New("pedersen.Parameters: contains nil field")
+	}
+
 	one := big.NewInt(1)
 	gcd := big.NewInt(1)
+
 	ints := []*big.Int{p.S, p.T}
 	names := []string{"S", "T"}
 	for i := 0; i < 2; i++ {
+
 		s := ints[i]
 		id := names[i]
 
@@ -50,7 +48,7 @@ func (p *Parameters) Validate() error {
 }
 
 // Commit computes sˣ tʸ (mod N)
-func (p *Parameters) Commit(x, y *big.Int) *big.Int {
+func (p Parameters) Commit(x, y *big.Int) *big.Int {
 	result, tmp := bigint(), bigint()
 
 	result.Exp(p.S, x, p.N)
@@ -61,7 +59,14 @@ func (p *Parameters) Commit(x, y *big.Int) *big.Int {
 }
 
 // Verify returns true if sᵃ tᵇ ≡ S Tᵉ (mod N)
-func (p *Parameters) Verify(a, b, S, T, e *big.Int) bool {
+func (p Parameters) Verify(a, b, S, T, e *big.Int) bool {
+	if a == nil || b == nil || S == nil || T == nil || e == nil {
+		return false
+	}
+	if !arith.IsValidModN(p.N, S, T) {
+		return false
+	}
+
 	lhs, rhs := bigint(), bigint()
 
 	lhs.Exp(p.S, a, p.N) // lhs = sᵃ (mod N)
@@ -82,7 +87,7 @@ func bigint() *big.Int {
 	return &x
 }
 
-func (p *Parameters) Clone() *Parameters {
+func (p Parameters) Clone() *Parameters {
 	var n, s, t big.Int
 	return &Parameters{
 		N: n.Set(p.N),
@@ -91,10 +96,14 @@ func (p *Parameters) Clone() *Parameters {
 	}
 }
 
+func (p Parameters) Equal(o *Parameters) bool {
+	return p.N.Cmp(o.N) == 0 && p.S.Cmp(o.S) == 0 && p.T.Cmp(o.T) == 0
+}
+
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
-func (p *Parameters) WriteTo(w io.Writer) (int64, error) {
+func (p Parameters) WriteTo(w io.Writer) (int64, error) {
 	nAll := int64(0)
-	buf := make([]byte, params.BytesPaillier)
+	buf := make([]byte, params.BytesIntModN)
 
 	// write N
 	p.N.FillBytes(buf)
@@ -131,17 +140,4 @@ func (p *Parameters) WriteTo(w io.Writer) (int64, error) {
 	n, err = w.Write(buf)
 	nAll += int64(n)
 	return nAll, err
-}
-
-func (p Parameters) Equal(o *Parameters) bool {
-	if p.N.Cmp(o.N) != 0 {
-		return false
-	}
-	if p.S.Cmp(o.S) != 0 {
-		return false
-	}
-	if p.T.Cmp(o.T) != 0 {
-		return false
-	}
-	return true
 }

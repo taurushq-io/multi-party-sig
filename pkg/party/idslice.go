@@ -78,31 +78,30 @@ func (partyIDs IDSlice) Copy() IDSlice {
 // l_j(0) =	---------------------------
 //			(x₀ - x_j) ... (x_k - x_j)
 func (partyIDs IDSlice) Lagrange(index ID) *curve.Scalar {
-	var num, denum, xJ, xM curve.Scalar
 
-	num.SetInt64(1)
-	denum.SetInt64(1)
+	num := curve.NewScalarUInt32(1)
+	denum := curve.NewScalarUInt32(1)
 
-	xJ.SetBytes([]byte(index))
+	xJ := index.Scalar()
 
 	for _, id := range partyIDs {
 		if id == index {
 			continue
 		}
 
-		xM.SetBytes([]byte(id))
+		xM := id.Scalar()
 
 		// num = x₀ * ... * x_k
-		num.Multiply(&num, &xM) // num * xM
+		num.Multiply(num, xM) // num * xM
 
 		// denum = (x₀ - x_j) ... (x_k - x_j)
-		xM.Subtract(&xM, &xJ)       // = xM - xJ
-		denum.Multiply(&denum, &xM) // denum * (xm - xj)
+		xM.Subtract(xM, xJ)       // = xM - xJ
+		denum.Multiply(denum, xM) // denum * (xm - xj)
 	}
 
-	denum.Invert(&denum)
-	num.Multiply(&num, &denum)
-	return &num
+	denum.Invert(denum)
+	num.Multiply(num, denum)
+	return num
 }
 
 // RandomIDs returns a slice of random IDs with 20 alphanumeric characters
@@ -124,13 +123,16 @@ func RandomIDs(n int) IDSlice {
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
 // It writes the full uncompressed point to w, ie 64 bytes
 func (partyIDs IDSlice) WriteTo(w io.Writer) (int64, error) {
-	var n int
-	nAll := int64(0)
+	var (
+		n   int
+		err error
+	)
 
-	err := binary.Write(w, binary.BigEndian, uint64(len(partyIDs)))
+	err = binary.Write(w, binary.BigEndian, uint64(len(partyIDs)))
 	if err != nil {
-		return nAll, err
+		return 0, err
 	}
+	nAll := int64(4)
 	for _, id := range partyIDs {
 		n, err = w.Write([]byte(id))
 		nAll += int64(n)
@@ -139,5 +141,5 @@ func (partyIDs IDSlice) WriteTo(w io.Writer) (int64, error) {
 		}
 	}
 
-	return nAll, err
+	return nAll, nil
 }

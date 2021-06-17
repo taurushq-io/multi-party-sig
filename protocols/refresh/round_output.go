@@ -1,13 +1,13 @@
 package refresh
 
 import (
-	"errors"
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
 	zkmod "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mod"
 	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm"
 	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
@@ -23,59 +23,47 @@ type output struct {
 //   - if refresh, skip first coefficient
 // - decrypt share
 // - verify VSS
-func (round *output) ProcessMessage(msg *pb.Message) error {
-	j := msg.GetFromID()
-	partyJ := round.parties[j]
-
-	body := msg.GetRefresh4()
+func (r *output) ProcessMessage(msg round.Message) error {
+	j := msg.GetHeader().From
+	partyJ := r.LocalParties[j]
+	body := msg.(*Message).GetRefresh4()
 
 	// verify Schnorr proofs
-	if len(body.SchF) != round.S.Threshold+1 {
-		return fmt.Errorf("refresh.output.ProcessMessage(): party %s: wrong number of Schnorr commitments", j)
+	if len(body.VSSSchnorrResponse) != len(r.Self.VSSCommitments) {
+		return fmt.Errorf("refresh.output.ProcessMessage(): party %s: wrong number of Schnorr proofs", j)
 	}
-	for l := range body.SchF {
-		// if in refresh, we know the constant coefficient is 0 so no need to check
-		if !round.keygen && l == 0 {
-			continue
-		}
-		schX, err := body.SchF[l].Unmarshal()
-		if err != nil {
-			return fmt.Errorf("refresh.output.ProcessMessage(): party %s: unmarshal schX: %w", j, err)
-		}
-		X := partyJ.polyExp.Coefficients()[l+1]
-		if !zksch.Verify(round.H.CloneWithID(j), partyJ.A[l], X, schX) {
-			return fmt.Errorf("refresh.output.ProcessMessage(): party %s: failed to validate sch proof for coef %d", j, l)
-		}
+
+	coefficient := partyJ.VSSPolynomial.Coefficients
+	if !zksch.VerifyMulti(r.Hash.CloneWithID(j), partyJ.VSSCommitments, coefficient, body.VSSSchnorrResponse) {
+		return fmt.Errorf("refresh.output.ProcessMessage(): party %s: failed to validate sch proof", j)
 	}
 
 	// decrypt share
-	xJdec := round.S.Secret.Paillier.Dec(body.GetC().Unmarshal())
+	xJdec := r.PaillierSecret.Dec(body.Share)
 	xJ := curve.NewScalarBigInt(xJdec)
 	if xJdec.Cmp(xJ.BigInt()) != 0 {
 		return fmt.Errorf("refresh.output.ProcessMessage(): party %s: decrypted share is not in correct range", j)
 	}
 
 	// verify share with VSS
-	index := curve.NewScalar().SetBytes([]byte(partyJ.ID))
-	vss := partyJ.polyExp.Evaluate(index) // Fⱼ(idJ)
+	index := r.SelfID.Scalar()
+	vss := partyJ.VSSPolynomial.Evaluate(index) // Fⱼ(idJ)
 	X := curve.NewIdentityPoint().ScalarBaseMult(xJ)
 	if !X.Equal(vss) {
 		return fmt.Errorf("refresh.output.ProcessMessage(): party %s: failed to validate share from VSS", j)
 	}
 
 	// verify zkmod
-	modPublic := zkmod.Public{N: partyJ.Pedersen.N}
-	if !modPublic.Verify(round.H.CloneWithID(j), body.GetMod()) {
+	if !body.Mod.Verify(r.Hash.CloneWithID(j), zkmod.Public{N: partyJ.Public.Pedersen.N}) {
 		return fmt.Errorf("refresh.output.ProcessMessage(): party %s: mod proof failed to verify", j)
 	}
 
 	// verify zkprm
-	prmPublic := zkprm.Public{Pedersen: partyJ.Pedersen}
-	if !prmPublic.Verify(round.H.CloneWithID(j), body.GetPrm()) {
+	if !body.Prm.Verify(r.Hash.CloneWithID(j), zkprm.Public{Pedersen: partyJ.Public.Pedersen}) {
 		return fmt.Errorf("refresh.output.ProcessMessage(): party %s: prm proof failed to verify", j)
 	}
 
-	partyJ.shareReceived = xJ
+	partyJ.ShareReceived = xJ
 
 	return partyJ.AddMessage(msg)
 }
@@ -86,56 +74,77 @@ func (round *output) ProcessMessage(msg *pb.Message) error {
 // - compute group public key and individual public keys
 // - recompute session SSID
 // - validate Session
-func (round *output) GenerateMessages() ([]*pb.Message, error) {
+func (r *output) GenerateMessages() ([]round.Message, error) {
 	// add all shares to our secret
-	for _, partyJ := range round.parties {
-		round.S.Secret.ECDSA.Add(round.S.Secret.ECDSA, partyJ.shareReceived)
+	newSecretShareECDSA := curve.NewScalar()
+	if r.isRefresh() {
+		newSecretShareECDSA.Add(newSecretShareECDSA, r.S.Secret().ECDSA)
+	}
+	for _, partyJ := range r.LocalParties {
+		newSecretShareECDSA.Add(newSecretShareECDSA, partyJ.ShareReceived)
+	}
+	newSecret := &party.Secret{
+		ID:       r.SelfID,
+		ECDSA:    newSecretShareECDSA,
+		Paillier: r.PaillierSecret,
+	}
+	// set RID if we are in keygen
+	if r.isKeygen() {
+		newSecret.RID = r.rho
+	} else {
+		newSecret.RID = r.S.Secret().RID
 	}
 
 	// [F₁(X), ..., Fₙ(X)]
-	allPolyExps := make([]*polynomial.Exponent, round.S.N())
-	for i, partyIDJ := range round.S.PartyIDs {
-		partyJ := round.parties[partyIDJ]
-		allPolyExps[i] = partyJ.polyExp
+	allPolyExps := make([]*polynomial.Exponent, r.S.N())
+	for i, partyIDJ := range r.S.PartyIDs() {
+		partyJ := r.LocalParties[partyIDJ]
+		allPolyExps[i] = partyJ.VSSPolynomial
 	}
-
-	// summedPoly = ∑Fⱼ(X)
+	// summedPoly = F(X) = ∑Fⱼ(X)
 	summedPoly, err := polynomial.Sum(allPolyExps)
 	if err != nil {
 		return nil, fmt.Errorf("refresh.output.GenerateMessages(): sum polynomial exponent: %w", err)
 	}
 
-	updatedPublic := make([]*curve.Point, round.S.N())
-	for i, id := range round.S.PartyIDs {
-		index := curve.NewScalar().SetBytes([]byte(id))
-		updatedPublic[i] = summedPoly.Evaluate(index)
+	// compute public key Xⱼ = F(j)
+	for _, idJ := range r.S.PartyIDs() {
+		index := idJ.Scalar()
+		newPublicShareECDSA := summedPoly.Evaluate(index)
+		if r.isRefresh() {
+			oldPublicShareECDSA := r.S.Public(idJ).ECDSA
+			newPublicShareECDSA.Add(newPublicShareECDSA, oldPublicShareECDSA)
+		}
+
+		r.LocalParties[idJ].Public.ECDSA = newPublicShareECDSA
 	}
 
-	// update new public key
-	for idxJ, j := range round.S.PartyIDs {
-		round.parties[j].ECDSA.Add(round.parties[j].ECDSA, updatedPublic[idxJ])
+	newPublicECDSA := summedPoly.Constant()
+	if r.isRefresh() {
+		oldPublicECDSA := curve.FromPublicKey(r.S.PublicKey())
+		newPublicECDSA.Add(newPublicECDSA, oldPublicECDSA)
+	}
+	publicKey := newPublicECDSA.ToPublicKey()
+
+	public := make(map[party.ID]*party.Public, r.S.N())
+	for idJ, partyJ := range r.LocalParties {
+		public[idJ] = partyJ.Public.Clone()
 	}
 
-	if err = round.S.RecomputeSSID(); err != nil {
+	newSession, err := session.NewSession(r.S.Threshold(), public, publicKey, newSecret.Clone(), nil)
+	if err != nil {
 		return nil, fmt.Errorf("refresh.output.GenerateMessages(): compute SSID: %w", err)
 	}
-
-	if err = round.S.Validate(); err != nil {
-		return nil, fmt.Errorf("refresh.output.GenerateMessages(): validate new session: %w", err)
-	}
-
-	if !round.S.KeygenDone() {
-		return nil, errors.New("refresh.output.GenerateMessages(): session is not in post keygen state")
-	}
+	r.S = newSession
 
 	return nil, nil
 }
 
 // Finalize implements round.Round
-func (round *output) Finalize() (round.Round, error) {
+func (r *output) Finalize() (round.Round, error) {
 	return nil, nil
 }
 
-func (round *output) MessageType() pb.MessageType {
-	return pb.MessageType_TypeRefresh4
+func (r *output) MessageType() round.MessageType {
+	return MessageTypeRefresh4
 }

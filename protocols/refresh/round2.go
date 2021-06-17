@@ -3,25 +3,24 @@ package refresh
 import (
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/pb"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
 type round2 struct {
 	*round1
-	// hashOfHashes = H(ssid, commitment₁, ..., commitmentₙ)
-	hashOfHashes []byte
+	// EchoHash = Hash(SSID, commitment₁, ..., commitmentₙ)
+	EchoHash []byte
 }
 
 // ProcessMessage implements round.Round
 //
 // - store commitment Vⱼ
-func (round *round2) ProcessMessage(msg *pb.Message) error {
-	j := msg.GetFromID()
-	partyJ := round.parties[j]
+func (r *round2) ProcessMessage(msg round.Message) error {
+	j := msg.GetHeader().From
+	content := msg.(*Message).GetRefresh1()
+	partyJ := r.LocalParties[j]
 
-	partyJ.commitment = msg.GetRefresh1().GetHash()
+	partyJ.Commitment = content.Commitment
 
 	return partyJ.AddMessage(msg)
 }
@@ -31,37 +30,29 @@ func (round *round2) ProcessMessage(msg *pb.Message) error {
 // Since we assume a simple P2P network, we use an extra round to "echo"
 // the hash. Everybody sends a hash of all hashes.
 //
-// - send H(ssid, V₁, ..., Vₙ)
-func (round *round2) GenerateMessages() ([]*pb.Message, error) {
+// - send Hash(ssid, V₁, ..., Vₙ)
+func (r *round2) GenerateMessages() ([]round.Message, error) {
 	var err error
 	// Broadcast the message we created in round1
-	h := round.H.Clone()
-	for _, partyID := range round.S.PartyIDs {
-		_, err = h.Write(round.parties[partyID].commitment)
+	h := r.Hash.Clone()
+	for _, partyID := range r.S.PartyIDs() {
+		_, err = h.Write(r.LocalParties[partyID].Commitment)
 		if err != nil {
 			return nil, fmt.Errorf("refresh.round2.GenerateMessages(): write commitments to hash: %w", err)
 		}
 	}
-	round.hashOfHashes, err = h.ReadBytes(make([]byte, params.HashBytes))
-	if err != nil {
-		return nil, err
-	}
+	r.EchoHash, _ = h.ReadBytes(nil)
 
-	return []*pb.Message{{
-		Type:      pb.MessageType_TypeRefresh2,
-		From:      round.SelfID,
-		Broadcast: pb.Broadcast_Basic,
-		Refresh2:  &pb.Refresh2{HashOfHashes: round.hashOfHashes},
-	}}, nil
+	return NewMessageRefresh2(r.SelfID, r.EchoHash), nil
 }
 
 // Finalize implements round.Round
-func (round *round2) Finalize() (round.Round, error) {
+func (r *round2) Finalize() (round.Round, error) {
 	return &round3{
-		round2: round,
+		round2: r,
 	}, nil
 }
 
-func (round *round2) MessageType() pb.MessageType {
-	return pb.MessageType_TypeRefresh1
+func (r *round2) MessageType() round.MessageType {
+	return MessageTypeRefresh1
 }

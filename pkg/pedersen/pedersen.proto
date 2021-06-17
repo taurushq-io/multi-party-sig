@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package pedersen;
+
+option go_package = "github.com/taurusgroup/cmp-ecdsa/pkg/pedersen";
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+message Parameters {
+  option (gogoproto.goproto_getters) = false;
+  option (gogoproto.stable_marshaler) = true;
+  // N = p•q, p ≡ q ≡ 3 mod 4
+  bytes N = 1 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  // S = r² mod N
+  bytes S = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  // T = Sˡ mod N
+  bytes T = 3 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+}

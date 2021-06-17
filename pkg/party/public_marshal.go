@@ -14,7 +14,6 @@ var _ json.Unmarshaler = (*Public)(nil)
 
 type jsonParty struct {
 	ID    ID           `json:"id"`
-	SSID  []byte       `json:"ssid"`
 	ECDSA *curve.Point `json:"ecdsa"`
 	N     []byte       `json:"n"`
 	S     []byte       `json:"s"`
@@ -24,7 +23,6 @@ type jsonParty struct {
 func (p Public) MarshalJSON() ([]byte, error) {
 	x := jsonParty{
 		ID:    p.ID,
-		SSID:  p.SSID,
 		ECDSA: p.ECDSA,
 		N:     p.Pedersen.N.Bytes(),
 		S:     p.Pedersen.S.Bytes(),
@@ -44,7 +42,6 @@ func (p *Public) UnmarshalJSON(bytes []byte) error {
 	s.SetBytes(x.S)
 	t.SetBytes(x.T)
 	p.ID = x.ID
-	p.SSID = x.SSID
 	p.ECDSA = x.ECDSA
 	p.Paillier = paillier.NewPublicKey(&n)
 	p.Pedersen = &pedersen.Parameters{

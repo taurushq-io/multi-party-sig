@@ -100,7 +100,7 @@ func (s *Secret) ValidatePublic(p *Public) error {
 	}
 
 	// is our public key for paillier the same?
-	if !s.Paillier.PublicKey().Equal(p.Paillier) {
+	if !s.Paillier.PublicKey.Equal(p.Paillier) {
 		return errors.New("party.Secret: Paillier key mismatch")
 	}
 

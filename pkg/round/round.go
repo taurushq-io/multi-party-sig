@@ -1,17 +1,18 @@
 package round
 
-import (
-	"github.com/taurusgroup/cmp-ecdsa/pb"
-)
-
 type Round interface {
-	// ProcessMessage handles an incoming pb.Message.
+	// ProcessMessage handles an incoming Message.
 	// In general, it should not modify the underlying Round, but only the sender's local state.
 	// At the end, the message is stored
-	ProcessMessage(msg *pb.Message) error
-	GenerateMessages() ([]*pb.Message, error)
+	ProcessMessage(msg Message) error
+
+	// GenerateMessages returns an array of Message to be sent subsequently.
+	// If an error has been detected, then no messages are returned.
+	GenerateMessages() ([]Message, error)
+
+	// Finalize performs
 	Finalize() (Round, error)
-	MessageType() pb.MessageType
-	//RequiredMessageCount() int
-	//IsProcessed(id string) bool
+
+	// MessageType returns the expected MessageType for the current round.
+	MessageType() MessageType
 }

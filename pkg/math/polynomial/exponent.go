@@ -4,78 +4,100 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
-// Exponent represents a polynomial whose coefficients are points on an elliptic curve.
-type Exponent struct {
-	coefficients []*curve.Point
-}
-
-// NewPolynomialExponent generates a Exponent polynomial F(X) = [secret + a1*X + ... + at*X^t]•G,
-// with coefficients in G, and degree t.
+// NewPolynomialExponent generates a Exponent polynomial F(X) = [secret + a₁•X + ... + aₜ•Xᵗ]•G,
+// with Coefficient in G, and degree t.
 func NewPolynomialExponent(polynomial *Polynomial) *Exponent {
 	var p Exponent
 
-	p.coefficients = make([]*curve.Point, len(polynomial.coefficients))
-	for i := range p.coefficients {
-		p.coefficients[i] = curve.NewIdentityPoint().ScalarBaseMult(polynomial.coefficients[i])
+	p.Coefficients = make([]curve.Point, len(polynomial.Coefficients))
+	for i := range polynomial.Coefficients {
+		p.Coefficients[i].ScalarBaseMult(&polynomial.Coefficients[i])
+	}
+
+	// This hack is needed so that we never send an encoded Identity point
+	isConstant := polynomial.Constant().IsZero()
+	if isConstant {
+		p.IsConstant = true
+		p.Coefficients = p.Coefficients[1:]
 	}
 
 	return &p
 }
 
 // Evaluate uses any one of the defined evaluation algorithms
-func (p *Exponent) Evaluate(index *curve.Scalar) *curve.Point {
-	var result curve.Point
-	// We chose evaluateVar since it is the fastest in CPU time, even though it uses more memory
-	return p.evaluateHorner(index, &result)
+func (p *Exponent) Evaluate(x *curve.Scalar) *curve.Point {
+	return p.evaluateHorner(x)
 }
 
 // evaluateClassic evaluates a polynomial in a given variable index
-// We do the classic method.
-func (p *Exponent) evaluateClassic(index *curve.Scalar, result *curve.Point) *curve.Point {
+// We do the classic method, where we compute all powers of x
+func (p *Exponent) evaluateClassic(x *curve.Scalar) *curve.Point {
 	var tmp curve.Point
 
-	x := curve.NewScalarBigInt(big.NewInt(1))
+	xPower := curve.NewScalarUInt32(1)
+	result := curve.NewIdentityPoint()
 
-	result.Set(curve.NewIdentityPoint())
-	for i := 0; i < len(p.coefficients); i++ {
-		tmp.ScalarMult(x, p.coefficients[i])
+	if p.IsConstant {
+		// since we start at index 1 of the polynomial, x must be x and not 1
+		xPower.Multiply(xPower, x)
+	}
+
+	for i := 0; i < len(p.Coefficients); i++ {
+		// tmp = [xⁱ]Aᵢ
+		tmp.ScalarMult(xPower, &p.Coefficients[i])
+		// result += [xⁱ]Aᵢ
 		result.Add(result, &tmp)
 
-		x.Multiply(x, index)
+		// x = xⁱ⁺¹
+		xPower.Multiply(xPower, x)
 	}
 	return result
 }
 
 // evaluateHorner evaluates a polynomial in a given variable index
-// We create a list of all powers of index, and use VarTimeMultiScalarMult
-// to speed things up.
-func (p *Exponent) evaluateHorner(index *curve.Scalar, result *curve.Point) *curve.Point {
-	result.Set(curve.NewIdentityPoint())
+func (p *Exponent) evaluateHorner(index *curve.Scalar) *curve.Point {
+	result := curve.NewIdentityPoint()
 
-	for i := len(p.coefficients) - 1; i >= 0; i-- {
-		// B_n-1 = [x]B_n  + A_n-1
+	for i := len(p.Coefficients) - 1; i >= 0; i-- {
+		// Bₙ₋₁ = [x]Bₙ  + Aₙ₋₁
 		result.ScalarMult(index, result)
-		result.Add(result, p.coefficients[i])
+		result.Add(result, &p.Coefficients[i])
 	}
+
+	if p.IsConstant {
+		// result is B₁
+		// we want B₀ = [x]B₁ + A₀ = [x]B₁
+		result.ScalarMult(index, result)
+	}
+
 	return result
 }
 
+// Degree returns the degree t of the polynomial
 func (p *Exponent) Degree() int {
-	return len(p.coefficients) - 1
+	if p.IsConstant {
+		return len(p.Coefficients)
+	} else {
+		return len(p.Coefficients) - 1
+	}
 }
 
 func (p *Exponent) add(q *Exponent) error {
-	if len(p.coefficients) != len(q.coefficients) {
+	if len(p.Coefficients) != len(q.Coefficients) {
 		return errors.New("q is not the same length as p")
 	}
 
-	for i := 0; i < len(p.coefficients); i++ {
-		p.coefficients[i].Add(p.coefficients[i], q.coefficients[i])
+	if p.IsConstant != q.IsConstant {
+		return errors.New("p and q differ in 'IsConstant'")
+	}
+
+	for i := 0; i < len(p.Coefficients); i++ {
+		p.Coefficients[i].Add(&p.Coefficients[i], &q.Coefficients[i])
 	}
 
 	return nil
@@ -100,19 +122,20 @@ func Sum(polynomials []*Exponent) (*Exponent, error) {
 
 func (p *Exponent) Copy() *Exponent {
 	var q Exponent
-	q.coefficients = make([]*curve.Point, len(p.coefficients))
-	for i := 0; i < len(p.coefficients); i++ {
-		q.coefficients[i] = curve.NewIdentityPoint().Set(p.coefficients[i])
+	q.Coefficients = make([]curve.Point, len(p.Coefficients))
+	for i := 0; i < len(p.Coefficients); i++ {
+		q.Coefficients[i].Set(&p.Coefficients[i])
 	}
+	q.IsConstant = p.IsConstant
 	return &q
 }
 
 func (p *Exponent) Equal(other Exponent) bool {
-	if len(p.coefficients) != len(other.coefficients) {
+	if len(p.Coefficients) != len(other.Coefficients) {
 		return false
 	}
-	for i := 0; i < len(p.coefficients); i++ {
-		if !p.coefficients[i].Equal(other.coefficients[i]) {
+	for i := 0; i < len(p.Coefficients); i++ {
+		if !p.Coefficients[i].Equal(&other.Coefficients[i]) {
 			return false
 		}
 	}
@@ -121,44 +144,32 @@ func (p *Exponent) Equal(other Exponent) bool {
 
 // Constant returns the constant coefficient of the polynomial 'in the exponent'
 func (p *Exponent) Constant() *curve.Point {
-	return p.coefficients[0]
-}
-
-// AddConstant returns changes p and returns p(x) + constant
-func (p *Exponent) AddConstant(c *curve.Point) *Exponent {
-	q := p.Copy()
-	q.coefficients[0].Add(q.coefficients[0], c)
-	return q
+	if p.IsConstant {
+		return curve.NewIdentityPoint()
+	} else {
+		return &p.Coefficients[0]
+	}
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
 func (p *Exponent) WriteTo(w io.Writer) (int64, error) {
-	var n int64
-	degree := uint32(len(p.coefficients))
-
-	// write the number of coefficients
-	err := binary.Write(w, binary.BigEndian, degree)
-	if err != nil {
-		return 0, err
-	}
+	// write the number of Coefficient
+	_ = binary.Write(w, binary.BigEndian, uint32(p.Degree()))
 	nAll := int64(4)
 
-	// write all coefficients
-	for _, c := range p.coefficients {
-		n, err = c.WriteTo(w)
+	if p.IsConstant {
+		// write only zeros
+		n0, _ := w.Write(make([]byte, params.BytesPoint))
+		nAll += int64(n0)
+	}
+
+	// write all Coefficient
+	for _, c := range p.Coefficients {
+		n, err := c.WriteTo(w)
 		nAll += n
 		if err != nil {
 			return nAll, err
 		}
 	}
 	return nAll, nil
-}
-
-func (p *Exponent) SetCoefficients(points []*curve.Point) *Exponent {
-	p.coefficients = points
-	return p
-}
-
-func (p *Exponent) Coefficients() []*curve.Point {
-	return p.coefficients
 }

@@ -1,32 +1,36 @@
 package polynomial
 
 import (
+	"math/big"
 	"math/rand"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 )
 
 func TestPolynomial_Constant(t *testing.T) {
 	deg := 10
-	secret := curve.NewScalarRandom()
+	secret := sample.Scalar()
 	poly := NewPolynomial(deg, secret)
 	require.True(t, poly.Constant().Equal(secret))
 }
 
 func TestPolynomial_Evaluate(t *testing.T) {
-	polynomial := &Polynomial{make([]*curve.Scalar, 3)}
-	polynomial.coefficients[0] = curve.NewScalar().SetInt64(1)
-	polynomial.coefficients[1] = curve.NewScalar()
-	polynomial.coefficients[2] = curve.NewScalar().SetInt64(1)
+	polynomial := &Polynomial{make([]curve.Scalar, 3)}
+	polynomial.Coefficients[0].SetUInt32(1)
+	polynomial.Coefficients[1].SetUInt32(0)
+	polynomial.Coefficients[2].SetUInt32(1)
 
 	for index := 0; index < 100; index++ {
-		x := rand.Int63n(1 << 8)
-		//x := int64(2)
-		result := 1 + x*x
-		computedResult := polynomial.Evaluate(curve.NewScalar().SetInt64(x))
-		expectedResult := curve.NewScalar().SetInt64(result)
-		require.True(t, expectedResult.Equal(computedResult))
+		x := rand.Uint32()
+		result := big.NewInt(int64(x))
+		result.Mul(result, result)
+		result.Add(result, big.NewInt(1))
+		computedResult := polynomial.Evaluate(curve.NewScalar().SetUInt32(x))
+		expectedResult := curve.NewScalar().SetBigInt(result)
+		assert.True(t, expectedResult.Equal(computedResult))
 	}
 }

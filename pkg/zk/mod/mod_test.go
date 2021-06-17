@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk"
@@ -15,21 +14,31 @@ import (
 func TestMod(t *testing.T) {
 	p, q := zk.ProverPaillierSecret.P, zk.ProverPaillierSecret.Q
 	sk := zk.ProverPaillierSecret
-	public := Public{N: sk.PublicKey().N}
-	proof, err := public.Prove(hash.New(), Private{
+	public := Public{N: sk.PublicKey.N}
+	proof := NewProof(hash.New(), public, Private{
 		P:   p,
 		Q:   q,
 		Phi: sk.Phi,
 	})
-	require.NoError(t, err, "failed to create proof")
-	assert.True(t, public.Verify(hash.New(), proof), "failed to verify proof")
+	out, err := proof.Marshal()
+	require.NoError(t, err, "failed to marshal proof")
+	proof2 := &Proof{}
+	require.NoError(t, proof2.Unmarshal(out), "failed to unmarshal proof")
+	assert.Equal(t, proof, proof2)
+	out2, err := proof2.Marshal()
+	assert.Equal(t, out, out2)
+	proof3 := &Proof{}
+	require.NoError(t, proof3.Unmarshal(out2), "failed to marshal 2nd proof")
+	assert.Equal(t, proof, proof3)
 
-	proof.W = pb.NewInt(big.NewInt(0))
-	for idx := range proof.X {
-		proof.X[idx] = pb.NewInt(big.NewInt(0))
+	assert.True(t, proof2.Verify(hash.New(), public))
+
+	proof.W = big.NewInt(0)
+	for idx := range *proof.X {
+		(*proof.X)[idx] = big.NewInt(0)
 	}
 
-	assert.False(t, public.Verify(hash.New(), proof), "proof should have failed")
+	assert.False(t, proof.Verify(hash.New(), public), "proof should have failed")
 }
 
 func Test_set4thRoot(t *testing.T) {

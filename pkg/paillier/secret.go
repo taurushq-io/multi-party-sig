@@ -20,18 +20,18 @@ var (
 )
 
 type SecretKey struct {
+	*PublicKey
 	// P, Q such that N = P⋅Q
 	P, Q *big.Int
 	// Phi = ϕ = (P-1)(Q-1)
 	Phi *big.Int
 	// PhiInv = ϕ⁻¹ mod N
 	PhiInv *big.Int
-	pk     PublicKey
 }
 
 func KeyGen() (pk *PublicKey, sk *SecretKey) {
 	sk = NewSecretKey()
-	pk = sk.PublicKey()
+	pk = sk.PublicKey
 	return
 }
 
@@ -44,7 +44,6 @@ func NewSecretKeyFromPrimes(P, Q *big.Int) *SecretKey {
 	one := big.NewInt(1)
 
 	n.Mul(P, Q)
-	pk := NewPublicKey(&n)
 
 	p.Sub(P, one)   // P-1
 	q.Sub(Q, one)   // Q-1
@@ -56,34 +55,29 @@ func NewSecretKeyFromPrimes(P, Q *big.Int) *SecretKey {
 	q.Set(Q)
 
 	return &SecretKey{
-		P:      p.Set(P),
-		Q:      q.Set(Q),
-		Phi:    &phi,
-		PhiInv: &phiInv,
-		pk:     *pk,
+		P:         p.Set(P),
+		Q:         q.Set(Q),
+		Phi:       &phi,
+		PhiInv:    &phiInv,
+		PublicKey: NewPublicKey(&n),
 	}
-}
-
-// PublicKey returns the associated PublicKey
-func (sk *SecretKey) PublicKey() *PublicKey {
-	return &sk.pk
 }
 
 // Dec decrypts c and returns the plaintext m ∈ ± (N-2)/2
 func (sk *SecretKey) Dec(c *Ciphertext) *big.Int {
-	n := sk.pk.N
-	nSquared := sk.pk.nSquared
+	n := sk.PublicKey.N
+	nSquared := sk.PublicKey.nSquared
 	phi := sk.Phi
 	phiInv := sk.PhiInv
 
 	result := new(big.Int)
-	result.Exp(&c.c, phi, nSquared)   // r = c^Phi 						(mod N²)
+	result.Exp(c.C, phi, nSquared)    // r = c^Phi 						(mod N²)
 	result.Sub(result, big.NewInt(1)) // r = c^Phi - 1
 	result.Div(result, n)             // r = [(c^Phi - 1)/N]
 	result.Mul(result, phiInv)        // r = [(c^Phi - 1)/N] • Phi^-1
 	result.Mod(result, n)             // r = [(c^Phi - 1)/N] • Phi^-1		(mod N)
 
-	if result.Cmp(sk.pk.nHalf) == 1 {
+	if result.Cmp(sk.PublicKey.nHalf) == 1 {
 		result.Sub(result, n)
 	}
 	return result
@@ -92,19 +86,19 @@ func (sk *SecretKey) Dec(c *Ciphertext) *big.Int {
 func (sk *SecretKey) Clone() *SecretKey {
 	var p, q, phi, phiInv big.Int
 	return &SecretKey{
-		P:      p.Set(sk.P),
-		Q:      q.Set(sk.Q),
-		Phi:    phi.Set(sk.Phi),
-		PhiInv: phiInv.Set(sk.PhiInv),
-		pk:     *sk.pk.Clone(),
+		P:         p.Set(sk.P),
+		Q:         q.Set(sk.Q),
+		Phi:       phi.Set(sk.Phi),
+		PhiInv:    phiInv.Set(sk.PhiInv),
+		PublicKey: sk.PublicKey.Clone(),
 	}
 }
 
 func (sk SecretKey) GeneratePedersen() (ped *pedersen.Parameters, lambda *big.Int) {
 	var s, t *big.Int
-	s, t, lambda = sample.Pedersen(sk.pk.N, sk.Phi)
+	s, t, lambda = sample.Pedersen(sk.PublicKey.N, sk.Phi)
 	return &pedersen.Parameters{
-		N: sk.pk.N,
+		N: sk.PublicKey.N,
 		S: s,
 		T: t,
 	}, lambda
@@ -161,12 +155,12 @@ func (sk SecretKey) Validate() error {
 	}
 
 	// Compare N
-	if n.Cmp(sk.pk.N) != 0 {
+	if n.Cmp(sk.PublicKey.N) != 0 {
 		return ErrModulusMismatch
 	}
 
 	// check public key too
-	err := sk.PublicKey().Validate()
+	err := sk.PublicKey.Validate()
 	if err != nil {
 		return fmt.Errorf("paillier.SecretKey: invalid public key: %w", err)
 	}

@@ -19,5 +19,5 @@ func TestIDSlice_Lagrange(t *testing.T) {
 	for _, c := range coefs {
 		sum.Add(sum, c)
 	}
-	assert.True(t, sum.Equal(curve.NewScalar().SetInt64(1)))
+	assert.True(t, sum.Equal(curve.NewScalar().SetUInt32(1)))
 }

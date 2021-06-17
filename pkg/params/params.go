@@ -1,5 +1,7 @@
 package params
 
+import "github.com/decred/dcrd/dcrec/secp256k1/v3"
+
 const (
 	SecParam  = 256
 	HashBytes = 64
@@ -31,6 +33,8 @@ const (
 	BytesCiphertext = 2 * BytesPaillier // = 512
 
 	// Todo change to compressed
-	BytesPoint  = 65
+	BytesPoint  = secp256k1.PubKeyBytesLenCompressed
 	BytesScalar = 32
+
+	SizeSSID = HashBytes
 )

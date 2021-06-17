@@ -4,11 +4,12 @@ import (
 	"testing"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 )
 
 func NewSignature(x *curve.Scalar, hash []byte, k *curve.Scalar) *Signature {
 	if k == nil {
-		k = curve.NewScalarRandom()
+		k = sample.Scalar()
 	}
 	m := curve.NewScalar().SetHash(hash)
 	kInv := curve.NewScalar().Invert(k)
@@ -24,7 +25,7 @@ func NewSignature(x *curve.Scalar, hash []byte, k *curve.Scalar) *Signature {
 
 func TestSignature_Verify(t *testing.T) {
 	m := []byte("hello")
-	x := curve.NewScalarRandom()
+	x := sample.Scalar()
 	X := curve.NewIdentityPoint().ScalarBaseMult(x)
 	sig := NewSignature(x, m, nil)
 	if !sig.Verify(X, m) {

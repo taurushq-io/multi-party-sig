@@ -3,7 +3,6 @@ package zkenc
 import (
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
@@ -30,16 +29,17 @@ type (
 	}
 )
 
-type Commitment struct {
-	// A = Enc(α; r)
-	A *paillier.Ciphertext
-
-	// S = sᵏ t^mu
-	// C = s^alpha t^gamma
-	S, C *big.Int
+func (p Proof) IsValid(public Public) bool {
+	if !public.Prover.ValidateCiphertexts(p.A) {
+		return false
+	}
+	if !arith.IsValidModN(public.Prover.N, p.Z2) {
+		return false
+	}
+	return true
 }
 
-func (public Public) Prove(hash *hash.Hash, private Private) (*pb.ZKEnc, error) {
+func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	N := public.Prover.N
 
 	alpha := sample.IntervalLEps()
@@ -47,89 +47,59 @@ func (public Public) Prove(hash *hash.Hash, private Private) (*pb.ZKEnc, error) 
 	mu := sample.IntervalLN()
 	gamma := sample.IntervalLEpsN()
 
-	S := public.Aux.Commit(private.K, mu)
-	A, _ := public.Prover.Enc(alpha, r)
-	C := public.Aux.Commit(alpha, gamma)
+	A := public.Prover.EncWithNonce(alpha, r)
 
-	e, err := challenge(hash, public, Commitment{
+	commitment := &Commitment{
+		S: public.Aux.Commit(private.K, mu),
 		A: A,
-		S: S,
-		C: C,
-	})
-	if err != nil {
-		return nil, err
+		C: public.Aux.Commit(alpha, gamma),
 	}
 
+	e := challenge(hash, public, commitment)
+
 	var z1, z2, z3 big.Int
-	z1.Mul(e, private.K)
-	z1.Add(&z1, alpha)
-
-	z2.Exp(private.Rho, e, N)
-	z2.Mul(&z2, r)
-	z2.Mod(&z2, N)
-
-	z3.Mul(e, mu)
-	z3.Add(&z3, gamma)
-
-	return &pb.ZKEnc{
-		S:  pb.NewInt(S),
-		A:  pb.NewCiphertext(A),
-		C:  pb.NewInt(C),
-		Z1: pb.NewInt(&z1),
-		Z2: pb.NewInt(&z2),
-		Z3: pb.NewInt(&z3),
-	}, nil
+	return &Proof{
+		Commitment: commitment,
+		Z1:         z1.Mul(e, private.K).Add(&z1, alpha),
+		Z2:         z2.Exp(private.Rho, e, N).Mul(&z2, r).Mod(&z2, N),
+		Z3:         z3.Mul(e, mu).Add(&z3, gamma),
+	}
 }
 
-func (public Public) Verify(hash *hash.Hash, proof *pb.ZKEnc) bool {
-	if !proof.IsValid() {
+func (p Proof) Verify(hash *hash.Hash, public Public) bool {
+	if !p.IsValid(public) {
 		return false
 	}
 
 	prover := public.Prover
 
-	A := proof.GetA().Unmarshal()
-	S := proof.GetS().Unmarshal()
-	C := proof.GetC().Unmarshal()
-
-	e, err := challenge(hash, public, Commitment{
-		A: A,
-		S: S,
-		C: C,
-	})
-	if err != nil {
+	if !arith.IsInIntervalLPrimeEps(p.Z1) {
 		return false
 	}
 
-	z1, z2, z3 := proof.Z1.Unmarshal(), proof.Z2.Unmarshal(), proof.Z3.Unmarshal()
+	e := challenge(hash, public, p.Commitment)
 
-	if !arith.IsInIntervalLPrimeEps(z1) {
+	if !public.Aux.Verify(p.Z1, p.Z3, p.C, p.S, e) {
 		return false
 	}
 
-	rhsCt := paillier.NewCiphertext()
-	lhsCt, _ := prover.Enc(z1, z2)
-	rhsCt.Mul(prover, public.K, e)
-	rhsCt.Add(prover, rhsCt, A)
-	if !lhsCt.Equal(rhsCt) {
-		return false
-	}
+	{
+		// lhs = Enc(z₁;z₂)
+		lhs := prover.EncWithNonce(p.Z1, p.Z2)
 
-	if !public.Aux.Verify(z1, z3, C, S, e) {
-		return false
+		// rhs = (e ⊙ K) ⊕ A
+		rhs := public.K.Clone().Mul(prover, e).Add(prover, p.A)
+		if !lhs.Equal(rhs) {
+			return false
+		}
 	}
 
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment Commitment) (*big.Int, error) {
-	var err error
-
-	err = hash.WriteAny(public.Aux, public.Prover, public.K,
+func challenge(hash *hash.Hash, public Public, commitment *Commitment) *big.Int {
+	_, _ = hash.WriteAny(public.Aux, public.Prover, public.K,
 		commitment.S, commitment.A, commitment.C)
-	if err != nil {
-		return nil, err
-	}
 
 	return hash.ReadFqNegative()
 }

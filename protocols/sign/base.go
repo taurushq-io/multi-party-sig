@@ -6,6 +6,7 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
 )
 
 var (
@@ -16,17 +17,12 @@ var (
 	_ round.Round = (*output)(nil)
 )
 
-func NewRound(session *round.Session) (*round1, error) {
+func NewRound(s session.Session) (*round1, error) {
 
-	if !session.KeygenDone() {
-		return nil, errors.New("sign.NewRound: session has no keygen data")
+	signS, ok := s.(*session.SignSession)
+	if !ok {
+		return nil, errors.New("sign.NewRound: session must be SignSession")
 	}
-	if !session.IsSigning() {
-		return nil, errors.New("sign.NewRound: session is not ready for signing")
-	}
-
-	// clone the session so we don't overwrite anything
-	s := session.Clone()
 
 	// Create round with a clone of the original secret
 	base, err := round.NewBaseRound(s)
@@ -34,16 +30,19 @@ func NewRound(session *round.Session) (*round1, error) {
 		return nil, fmt.Errorf("sign.NewRound: %w", err)
 	}
 
-	parties := make(map[party.ID]*localParty, len(s.SigningParties))
-	for j, publicJ := range s.SigningParties {
-		parties[j] = &localParty{
-			Party: round.NewBaseParty(publicJ),
+	parties := make(map[party.ID]*LocalParty, s.N())
+	for _, partyJ := range s.PartyIDs() {
+		parties[partyJ] = &LocalParty{
+			Party:  round.NewBaseParty(partyJ),
+			Public: s.Public(partyJ),
 		}
 	}
 
 	return &round1{
 		BaseRound: base,
-		thisParty: parties[base.SelfID],
+		Self:      parties[base.SelfID],
+		Secret:    s.Secret(),
 		parties:   parties,
+		Message:   signS.Message(),
 	}, nil
 }

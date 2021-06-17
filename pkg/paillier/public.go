@@ -15,6 +15,7 @@ var (
 	ErrPaillierEven   = errors.New("modulus N is even")
 )
 
+// PublicKey is a Paillier public key
 type PublicKey struct {
 	// N = p⋅q
 	N *big.Int
@@ -37,13 +38,34 @@ func NewPublicKey(n *big.Int) *PublicKey {
 }
 
 // Enc returns the encryption of m under the public key pk.
-// If nonce = nil, the a fresh nonce is sampled.
-// The nonce used to encrypt is always returned.
+// The nonce used to encrypt is returned.
 //
 // ct = (1+N)ᵐρᴺ (mod N²)
-func (pk *PublicKey) Enc(m, nonce *big.Int) (*Ciphertext, *big.Int) {
+func (pk *PublicKey) Enc(m *big.Int) (*Ciphertext, *big.Int) {
+	nonce := pk.Nonce()
+	return pk.EncWithNonce(m, nonce), nonce
+}
+
+// EncWithNonce returns the encryption of m under the public key pk.
+// The nonce is not returned.
+//
+// ct = (1+N)ᵐρᴺ (mod N²)
+func (pk *PublicKey) EncWithNonce(m, nonce *big.Int) *Ciphertext {
 	ct := NewCiphertext()
-	return ct.Enc(pk, m, nonce)
+
+	tmp := newCipherTextInt()
+	one := big.NewInt(1)
+
+	tmp.Set(pk.N)                 // N
+	tmp.Add(tmp, one)             // N + 1
+	ct.C.Exp(tmp, m, pk.nSquared) // (N+1)ᵐ mod N²
+
+	tmp.Exp(nonce, pk.N, pk.nSquared) // rho ^ N mod N²
+
+	ct.C.Mul(ct.C, tmp) // (N+1)ᵐ rho ^ N
+	ct.C.Mod(ct.C, pk.nSquared)
+
+	return ct
 }
 
 // Equal returns true if pk = other.
@@ -60,13 +82,25 @@ func (pk *PublicKey) Nonce() *big.Int {
 func (pk *PublicKey) Validate() error {
 	// log₂(N) = BitsPaillier
 	if bits := pk.N.BitLen(); bits != params.BitsPaillier {
-		return fmt.Errorf("paillier.PublicKey: have: %d, need %d: %w", bits, params.BitsPaillier, ErrPaillierLength)
+		return fmt.Errorf("paillier.publicKey: have: %d, need %d: %w", bits, params.BitsPaillier, ErrPaillierLength)
 	}
 	if pk.N.Bit(0) != 1 {
 		return ErrPaillierEven
 	}
 
 	return nil
+}
+
+func (pk *PublicKey) ValidateCiphertexts(cts ...*Ciphertext) bool {
+	for _, ct := range cts {
+		if ct.C.Cmp(pk.nSquared) != -1 {
+			return false
+		}
+		if ct.C.Sign() != 1 {
+			return false
+		}
+	}
+	return true
 }
 
 func (pk *PublicKey) Clone() *PublicKey {

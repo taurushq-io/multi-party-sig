@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
@@ -14,12 +13,13 @@ type round3 struct {
 
 // ProcessMessage implements round.Round
 //
-// - verify H(ssid, V₁, ..., Vₙ) against received hash
-func (round *round3) ProcessMessage(msg *pb.Message) error {
-	j := msg.GetFromID()
-	partyJ := round.parties[j]
+// - verify Hash(SSID, V₁, ..., Vₙ) against received hash
+func (r *round3) ProcessMessage(msg round.Message) error {
+	j := msg.GetHeader().From
+	content := msg.(*Message).GetRefresh2()
+	partyJ := r.LocalParties[j]
 
-	if !bytes.Equal(msg.GetRefresh2().HashOfHashes, round.hashOfHashes) {
+	if !bytes.Equal(content.HashEcho, r.EchoHash) {
 		return fmt.Errorf("refresh.round3.ProcessMessage(): party %s sent different hash than ours", j)
 	}
 
@@ -29,31 +29,24 @@ func (round *round3) ProcessMessage(msg *pb.Message) error {
 // GenerateMessages implements round.Round
 //
 // - send all committed data
-func (round *round3) GenerateMessages() ([]*pb.Message, error) {
+func (r *round3) GenerateMessages() ([]round.Message, error) {
 	// Broadcast the message we created in round1
-	return []*pb.Message{{
-		Type:      pb.MessageType_TypeRefresh3,
-		From:      round.SelfID,
-		Broadcast: pb.Broadcast_Basic,
-		Refresh3: &pb.Refresh3{
-			Rho: round.thisParty.rho,
-			F:   pb.NewPolynomialExponent(round.thisParty.polyExp),
-			A:   pb.NewPointSlice(round.thisParty.A),
-			N:   pb.NewInt(round.thisParty.Pedersen.N),
-			S:   pb.NewInt(round.thisParty.Pedersen.S),
-			T:   pb.NewInt(round.thisParty.Pedersen.T),
-			U:   round.decommitment,
-		},
-	}}, nil
+	return NewMessageRefresh3(r.SelfID, &Refresh3{
+		Rho:                   r.Self.Rho,
+		VSSPolynomial:         r.Self.VSSPolynomial,
+		VSSSchnorrCommitments: r.Self.VSSCommitments,
+		Pedersen:              r.Self.Public.Pedersen,
+		Decommitment:          r.Decommitment,
+	}), nil
 }
 
 // Finalize implements round.Round
-func (round *round3) Finalize() (round.Round, error) {
+func (r *round3) Finalize() (round.Round, error) {
 	return &round4{
-		round3: round,
+		round3: r,
 	}, nil
 }
 
-func (round *round3) MessageType() pb.MessageType {
-	return pb.MessageType_TypeRefresh2
+func (r *round3) MessageType() round.MessageType {
+	return MessageTypeRefresh2
 }

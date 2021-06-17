@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package polynomial;
+
+option go_package = "github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial";
+
+option (gogoproto.stable_marshaler_all) = true;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+message Exponent {
+  option (gogoproto.equal) = false;
+  option (gogoproto.goproto_getters) = false;
+  // IsConstant indicates that the constant coefficient is the identity.
+  // We do this so that we never need to send an encoded Identity point, and thus consider it invalid
+  bool IsConstant = 1;
+  // Coefficients is a list of curve.Point representing the coefficients of a polynomial over an elliptic curve.
+  repeated bytes Coefficients = 2 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point", (gogoproto.nullable) = true];
+}

@@ -6,26 +6,29 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 )
 
 func TestExponent_Evaluate(t *testing.T) {
 	var lhs curve.Point
-	var rhs1, rhs2 curve.Point
 	for x := 0; x < 5; x++ {
 		N := 1000
-		secret := curve.NewScalarRandom()
+		var secret *curve.Scalar
+		if x%2 == 0 {
+			secret = sample.Scalar()
+		}
 		poly := NewPolynomial(N, secret)
 		polyExp := NewPolynomialExponent(poly)
 
-		randomIndex := curve.NewScalarRandom()
+		randomIndex := sample.Scalar()
 
 		lhs.ScalarBaseMult(poly.Evaluate(randomIndex))
-		polyExp.evaluateHorner(randomIndex, &rhs1)
-		polyExp.evaluateClassic(randomIndex, &rhs2)
+		rhs1 := polyExp.evaluateHorner(randomIndex)
+		rhs2 := polyExp.evaluateClassic(randomIndex)
 
-		assert.Truef(t, lhs.Equal(&rhs1), fmt.Sprint(x))
-		assert.Truef(t, lhs.Equal(&rhs2), fmt.Sprint(x))
-		assert.Truef(t, rhs1.Equal(&rhs2), fmt.Sprint(x))
+		assert.Truef(t, lhs.Equal(rhs1), fmt.Sprint("base eval differs from horner", x))
+		assert.Truef(t, lhs.Equal(rhs2), fmt.Sprint("base eval differs from classic", x))
+		assert.Truef(t, rhs1.Equal(rhs2), fmt.Sprint("horner differs from classic", x))
 	}
 }
 
@@ -62,7 +65,7 @@ func TestSum(t *testing.T) {
 	N := 20
 	Deg := 10
 
-	randomIndex := curve.NewScalarRandom()
+	randomIndex := sample.Scalar()
 
 	// compute f1(x) + f2(x) + ...
 	evaluationScalar := curve.NewScalar()
@@ -73,7 +76,7 @@ func TestSum(t *testing.T) {
 	polys := make([]*Polynomial, N)
 	polysExp := make([]*Exponent, N)
 	for i := range polys {
-		sec := curve.NewScalarRandom()
+		sec := sample.Scalar()
 		polys[i] = NewPolynomial(Deg, sec)
 		polysExp[i] = NewPolynomialExponent(polys[i])
 

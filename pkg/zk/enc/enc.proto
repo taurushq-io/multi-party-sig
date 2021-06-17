@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package zkenc;
+
+option go_package = "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc;zkenc";
+
+option (gogoproto.stable_marshaler_all) = true;
+option (gogoproto.goproto_getters_all) = false;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+import "pkg/paillier/ciphertext.proto";
+
+message Commitment {
+  // S = sᵏtᵘ
+  bytes S = 1 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  // A = Enc₀ (α, r)
+  paillier.Ciphertext A = 2;
+  // C = sᵃtᵍ
+  bytes C = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+}
+
+message Proof {
+  Commitment C = 1 [(gogoproto.embed) = true];
+  // Z₁ = α + e⋅k
+  bytes Z1 = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  // Z₂ = r ⋅ ρᵉ mod N₀
+  bytes Z2 = 3 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  // Z₃ = γ + e⋅μ
+  bytes Z3 = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+}

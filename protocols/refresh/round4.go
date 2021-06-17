@@ -3,11 +3,8 @@ package refresh
 import (
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/pb"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	zkmod "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mod"
 	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm"
@@ -28,180 +25,140 @@ type round4 struct {
 // - validate Paillier
 // - validate Pedersen
 // - validate commitments
-func (round *round4) ProcessMessage(msg *pb.Message) error {
-	j := msg.GetFromID()
-	partyJ := round.parties[j]
+func (r *round4) ProcessMessage(msg round.Message) error {
+	j := msg.GetHeader().From
+	partyJ := r.LocalParties[j]
 
-	body := msg.GetRefresh3()
+	body := msg.(*Message).GetRefresh3()
 
-	// Set rho
-	rho := body.GetRho()
-	if len(rho) != params.SecBytes {
-		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: rho is wrong lenght", j)
+	// verify Rho
+	if len(body.Rho) != params.SecBytes {
+		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: Rho is wrong lenght", j)
 	}
 
-	// Save all X, A
-	polyExp, err := body.F.Unmarshall()
-	if err != nil {
-		return err
-	}
+	// Save all X, VSSCommitments
+	polyExp := body.VSSPolynomial
 	// check that the constant coefficient is 0
-	if !round.keygen && !polyExp.Constant().Equal(curve.NewIdentityPoint()) {
+	// if refresh then the polynomial is constant
+	if !(r.isRefresh() == polyExp.IsConstant) {
 		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: exponent polynomial has non 0 constant", j)
 	}
 	// check deg(Fⱼ) = t
-	if polyExp.Degree() != round.S.Threshold {
+	if polyExp.Degree() != r.S.Threshold() {
 		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: exponent polynomial has wrong degree", j)
 	}
 
 	// Save Schnorr commitments
-	A, err := pb.UnmarshalPoints(body.GetA())
-	if err != nil {
-		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: unmarshal points: %w", j, err)
-	}
-	if len(A) != len(polyExp.Coefficients()) {
+	A := body.VSSSchnorrCommitments
+	if len(A) != len(r.Self.VSSCommitments) {
 		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: wrong number of Schnorr commitments", j)
 	}
 
 	// Set Paillier
-	Nj := body.GetN().Unmarshal()
+	Nj := body.Pedersen.N
 	paillierPublicKey := paillier.NewPublicKey(Nj)
-	if err = paillierPublicKey.Validate(); err != nil {
+	if err := paillierPublicKey.Validate(); err != nil {
 		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: %w", j, err)
 	}
 
-	// Set Pedersen
-	ped := &pedersen.Parameters{
-		N: Nj,
-		S: body.GetS().Unmarshal(),
-		T: body.GetT().Unmarshal(),
-	}
-	if err = ped.Validate(); err != nil {
+	// Verify Pedersen
+	if err := body.Pedersen.Validate(); err != nil {
 		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: %w", j, err)
 	}
 
 	// Verify decommit
-	decommitment := body.GetU()
-	if !round.H.Decommit(j, partyJ.commitment, decommitment,
-		rho, partyJ.polyExp, A, ped) {
+	if !r.Hash.Decommit(j, partyJ.Commitment, body.Decommitment,
+		body.Rho, polyExp, A, body.Pedersen) {
 		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: failed to decommit", j)
 	}
 
-	partyJ.rho = rho
-	partyJ.Pedersen = ped
-	partyJ.Paillier = paillierPublicKey
-	partyJ.polyExp = polyExp
-	partyJ.A = A
+	partyJ.Rho = body.Rho
+	partyJ.Public.Pedersen = body.Pedersen
+	partyJ.Public.Paillier = paillierPublicKey
+	partyJ.VSSPolynomial = polyExp
+	partyJ.VSSCommitments = A
+
 	return partyJ.AddMessage(msg)
 }
 
 // GenerateMessages implements round.Round
 //
 // - set ρ = ⊕ⱼ ρⱼ and update hash state
-//   - if keygen, write this to the session
 // - prove Nᵢ is Blum
 // - prove Pedersen parameters
 // - prove Schnorr for all coefficients of fᵢ(X)
 //   - if refresh skip constant coefficient
 //
 // - send proofs and encryption of share for Pⱼ
-func (round *round4) GenerateMessages() ([]*pb.Message, error) {
+func (r *round4) GenerateMessages() ([]round.Message, error) {
 	// ρ = ⊕ⱼ ρⱼ
-	round.rho = make([]byte, params.SecBytes)
-	for _, partyJ := range round.parties {
+	r.rho = make([]byte, params.SecBytes)
+	for _, partyJ := range r.LocalParties {
 		for i := 0; i < params.SecBytes; i++ {
-			round.rho[i] ^= partyJ.rho[i]
+			r.rho[i] ^= partyJ.Rho[i]
 		}
 	}
-	// set RID if we are in keygen
-	if round.keygen {
-		round.S.Secret.RID = append([]byte{}, round.rho...)
-	}
 
-	// Write rho to the hash state
-	if _, err := round.H.Write(round.rho); err != nil {
-		return nil, fmt.Errorf("refresh.round4.GenerateMessages(): write rho to hash: %w", err)
-	}
-
-	partyI := round.thisParty
-
-	skPaillier := round.S.Secret.Paillier
+	// Write Rho to the hash state
+	_, _ = r.Hash.Write(r.rho)
 
 	// Prove N is a blum prime with zkmod
-	mod, err := zkmod.Public{N: partyI.Pedersen.N}.Prove(round.H.CloneWithID(round.SelfID), zkmod.Private{
-		P:   skPaillier.P,
-		Q:   skPaillier.Q,
-		Phi: skPaillier.Phi,
+	mod := zkmod.NewProof(r.Hash.CloneWithID(r.SelfID), zkmod.Public{N: r.Self.Public.Pedersen.N}, zkmod.Private{
+		P:   r.PaillierSecret.P,
+		Q:   r.PaillierSecret.Q,
+		Phi: r.PaillierSecret.Phi,
 	})
-	if err != nil {
-		return nil, fmt.Errorf("refresh.round4.GenerateMessages(): failed to generate mod proof: %w", err)
-	}
 
 	// prove s, t are correct as aux parameters with zkprm
-	prm, err := zkprm.Public{Pedersen: partyI.Pedersen}.Prove(round.H.CloneWithID(round.SelfID), zkprm.Private{
-		Lambda: round.lambda,
-		Phi:    skPaillier.Phi,
+	prm := zkprm.NewProof(r.Hash.CloneWithID(r.SelfID), zkprm.Public{Pedersen: r.Self.Public.Pedersen}, zkprm.Private{
+		Lambda: r.PedersenSecret,
+		Phi:    r.PaillierSecret.Phi,
 	})
-	if err != nil {
-		return nil, fmt.Errorf("refresh.round4.GenerateMessages(): failed to generate prm proof: %w", err)
-	}
 
 	// Compute all ZKPoK Xⱼ = [xⱼ] G
-	schXproto := make([]*pb.Scalar, round.S.Threshold+1)
-	var schX *curve.Scalar
-	for j := range schXproto {
-		// skip the first index in keygen mode
-		if !round.keygen && j == 0 {
-			schXproto[j] = pb.NewScalar(curve.NewScalar())
-			continue
-		}
-		x := round.poly.Coefficients()[j]
-		X := round.thisParty.polyExp.Coefficients()[j]
-		schX, err = zksch.Prove(round.H.CloneWithID(round.SelfID), partyI.A[j], X, round.schnorrRand[j], x)
-		if err != nil {
-			return nil, fmt.Errorf("refresh.round4.GenerateMessages(): failed to generate sch proof for coef %d: %w", j, err)
-		}
-		schXproto[j] = pb.NewScalar(schX)
+	Xs := r.Self.VSSPolynomial.Coefficients
+	xs := r.VSSSecret.Coefficients
+	As := r.Self.VSSCommitments
+	as := r.VSSSchnorrRand
+	if r.isRefresh() {
+		// if refresh the fᵢ(0) = 0 so we do not prove it
+		xs = xs[1:]
 	}
+	schnorrProofs := zksch.ProveMulti(r.Hash.CloneWithID(r.SelfID), As, Xs, as, xs)
 
 	// create messages with encrypted shares
-	msgs := make([]*pb.Message, 0, round.S.N()-1)
-	for _, idJ := range round.S.PartyIDs {
-		if idJ == round.SelfID {
+	msgs := make([]round.Message, 0, r.S.N()-1)
+	for _, idJ := range r.S.PartyIDs() {
+		if idJ == r.SelfID {
 			continue
 		}
 
-		partyJ := round.parties[idJ]
+		partyJ := r.LocalParties[idJ]
 
 		// compute fᵢ(idJ)
-		index := curve.NewScalar().SetBytes([]byte(idJ))
-		share := round.poly.Evaluate(index)
+		index := idJ.Scalar()
+		share := r.VSSSecret.Evaluate(index)
 		// Encrypt share
-		C, _ := partyJ.Paillier.Enc(share.BigInt(), nil)
+		C, _ := partyJ.Public.Paillier.Enc(share.BigInt())
 
-		msgs = append(msgs, &pb.Message{
-			Type: pb.MessageType_TypeRefresh4,
-			From: round.SelfID,
-			To:   idJ,
-			Refresh4: &pb.Refresh4{
-				Mod:  mod,
-				Prm:  prm,
-				C:    pb.NewCiphertext(C),
-				SchF: schXproto,
-			},
-		})
+		msgs = append(msgs, NewMessageRefresh4(r.SelfID, idJ, &Refresh4{
+			Mod:                mod,
+			Prm:                prm,
+			Share:              C,
+			VSSSchnorrResponse: schnorrProofs,
+		}))
 	}
 
 	return msgs, nil
 }
 
 // Finalize implements round.Round
-func (round *round4) Finalize() (round.Round, error) {
+func (r *round4) Finalize() (round.Round, error) {
 	return &output{
-		round4: round,
+		round4: r,
 	}, nil
 }
 
-func (round *round4) MessageType() pb.MessageType {
-	return pb.MessageType_TypeRefresh3
+func (r *round4) MessageType() round.MessageType {
+	return MessageTypeRefresh3
 }

@@ -2,31 +2,26 @@ package party
 
 import (
 	"math/big"
-	"math/rand"
 	"testing"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 )
 
 func TestPublic_Validate(t *testing.T) {
 	sk := paillier.NewSecretKey()
-	p := sk.PublicKey()
+	p := sk.PublicKey
 	N := p.N
 	ped, _ := sk.GeneratePedersen()
-	ssid := make([]byte, params.HashBytes)
-	_, _ = rand.Read(ssid)
 
-	x := curve.NewScalarRandom()
-	X := curve.NewIdentityPoint().ScalarBaseMult(x)
+	_, X := sample.ScalarPointPair()
 	N2 := big.NewInt(1)
 	N2.Add(N2, N)
 	p2 := paillier.NewPublicKey(N2)
 	type fields struct {
 		ID       ID
-		SSID     []byte
 		ECDSA    *curve.Point
 		Paillier *paillier.PublicKey
 		Pedersen *pedersen.Parameters
@@ -39,7 +34,6 @@ func TestPublic_Validate(t *testing.T) {
 		{"all ok",
 			fields{
 				"blabla",
-				ssid,
 				X,
 				p,
 				ped},
@@ -48,7 +42,6 @@ func TestPublic_Validate(t *testing.T) {
 		{"no ID",
 			fields{
 				"",
-				ssid,
 				X,
 				p,
 				ped},
@@ -57,7 +50,6 @@ func TestPublic_Validate(t *testing.T) {
 		{"no ped",
 			fields{
 				"",
-				ssid,
 				X,
 				p,
 				nil},
@@ -66,7 +58,6 @@ func TestPublic_Validate(t *testing.T) {
 		{"no paillier",
 			fields{
 				"",
-				ssid,
 				X,
 				nil,
 				ped},
@@ -75,7 +66,6 @@ func TestPublic_Validate(t *testing.T) {
 		{"missing S",
 			fields{
 				"",
-				ssid,
 				X,
 				p,
 				&pedersen.Parameters{
@@ -88,7 +78,6 @@ func TestPublic_Validate(t *testing.T) {
 		{"missing T",
 			fields{
 				"",
-				ssid,
 				X,
 				p,
 				&pedersen.Parameters{
@@ -101,7 +90,6 @@ func TestPublic_Validate(t *testing.T) {
 		{"different N",
 			fields{
 				"",
-				ssid,
 				X,
 				p2,
 				ped},
@@ -110,7 +98,6 @@ func TestPublic_Validate(t *testing.T) {
 		{"small ssid",
 			fields{
 				"",
-				ssid[1:],
 				X,
 				p,
 				ped},
@@ -119,7 +106,6 @@ func TestPublic_Validate(t *testing.T) {
 		{"no ssid",
 			fields{
 				"",
-				nil,
 				X,
 				p,
 				ped},
@@ -130,7 +116,6 @@ func TestPublic_Validate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Public{
 				ID:       tt.fields.ID,
-				SSID:     tt.fields.SSID,
 				ECDSA:    tt.fields.ECDSA,
 				Paillier: tt.fields.Paillier,
 				Pedersen: tt.fields.Pedersen,

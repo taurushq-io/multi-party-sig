@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package sign;
+
+option go_package = "github.com/taurusgroup/cmp-ecdsa/protocol/sign";
+
+option (gogoproto.stable_marshaler_all) = true;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+import "pkg/paillier/ciphertext.proto";
+import "pkg/zk/enc/enc.proto";
+import "pkg/zk/affg/affg.proto";
+import "pkg/zk/logstar/logstar.proto";
+import "pkg/round/message.proto";
+
+message Message {
+  round.Header Header = 1;
+  oneof Content {
+    Sign1 sign1 = 2;
+    Sign2 sign2 = 3;
+    Sign3 sign3 = 4;
+    Sign4 sign4 = 5;
+  };
+}
+
+message Sign1 {
+  option (gogoproto.goproto_getters) = false;
+  zkenc.Proof ProofEnc = 1;
+  paillier.Ciphertext K = 2;
+  paillier.Ciphertext G = 3;
+}
+
+message MtAMessage {
+  option (gogoproto.goproto_getters) = false;
+  // D is Dᵢⱼ = (⋅ⱼ ⊙ Kᵢ) ⊕ encᵢ(- βⱼᵢ, sⱼᵢ)
+  paillier.Ciphertext D = 1;
+
+  // F is Fᵢⱼ = encⱼ(βⱼᵢ, rⱼᵢ)
+  paillier.Ciphertext F = 2;
+  zkaffg.Proof Proof = 3;
+}
+
+message Sign2 {
+  option (gogoproto.goproto_getters) = false;
+  // EchoHash = Hash(ssid, K₁, G₁, ..., Kₙ, Gₙ)
+  bytes EchoHash = 1;
+  bytes BigGammaShare = 2 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point"];
+  MtAMessage DeltaMtA = 3;
+  MtAMessage ChiMtA = 4;
+  zklogstar.Proof ProofLog = 5;
+}
+
+message Sign3 {
+  option (gogoproto.goproto_getters) = false;
+  bytes DeltaShare = 1 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar"];
+  bytes BigDeltaShare = 2 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point"];
+  zklogstar.Proof ProofLog = 3;
+}
+
+message Sign4 {
+  option (gogoproto.goproto_getters) = false;
+  bytes SigmaShare = 1 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar"];
+}

@@ -3,145 +3,107 @@ package sign
 import (
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/pb"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	zkenc "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
 	zklogstar "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
-	"github.com/taurusgroup/cmp-ecdsa/protocols/sign/mta"
 )
 
 type round2 struct {
 	*round1
 
-	// hashOfAllKjGj = H(ssid, K₁, G₁, ..., Kₙ, Gₙ)
+	// EchoHash = Hash(ssid, K₁, G₁, ..., Kₙ, Gₙ)
 	// part of the echo of the first message
-	hashOfAllKjGj []byte
+	EchoHash []byte
 }
 
 // ProcessMessage implements round.Round
 //
 // - store Kⱼ, Gⱼ
 // - verify zkenc(Kⱼ)
-func (round *round2) ProcessMessage(msg *pb.Message) error {
-	j := msg.GetFromID()
-	partyJ := round.parties[j]
+func (r *round2) ProcessMessage(msg round.Message) error {
+	j := msg.GetHeader().From
+	partyJ := r.parties[j]
+	body := msg.(*Message).GetSign1()
 
-	sign1 := msg.GetSign1()
-
-	K := sign1.GetK().Unmarshal()
-
-	public := zkenc.Public{
-		K:      K,
-		Prover: partyJ.Paillier,
-		Aux:    round.thisParty.Pedersen,
-	}
-	if !public.Verify(round.H.CloneWithID(j), sign1.GetEnc()) {
+	if !body.ProofEnc.Verify(r.Hash.CloneWithID(j), zkenc.Public{
+		K:      body.K,
+		Prover: partyJ.Public.Paillier,
+		Aux:    r.Self.Public.Pedersen,
+	}) {
 		return fmt.Errorf("sign.round2.ProcessMessage(): party %s: enc proof failed to verify", j)
 	}
 
-	partyJ.K = K
-	partyJ.G = sign1.GetG().Unmarshal()
+	partyJ.K = body.K
+	partyJ.G = body.G
 
 	return partyJ.AddMessage(msg)
 }
 
 // GenerateMessages implements round.Round
 //
-// - compute H(ssid, K₁, G₁, ..., Kₙ, Gₙ)
-func (round *round2) GenerateMessages() ([]*pb.Message, error) {
-	// compute H(ssid, K₁, G₁, ..., Kₙ, Gₙ)
-	if err := round.computeHashKJ(); err != nil {
-		return nil, err
-	}
+// - compute Hash(ssid, K₁, G₁, ..., Kₙ, Gₙ)
+func (r *round2) GenerateMessages() ([]round.Message, error) {
+	// compute Hash(ssid, K₁, G₁, ..., Kₙ, Gₙ)
+	r.computeHashKJ()
 
+	zkPrivate := zklogstar.Private{
+		X:   r.GammaShare.BigInt(),
+		Rho: r.GNonce,
+	}
 	// Broadcast the message we created in round1
-	messages := make([]*pb.Message, 0, round.S.N()-1)
-	for j, partyJ := range round.parties {
-		if j == round.SelfID {
+	messages := make([]round.Message, 0, r.S.N()-1)
+	for j, partyJ := range r.parties {
+		if j == r.SelfID {
 			continue
 		}
 
-		partyJ.DeltaMtA = mta.New(round.gamma, partyJ.K, partyJ.Paillier, round.thisParty.Paillier)
-		partyJ.ChiMtA = mta.New(round.S.Secret.ECDSA, partyJ.K, partyJ.Paillier, round.thisParty.Paillier)
+		partyJ.DeltaMtA = NewMtA(r.GammaShare, r.Self.BigGammaShare, partyJ.K,
+			r.Self.Public, partyJ.Public)
+		partyJ.ChiMtA = NewMtA(r.Secret.ECDSA, r.Self.ECDSA, partyJ.K,
+			r.Self.Public, partyJ.Public)
 
-		msg2, err := round.message2(partyJ)
-		if err != nil {
-			return nil, err
+		proofLog := zklogstar.NewProof(r.Hash.CloneWithID(r.SelfID), zklogstar.Public{
+			C:      r.Self.G,
+			X:      r.Self.BigGammaShare,
+			Prover: r.Self.Paillier,
+			Aux:    partyJ.Pedersen,
+		}, zkPrivate)
+
+		sign2 := &Sign2{
+			EchoHash:      r.EchoHash,
+			BigGammaShare: r.Self.BigGammaShare,
+			DeltaMtA:      partyJ.DeltaMtA.ProofAffG(r.Hash.CloneWithID(r.SelfID), nil),
+			ChiMtA:        partyJ.ChiMtA.ProofAffG(r.Hash.CloneWithID(r.SelfID), nil),
+			ProofLog:      proofLog,
 		}
 
-		messages = append(messages, msg2)
+		messages = append(messages, NewMessageSign2(r.SelfID, partyJ.ID, sign2))
 	}
 
 	return messages, nil
 }
 
-func (round *round2) computeHashKJ() error {
+func (r *round2) computeHashKJ() {
 	// The papers says that we need to reliably broadcast this data, however unless we use
 	// a system like white-city, we can't actually do this.
 	// In the next round, if someone has a different hash, then we must abort, but there is no way of knowing who
 	// was the culprit. We could maybe assume that we have an honest majority, but this clashes with the base assumptions.
-	h := round.H.Clone()
-	for _, id := range round.S.SignerIDs {
-		partyJ := round.parties[id]
-		if err := h.WriteAny(partyJ.K, partyJ.G); err != nil {
-			return fmt.Errorf("sign.round2.GenerateMessages(): hash of K,J: %w", err)
-		}
+	h := r.Hash.Clone()
+	for _, id := range r.S.PartyIDs() {
+		partyJ := r.parties[id]
+		_, _ = h.WriteAny(partyJ.K, partyJ.G)
 	}
-	round.hashOfAllKjGj = make([]byte, params.HashBytes)
-	if _, err := h.ReadBytes(round.hashOfAllKjGj); err != nil {
-		return fmt.Errorf("sign.round2.GenerateMessages(): hash of K,J: %w", err)
-	}
-	return nil
-}
-
-func (round *round2) message2(partyJ *localParty) (*pb.Message, error) {
-	proofDelta, err := partyJ.DeltaMtA.ProveAffG(round.thisParty.Gamma, round.H.CloneWithID(round.SelfID), partyJ.Pedersen)
-	if err != nil {
-		return nil, fmt.Errorf("sign.round2.GenerateMessages(): failed to generate affg proof: %w", err)
-	}
-	proofChi, err := partyJ.ChiMtA.ProveAffG(round.thisParty.ECDSA, round.H.CloneWithID(round.SelfID), partyJ.Pedersen)
-	if err != nil {
-		return nil, fmt.Errorf("sign.round2.GenerateMessages(): failed to generate affg hat proof: %w", err)
-	}
-
-	proofLog, err := zklogstar.Public{
-		C:      round.thisParty.G,
-		X:      round.thisParty.Gamma,
-		Prover: round.thisParty.Paillier,
-		Aux:    partyJ.Pedersen,
-	}.Prove(round.H.CloneWithID(round.SelfID), zklogstar.Private{
-		X:   round.gamma.BigInt(),
-		Rho: round.gammaRand,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("sign.round2.GenerateMessages(): failed to generate log proof: %w", err)
-	}
-
-	return &pb.Message{
-		Type: pb.MessageType_TypeSign2,
-		From: round.SelfID,
-		To:   partyJ.ID, Sign2: &pb.Sign2{
-			HashKG:       round.hashOfAllKjGj,
-			Gamma:        pb.NewPoint(round.thisParty.Gamma),
-			D:            pb.NewCiphertext(partyJ.DeltaMtA.D),
-			F:            pb.NewCiphertext(partyJ.DeltaMtA.F),
-			DHat:         pb.NewCiphertext(partyJ.ChiMtA.D),
-			FHat:         pb.NewCiphertext(partyJ.ChiMtA.F),
-			ProofAffG:    proofDelta,
-			ProofAffGHat: proofChi,
-			ProofLog:     proofLog,
-		},
-	}, nil
+	r.EchoHash, _ = h.ReadBytes(nil)
+	return
 }
 
 // Finalize implements round.Round
-func (round *round2) Finalize() (round.Round, error) {
+func (r *round2) Finalize() (round.Round, error) {
 	return &round3{
-		round2: round,
+		round2: r,
 	}, nil
 }
 
-func (round *round2) MessageType() pb.MessageType {
-	return pb.MessageType_TypeSign1
+func (r *round2) MessageType() round.MessageType {
+	return MessageTypeSign1
 }

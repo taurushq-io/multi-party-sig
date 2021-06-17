@@ -1,8 +1,6 @@
 package zksch
 
 import (
-	"fmt"
-
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 )
@@ -22,23 +20,62 @@ type Proof struct {
 	*Response
 }
 
-func challenge(hash *hash.Hash, A, X *curve.Point) (*curve.Scalar, error) {
-	if err := hash.WriteAny(A, X); err != nil {
-		return nil, fmt.Errorf("challenge: %w", err)
-	}
-	e, err := hash.ReadScalar()
-	if err != nil {
-		return nil, fmt.Errorf("challenge: %w", err)
-	}
-	return e, nil
+func challenge(hash *hash.Hash, A, X *curve.Point) *curve.Scalar {
+	_, _ = hash.WriteAny(A, X)
+	return hash.ReadScalar()
 }
 
-func Prove(hash *hash.Hash, A, X *curve.Point, a, x *curve.Scalar) (proof *curve.Scalar, err error) {
-	if proof, err = challenge(hash, A, X); err != nil {
-		return nil, fmt.Errorf("zkschnorr: %w", err)
+func challengeMult(h *hash.Hash, As, Xs []curve.Point) []*curve.Scalar {
+	t := len(Xs)
+	for l := 0; l < t; l++ {
+		_, _ = h.WriteAny(&As[l], &Xs[l])
 	}
+	es := make([]*curve.Scalar, t)
+	for l := range es {
+		es[l] = h.ReadScalar()
+	}
+	return es
+}
+
+func ProveMulti(h *hash.Hash, As, Xs []curve.Point, as, xs []curve.Scalar) []curve.Scalar {
+	t := len(xs)
+	if len(As) != t || len(Xs) != t || len(as) != t {
+		return nil
+	}
+
+	es := challengeMult(h, As, Xs)
+
+	proofs := make([]curve.Scalar, t)
+	for l := range proofs {
+		proofs[l].MultiplyAdd(es[l], &xs[l], &as[l])
+	}
+	return proofs
+}
+
+func Prove(hash *hash.Hash, A, X *curve.Point, a, x *curve.Scalar) *curve.Scalar {
+	proof := challenge(hash, A, X)
 	proof.MultiplyAdd(proof, x, a)
-	return
+	return proof
+}
+
+func VerifyMulti(h *hash.Hash, As, Xs []curve.Point, proofs []curve.Scalar) bool {
+	t := len(Xs)
+	if len(As) != t || len(proofs) != t {
+		return false
+	}
+
+	es := challengeMult(h, As, Xs)
+
+	var lhs, rhs curve.Point
+	for l := range proofs {
+		lhs.ScalarBaseMult(&proofs[l])
+		rhs.ScalarMult(es[l], &Xs[l])
+		rhs.Add(&rhs, &As[l])
+		if !lhs.Equal(&rhs) {
+			return false
+		}
+	}
+	return true
 }
 
 func Verify(hash *hash.Hash, A, X *curve.Point, proof *curve.Scalar) bool {
@@ -50,10 +87,7 @@ func Verify(hash *hash.Hash, A, X *curve.Point, proof *curve.Scalar) bool {
 		return false
 	}
 
-	e, err := challenge(hash, A, X)
-	if err != nil {
-		return false
-	}
+	e := challenge(hash, A, X)
 
 	var lhs, rhs curve.Point
 	lhs.ScalarBaseMult(proof)

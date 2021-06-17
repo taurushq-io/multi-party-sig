@@ -3,8 +3,8 @@ package zkdec
 import (
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
@@ -32,26 +32,20 @@ type (
 	}
 )
 
-type Commitment struct {
-	// S = sʸ tᵘ
-	// T = sᵃ tᵛ
-	S, T *big.Int
-
-	// A = Enc₀(α; r)
-	A *paillier.Ciphertext
-
-	// Gamma = alpha (mod q)
-	Gamma *curve.Scalar
+func (p Proof) IsValid(public Public) bool {
+	if p.Gamma == nil || p.Gamma.IsZero() {
+		return false
+	}
+	if !public.Prover.ValidateCiphertexts(p.A) {
+		return false
+	}
+	if !arith.IsValidModN(public.Prover.N, p.W) {
+		return false
+	}
+	return true
 }
 
-type Response struct {
-	// Z1 = α + e•y
-	// Z2 = ν + e•μ
-	// W  = r ρ ᵉ (mod N₀)
-	Z1, Z2, W *big.Int
-}
-
-func (public Public) Prove(hash *hash.Hash, private Private) (*pb.ZKDec, error) {
+func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	N0 := public.Prover.N
 
 	alpha := sample.IntervalLEps()
@@ -60,94 +54,67 @@ func (public Public) Prove(hash *hash.Hash, private Private) (*pb.ZKDec, error) 
 	nu := sample.IntervalLEpsN()
 	r := sample.UnitModN(N0)
 
-	A, _ := public.Prover.Enc(alpha, r)
-
 	gamma := curve.NewScalarBigInt(alpha)
 
-	commitment := Commitment{
+	commitment := &Commitment{
 		S:     public.Aux.Commit(private.Y, mu),
 		T:     public.Aux.Commit(alpha, nu),
-		A:     A,
+		A:     public.Prover.EncWithNonce(alpha, r),
 		Gamma: gamma,
 	}
 
-	e, err := challenge(hash, public, commitment)
-	if err != nil {
-		return nil, err
+	e := challenge(hash, public, commitment)
+
+	var z1, z2, w big.Int
+	return &Proof{
+		Commitment: commitment,
+		Z1:         z1.Mul(e, private.Y).Add(&z1, alpha),             // z₁ = e•y+α
+		Z2:         z2.Mul(e, mu).Add(&z2, nu),                       // z₂ = e•μ + ν
+		W:          w.Exp(private.Rho, e, N0).Mul(&w, r).Mod(&w, N0), // w = ρ^e•r mod N₀
 	}
-
-	z1 := new(big.Int).Mul(e, private.Y)
-	z1.Add(z1, alpha)
-
-	z2 := new(big.Int).Mul(e, mu)
-	z2.Add(z2, nu)
-
-	w := new(big.Int).Exp(private.Rho, e, N0)
-	w.Mul(w, r)
-	w.Mod(w, N0)
-
-	return &pb.ZKDec{
-		S:     pb.NewInt(commitment.S),
-		T:     pb.NewInt(commitment.T),
-		A:     pb.NewCiphertext(A),
-		Gamma: pb.NewScalar(gamma),
-		Z1:    pb.NewInt(z1),
-		Z2:    pb.NewInt(z2),
-		W:     pb.NewInt(w),
-	}, nil
 }
 
-func (public Public) Verify(hash *hash.Hash, proof *pb.ZKDec) bool {
-	if !proof.IsValid() {
+func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
+	if !p.IsValid(public) {
 		return false
 	}
 
-	S, T := proof.GetS().Unmarshal(), proof.GetT().Unmarshal()
-	A := proof.GetA().Unmarshal()
-	gamma, err := proof.GetGamma().Unmarshal()
-	if err != nil {
-		return false
-	}
-	z1, z2, w := proof.Z1.Unmarshal(), proof.Z2.Unmarshal(), proof.GetW().Unmarshal()
+	e := challenge(hash, public, p.Commitment)
 
-	e, err := challenge(hash, public, Commitment{
-		S:     S,
-		T:     T,
-		A:     A,
-		Gamma: gamma,
-	})
-	if err != nil {
+	if !public.Aux.Verify(p.Z1, p.Z2, p.T, p.S, e) {
 		return false
 	}
 
-	lhsCt, _ := public.Prover.Enc(z1, w)
-	rhsCt := paillier.NewCiphertext().Mul(public.Prover, public.C, e)
-	rhsCt.Add(public.Prover, rhsCt, A)
-	if !lhsCt.Equal(rhsCt) {
-		return false
+	{
+		// lhs = Enc₀(z₁;w)
+		lhs := public.Prover.EncWithNonce(p.Z1, p.W)
+
+		// rhs = (e ⊙ C) ⊕ A
+		rhs := public.C.Clone().Mul(public.Prover, e).Add(public.Prover, p.A)
+		if !lhs.Equal(rhs) {
+			return false
+		}
 	}
 
-	lhs := curve.NewScalarBigInt(z1)
-	rhs := curve.NewScalarBigInt(e)
-	rhs.MultiplyAdd(rhs, public.X, gamma)
-	if !lhs.Equal(rhs) {
-		return false
-	}
+	{
+		// lhs = z₁ mod q
+		lhs := curve.NewScalarBigInt(p.Z1)
 
-	if !public.Aux.Verify(z1, z2, T, S, e) {
-		return false
+		// rhs = e•x + γ
+		rhs := curve.NewScalarBigInt(e)
+		rhs.MultiplyAdd(rhs, public.X, p.Gamma)
+		if !lhs.Equal(rhs) {
+			return false
+		}
 	}
 
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment Commitment) (*big.Int, error) {
-	err := hash.WriteAny(public.Aux, public.Prover,
+func challenge(hash *hash.Hash, public Public, commitment *Commitment) *big.Int {
+	_, _ = hash.WriteAny(public.Aux, public.Prover,
 		public.C, public.X,
 		commitment.S, commitment.T, commitment.A, commitment.Gamma)
-	if err != nil {
-		return nil, err
-	}
 
 	return hash.ReadFqNegative()
 }

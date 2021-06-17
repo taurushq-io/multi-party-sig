@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/protocols/sign/signature"
@@ -13,31 +12,22 @@ import (
 
 type output struct {
 	*round4
-	// sigma = σ = km + rχ
-	// this is the full "s" part of the signature
-	sigma *curve.Scalar
-
-	// signature wraps (R,S)
-	signature *signature.Signature
+	// Signature wraps (R,S)
+	Signature *signature.Signature
 }
 
 // ProcessMessage implements round.Round
 //
 // - σⱼ != 0
-func (round *output) ProcessMessage(msg *pb.Message) error {
-	j := msg.GetFromID()
-	partyJ := round.parties[j]
+func (r *output) ProcessMessage(msg round.Message) error {
+	j := msg.GetHeader().From
+	partyJ := r.parties[j]
+	body := msg.(*Message).GetSign4()
 
-	body := msg.GetSign4()
-
-	sigma, err := body.GetSigma().Unmarshal()
-	if err != nil {
-		return fmt.Errorf("sign.output.ProcessMessage(): party %s: unmarshal sigma: %w", j, err)
-	}
-	if sigma.IsZero() {
+	if body.SigmaShare.IsZero() {
 		return fmt.Errorf("sign.output.ProcessMessage(): party %s: sigma is 0", j)
 	}
-	partyJ.sigma = sigma
+	partyJ.SigmaShare = body.SigmaShare
 
 	return nil
 }
@@ -46,34 +36,34 @@ func (round *output) ProcessMessage(msg *pb.Message) error {
 //
 // - compute σ = ∑ⱼ σⱼ
 // - verify signature
-func (round *output) GenerateMessages() ([]*pb.Message, error) {
+func (r *output) GenerateMessages() ([]round.Message, error) {
 	// compute σ = ∑ⱼ σⱼ
-	round.sigma = curve.NewScalar()
-	for _, partyJ := range round.parties {
-		round.sigma.Add(round.sigma, partyJ.sigma)
+	S := curve.NewScalar()
+	for _, partyJ := range r.parties {
+		S.Add(S, partyJ.SigmaShare)
 	}
 
-	round.signature = &signature.Signature{
-		R: round.R,
-		S: round.sigma,
+	r.Signature = &signature.Signature{
+		R: r.BigR,
+		S: S,
 	}
 
 	// Verify signature using Go's ECDSA lib
-	if !ecdsa.Verify(round.S.PublicKey, round.S.Message, round.r.BigInt(), round.sigma.BigInt()) {
+	if !ecdsa.Verify(r.S.PublicKey(), r.Message, r.r.BigInt(), r.Signature.S.BigInt()) {
 		return nil, errors.New("sign.output.GenerateMessages(): failed to validate signature with Go stdlib")
 	}
-	pk := curve.NewIdentityPoint().SetPublicKey(round.S.PublicKey)
-	if !round.signature.Verify(pk, round.S.Message) {
+	pk := curve.FromPublicKey(r.S.PublicKey())
+	if !r.Signature.Verify(pk, r.Message) {
 		return nil, errors.New("sign.output.GenerateMessages(): failed to validate signature with Go stdlib")
 	}
 	return nil, nil
 }
 
 // Finalize implements round.Round
-func (round *output) Finalize() (round.Round, error) {
+func (r *output) Finalize() (round.Round, error) {
 	return nil, nil
 }
 
-func (round *output) MessageType() pb.MessageType {
-	return pb.MessageType_TypeSign4
+func (r *output) MessageType() round.MessageType {
+	return MessageTypeSign4
 }

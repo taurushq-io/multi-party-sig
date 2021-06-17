@@ -3,7 +3,6 @@ package sign
 import (
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	zklogstar "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
@@ -11,15 +10,15 @@ import (
 
 type round4 struct {
 	*round3
-	// delta = δ = ∑ⱼ δⱼ
+	// Delta = δ = ∑ⱼ δⱼ
 	// computed from received shares
-	delta *curve.Scalar
+	Delta *curve.Scalar
 
-	// Delta = Δ = ∑ⱼ Δⱼ
-	Delta *curve.Point
+	// BigDelta = Δ = ∑ⱼ Δⱼ
+	BigDelta *curve.Point
 
 	// R = [δ⁻¹] Γ
-	R *curve.Point
+	BigR *curve.Point
 
 	// r = R|ₓ
 	r *curve.Scalar
@@ -29,34 +28,24 @@ type round4 struct {
 //
 // - Get Δⱼ, δⱼ, ϕ''ᵢⱼ
 // - Verify Π(log*)(ϕ''ᵢⱼ, Δⱼ, Γ)
-func (round *round4) ProcessMessage(msg *pb.Message) error {
-	j := msg.GetFromID()
-	partyJ := round.parties[j]
-
-	body := msg.GetSign3()
-
-	Delta, err := body.GetDeltaGroup().Unmarshal()
-	if err != nil {
-		return fmt.Errorf("sign.round4.ProcessMessage(): unmarshal Delta: %w", err)
-	}
-	delta, err := body.GetDelta().Unmarshal()
-	if err != nil {
-		return fmt.Errorf("sign.round4.ProcessMessage(): unmarshal delta: %w", err)
-	}
+func (r *round4) ProcessMessage(msg round.Message) error {
+	j := msg.GetHeader().From
+	partyJ := r.parties[j]
+	body := msg.(*Message).GetSign3()
 
 	zkLogPublic := zklogstar.Public{
 		C:      partyJ.K,
-		X:      Delta,
-		G:      round.Gamma,
+		X:      body.BigDeltaShare,
+		G:      r.Gamma,
 		Prover: partyJ.Paillier,
-		Aux:    round.thisParty.Pedersen,
+		Aux:    r.Self.Pedersen,
 	}
-	if !zkLogPublic.Verify(round.H.CloneWithID(j), body.ProofLog) {
+	if !body.ProofLog.Verify(r.Hash.CloneWithID(j), zkLogPublic) {
 		return fmt.Errorf("sign.round4.ProcessMessage(): party %s: log proof failed to verify", j)
 	}
 
-	partyJ.Delta = Delta
-	partyJ.delta = delta
+	partyJ.BigDeltaShare = body.BigDeltaShare
+	partyJ.DeltaShare = body.DeltaShare
 
 	return partyJ.AddMessage(msg)
 }
@@ -67,48 +56,43 @@ func (round *round4) ProcessMessage(msg *pb.Message) error {
 // - set Δ = ∑ⱼ Δⱼ
 // - verify Δ = [δ]G
 // - compute σᵢ = rχᵢ + kᵢm
-func (round *round4) GenerateMessages() ([]*pb.Message, error) {
+func (r *round4) GenerateMessages() ([]round.Message, error) {
 	// δ = ∑ⱼ δⱼ
-	round.delta = curve.NewScalar()
 	// Δ = ∑ⱼ Δⱼ
-	round.Delta = curve.NewIdentityPoint()
-	for _, partyJ := range round.parties {
-		round.delta.Add(round.delta, partyJ.delta)
-		round.Delta.Add(round.Delta, partyJ.Delta)
+	r.Delta = curve.NewScalar()
+	r.BigDelta = curve.NewIdentityPoint()
+	for _, partyJ := range r.parties {
+		r.Delta.Add(r.Delta, partyJ.DeltaShare)
+		r.BigDelta.Add(r.BigDelta, partyJ.BigDeltaShare)
 	}
 
 	// Δ == [δ]G
-	deltaComputed := curve.NewIdentityPoint().ScalarBaseMult(round.delta)
-	if !deltaComputed.Equal(round.Delta) {
-		return nil, fmt.Errorf("sign.round4.GenerateMessages(): computed Δ is inconsistent with [δ]G")
+	deltaComputed := curve.NewIdentityPoint().ScalarBaseMult(r.Delta)
+	if !deltaComputed.Equal(r.BigDelta) {
+		//return nil, fmt.Errorf("sign.round4.GenerateMessages(): computed Δ is inconsistent with [δ]G")
 	}
 
-	deltaInv := curve.NewScalar().Invert(round.delta)                    // δ⁻¹
-	round.R = curve.NewIdentityPoint().ScalarMult(deltaInv, round.Gamma) // R = [δ⁻¹] Γ
-	round.r = round.R.XScalar()                                          // r = R|ₓ
+	deltaInv := curve.NewScalar().Invert(r.Delta)                   // δ⁻¹
+	r.BigR = curve.NewIdentityPoint().ScalarMult(deltaInv, r.Gamma) // R = [δ⁻¹] Γ
+	r.r = r.BigR.XScalar()                                          // r = R|ₓ
 
-	// km = H(m)⋅kᵢ
-	km := curve.NewScalar().SetHash(round.S.Message)
-	km.Multiply(km, round.k)
+	// km = Hash(m)⋅kᵢ
+	km := curve.NewScalar().SetHash(r.Message)
+	km.Multiply(km, r.KShare)
 
 	// σᵢ = rχᵢ + kᵢm
-	round.thisParty.sigma = curve.NewScalar().MultiplyAdd(round.r, round.chi, km)
+	r.Self.SigmaShare = curve.NewScalar().MultiplyAdd(r.r, r.ChiShare, km)
 
-	return []*pb.Message{{
-		Type:      pb.MessageType_TypeSign4,
-		From:      round.SelfID,
-		Broadcast: pb.Broadcast_Basic,
-		Sign4:     &pb.Sign4{Sigma: pb.NewScalar(round.thisParty.sigma)},
-	}}, nil
+	return NewMessageSign4(r.SelfID, &Sign4{SigmaShare: r.Self.SigmaShare}), nil
 }
 
 // Finalize implements round.Round
-func (round *round4) Finalize() (round.Round, error) {
+func (r *round4) Finalize() (round.Round, error) {
 	return &output{
-		round4: round,
+		round4: r,
 	}, nil
 }
 
-func (round *round4) MessageType() pb.MessageType {
-	return pb.MessageType_TypeSign3
+func (r *round4) MessageType() round.MessageType {
+	return MessageTypeSign3
 }

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
@@ -16,7 +16,7 @@ func TestSecret_MarshalJSON(t *testing.T) {
 	_, _ = rand.Read(rid)
 	s := Secret{
 		ID:       "bal",
-		ECDSA:    curve.NewScalarRandom(),
+		ECDSA:    sample.Scalar(),
 		Paillier: paillier.NewSecretKey(),
 		RID:      rid,
 	}

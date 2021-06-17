@@ -6,75 +6,45 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
-func sampleNeg(buf []byte) ([]byte, bool) {
+func sampleNeg(bits int) *big.Int {
+	var n big.Int
+	buf := make([]byte, bits/8+1)
 	mustReadBits(buf)
-	signBit := buf[len(buf)-1]&1 == 1
-	buf = buf[:len(buf)-2]
-	return buf, signBit
+	neg := buf[0]&1 == 1
+	buf = buf[1:]
+	n.SetBytes(buf)
+	if neg {
+		n.Neg(&n)
+	}
+	return &n
 }
 
 // IntervalL returns an integer in the range ± 2ˡ.
 func IntervalL() *big.Int {
-	var n big.Int
-	buf, neg := sampleNeg(make([]byte, params.L/8+1))
-	n.SetBytes(buf)
-	if neg {
-		n.Neg(&n)
-	}
-	return &n
+	return sampleNeg(params.L)
 }
 
 // IntervalLPrime returns an integer in the range ± 2ˡº.
 func IntervalLPrime() *big.Int {
-	var n big.Int
-	buf, neg := sampleNeg(make([]byte, params.LPrime/8+1))
-	n.SetBytes(buf)
-	if neg {
-		n.Neg(&n)
-	}
-	return &n
+	return sampleNeg(params.LPrime)
 }
 
-// IntervalLPrime returns an integer in the range ± 2ˡ⁺ᵉ
+// IntervalLEps returns an integer in the range ± 2ˡ⁺ᵉ
 func IntervalLEps() *big.Int {
-	var n big.Int
-	buf, neg := sampleNeg(make([]byte, params.LPlusEpsilon/8+1))
-	n.SetBytes(buf)
-	if neg {
-		n.Neg(&n)
-	}
-	return &n
+	return sampleNeg(params.LPlusEpsilon)
 }
 
 // IntervalLPrimeEps returns an integer in the range ± 2ˡº⁺ᵉ
 func IntervalLPrimeEps() *big.Int {
-	var n big.Int
-	buf, neg := sampleNeg(make([]byte, params.LPrimePlusEpsilon/8+1))
-	n.SetBytes(buf)
-	if neg {
-		n.Neg(&n)
-	}
-	return &n
+	return sampleNeg(params.LPrimePlusEpsilon)
 }
 
 // IntervalLN returns an integer in the range ± 2ˡ•N, where N is the size of a Paillier modulus.
 func IntervalLN() *big.Int {
-	var n big.Int
-	buf, neg := sampleNeg(make([]byte, (params.L+params.BitsPaillier)/8+1))
-	n.SetBytes(buf)
-	if neg {
-		n.Neg(&n)
-	}
-	return &n
+	return sampleNeg(params.L + params.BitsIntModN)
 }
 
 // IntervalLEpsN returns an integer in the range ± 2ˡ⁺ᵉ•N, where N is the size of a Paillier modulus.
 func IntervalLEpsN() *big.Int {
-	var n big.Int
-	buf, neg := sampleNeg(make([]byte, (params.LPlusEpsilon+params.BitsPaillier)/8+1))
-	n.SetBytes(buf)
-	if neg {
-		n.Neg(&n)
-	}
-	return &n
+	return sampleNeg(params.LPlusEpsilon + params.BitsIntModN)
 }

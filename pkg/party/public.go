@@ -6,17 +6,12 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 )
 
 type Public struct {
 	// ID of the party this data is associated with
 	ID ID
-
-	// SSID is the hash of the session ID this data is associated to
-	// Should never be nil
-	SSID []byte
 
 	// ECDSA public key, may be nil if the keygen has not run yet
 	ECDSA *curve.Point
@@ -38,11 +33,8 @@ func (p Public) KeygenDone() bool {
 }
 
 func (p *Public) Clone() *Public {
-	ssid := make([]byte, params.HashBytes)
-	copy(ssid, p.SSID)
 	p2 := &Public{
-		ID:   p.ID,
-		SSID: ssid,
+		ID: p.ID,
 	}
 
 	if p.Paillier != nil {
@@ -65,11 +57,6 @@ func (p *Public) Validate() error {
 
 	if p.preKeygen() {
 		return nil
-	}
-
-	// check SSID length
-	if len(p.SSID) != params.HashBytes {
-		return errors.New("party.Public: SSID has wrong length")
 	}
 
 	// nil checks

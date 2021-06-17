@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 )
 
 type Party struct {
-	*party.Public
+	id party.ID
 
-	Messages map[pb.MessageType]*pb.Message
-	handled  map[pb.MessageType]bool
+	Messages map[MessageType]Message
+	handled  map[MessageType]bool
 
 	mu sync.Mutex
 }
@@ -23,29 +22,34 @@ var (
 	ErrDuplicateMessage = errors.New("message already received")
 )
 
-func NewBaseParty(public *party.Public) *Party {
+func NewBaseParty(id party.ID) *Party {
 	return &Party{
-		Public:   public,
-		Messages: map[pb.MessageType]*pb.Message{},
-		handled:  map[pb.MessageType]bool{},
+		id:       id,
+		Messages: map[MessageType]Message{},
+		handled:  map[MessageType]bool{},
 	}
 }
 
-func (p *Party) AddMessage(msg *pb.Message) error {
+func (p *Party) AddMessage(msg Message) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	if p.ID != party.ID(msg.GetFromID()) {
-		return fmt.Errorf("peer %s: %w", p.ID, ErrWrongRecipient)
-	}
-	t := msg.GetType()
-	_, ok := p.Messages[t]
-	if ok {
-		return fmt.Errorf("peer %s: %w", p.ID, ErrDuplicateMessage)
+	h := msg.GetHeader()
+	if h == nil {
+		return errors.New("round.Party: msg does not contain any header")
 	}
 
-	p.Messages[t] = msg
-	p.handled[t] = true
+	if p.id != h.From {
+		return fmt.Errorf("peer %s: %w", p.id, ErrWrongRecipient)
+	}
+	msgType := msg.Type()
+	_, ok := p.Messages[msgType]
+	if ok {
+		return fmt.Errorf("peer %s: %w", p.id, ErrDuplicateMessage)
+	}
+
+	p.Messages[msgType] = msg
+	p.handled[msgType] = true
 
 	return nil
 }

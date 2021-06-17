@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package zkmod;
+
+option go_package = "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mod;zkmod";
+
+option (gogoproto.stable_marshaler_all) = true;
+option (gogoproto.goproto_getters_all) = false;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+message Proof {
+  bytes w = 1 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes x = 2 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/proto.IntSlice;github.com/taurusgroup/cmp-ecdsa/proto.IntSliceCaster"];
+  repeated bool a = 3;
+  repeated bool b = 4;
+  bytes z = 5 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/proto.IntSlice;github.com/taurusgroup/cmp-ecdsa/proto.IntSliceCaster"];
+}

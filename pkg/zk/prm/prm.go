@@ -1,18 +1,16 @@
 package zkprm
 
 import (
-	"fmt"
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pb"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 )
 
 type (
-	// Public is the
 	Public struct {
 		Pedersen *pedersen.Parameters
 	}
@@ -21,69 +19,73 @@ type (
 	}
 )
 
-// Prove generates a proof that:
+func (p Proof) IsValid(public Public) bool {
+	if len(*p.A) != params.StatParam || len(*p.Z) != params.StatParam {
+		return false
+	}
+	if !arith.IsValidModN(public.Pedersen.N, *p.A...) {
+		return false
+	}
+	if !arith.IsValidModN(public.Pedersen.N, *p.Z...) {
+		return false
+	}
+	return true
+}
+
+// NewProof generates a proof that:
 // s = t^lambda (mod N)
-func (public Public) Prove(hash *hash.Hash, private Private) (*pb.ZKPrm, error) {
-	var err error
+func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	n := public.Pedersen.N
 	phi := private.Phi
 
-	A := make([]*pb.Int, params.StatParam)
 	a := make([]*big.Int, params.StatParam)
+	A := make([]*big.Int, params.StatParam)
 
-	Atemp := new(big.Int)
 	for i := 0; i < params.StatParam; i++ {
+		// aᵢ ∈ mod ϕ(N)
 		a[i] = sample.IntervalLN()
 		a[i].Mod(a[i], phi)
-		Atemp.Exp(public.Pedersen.T, a[i], n)
-		A[i] = pb.NewInt(Atemp)
+
+		// Aᵢ = tᵃ mod N
+		A[i] = new(big.Int).Exp(public.Pedersen.T, a[i], n)
 	}
 
-	es, err := challenge(hash, public, A)
-	if err != nil {
-		return nil, fmt.Errorf("zkprm: prove: %w", err)
-	}
+	es := challenge(hash, public, A)
 
-	z := new(big.Int)
-	Z := make([]*pb.Int, params.StatParam)
+	Z := make([]*big.Int, params.StatParam)
 	for i := 0; i < params.StatParam; i++ {
-		z.Set(a[i])
+		z := a[i]
 		if es[i] {
 			z.Add(z, private.Lambda)
 			z.Mod(z, phi)
 		}
-		Z[i] = pb.NewInt(z)
+		Z[i] = z
 	}
 
-	return &pb.ZKPrm{
-		A: A,
-		Z: Z,
-	}, nil
+	return &Proof{
+		A: &A,
+		Z: &Z,
+	}
 }
 
-func (public Public) Verify(hash *hash.Hash, proof *pb.ZKPrm) bool {
-	var err error
-
-	if !proof.IsValid() {
+func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
+	if !p.IsValid(public) {
 		return false
 	}
-	if err = public.Pedersen.Validate(); err != nil {
+
+	if err := public.Pedersen.Validate(); err != nil {
 		return false
 	}
 
 	n, s, t := public.Pedersen.N, public.Pedersen.S, public.Pedersen.T
 
-	es, err := challenge(hash, public, proof.A)
-	if err != nil {
-		return false
-	}
+	es := challenge(hash, public, *p.A)
 
 	var lhs, rhs big.Int
 	one := big.NewInt(1)
-	z, a := new(big.Int), new(big.Int)
 	for i := 0; i < params.StatParam; i++ {
-		z = proof.Z[i].Unmarshal()
-		a = proof.A[i].Unmarshal()
+		z := (*p.Z)[i]
+		a := (*p.A)[i]
 
 		if a.Cmp(one) == 0 {
 			return false
@@ -104,15 +106,21 @@ func (public Public) Verify(hash *hash.Hash, proof *pb.ZKPrm) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, A []*pb.Int) (es []bool, err error) {
-	if err = hash.WriteInt(public.Pedersen.N, public.Pedersen.S, public.Pedersen.T); err != nil {
-		return nil, err
-	}
+func challenge(hash *hash.Hash, public Public, A []*big.Int) []bool {
+	_, _ = hash.WriteAny(public.Pedersen.N, public.Pedersen.S, public.Pedersen.T)
 	for _, a := range A {
-		if _, err = hash.Write(a.Int); err != nil {
-			return nil, err
-		}
+		_, _ = hash.WriteAny(a)
 	}
-	return hash.ReadBools(params.StatParam)
 
+	tmpBytes := make([]byte, params.StatParam)
+
+	_, _ = hash.ReadBytes(tmpBytes)
+
+	out := make([]bool, params.StatParam)
+	for i := range out {
+		b := (tmpBytes[i] & 1) == 1
+		out[i] = b
+	}
+
+	return out
 }

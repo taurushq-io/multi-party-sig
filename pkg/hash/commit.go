@@ -18,7 +18,6 @@ type (
 func (hash *Hash) Commit(id party.ID, data ...interface{}) (Commitment, Decommitment, error) {
 	var err error
 	decommitment := make([]byte, params.SecBytes)
-	commitment := make([]byte, params.HashBytes)
 
 	if _, err = rand.Read(decommitment); err != nil {
 		return nil, nil, err
@@ -27,18 +26,14 @@ func (hash *Hash) Commit(id party.ID, data ...interface{}) (Commitment, Decommit
 	h := hash.CloneWithID(id)
 
 	for _, item := range data {
-		if err = h.WriteAny(item); err != nil {
+		if _, err = h.WriteAny(item); err != nil {
 			return nil, nil, err
 		}
 	}
 
-	if err = h.WriteBytes(decommitment); err != nil {
-		return nil, nil, err
-	}
+	_, _ = h.Write(decommitment)
 
-	if _, err = h.ReadBytes(commitment); err != nil {
-		return nil, nil, err
-	}
+	commitment, _ := h.ReadBytes(nil)
 
 	return commitment, decommitment, nil
 }
@@ -54,19 +49,14 @@ func (hash *Hash) Decommit(id party.ID, c Commitment, d Decommitment, data ...in
 	h := hash.CloneWithID(id)
 
 	for _, item := range data {
-		if err = h.WriteAny(item); err != nil {
+		if _, err = h.WriteAny(item); err != nil {
 			return false
 		}
 	}
 
-	if err = h.WriteBytes(d); err != nil {
-		return false
-	}
+	_, _ = h.Write(d)
 
-	computedCommitment := make([]byte, params.HashBytes)
-	if _, err = h.ReadBytes(computedCommitment); err != nil {
-		return false
-	}
+	computedCommitment, _ := h.ReadBytes(nil)
 
 	return bytes.Equal(computedCommitment, c)
 }

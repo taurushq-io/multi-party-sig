@@ -10,7 +10,7 @@ import (
 
 func TestPublicKey_UnmarshalJSON(t *testing.T) {
 	sk := NewSecretKey()
-	pk := sk.PublicKey()
+	pk := sk.PublicKey
 	d, err := json.Marshal(pk)
 	require.NoError(t, err, "failed to marshal")
 	var pk2 PublicKey

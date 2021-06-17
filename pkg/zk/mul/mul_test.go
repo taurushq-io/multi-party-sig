@@ -3,24 +3,23 @@ package zkmul
 import (
 	"testing"
 
-	"github.com/taurusgroup/cmp-ecdsa/pb"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestMul(t *testing.T) {
 	prover := zk.ProverPaillierPublic
 	x := sample.IntervalLN()
-	X, rhoX := prover.Enc(x, nil)
+	X, rhoX := prover.Enc(x)
 
 	y := sample.IntervalLN()
-	Y, _ := prover.Enc(y, nil)
+	Y, _ := prover.Enc(y)
 
-	C := paillier.NewCiphertext().Mul(prover, Y, x)
-	_, rho := C.Randomize(prover, nil)
+	C := Y.Clone().Mul(prover, x)
+	rho := C.Randomize(prover, nil)
 
 	public := Public{
 		X:      X,
@@ -34,24 +33,17 @@ func TestMul(t *testing.T) {
 		RhoX: rhoX,
 	}
 
-	proof, err := public.Prove(hash.New(), private)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	out, err := proto.Marshal(proof)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	proof2 := &pb.ZKMul{}
-	err = proto.Unmarshal(out, proof2)
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	proof := NewProof(hash.New(), public, private)
+	out, err := proof.Marshal()
+	require.NoError(t, err, "failed to marshal proof")
+	proof2 := &Proof{}
+	require.NoError(t, proof2.Unmarshal(out), "failed to unmarshal proof")
+	assert.Equal(t, proof, proof2)
+	out2, err := proof2.Marshal()
+	assert.Equal(t, out, out2)
+	proof3 := &Proof{}
+	require.NoError(t, proof3.Unmarshal(out2), "failed to marshal 2nd proof")
+	assert.Equal(t, proof, proof3)
 
-	if !public.Verify(hash.New(), proof2) {
-		t.Error("failed to verify")
-	}
+	assert.True(t, proof2.Verify(hash.New(), public))
 }
