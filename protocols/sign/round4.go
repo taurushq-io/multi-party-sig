@@ -69,7 +69,7 @@ func (r *round4) GenerateMessages() ([]round.Message, error) {
 	// Δ == [δ]G
 	deltaComputed := curve.NewIdentityPoint().ScalarBaseMult(r.Delta)
 	if !deltaComputed.Equal(r.BigDelta) {
-		//return nil, fmt.Errorf("sign.round4.GenerateMessages(): computed Δ is inconsistent with [δ]G")
+		return nil, fmt.Errorf("sign.round4.GenerateMessages(): computed Δ is inconsistent with [δ]G")
 	}
 
 	deltaInv := curve.NewScalar().Invert(r.Delta)                   // δ⁻¹

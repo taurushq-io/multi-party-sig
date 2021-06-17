@@ -5,11 +5,11 @@ package paillier;
 option go_package = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier";
 
 option (gogoproto.stable_marshaler_all) = true;
-option (gogoproto.equal_all) = false;
-//option (gogoproto.)
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 message Ciphertext {
+  option (gogoproto.equal) = false;
+  option (gogoproto.goproto_getters) = false;
   bytes c = 1 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
 }
