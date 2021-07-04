@@ -32,45 +32,16 @@ func TestExponent_Evaluate(t *testing.T) {
 	}
 }
 
-//func Benchmark_Evaluate(b *testing.B) {
-//	N := party.Size(100)
-//	secret := curve.NewScalarRandom()
-//	poly := NewPolynomial(N, secret)
-//	polyExp := NewPolynomialExponent(poly)
-//
-//	b.Run("normal", func(b *testing.B) {
-//		var result curve.Point
-//		for i := 0; i < b.N; i++ {
-//			randomIndex := party.RandID().Scalar()
-//			polyExp.evaluateClassic(randomIndex, &result)
-//		}
-//	})
-//	b.Run("horner", func(b *testing.B) {
-//		var result curve.Point
-//		for i := 0; i < b.N; i++ {
-//			randomIndex := party.RandID().Scalar()
-//			polyExp.evaluateHorner(randomIndex, &result)
-//		}
-//	})
-//	b.Run("vartime", func(b *testing.B) {
-//		var result curve.Point
-//		for i := 0; i < b.N; i++ {
-//			randomIndex := party.RandID().Scalar()
-//			polyExp.evaluateVar(randomIndex, &result)
-//		}
-//	})
-//}
-
 func TestSum(t *testing.T) {
 	N := 20
 	Deg := 10
 
 	randomIndex := sample.Scalar()
 
-	// compute f1(x) + f2(x) + ...
+	// compute f1(x) + f2(x) + …
 	evaluationScalar := curve.NewScalar()
 
-	// compute F1(x) + F2(x) + ...
+	// compute F1(x) + F2(x) + …
 	evaluationPartial := curve.NewIdentityPoint()
 
 	polys := make([]*Polynomial, N)
@@ -84,7 +55,7 @@ func TestSum(t *testing.T) {
 		evaluationPartial.Add(evaluationPartial, polysExp[i].Evaluate(randomIndex))
 	}
 
-	// compute (F1 + F2 + ...)(x)
+	// compute (F1 + F2 + …)(x)
 	summedExp, _ := Sum(polysExp)
 	evaluationSum := summedExp.Evaluate(randomIndex)
 

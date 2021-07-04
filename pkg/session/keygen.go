@@ -11,7 +11,9 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 )
 
-type BaseSession struct {
+// Keygen is a Session which represents the state where a keygen can be performed.
+// The information it contains can be seen as the "sid" part of the SSID.
+type Keygen struct {
 	// group for signature
 	group elliptic.Curve
 
@@ -26,14 +28,15 @@ type BaseSession struct {
 	selfID party.ID
 }
 
-// todo add group
-func NewBaseSession(partyIDs []party.ID, threshold int, selfID party.ID) (*BaseSession, error) {
+// NewKeygenSession returns an empty session where no key material is set. It can be used in the refresh protocol
+// to establish a new public key.
+func NewKeygenSession(partyIDs []party.ID, threshold int, selfID party.ID) (*Keygen, error) {
 	var err error
 	ids := make(party.IDSlice, len(partyIDs))
 	copy(ids, partyIDs)
 	ids.Sort()
-	s := &BaseSession{
-		group:     secp256k1.S256(),
+	s := &Keygen{
+		group:     secp256k1.S256(), // todo change to allow different groups
 		partyIDs:  ids,
 		threshold: threshold,
 		sid:       nil,
@@ -51,24 +54,29 @@ func NewBaseSession(partyIDs []party.ID, threshold int, selfID party.ID) (*BaseS
 	return s, nil
 }
 
-func (s BaseSession) Curve() elliptic.Curve {
+// Curve returns the curve over which this session is defined.
+func (s Keygen) Curve() elliptic.Curve {
 	return s.group
 }
 
-func (s BaseSession) Threshold() int {
+// Threshold returns the maximum number of corruption tolerated, i.e. Threshold() + 1 is the minimum number
+// of party's shares required to reconstruct the secret/sign a message.
+func (s Keygen) Threshold() int {
 	return s.threshold
 }
 
-func (s BaseSession) PartyIDs() party.IDSlice {
+// PartyIDs returns the a sorted slice of all the parties in this session
+func (s Keygen) PartyIDs() party.IDSlice {
 	return s.partyIDs
 }
 
-func (s BaseSession) N() int {
+// N is the total number of parties in this session.
+func (s Keygen) N() int {
 	return len(s.partyIDs)
 }
 
 // Public returns a new party.Public struct initialized with the ID only.
-func (s BaseSession) Public(id party.ID) *party.Public {
+func (s Keygen) Public(id party.ID) *party.Public {
 	if s.partyIDs.Contains(id) {
 		return &party.Public{
 			ID: id,
@@ -77,8 +85,13 @@ func (s BaseSession) Public(id party.ID) *party.Public {
 	return nil
 }
 
+// RID returns an empty 32 byte string since it has not been set yet
+func (s Keygen) RID() []byte {
+	return make([]byte, params.SecBytes)
+}
+
 // SSID returns the hash of the SID
-func (s BaseSession) SSID() []byte {
+func (s Keygen) SSID() []byte {
 	if len(s.sid) == 0 {
 		s.sid = computeSSID(s)
 	}
@@ -86,24 +99,25 @@ func (s BaseSession) SSID() []byte {
 }
 
 // Secret returns a new party.Secret initialized with the ID only
-func (s BaseSession) Secret() *party.Secret {
+func (s Keygen) Secret() *party.Secret {
 	return &party.Secret{
 		ID: s.selfID,
 	}
 }
 
-func (s BaseSession) SelfID() party.ID {
+// SelfID is the ID of this party
+func (s Keygen) SelfID() party.ID {
 	return s.selfID
 }
 
 // SelfIndex returns the index of the party in PartyIDs that we have the secrets for, in the list of parties in the protocol.
 // If we are in a Sign session we return the index in SignerIDs.
-func (s BaseSession) SelfIndex() int {
+func (s Keygen) SelfIndex() int {
 	return s.partyIDs.GetIndex(s.selfID)
 }
 
 // PublicKey returns nil since no key material has been generated
-func (s BaseSession) PublicKey() *ecdsa.PublicKey {
+func (s Keygen) PublicKey() *ecdsa.PublicKey {
 	return nil
 }
 
@@ -111,8 +125,8 @@ func (s BaseSession) PublicKey() *ecdsa.PublicKey {
 // It assumes that the state is in a correct, and can panic if it is not.
 // Calling hash.Sum() on the resulting hash function returns the hash of the SSID.
 // It computes
-// - Hash(𝔾, q, G_x, t, n, P₁, ..., Pₙ,}
-func (s BaseSession) Hash() *hash.Hash {
+// - Hash(𝔾, q, G_x, t, n, P₁, …, Pₙ,}
+func (s Keygen) Hash() *hash.Hash {
 	intBuffer := make([]byte, 8)
 
 	h := hash.New()
@@ -131,11 +145,11 @@ func (s BaseSession) Hash() *hash.Hash {
 	return h
 }
 
-func (s BaseSession) Clone() Session {
+func (s Keygen) Clone() Session {
 	sid2 := make([]byte, params.SizeSSID)
 	copy(sid2, s.sid)
 
-	return &BaseSession{
+	return &Keygen{
 		group:     s.group,
 		partyIDs:  s.partyIDs.Copy(),
 		threshold: s.threshold,
@@ -144,10 +158,11 @@ func (s BaseSession) Clone() Session {
 	}
 }
 
-func (s BaseSession) Validate() error {
+// Validate performs basic checks to verify that all the party ID's are correct
+func (s Keygen) Validate() error {
 	return validate(s)
 }
 
-func (s BaseSession) computePublicKey() *ecdsa.PublicKey {
+func (s Keygen) computePublicKey() *ecdsa.PublicKey {
 	return nil
 }

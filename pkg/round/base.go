@@ -6,6 +6,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
 )
 
+// BaseRound can be inherited by any first round of a protocol.
 type BaseRound struct {
 	S    session.Session
 	Hash *hash.Hash

@@ -8,8 +8,10 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
+const protocolID round.MessageProtocol = 3
+
 const (
-	MessageTypeSign1 round.MessageType = 200 + iota
+	MessageTypeSign1 = (round.MessageType(protocolID) << 16) + iota
 	MessageTypeSign2
 	MessageTypeSign3
 	MessageTypeSign4

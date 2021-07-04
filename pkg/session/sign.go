@@ -10,8 +10,13 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 )
 
-type SignSession struct {
-	*KeygenSession
+// Sign is a Session which can be used to initiate a signing protocol.
+// It contains all the information included in a Refresh session, except that the
+// public shares are normalized by their Lagrange coefficients, making it an additive sharing.
+// It is initialized with the set set of parties P'₁,… , P'ₛ who are chosen to sign the message,
+// along with the message m itself.
+type Sign struct {
+	*Refresh
 
 	signerIDs party.IDSlice
 	secret    *party.Secret
@@ -22,10 +27,10 @@ type SignSession struct {
 	message []byte
 }
 
-func NewSignSession(base Session, signerIDs []party.ID, message []byte) (*SignSession, error) {
-	if _, ok := base.(*KeygenSession); !ok {
-		return nil, errors.New("session: base must of type Session")
-	}
+// NewSignSession creates a session.Sign given a base session which contains existing key material.
+// The set of 's' signers P'₁,…, P'ₛ must be a subset of the original party IDs and must include this party's ID.
+// The message must not be nil.
+func NewSignSession(base *Refresh, signerIDs []party.ID, message []byte) (*Sign, error) {
 	if err := base.Validate(); err != nil {
 		return nil, err
 	}
@@ -54,12 +59,12 @@ func NewSignSession(base Session, signerIDs []party.ID, message []byte) (*SignSe
 		}
 	}
 
-	s := &SignSession{
-		KeygenSession: base.(*KeygenSession),
-		signerIDs:     correctPartyIDs,
-		secret:        secret,
-		public:        public,
-		message:       message,
+	s := &Sign{
+		Refresh:   base,
+		signerIDs: correctPartyIDs,
+		secret:    secret,
+		public:    public,
+		message:   message,
 	}
 	s.ssid = computeSSID(s)
 	if err := s.Validate(); err != nil {
@@ -68,38 +73,43 @@ func NewSignSession(base Session, signerIDs []party.ID, message []byte) (*SignSe
 	return s, nil
 }
 
-// PartyIDs is a subset of of the original PartyIDs which are signing a message
-func (s SignSession) PartyIDs() party.IDSlice {
+// PartyIDs is a subset of the 's' original PartyIDs P'₁,…, P'  which are signing a message
+func (s Sign) PartyIDs() party.IDSlice {
 	return s.signerIDs
 }
 
-// N returns the number of parties performing the signing
-func (s SignSession) N() int {
+// N returns the number of parties 's' performing the signing
+func (s Sign) N() int {
 	return len(s.signerIDs)
 }
 
 // Public returns the public data associated to the requested party,
 // with the ECDSA key normalized to the signing set
-func (s SignSession) Public(id party.ID) *party.Public {
+func (s Sign) Public(id party.ID) *party.Public {
 	return s.public[id]
 }
 
-func (s SignSession) SSID() []byte {
+// SSID returns Hash(sid, {(Nⱼ, Sⱼ, Tⱼ)}ⱼ, s, P'₁,…, P'ₛ, m)
+func (s Sign) SSID() []byte {
 	return s.ssid
 }
 
-func (s SignSession) Secret() *party.Secret {
+// Secret returns this party's secret data, where the ECDSA secret key share has been normalized so that it is an
+// additive share of the full ECDSA secret key.
+func (s Sign) Secret() *party.Secret {
 	return s.secret
 }
 
 // Hash returns a new hash.Hash function initialized with the full SSID.
 // It assumes that the state is in a correct, and can panic if it is not.
 // Calling hash.Sum() on the resulting hash function returns the hash of the SSID.
-// It computes
-// - Hash(𝔾, q, G_x, t, n, P₁, ..., Pₙ, {(Nⱼ, Sⱼ, Tⱼ)}ⱼ, t', {Pₗ}ₗ, m)
-//		if we are signing a message m with t' parties {Pₗ}ₗ,
-func (s SignSession) Hash() *hash.Hash {
-	h := s.BaseSession.Hash()
+// The hash.Hash function is initialized with the following:
+//   Hash(𝔾, q, G_x, t, n, P₁, …, Pₙ, {(Nⱼ, Sⱼ, Tⱼ)}ⱼ, s, P'₁,… , P'ₛ, m)
+//   = Hash(sid, {(Nⱼ, Sⱼ, Tⱼ)}ⱼ, s, P'₁,… , P'ₛ, m)
+// In particular, it simply appends the data about the set of signers and the message being signed, to the
+// hash function initialized by a Refresh session.
+func (s Sign) Hash() *hash.Hash {
+	h := s.Keygen.Hash()
 
 	// write SignerIDs
 	_, _ = h.WriteAny(s.signerIDs)
@@ -110,35 +120,37 @@ func (s SignSession) Hash() *hash.Hash {
 	return h
 }
 
-func (s SignSession) Clone() Session {
+func (s Sign) Clone() Session {
 	public2 := make(map[party.ID]*party.Public, len(s.public))
 	for j, publicJ := range s.public {
 		public2[j] = publicJ.Clone()
 	}
 
-	s2 := &SignSession{
-		KeygenSession: s.KeygenSession.Clone().(*KeygenSession),
-		signerIDs:     s.signerIDs.Copy(),
-		secret:        s.secret.Clone(),
-		public:        public2,
-		ssid:          computeSSID(s),
-		message:       append([]byte{}, s.message...),
+	s2 := &Sign{
+		Refresh:   s.Refresh.Clone().(*Refresh),
+		signerIDs: s.signerIDs.Copy(),
+		secret:    s.secret.Clone(),
+		public:    public2,
+		ssid:      computeSSID(s),
+		message:   append([]byte{}, s.message...),
 	}
 
 	return s2
 }
 
-func (s SignSession) Validate() error {
+// Validate performs necessary validation to ensure that the provided key material will allow
+// a signature to be generated for the given message and the chosen set of singing parties.
+func (s Sign) Validate() error {
 	if len(s.message) == 0 {
 		return errors.New("session: message cannot be nil")
 	}
 	for _, partyID := range s.signerIDs {
-		if !s.KeygenSession.PartyIDs().Contains(partyID) {
+		if !s.Refresh.PartyIDs().Contains(partyID) {
 			return fmt.Errorf("session.Sign: Base Session does not contain ID %v", partyID)
 		}
 	}
 	for partyID, partyJ := range s.public {
-		otherPartyJ := s.KeygenSession.Public(partyID)
+		otherPartyJ := s.Refresh.Public(partyID)
 		if partyJ.ID != otherPartyJ.ID {
 			return fmt.Errorf("session.Sign: public data of party with ID %v does not match", partyID)
 		}
@@ -152,7 +164,7 @@ func (s SignSession) Validate() error {
 	return validate(s)
 }
 
-func (s SignSession) computePublicKey() *ecdsa.PublicKey {
+func (s Sign) computePublicKey() *ecdsa.PublicKey {
 	sum := curve.NewIdentityPoint()
 	for _, partyJ := range s.public {
 		sum.Add(sum, partyJ.ECDSA)
@@ -160,6 +172,7 @@ func (s SignSession) computePublicKey() *ecdsa.PublicKey {
 	return sum.ToPublicKey()
 }
 
-func (s SignSession) Message() []byte {
+// Message returns the message which will be signed with this session.
+func (s Sign) Message() []byte {
 	return s.message
 }

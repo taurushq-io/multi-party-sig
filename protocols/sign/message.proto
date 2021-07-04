@@ -43,7 +43,7 @@ message MtAMessage {
 
 message Sign2 {
   option (gogoproto.goproto_getters) = false;
-  // EchoHash = Hash(ssid, K₁, G₁, ..., Kₙ, Gₙ)
+  // EchoHash = Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
   bytes EchoHash = 1;
   bytes BigGammaShare = 2 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point"];
   MtAMessage DeltaMtA = 3;

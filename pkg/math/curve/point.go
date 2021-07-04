@@ -85,7 +85,7 @@ func (v *Point) Add(p, q *Point) *Point {
 	return v
 }
 
-// Subtract sets v = p - Q, and returns v.
+// Subtract sets v = p - q, and returns v.
 func (v *Point) Subtract(p, q *Point) *Point {
 	var qNeg Point
 	qNeg.Negate(q)

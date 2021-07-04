@@ -217,7 +217,7 @@ func (m *MtAMessage) XXX_DiscardUnknown() {
 var xxx_messageInfo_MtAMessage proto.InternalMessageInfo
 
 type Sign2 struct {
-	// EchoHash = Hash(ssid, K₁, G₁, ..., Kₙ, Gₙ)
+	// EchoHash = Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
 	EchoHash      []byte                                                 `protobuf:"bytes,1,opt,name=EchoHash,proto3" json:"EchoHash,omitempty"`
 	BigGammaShare *github_com_taurusgroup_cmp_ecdsa_pkg_math_curve.Point `protobuf:"bytes,2,opt,name=BigGammaShare,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point" json:"BigGammaShare,omitempty"`
 	DeltaMtA      *MtAMessage                                            `protobuf:"bytes,3,opt,name=DeltaMtA,proto3" json:"DeltaMtA,omitempty"`

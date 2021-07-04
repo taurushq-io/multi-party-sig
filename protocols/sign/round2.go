@@ -11,7 +11,7 @@ import (
 type round2 struct {
 	*round1
 
-	// EchoHash = Hash(ssid, K₁, G₁, ..., Kₙ, Gₙ)
+	// EchoHash = Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
 	// part of the echo of the first message
 	EchoHash []byte
 }
@@ -36,14 +36,14 @@ func (r *round2) ProcessMessage(msg round.Message) error {
 	partyJ.K = body.K
 	partyJ.G = body.G
 
-	return partyJ.AddMessage(msg)
+	return nil // message is properly handled
 }
 
 // GenerateMessages implements round.Round
 //
-// - compute Hash(ssid, K₁, G₁, ..., Kₙ, Gₙ)
+// - compute Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
 func (r *round2) GenerateMessages() ([]round.Message, error) {
-	// compute Hash(ssid, K₁, G₁, ..., Kₙ, Gₙ)
+	// compute Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
 	r.computeHashKJ()
 
 	zkPrivate := zklogstar.Private{

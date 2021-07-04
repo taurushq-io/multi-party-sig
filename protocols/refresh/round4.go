@@ -8,7 +8,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	zkmod "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mod"
 	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm"
-	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
 
 type round4 struct {
@@ -48,12 +47,6 @@ func (r *round4) ProcessMessage(msg round.Message) error {
 		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: exponent polynomial has wrong degree", j)
 	}
 
-	// Save Schnorr commitments
-	A := body.VSSSchnorrCommitments
-	if len(A) != len(r.Self.VSSCommitments) {
-		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: wrong number of Schnorr commitments", j)
-	}
-
 	// Set Paillier
 	Nj := body.Pedersen.N
 	paillierPublicKey := paillier.NewPublicKey(Nj)
@@ -68,7 +61,7 @@ func (r *round4) ProcessMessage(msg round.Message) error {
 
 	// Verify decommit
 	if !r.Hash.Decommit(j, partyJ.Commitment, body.Decommitment,
-		body.Rho, polyExp, A, body.Pedersen) {
+		body.Rho, polyExp, body.SchnorrCommitments, body.Pedersen) {
 		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: failed to decommit", j)
 	}
 
@@ -76,9 +69,9 @@ func (r *round4) ProcessMessage(msg round.Message) error {
 	partyJ.Public.Pedersen = body.Pedersen
 	partyJ.Public.Paillier = paillierPublicKey
 	partyJ.VSSPolynomial = polyExp
-	partyJ.VSSCommitments = A
+	partyJ.SchnorrCommitments = body.SchnorrCommitments
 
-	return partyJ.AddMessage(msg)
+	return nil // message is properly handled
 }
 
 // GenerateMessages implements round.Round
@@ -115,17 +108,6 @@ func (r *round4) GenerateMessages() ([]round.Message, error) {
 		Phi:    r.PaillierSecret.Phi,
 	})
 
-	// Compute all ZKPoK Xⱼ = [xⱼ] G
-	Xs := r.Self.VSSPolynomial.Coefficients
-	xs := r.VSSSecret.Coefficients
-	As := r.Self.VSSCommitments
-	as := r.VSSSchnorrRand
-	if r.isRefresh() {
-		// if refresh the fᵢ(0) = 0 so we do not prove it
-		xs = xs[1:]
-	}
-	schnorrProofs := zksch.ProveMulti(r.Hash.CloneWithID(r.SelfID), As, Xs, as, xs)
-
 	// create messages with encrypted shares
 	msgs := make([]round.Message, 0, r.S.N()-1)
 	for _, idJ := range r.S.PartyIDs() {
@@ -142,10 +124,9 @@ func (r *round4) GenerateMessages() ([]round.Message, error) {
 		C, _ := partyJ.Public.Paillier.Enc(share.BigInt())
 
 		msgs = append(msgs, NewMessageRefresh4(r.SelfID, idJ, &Refresh4{
-			Mod:                mod,
-			Prm:                prm,
-			Share:              C,
-			VSSSchnorrResponse: schnorrProofs,
+			Mod:   mod,
+			Prm:   prm,
+			Share: C,
 		}))
 	}
 
@@ -154,7 +135,7 @@ func (r *round4) GenerateMessages() ([]round.Message, error) {
 
 // Finalize implements round.Round
 func (r *round4) Finalize() (round.Round, error) {
-	return &output{
+	return &round5{
 		round4: r,
 	}, nil
 }

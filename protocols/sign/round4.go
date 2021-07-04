@@ -47,7 +47,7 @@ func (r *round4) ProcessMessage(msg round.Message) error {
 	partyJ.BigDeltaShare = body.BigDeltaShare
 	partyJ.DeltaShare = body.DeltaShare
 
-	return partyJ.AddMessage(msg)
+	return nil // message is properly handled
 }
 
 // GenerateMessages implements round.Round

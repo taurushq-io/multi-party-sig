@@ -1,7 +1,6 @@
 package sign
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -17,13 +16,7 @@ var (
 	_ round.Round = (*output)(nil)
 )
 
-func NewRound(s session.Session) (*round1, error) {
-
-	signS, ok := s.(*session.SignSession)
-	if !ok {
-		return nil, errors.New("sign.NewRound: session must be SignSession")
-	}
-
+func NewRound(s *session.Sign) (*round1, error) {
 	// Create round with a clone of the original secret
 	base, err := round.NewBaseRound(s)
 	if err != nil {
@@ -33,7 +26,6 @@ func NewRound(s session.Session) (*round1, error) {
 	parties := make(map[party.ID]*LocalParty, s.N())
 	for _, partyJ := range s.PartyIDs() {
 		parties[partyJ] = &LocalParty{
-			Party:  round.NewBaseParty(partyJ),
 			Public: s.Public(partyJ),
 		}
 	}
@@ -43,6 +35,6 @@ func NewRound(s session.Session) (*round1, error) {
 		Self:      parties[base.SelfID],
 		Secret:    s.Secret(),
 		parties:   parties,
-		Message:   signS.Message(),
+		Message:   s.Message(),
 	}, nil
 }

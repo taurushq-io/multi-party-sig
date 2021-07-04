@@ -11,7 +11,7 @@ import (
 func TestFakeKeygen(t *testing.T) {
 	N := 3
 	T := 2
-	sessions := FakeKeygen(N, T)
+	sessions := FakeRefresh(N, T)
 
 	for _, s := range sessions {
 		if err := s.Validate(); err != nil {
@@ -26,7 +26,7 @@ func TestGenerateShares(t *testing.T) {
 	partyIDs := party.RandomIDs(N)
 
 	//subPartyIDs := partyIDs[:T+1]
-	shares, ecdsaSecret := GenerateShares(partyIDs, T)
+	shares, ecdsaSecret := generateShares(partyIDs, T)
 
 	sum := curve.NewScalar()
 	for i, pid := range partyIDs {

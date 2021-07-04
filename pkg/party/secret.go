@@ -6,7 +6,6 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
 type Secret struct {
@@ -17,9 +16,6 @@ type Secret struct {
 
 	// Paillier is a party's
 	Paillier *paillier.SecretKey `json:"paillier"`
-
-	// RID is the random ID generated during the keygen
-	RID []byte `json:"rid"`
 }
 
 // Validate checks whether the Secret adheres to the protocol.
@@ -40,9 +36,6 @@ func (s *Secret) Validate() error {
 	if s.Paillier == nil {
 		return errors.New("party.Secret: Paillier private key cannot be nil")
 	}
-	if len(s.RID) != params.SecBytes {
-		return errors.New("party.Secret: RID has wrong length")
-	}
 
 	// is our ECDSA key 0
 	if s.ECDSA.IsZero() {
@@ -58,12 +51,12 @@ func (s *Secret) Validate() error {
 }
 
 func (s Secret) preKeygen() bool {
-	return s.ECDSA == nil && s.Paillier == nil && len(s.RID) == 0
+	return s.ECDSA == nil && s.Paillier == nil
 }
 
 // KeygenDone returns true if all fields resulting from a keygen are non nil
 func (s Secret) KeygenDone() bool {
-	return s.ECDSA != nil && s.Paillier != nil && len(s.RID) != 0
+	return s.ECDSA != nil && s.Paillier != nil
 }
 
 // ValidatePublic checks whether Secret is compatible with the given Public data
@@ -112,6 +105,5 @@ func (s *Secret) Clone() *Secret {
 		ID:       s.ID,
 		ECDSA:    curve.NewScalar().Set(s.ECDSA),
 		Paillier: s.Paillier.Clone(),
-		RID:      append([]byte{}, s.RID...),
 	}
 }

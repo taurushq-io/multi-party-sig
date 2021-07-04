@@ -8,7 +8,7 @@ import (
 
 type round2 struct {
 	*round1
-	// EchoHash = Hash(SSID, commitment₁, ..., commitmentₙ)
+	// EchoHash = Hash(SSID, commitment₁, …, commitmentₙ)
 	EchoHash []byte
 }
 
@@ -17,12 +17,12 @@ type round2 struct {
 // - store commitment Vⱼ
 func (r *round2) ProcessMessage(msg round.Message) error {
 	j := msg.GetHeader().From
-	content := msg.(*Message).GetRefresh1()
 	partyJ := r.LocalParties[j]
+	content := msg.(*Message).GetRefresh1()
 
 	partyJ.Commitment = content.Commitment
 
-	return partyJ.AddMessage(msg)
+	return nil // message is properly handled
 }
 
 // GenerateMessages implements round.Round
@@ -30,7 +30,7 @@ func (r *round2) ProcessMessage(msg round.Message) error {
 // Since we assume a simple P2P network, we use an extra round to "echo"
 // the hash. Everybody sends a hash of all hashes.
 //
-// - send Hash(ssid, V₁, ..., Vₙ)
+// - send Hash(ssid, V₁, …, Vₙ)
 func (r *round2) GenerateMessages() ([]round.Message, error) {
 	var err error
 	// Broadcast the message we created in round1

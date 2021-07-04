@@ -9,7 +9,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
-// NewPolynomialExponent generates a Exponent polynomial F(X) = [secret + a₁•X + ... + aₜ•Xᵗ]•G,
+// NewPolynomialExponent generates a Exponent polynomial F(X) = [secret + a₁•X + … + aₜ•Xᵗ]•G,
 // with Coefficient in G, and degree t.
 func NewPolynomialExponent(polynomial *Polynomial) *Exponent {
 	var p Exponent

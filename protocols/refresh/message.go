@@ -4,16 +4,20 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
+const protocolID round.MessageProtocol = 2
+
 const (
-	MessageTypeRefresh1 round.MessageType = 100 + iota
+	MessageTypeRefresh1 = (round.MessageType(protocolID) << 16) + iota
 	MessageTypeRefresh2
 	MessageTypeRefresh3
 	MessageTypeRefresh4
+	MessageTypeRefresh5
 )
 
 func (m *Message) Validate() error {
@@ -31,6 +35,8 @@ func (m *Message) Validate() error {
 		return m.GetRefresh3().Validate()
 	case MessageTypeRefresh4:
 		return m.GetRefresh4().Validate()
+	case MessageTypeRefresh5:
+		return m.GetRefresh5().Validate()
 	default:
 		return errors.New("refresh.Message: invalid content")
 	}
@@ -46,6 +52,8 @@ func (m *Message) Type() round.MessageType {
 		return MessageTypeRefresh3
 	case *Message_Refresh4:
 		return MessageTypeRefresh4
+	case *Message_Refresh5:
+		return MessageTypeRefresh5
 	default:
 		return round.MessageTypeInvalid
 	}
@@ -55,7 +63,7 @@ func NewMessageRefresh1(selfID party.ID, commitment []byte) []round.Message {
 	return []round.Message{&Message{
 		Header: &round.Header{
 			From:      selfID,
-			Broadcast: round.Broadcast_Basic,
+			Broadcast: round.Broadcast_Reliable,
 		},
 		Content: &Message_Refresh1{
 			Refresh1: &Refresh1{
@@ -103,7 +111,7 @@ func NewMessageRefresh3(selfID party.ID, msg *Refresh3) []round.Message {
 	return []round.Message{&Message{
 		Header: &round.Header{
 			From:      selfID,
-			Broadcast: round.Broadcast_None,
+			Broadcast: round.Broadcast_Basic,
 		},
 		Content: &Message_Refresh3{
 			Refresh3: msg,
@@ -131,10 +139,6 @@ func (m *Refresh3) Validate() error {
 		return errors.New("refresh.round3: VSSPolynomial is nil")
 	}
 
-	if len(m.VSSPolynomial.Coefficients) != len(m.VSSSchnorrCommitments) {
-		return errors.New("refresh.round3: inconsistent VSS lenghts")
-	}
-
 	return nil
 }
 
@@ -143,7 +147,7 @@ func NewMessageRefresh4(selfID, to party.ID, msg *Refresh4) round.Message {
 		Header: &round.Header{
 			From:      selfID,
 			To:        to,
-			Broadcast: round.Broadcast_Basic,
+			Broadcast: round.Broadcast_None,
 		},
 		Content: &Message_Refresh4{
 			Refresh4: msg,
@@ -163,6 +167,28 @@ func (m *Refresh4) Validate() error {
 	}
 	if m.Share == nil {
 		return errors.New("refresh.round4: Share proof is nil")
+	}
+	return nil
+}
+
+func NewMessageRefresh5(selfID party.ID, proof *curve.Scalar) []round.Message {
+	return []round.Message{&Message{
+		Header: &round.Header{
+			From:      selfID,
+			Broadcast: round.Broadcast_Basic,
+		},
+		Content: &Message_Refresh5{
+			Refresh5: &Refresh5{Proof: proof},
+		},
+	}}
+}
+
+func (m *Refresh5) Validate() error {
+	if m == nil {
+		return errors.New("refresh.round5: message is nil")
+	}
+	if m.Proof == nil {
+		return errors.New("refresh.round5: sch proof is nil")
 	}
 	return nil
 }

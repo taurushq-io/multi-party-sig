@@ -24,7 +24,7 @@ func TestMulG(t *testing.T) {
 	X.ScalarBaseMult(curve.NewScalarBigInt(x))
 
 	D := C.Clone().Mul(verifierPaillier, x)
-	rho := verifierPaillier.Nonce()
+	rho := sample.UnitModN(verifierPaillier.N)
 	D.Randomize(verifierPaillier, rho)
 
 	public := Public{

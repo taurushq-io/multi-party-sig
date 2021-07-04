@@ -3,6 +3,7 @@ package hash
 import (
 	"bytes"
 	"crypto/rand"
+	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -20,14 +21,14 @@ func (hash *Hash) Commit(id party.ID, data ...interface{}) (Commitment, Decommit
 	decommitment := make([]byte, params.SecBytes)
 
 	if _, err = rand.Read(decommitment); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("hash.Commit: failed to generate decommitment: %w", err)
 	}
 
 	h := hash.CloneWithID(id)
 
 	for _, item := range data {
 		if _, err = h.WriteAny(item); err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("hash.Commit: failed to write data: %w", err)
 		}
 	}
 

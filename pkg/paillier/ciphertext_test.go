@@ -5,8 +5,30 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestCiphertextValidate(t *testing.T) {
+	pk, sk := KeyGen()
+
+	C := big.NewInt(0)
+	ct := &Ciphertext{C: C}
+	_, err := sk.Dec(ct)
+	assert.Error(t, err, "decrypting 0 should fail")
+
+	C.Set(pk.N)
+	_, err = sk.Dec(ct)
+	assert.Error(t, err, "decrypting N should fail")
+
+	C.Mul(C, big.NewInt(2))
+	_, err = sk.Dec(ct)
+	assert.Error(t, err, "decrypting 2N should fail")
+
+	C.Set(pk.nSquared)
+	_, err = sk.Dec(ct)
+	assert.Error(t, err, "decrypting N^2 should fail")
+}
 
 func TestCiphertext_Enc(t *testing.T) {
 	pk, sk := KeyGen()
@@ -26,9 +48,12 @@ func TestCiphertext_Enc(t *testing.T) {
 
 		ct1plus2 := ct1.Clone().Add(pk, ct2)
 
-		r1plus2 := sk.Dec(ct1plus2)
+		r1plus2, err := sk.Dec(ct1plus2)
+		assert.NoError(t, err, "should be able to decrypt")
 
-		require.Equal(t, 0, sk.Dec(ct1).Cmp(r1), "r1= ct1")
+		decCt1, err := sk.Dec(ct1)
+		assert.NoError(t, err, "should be able to decrypt")
+		require.Equal(t, 0, decCt1.Cmp(r1), "r1= ct1")
 
 		// Test adding
 		require.Equal(t, 0, new(big.Int).Add(r1, r2).Cmp(r1plus2))
@@ -38,6 +63,7 @@ func TestCiphertext_Enc(t *testing.T) {
 		// Test multiplication
 		res := new(big.Int).Mul(c, r1)
 		res.Mod(res, pk.N)
-		require.Equal(t, 0, res.Cmp(sk.Dec(ct1times2)))
+		decCt1Times2, err := sk.Dec(ct1times2)
+		require.Equal(t, 0, res.Cmp(decCt1Times2))
 	}
 }

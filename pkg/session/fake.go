@@ -11,7 +11,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 )
 
-func GenerateShares(parties party.IDSlice, t int) (shares []*curve.Scalar, sum *curve.Scalar) {
+func generateShares(parties party.IDSlice, t int) (shares []*curve.Scalar, sum *curve.Scalar) {
 	sum = sample.Scalar()
 	f := polynomial.NewPolynomial(t, sum)
 
@@ -24,7 +24,7 @@ func GenerateShares(parties party.IDSlice, t int) (shares []*curve.Scalar, sum *
 	return
 }
 
-func FakeEmpty(n, threshold int) []*BaseSession {
+func FakeKeygen(n, threshold int) []*Keygen {
 	partyIDs := party.RandomIDs(n)
 
 	secrets := make(map[party.ID]*party.Secret, n)
@@ -39,27 +39,24 @@ func FakeEmpty(n, threshold int) []*BaseSession {
 		}
 	}
 
-	sessions := make([]*BaseSession, n)
+	sessions := make([]*Keygen, n)
 	var err error
 	for i, pid := range partyIDs {
-		if sessions[i], err = NewBaseSession(partyIDs, threshold, pid); err != nil {
+		if sessions[i], err = NewKeygenSession(partyIDs, threshold, pid); err != nil {
 			panic(err)
 		}
 	}
 	return sessions
 }
 
-func FakeKeygen(n, threshold int) []*KeygenSession {
+func FakeRefresh(n, threshold int) []*Refresh {
 	partyIDs := party.RandomIDs(n)
 
 	secrets := make(map[party.ID]*party.Secret, n)
 	public := make(map[party.ID]*party.Public, n)
 
-	shares, ecdsaSecret := GenerateShares(partyIDs, threshold)
+	shares, ecdsaSecret := generateShares(partyIDs, threshold)
 	ecdsaPublic := curve.NewIdentityPoint().ScalarBaseMult(ecdsaSecret).ToPublicKey()
-
-	rid := make([]byte, params.SecBytes)
-	_, _ = rand.Read(rid)
 
 	for i, pid := range partyIDs {
 		sk := paillier.NewSecretKey()
@@ -70,7 +67,6 @@ func FakeKeygen(n, threshold int) []*KeygenSession {
 			ID:       pid,
 			ECDSA:    shares[i],
 			Paillier: sk,
-			RID:      rid,
 		}
 		X := curve.NewIdentityPoint().ScalarBaseMult(shares[i])
 		public[pid] = &party.Public{
@@ -81,20 +77,23 @@ func FakeKeygen(n, threshold int) []*KeygenSession {
 		}
 	}
 
-	sessions := make([]*KeygenSession, n)
+	rid := make([]byte, params.SecBytes)
+	_, _ = rand.Read(rid)
+
+	sessions := make([]*Refresh, n)
 	var err error
 	for i, pid := range partyIDs {
-		if sessions[i], err = NewSession(threshold, public, ecdsaPublic, secrets[pid], nil); err != nil {
+		if sessions[i], err = NewRefreshSession(threshold, public, rid, ecdsaPublic, secrets[pid], nil); err != nil {
 			panic(err)
 		}
 	}
 	return sessions
 }
 
-func FakeSign(n, threshold int, message []byte) []*SignSession {
-	keygenSessions := FakeKeygen(n, threshold)
+func FakeSign(n, threshold int, message []byte) []*Sign {
+	keygenSessions := FakeRefresh(n, threshold)
 	parties := keygenSessions[0].PartyIDs()[:threshold+1].Copy()
-	sessions := make([]*SignSession, 0, threshold+1)
+	sessions := make([]*Sign, 0, threshold+1)
 	for _, s := range keygenSessions {
 		if !parties.Contains(s.SelfID()) {
 			continue

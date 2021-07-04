@@ -7,7 +7,6 @@ option go_package = "github.com/taurusgroup/cmp-ecdsa/pkg/round";
 option (gogoproto.stable_marshaler_all) = true;
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-//import "google/protobuf/any.proto";
 
 enum Broadcast {
   None = 0;
@@ -20,60 +19,3 @@ message Header {
   string to = 2 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/party.ID", (gogoproto.nullable) = false];
   Broadcast broadcast = 3;
 }
-
-//message Content {
-//  option (gogoproto.face) = true;
-//  option (gogoproto.goproto_getters) = false;
-//  int32 Type = 1 [(gogoproto.customtype) = "MessageType", (gogoproto.nullable) = false];
-//}
-
-
-//
-//message Sign1 {
-//  ZKEnc enc = 1;
-//  bytes K = 2 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
-//  bytes G = 3 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
-//}
-//
-//message Sign2 {
-//  bytes hashKG = 1;
-//  Point Gamma = 2;
-//  bytes D = 3 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
-//  bytes F = 4 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
-//  bytes DHat = 5 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
-//  bytes FHat = 6 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/pkg/paillier.Ciphertext;CiphertextCaster"];
-//  ZKAffG ProofAffG = 7;
-//  ZKAffG ProofAffGHat = 8;
-//  ZKLogStar ProofLog = 9;
-//}
-//
-//message Sign3 {
-//  Scalar Delta = 1;
-//  Point DeltaGroup = 2;
-//  ZKLogStar ProofLog = 3;
-//}
-//
-//message Sign4 {
-//  Scalar Sigma = 1;
-//}
-//
-//message Abort1 {
-//  map <string, ZKAffG> proofAffg = 1;
-//  ZKMul proofMul = 2;
-//  map <string, ZKDec> proofDec = 3;
-//}
-//
-//message Abort2 {
-//  map <string, ZKAffG> proofAffg = 1;
-//  map <string, ZKMulStar> proofMul = 2;
-//  map <string, ZKDec> proofDec = 3;
-//}
-//
-//message Frost1 {
-//  Point D = 1;
-//  Point E = 2;
-//}
-//
-//message Frost2 {
-//  Scalar Z = 1;
-//}

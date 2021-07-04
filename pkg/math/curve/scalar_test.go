@@ -37,12 +37,12 @@ func TestNewScalarBigInt(t *testing.T) {
 		},
 		{
 			"q",
-			args{n: Q},
+			args{n: q},
 			&Scalar{s: secp256k1.ModNScalar{}},
 		},
 		{
 			"q+1",
-			args{n: new(big.Int).Add(Q, big.NewInt(1))},
+			args{n: new(big.Int).Add(q, big.NewInt(1))},
 			&Scalar{s: *(&secp256k1.ModNScalar{}).SetInt(1)},
 		},
 	}
@@ -91,7 +91,7 @@ func TestScalar_Add(t *testing.T) {
 			"q+1",
 			fields{s: secp256k1.ModNScalar{}},
 			args{
-				x: NewScalarBigInt(Q),
+				x: NewScalarBigInt(q),
 				y: NewScalar().SetUInt32(1),
 			},
 			NewScalar().SetUInt32(1),

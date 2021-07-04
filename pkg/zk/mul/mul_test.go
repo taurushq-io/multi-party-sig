@@ -12,10 +12,10 @@ import (
 
 func TestMul(t *testing.T) {
 	prover := zk.ProverPaillierPublic
-	x := sample.IntervalLN()
+	x := sample.IntervalL()
 	X, rhoX := prover.Enc(x)
 
-	y := sample.IntervalLN()
+	y := sample.IntervalL()
 	Y, _ := prover.Enc(y)
 
 	C := Y.Clone().Mul(prover, x)

@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"math/bits"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
@@ -49,7 +50,7 @@ func (ct Ciphertext) Clone() *Ciphertext {
 func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *big.Int) *big.Int {
 	tmp := newCipherTextInt()
 	if nonce == nil {
-		nonce = pk.Nonce()
+		nonce = sample.UnitModN(pk.N)
 	}
 	tmp.Exp(nonce, pk.N, pk.nSquared) // tmp = r^N
 	ct.C.Mul(ct.C, tmp)               // ct = ct * tmp

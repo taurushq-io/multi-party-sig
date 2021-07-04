@@ -123,7 +123,7 @@ func (p *Proof) IsValid(public Public) bool {
 //  - x = y' ^ {1/4}
 //  - z = y^{N⁻¹ mod ϕ(N)}
 //  - a, b s.t. y' = (-1)ᵃ wᵇ y
-//  - R = [(xᵢ aᵢ, bᵢ), zᵢ] for i = 1, ..., m
+//  - R = [(xᵢ aᵢ, bᵢ), zᵢ] for i = 1, …, m
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	n, p, q, phi := public.N, private.P, private.Q, private.Phi
 	w := sample.QNR(n)

@@ -9,7 +9,7 @@ type Polynomial struct {
 	Coefficients []curve.Scalar
 }
 
-// NewPolynomial generates a Polynomial f(X) = secret + a1*X + ... + at*X^t,
+// NewPolynomial generates a Polynomial f(X) = secret + a1*X + … + at*X^t,
 // with Coefficient in Z_q, and degree t.
 func NewPolynomial(degree int, constant *curve.Scalar) *Polynomial {
 	var polynomial Polynomial

@@ -2,6 +2,7 @@ package session
 
 import (
 	"crypto/ecdsa"
+	"encoding/json"
 	"errors"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -10,11 +11,10 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 )
 
-// KeygenSession holds all information needed to execute one of the protocols.
-// It holds the information called SSID from the protocol and can be thought of as
-// SSID = (SID, ...), where SID = (𝔾, q, Gₓ, P₁, ..., Pₙ)
-type KeygenSession struct {
-	*BaseSession
+// Refresh is a Session where the parties have jointly generated the necessary key material.
+// In particular, this is the only struct that is Marshallable since it must be stored once created.
+type Refresh struct {
+	*Keygen
 
 	// public maps party.ID to party.Public. It contains all public information associated to a party.
 	// When keygen has not yet run, all party.Public should contain only the ID
@@ -26,31 +26,38 @@ type KeygenSession struct {
 	// publicKey is the full ECDSA public key
 	publicKey *ecdsa.PublicKey
 
+	// rid is a 32 byte random identifier generated for this session
+	rid []byte
+
 	// ssid is a cached hash of SSID
-	// It corresponds to Hash(G, n, t, P₁, ..., Pₙ, aux_info)
+	// It corresponds to Hash(G, n, t, P₁, …, Pₙ, aux_info)
 	ssid []byte
 }
 
-// NewSession creates a session from given keygen material, and performs full verification.
+// NewRefreshSession creates a session from given keygen material, and performs full verification.
 // If SSID is given, then it checked against the recomputed one.
 // No copy of the given data is performed
-func NewSession(threshold int, publicInfo map[party.ID]*party.Public, publicKey *ecdsa.PublicKey, secret *party.Secret, SSID []byte) (*KeygenSession, error) {
+func NewRefreshSession(threshold int, publicInfo map[party.ID]*party.Public, RID []byte, publicKey *ecdsa.PublicKey, secret *party.Secret, SSID []byte) (*Refresh, error) {
 	parties := make(party.IDSlice, 0, len(publicInfo))
 	for id := range publicInfo {
 		parties = append(parties, id)
 	}
 
-	base, err := NewBaseSession(parties, threshold, secret.ID)
+	base, err := NewKeygenSession(parties, threshold, secret.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	s := &KeygenSession{
-		BaseSession: base,
-		public:      publicInfo,
-		secret:      secret,
-		publicKey:   publicKey,
-		ssid:        SSID,
+	rid := make([]byte, params.SecBytes)
+	copy(rid, RID)
+
+	s := &Refresh{
+		Keygen:    base,
+		public:    publicInfo,
+		secret:    secret,
+		publicKey: publicKey,
+		rid:       rid,
+		ssid:      SSID,
 	}
 	if s.ssid == nil {
 		s.ssid = computeSSID(s)
@@ -63,20 +70,28 @@ func NewSession(threshold int, publicInfo map[party.ID]*party.Public, publicKey 
 	return s, nil
 }
 
-func (s KeygenSession) Public(id party.ID) *party.Public {
+// Public returns the public key material we have stored for the party with the given id.
+func (s Refresh) Public(id party.ID) *party.Public {
 	return s.public[id]
 }
 
-func (s KeygenSession) Secret() *party.Secret {
+// Secret returns the stored secret key material.
+func (s Refresh) Secret() *party.Secret {
 	return s.secret
 }
 
-func (s KeygenSession) PublicKey() *ecdsa.PublicKey {
+// PublicKey returns the group's public ECDSA key
+func (s Refresh) PublicKey() *ecdsa.PublicKey {
 	return s.publicKey
 }
 
+// RID is the random 32 byte identifier generated during keygen
+func (s Refresh) RID() []byte {
+	return s.rid
+}
+
 // SSID returns the hash of the SSID
-func (s KeygenSession) SSID() []byte {
+func (s Refresh) SSID() []byte {
 	return s.ssid
 }
 
@@ -86,12 +101,9 @@ func (s KeygenSession) SSID() []byte {
 //   - SSID is computed correctly and is the same for all Public data
 //   - PublicKey corresponds to the Lagrange interpolation of the Public ECDSA shares
 //   - Paillier and Pedersen parameters are good.
-func (s KeygenSession) Validate() error {
+func (s Refresh) Validate() error {
 	if s.secret == nil {
 		return errors.New("session: secret cannot be nil")
-	}
-	if len(s.secret.RID) != params.SecBytes {
-		return errors.New("session: secret must contain RID")
 	}
 
 	if s.secret.ECDSA == nil || s.secret.Paillier == nil {
@@ -110,12 +122,12 @@ func (s KeygenSession) Validate() error {
 // It assumes that the state is in a correct, and can panic if it is not.
 // Calling hash.Sum() on the resulting hash function returns the hash of the SSID.
 // It computes
-// - Hash(𝔾, q, G_x, t, n, P₁, ..., Pₙ, {(Nⱼ, Sⱼ, Tⱼ)}ⱼ}
-func (s KeygenSession) Hash() *hash.Hash {
-	h := s.BaseSession.Hash()
+// - Hash(𝔾, q, G_x, t, n, P₁, …, Pₙ, {(Nⱼ, Sⱼ, Tⱼ)}ⱼ}
+func (s Refresh) Hash() *hash.Hash {
+	h := s.Keygen.Hash()
 
 	// RID (since secret is already set)
-	_, _ = h.Write(s.secret.RID)
+	_, _ = h.Write(s.rid)
 
 	// write all public info from parties in order
 	for _, partyID := range s.PartyIDs() {
@@ -134,25 +146,26 @@ func (s KeygenSession) Hash() *hash.Hash {
 
 // Clone performs a deep copy of a all fields. In particular, it copies all public party data
 // as well as the secret.
-func (s KeygenSession) Clone() Session {
+func (s Refresh) Clone() Session {
 	public2 := make(map[party.ID]*party.Public, len(s.public))
 	for j, publicJ := range s.public {
 		public2[j] = publicJ.Clone()
 	}
 
-	s2 := &KeygenSession{
-		BaseSession: s.BaseSession.Clone().(*BaseSession),
-		public:      public2,
-		secret:      s.secret.Clone(),
-		publicKey:   &(*s.publicKey),
-		ssid:        computeSSID(s),
+	s2 := &Refresh{
+		Keygen:    s.Keygen.Clone().(*Keygen),
+		public:    public2,
+		secret:    s.secret.Clone(),
+		publicKey: &(*s.publicKey),
+		rid:       append([]byte{}, s.rid...),
+		ssid:      computeSSID(s),
 	}
 	return s2
 }
 
 // computePublicKey returns an ecdsa.PublicKey computed via Lagrange interpolation
 // of all public shares.
-func (s KeygenSession) computePublicKey() *ecdsa.PublicKey {
+func (s Refresh) computePublicKey() *ecdsa.PublicKey {
 	sum := curve.NewIdentityPoint()
 	tmp := curve.NewIdentityPoint()
 	for partyID, partyJ := range s.public {
@@ -161,4 +174,58 @@ func (s KeygenSession) computePublicKey() *ecdsa.PublicKey {
 		sum.Add(sum, tmp)
 	}
 	return sum.ToPublicKey()
+}
+
+var _ json.Marshaler = (*Refresh)(nil)
+var _ json.Unmarshaler = (*Refresh)(nil)
+
+type jsonSession struct {
+	// TODO include Group information
+	//Group string `json:"group"`
+	PublicKey *curve.Point    `json:"public_key"`
+	RID       []byte          `json:"rid"`
+	SSID      []byte          `json:"ssid"`
+	Threshold int             `json:"threshold"`
+	Secret    *party.Secret   `json:"secret"`
+	Public    []*party.Public `json:"public"`
+}
+
+func (s Refresh) MarshalJSON() ([]byte, error) {
+	public := make([]*party.Public, 0, s.N())
+	for _, id := range s.PartyIDs() {
+		public = append(public, s.Public(id))
+	}
+	x := jsonSession{
+		PublicKey: curve.FromPublicKey(s.PublicKey()),
+		RID:       s.RID(),
+		SSID:      s.SSID(),
+		Threshold: s.Threshold(),
+		Secret:    s.Secret(),
+		Public:    public,
+	}
+	return json.Marshal(x)
+}
+
+func (s *Refresh) UnmarshalJSON(bytes []byte) error {
+	var x jsonSession
+	err := json.Unmarshal(bytes, &x)
+	if err != nil {
+		return err
+	}
+
+	n := len(x.Public)
+	public := make(map[party.ID]*party.Public, n)
+	partyIDs := make(party.IDSlice, 0, n)
+	for _, partyJ := range x.Public {
+		partyIDs = append(partyIDs, partyJ.ID)
+		public[partyJ.ID] = partyJ
+	}
+	partyIDs.Sort()
+
+	s2, err := NewRefreshSession(x.Threshold, public, x.RID, x.PublicKey.ToPublicKey(), x.Secret, x.SSID)
+	if err != nil {
+		return err
+	}
+	*s = *s2
+	return nil
 }

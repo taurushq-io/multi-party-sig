@@ -70,13 +70,13 @@ func (partyIDs IDSlice) Copy() IDSlice {
 // The following formulas are taken from
 // https://en.wikipedia.org/wiki/Lagrange_polynomial
 //
-//			( x  - x₀) ... ( x  - x_k)
+//			( x  - x₀) … ( x  - x_k)
 // l_j(x) =	---------------------------
-//			(x_j - x₀) ... (x_j - x_k)
+//			(x_j - x₀) … (x_j - x_k)
 //
-//			        x₀ ... x_k
+//			        x₀ … x_k
 // l_j(0) =	---------------------------
-//			(x₀ - x_j) ... (x_k - x_j)
+//			(x₀ - x_j) … (x_k - x_j)
 func (partyIDs IDSlice) Lagrange(index ID) *curve.Scalar {
 
 	num := curve.NewScalarUInt32(1)
@@ -91,10 +91,10 @@ func (partyIDs IDSlice) Lagrange(index ID) *curve.Scalar {
 
 		xM := id.Scalar()
 
-		// num = x₀ * ... * x_k
+		// num = x₀ * … * x_k
 		num.Multiply(num, xM) // num * xM
 
-		// denum = (x₀ - x_j) ... (x_k - x_j)
+		// denum = (x₀ - x_j) … (x_k - x_j)
 		xM.Subtract(xM, xJ)       // = xM - xJ
 		denum.Multiply(denum, xM) // denum * (xm - xj)
 	}

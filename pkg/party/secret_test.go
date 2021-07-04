@@ -38,7 +38,6 @@ func TestSecret_Validate(t *testing.T) {
 		ID       ID
 		ECDSA    *curve.Scalar
 		Paillier *paillier.SecretKey
-		RID      []byte
 	}
 	type args struct {
 		p *Public
@@ -54,50 +53,32 @@ func TestSecret_Validate(t *testing.T) {
 			ID:       id,
 			ECDSA:    x,
 			Paillier: sk,
-			RID:      rid,
 		}, args{public}, false},
 		{"pre keygen", fields{
 			ID: id,
 		}, args{&Public{
 			ID: id,
 		}}, false},
-
-		{"no rid", fields{
-			ID:       id,
-			ECDSA:    x,
-			Paillier: sk,
-			RID:      nil,
-		}, args{public}, true},
-		{"short rid", fields{
-			ID:       id,
-			ECDSA:    x,
-			Paillier: sk,
-			RID:      rid[1:],
-		}, args{public}, true},
 		{"no paillier", fields{
 			ID:       id,
 			ECDSA:    x,
 			Paillier: nil,
-			RID:      rid,
 		}, args{public}, true},
 		{"no ecdsa", fields{
 			ID:       id,
 			ECDSA:    nil,
 			Paillier: sk,
-			RID:      rid,
 		}, args{public}, true},
 		{"no public", fields{
 			ID:       id,
 			ECDSA:    x,
 			Paillier: sk,
-			RID:      rid,
 		}, args{nil}, true},
 
 		{"no pub ped", fields{
 			ID:       id,
 			ECDSA:    x,
 			Paillier: sk,
-			RID:      rid,
 		}, args{&Public{
 			ID:       id,
 			ECDSA:    X,
@@ -108,7 +89,6 @@ func TestSecret_Validate(t *testing.T) {
 			ID:       id,
 			ECDSA:    x,
 			Paillier: sk,
-			RID:      rid,
 		}, args{&Public{
 			ID:       id,
 			ECDSA:    X,
@@ -119,7 +99,6 @@ func TestSecret_Validate(t *testing.T) {
 			ID:       id,
 			ECDSA:    x,
 			Paillier: sk,
-			RID:      rid,
 		}, args{&Public{
 			ID:       id,
 			ECDSA:    nil,
@@ -133,7 +112,6 @@ func TestSecret_Validate(t *testing.T) {
 				ID:       tt.fields.ID,
 				ECDSA:    tt.fields.ECDSA,
 				Paillier: tt.fields.Paillier,
-				RID:      tt.fields.RID,
 			}
 			if err := s.ValidatePublic(tt.args.p); (err != nil) != tt.wantErr {
 				t.Errorf("ValidatePublic() error = %v, wantErr %v", err, tt.wantErr)

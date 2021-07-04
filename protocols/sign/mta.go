@@ -38,7 +38,8 @@ type MtA struct {
 
 	// S is the Paillier randomness sᵢⱼ for Dⱼᵢ = (aᵢ ⊙ Kⱼ) ⊕ encⱼ(- βᵢⱼ, sᵢⱼ)
 	S *big.Int
-	// R is the Paillier randomness rᵢⱼ for Fⱼᵢ = encᵢ(βᵢⱼ, rᵢⱼ)
+	// R is the Paillier randomness rᵢⱼ for Fⱼᵢ = encᵢ(-βᵢⱼ, rᵢⱼ)
+	// Note, the paper says to use encᵢ(βᵢⱼ, rᵢⱼ), but it is probably a typo
 	R *big.Int
 
 	// BetaNeg = - βᵢⱼ
@@ -52,16 +53,18 @@ func NewMtA(ai *curve.Scalar, Ai *curve.Point,
 	Kj *paillier.Ciphertext,
 	sender, receiver *party.Public) *MtA {
 
-	betaNeg := sample.IntervalLPrime()
+	beta := sample.IntervalLPrime()
 
+	betaNeg := new(big.Int).Neg(beta)
+	// Fⱼᵢ = encᵢ(-βᵢⱼ, rᵢⱼ)
 	F, r := sender.Paillier.Enc(betaNeg)
 
 	// tempC = aᵢ ⊙ Kⱼ
 	tempC := Kj.Clone().Mul(receiver.Paillier, ai.BigInt())
+
+	// Dⱼᵢ = encⱼ(-βᵢⱼ) ⊕ (aᵢ ⊙ Kⱼ) = encⱼ(aᵢ•kⱼ-βᵢⱼ)
 	D, s := receiver.Paillier.Enc(betaNeg)
 	D.Add(receiver.Paillier, tempC)
-
-	Beta := curve.NewScalarBigInt(betaNeg.Neg(betaNeg))
 
 	mta := &MtA{
 		Sender:   sender,
@@ -71,10 +74,10 @@ func NewMtA(ai *curve.Scalar, Ai *curve.Point,
 		K:        Kj,
 		D:        D,
 		F:        F,
-		Beta:     Beta,
+		Beta:     curve.NewScalarBigInt(beta),
 		S:        s,
 		R:        r,
-		BetaNeg:  betaNeg.Neg(betaNeg),
+		BetaNeg:  betaNeg,
 	}
 	return mta
 }
@@ -111,7 +114,9 @@ func (mta *MtA) ProofAffG(h *hash.Hash, verifier *party.Public) *MtAMessage {
 	}
 }
 
-// VerifyAffG verifies the received MtA message
+// VerifyAffG verifies the received MtA message where
+// - Aj is the sender's public Aⱼ
+// - Ki is the receiver's public Kᵢ
 func (mta *MtAMessage) VerifyAffG(h *hash.Hash,
 	Aj *curve.Point, Ki *paillier.Ciphertext,
 	sender, receiver, verifier *party.Public) bool {

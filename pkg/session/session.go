@@ -13,6 +13,9 @@ import (
 )
 
 // Session holds all data necessary to initiate a protocol.
+// It can be seen as the the SSID string provided as input to all protocols.
+// However, it also includes the corresponding secret key material which is used to check the validity of the full
+// session.
 type Session interface {
 	// Curve returns the elliptic curve used in the session
 	Curve() elliptic.Curve
@@ -29,10 +32,13 @@ type Session interface {
 	// If this party does not exist, returns nil
 	Public(id party.ID) *party.Public
 
-	// SSID is the hash of the SSID used to
+	// RID is a random identification string generated during the keygen.
+	RID() []byte
+
+	// SSID is the hash of the SSID used uniquely identify this session.
 	SSID() []byte
 
-	// Secret returns the secret key material ECDSA, Paillier and RID
+	// Secret returns the secret key material ECDSA, Paillier and RID.
 	Secret() *party.Secret
 
 	// SelfID returns the ID of the host party
@@ -46,9 +52,6 @@ type Session interface {
 
 	// Hash returns a new hash.Hash function initialized with the SSID information
 	Hash() *hash.Hash
-
-	// Clone returns a deep copy of the session
-	Clone() Session
 
 	// Validate performs a thorough validation of all data contained in the session.
 	// Returns an error if an inconsistency is found
@@ -90,6 +93,9 @@ func validate(s Session) error {
 		return errors.New("session: selfID mismatch")
 	}
 
+	if len(s.RID()) != params.SecBytes {
+		return errors.New("session: RID has wrong length")
+	}
 	if len(s.SSID()) != params.SizeSSID {
 		return errors.New("session: SSID has wrong length")
 	}

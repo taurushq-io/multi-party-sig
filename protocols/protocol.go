@@ -20,7 +20,7 @@ type Protocol struct {
 	cancel context.CancelFunc
 }
 
-func NewProtocol(numPeers uint32, initRound round.Round, msgTypes ...pb.MessageType) *Protocol {
+func NewProtocol(numPeers uint32, initRound round.Round, msgTypes ...round.MessageType) *Protocol {
 	return &Protocol{
 		numPeers:     numPeers,
 		queue:        NewQueue(numPeers, msgTypes...),
@@ -96,7 +96,7 @@ func (p *Protocol) messageLoop(ctx context.Context) (err error) {
 		}
 
 		err = currentRound.ProcessMessage(msg)
-		if err != nil {
+		if err != nil round{
 			//logger.Warn("Failed to save message", "err", err)
 			return fmt.Errorf("ProcessMessage: %w", err)
 		}
@@ -124,7 +124,7 @@ func (p *Protocol) messageLoop(ctx context.Context) (err error) {
 	}
 }
 
-func (p *Protocol) AddMessage(msg *pb.Message) error {
+func (p *Protocol) AddMessage(msg *round.Message) error {
 	currentMsgType := p.currentRound.MessageType()
 	newMessageType := msg.GetType()
 	if currentMsgType > newMessageType {

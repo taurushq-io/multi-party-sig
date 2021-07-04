@@ -31,9 +31,10 @@ type round1 struct {
 
 	// VSSSecret is fᵢ(X)
 	VSSSecret *polynomial.Polynomial
-	// VSSSchnorrRand is an array to t+1 random aₗ ∈ 𝔽 used to compute Schnorr commitments of
+
+	// SchnorrRand is an array to t+1 random aₗ ∈ 𝔽 used to compute Schnorr commitments of
 	// the coefficients of the exponent polynomial Fᵢ(X)
-	VSSSchnorrRand []curve.Scalar
+	SchnorrRand *curve.Scalar
 
 	isDoingKeygen bool
 }
@@ -46,8 +47,8 @@ func (r *round1) ProcessMessage(round.Message) error {
 
 // GenerateMessages implements round.Round
 //
-// - sample { aₗ }ₗ  <- 𝔽 for l = 0, ..., t
-// - set { Aᵢ = aₗ⋅G}ₗ for l = 0, ..., t
+// - sample { aₗ }ₗ  <- 𝔽 for l = 0, …, t
+// - set { Aᵢ = aₗ⋅G}ₗ for l = 0, …, t
 // - sample Paillier pᵢ, qᵢ
 // - sample Pedersen Nᵢ, Sᵢ, Tᵢ
 // - sample fᵢ(X) <- 𝔽[X], deg(fᵢ) = t
@@ -82,14 +83,7 @@ func (r *round1) GenerateMessages() ([]round.Message, error) {
 	r.Self.VSSPolynomial = polynomial.NewPolynomialExponent(r.VSSSecret)
 
 	// generate Schnorr randomness and commitments
-	numCoefficients := len(r.Self.VSSPolynomial.Coefficients)
-	r.Self.VSSCommitments = make([]curve.Point, numCoefficients)
-	r.VSSSchnorrRand = make([]curve.Scalar, numCoefficients)
-	for i := range r.Self.VSSCommitments {
-		a, A := sample.ScalarPointPair()
-		r.VSSSchnorrRand[i] = *a
-		r.Self.VSSCommitments[i] = *A
-	}
+	r.SchnorrRand, r.Self.SchnorrCommitments = sample.ScalarPointPair()
 
 	// Sample ρᵢ
 	r.Self.Rho = make([]byte, params.SecBytes)
@@ -99,7 +93,7 @@ func (r *round1) GenerateMessages() ([]round.Message, error) {
 
 	// commit to data in message 2
 	r.Self.Commitment, r.Decommitment, err = r.Hash.Commit(r.SelfID,
-		r.Self.Rho, r.Self.VSSPolynomial, r.Self.VSSCommitments, r.Self.Public.Pedersen)
+		r.Self.Rho, r.Self.VSSPolynomial, r.Self.SchnorrCommitments, r.Self.Public.Pedersen)
 	if err != nil {
 		return nil, fmt.Errorf("refresh.round1.GenerateMessages(): commit: %w", err)
 	}

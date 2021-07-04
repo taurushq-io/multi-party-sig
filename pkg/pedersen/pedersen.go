@@ -10,6 +10,11 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
+// Validate returns an error if
+// - Any parameter is nil
+// - S,T are not in [1, …,N-1]
+// - S,T is not coprime to N
+// - S == T
 func (p *Parameters) Validate() error {
 	if p == nil || p.N == nil || p.S == nil || p.T == nil {
 		return errors.New("pedersen.Parameters: contains nil field")
@@ -87,6 +92,7 @@ func bigint() *big.Int {
 	return &x
 }
 
+// Clone creates a deep copy of the parameters
 func (p Parameters) Clone() *Parameters {
 	var n, s, t big.Int
 	return &Parameters{
@@ -96,6 +102,7 @@ func (p Parameters) Clone() *Parameters {
 	}
 }
 
+// Equal returns true if both parameters are equal
 func (p Parameters) Equal(o *Parameters) bool {
 	return p.N.Cmp(o.N) == 0 && p.S.Cmp(o.S) == 0 && p.T.Cmp(o.T) == 0
 }
@@ -105,39 +112,14 @@ func (p Parameters) WriteTo(w io.Writer) (int64, error) {
 	nAll := int64(0)
 	buf := make([]byte, params.BytesIntModN)
 
-	// write N
-	p.N.FillBytes(buf)
-	n, err := w.Write(buf)
-	nAll += int64(n)
-	if err != nil {
-		return nAll, err
+	// write N, S, T
+	for _, i := range []*big.Int{p.N, p.S, p.T} {
+		i.FillBytes(buf)
+		n, err := w.Write(buf)
+		nAll += int64(n)
+		if err != nil {
+			return nAll, err
+		}
 	}
-
-	// write signs
-	signs := byte(0)
-	if p.S.Sign() == -1 {
-		signs |= 1
-	}
-	if p.T.Sign() == -1 {
-		signs |= 2
-	}
-	n, err = w.Write([]byte{signs})
-	nAll += int64(n)
-	if err != nil {
-		return nAll, err
-	}
-
-	// write S
-	p.S.FillBytes(buf)
-	n, err = w.Write(buf)
-	nAll += int64(n)
-	if err != nil {
-		return nAll, err
-	}
-
-	// write T
-	p.T.FillBytes(buf)
-	n, err = w.Write(buf)
-	nAll += int64(n)
-	return nAll, err
+	return nAll, nil
 }

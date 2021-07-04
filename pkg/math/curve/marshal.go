@@ -145,7 +145,7 @@ func (s *Scalar) Unmarshal(data []byte) error {
 		return errors.New("curve.Scalar.Unmarshal: data is too small")
 	}
 	if scalar.SetByteSlice(data[:params.BytesScalar]) {
-		return errors.New("curve.Scalar.Unmarshal: scalar was >= Q")
+		return errors.New("curve.Scalar.Unmarshal: scalar was >= q")
 	}
 	s.s.Set(&scalar)
 	return nil

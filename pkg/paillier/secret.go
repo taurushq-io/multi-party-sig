@@ -63,10 +63,16 @@ func NewSecretKeyFromPrimes(P, Q *big.Int) *SecretKey {
 	}
 }
 
-// Dec decrypts c and returns the plaintext m ∈ ± (N-2)/2
-func (sk *SecretKey) Dec(c *Ciphertext) *big.Int {
+// Dec decrypts c and returns the plaintext m ∈ ± (N-2)/2.
+// It returns an error if gcd(c, N²) != 1 or if c is not in [1, N²-1].
+func (sk *SecretKey) Dec(c *Ciphertext) (*big.Int, error) {
 	n := sk.PublicKey.N
 	nSquared := sk.PublicKey.nSquared
+
+	if !sk.PublicKey.ValidateCiphertexts(c) {
+		return nil, errors.New("paillier: failed to decrypt invalid ciphertext")
+	}
+
 	phi := sk.Phi
 	phiInv := sk.PhiInv
 
@@ -77,10 +83,11 @@ func (sk *SecretKey) Dec(c *Ciphertext) *big.Int {
 	result.Mul(result, phiInv)        // r = [(c^Phi - 1)/N] • Phi^-1
 	result.Mod(result, n)             // r = [(c^Phi - 1)/N] • Phi^-1		(mod N)
 
+	// see 6.1 https://www.iacr.org/archive/crypto2001/21390136.pdf
 	if result.Cmp(sk.PublicKey.nHalf) == 1 {
 		result.Sub(result, n)
 	}
-	return result
+	return result, nil
 }
 
 func (sk *SecretKey) Clone() *SecretKey {

@@ -80,15 +80,15 @@ func (s *Scalar) SetUInt32(i uint32) *Scalar {
 	return s
 }
 
-// SetBigInt sets s = i mod Q, and returns s.
+// SetBigInt sets s = i mod q, and returns s.
 func (s *Scalar) SetBigInt(i *big.Int) *Scalar {
 	var n big.Int
 	n.Set(i)
-	if n.CmpAbs(Q) != -1 {
-		n.Mod(i, Q)
+	if n.CmpAbs(q) != -1 {
+		n.Mod(i, q)
 	}
 	if n.Sign() == -1 {
-		n.Add(&n, Q)
+		n.Add(&n, q)
 	}
 	s.s.SetByteSlice(n.Bytes())
 	return s
@@ -110,7 +110,7 @@ func (s *Scalar) SetBytes(in []byte) *Scalar {
 // Taken from crypto/ecdsa
 func (s *Scalar) SetHash(hash []byte) *Scalar {
 	i := new(big.Int)
-	orderBits := Q.BitLen()
+	orderBits := q.BitLen()
 	orderBytes := (orderBits + 7) / 8
 	if len(hash) > orderBytes {
 		hash = hash[:orderBytes]

@@ -13,14 +13,14 @@ import (
 func TestSession_MarshalJSON(t *testing.T) {
 	N := 5
 	T := 2
-	sessions := FakeKeygen(N, T)
+	sessions := FakeRefresh(N, T)
 	s := sessions[0]
 	data, err := json.Marshal(s)
 	require.NoError(t, err, "marshalling failed")
-	s2 := &KeygenSession{}
+	s2 := &Refresh{}
 	err = json.Unmarshal(data, s2)
 	pretty := bytes.NewBuffer(nil)
-	json.Indent(pretty, data, "  ", "\t")
+	_ = json.Indent(pretty, data, "  ", "\t")
 	fmt.Println(pretty)
 	require.NoError(t, err, "unmarshalling failed")
 	assert.NoError(t, s.Validate(), "s failed to validate")

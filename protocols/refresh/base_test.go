@@ -22,6 +22,7 @@ var roundTypes = []reflect.Type{
 	reflect.TypeOf((*round2)(nil)),
 	reflect.TypeOf((*round3)(nil)),
 	reflect.TypeOf((*round4)(nil)),
+	reflect.TypeOf((*round5)(nil)),
 	reflect.TypeOf((*output)(nil)),
 }
 
@@ -92,7 +93,7 @@ func checkOutput(t *testing.T, parties []*testParty) {
 
 func TestKeygen(t *testing.T) {
 	N := 3
-	sessions := session.FakeEmpty(N, N-1)
+	sessions := session.FakeKeygen(N, N-1)
 
 	parties := make([]*testParty, N)
 	for _, s := range sessions {
@@ -112,8 +113,7 @@ func TestKeygen(t *testing.T) {
 
 func TestRefresh(t *testing.T) {
 	N := 3
-	//sessions := session.FakeEmpty(N, N-1)
-	sessions := session.FakeKeygen(N, N-1)
+	sessions := session.FakeRefresh(N, N-1)
 
 	parties := make([]*testParty, N)
 	for _, s := range sessions {

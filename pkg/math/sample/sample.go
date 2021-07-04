@@ -9,18 +9,18 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
-var ErrMaxIters = errors.New("failed to generate after 255 iters")
+var ErrMaxIterations = errors.New("failed to generate after 255 iterations")
 
-const maxIters = 255
+const maxIterations = 255
 
 func mustReadBits(buf []byte) {
 	var err error
-	for i := 0; i < maxIters; i++ {
+	for i := 0; i < maxIterations; i++ {
 		if _, err = rand.Read(buf); err == nil {
 			return
 		}
 	}
-	panic(ErrMaxIters)
+	panic(ErrMaxIterations)
 }
 
 // UnitModN returns a u ∈ ℤₙˣ
@@ -28,7 +28,7 @@ func UnitModN(n *big.Int) *big.Int {
 	var u, gcd big.Int
 	one := big.NewInt(1)
 	buf := make([]byte, params.BitsIntModN/8)
-	for i := 0; i < maxIters; i++ {
+	for i := 0; i < maxIterations; i++ {
 		mustReadBits(buf)
 		u.SetBytes(buf)
 		u.Mod(&u, n)
@@ -37,14 +37,14 @@ func UnitModN(n *big.Int) *big.Int {
 			return &u
 		}
 	}
-	panic(ErrMaxIters)
+	panic(ErrMaxIterations)
 }
 
 // QNR samples a random quadratic non-residue in Z_n.
 func QNR(n *big.Int) *big.Int {
 	var w big.Int
 	buf := make([]byte, params.BitsIntModN/8)
-	for i := 0; i < maxIters; i++ {
+	for i := 0; i < maxIterations; i++ {
 		mustReadBits(buf)
 		w.SetBytes(buf)
 		w.Mod(&w, n)
@@ -52,12 +52,13 @@ func QNR(n *big.Int) *big.Int {
 			return &w
 		}
 	}
-	panic(ErrMaxIters)
+	panic(ErrMaxIterations)
 }
 
 // BlumPrime returns an odd prime p of size params.BitsBlumPrime,
 // such that p == 3 (mod 4)
 func BlumPrime() *big.Int {
+	// TODO These need to be safe https://github.com/privacybydesign/gabi/blob/72b50baa7290/safeprime/safeprime.go#L17 example
 	// TODO be more flexible on the number of bits in P, Q to avoid square root attack
 	for i := uint8(0); i < uint8(255); i++ {
 		p, err := rand.Prime(rand.Reader, params.BitsBlumPrime)
@@ -71,7 +72,7 @@ func BlumPrime() *big.Int {
 			return p
 		}
 	}
-	panic(ErrMaxIters)
+	panic(ErrMaxIterations)
 }
 
 // Paillier generate the necessary integers for a Paillier key pair.

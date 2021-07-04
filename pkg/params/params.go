@@ -32,7 +32,6 @@ const (
 	BytesPaillier   = BitsPaillier / 8  // = 256
 	BytesCiphertext = 2 * BytesPaillier // = 512
 
-	// Todo change to compressed
 	BytesPoint  = secp256k1.PubKeyBytesLenCompressed
 	BytesScalar = 32
 

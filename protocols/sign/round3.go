@@ -20,7 +20,7 @@ type round3 struct {
 
 // ProcessMessage implements round.Round
 //
-// - verify Hash(ssid, K₁, G₁, ..., Kₙ, Gₙ)
+// - verify Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
 // - store MtA data
 // - verify zkproofs affg (2x) zklog*
 func (r *round3) ProcessMessage(msg round.Message) error {
@@ -52,15 +52,23 @@ func (r *round3) ProcessMessage(msg round.Message) error {
 	partyJ.BigGammaShare = body.BigGammaShare
 
 	// δᵢⱼ = αᵢⱼ + βᵢⱼ
-	deltaShare := curve.NewScalarBigInt(r.Secret.Paillier.Dec(body.DeltaMtA.D))
+	deltaShareAlpha, err := r.Secret.Paillier.Dec(body.DeltaMtA.D)
+	if err != nil {
+		return fmt.Errorf("sign.round3.ProcessMessage(): party %s: decrypt alpha: %w", j, err)
+	}
+	deltaShare := curve.NewScalarBigInt(deltaShareAlpha)
 	deltaShare.Add(deltaShare, partyJ.DeltaMtA.Beta)
 	partyJ.DeltaShareMtA = deltaShare
 	// χᵢⱼ = α̂ᵢⱼ +  ̂βᵢⱼ
-	chiShare := curve.NewScalarBigInt(r.Secret.Paillier.Dec(body.ChiMtA.D))
+	chiShareAlpha, err := r.Secret.Paillier.Dec(body.ChiMtA.D)
+	if err != nil {
+		return fmt.Errorf("sign.round3.ProcessMessage(): party %s: decrypt alpha: %w", j, err)
+	}
+	chiShare := curve.NewScalarBigInt(chiShareAlpha)
 	chiShare.Add(chiShare, partyJ.ChiMtA.Beta)
 	partyJ.ChiShareMtA = chiShare
 
-	return partyJ.AddMessage(msg)
+	return nil // message is properly handled
 }
 
 // GenerateMessages implements round.Round

@@ -37,45 +37,10 @@ func challengeMult(h *hash.Hash, As, Xs []curve.Point) []*curve.Scalar {
 	return es
 }
 
-func ProveMulti(h *hash.Hash, As, Xs []curve.Point, as, xs []curve.Scalar) []curve.Scalar {
-	t := len(xs)
-	if len(As) != t || len(Xs) != t || len(as) != t {
-		return nil
-	}
-
-	es := challengeMult(h, As, Xs)
-
-	proofs := make([]curve.Scalar, t)
-	for l := range proofs {
-		proofs[l].MultiplyAdd(es[l], &xs[l], &as[l])
-	}
-	return proofs
-}
-
 func Prove(hash *hash.Hash, A, X *curve.Point, a, x *curve.Scalar) *curve.Scalar {
 	proof := challenge(hash, A, X)
 	proof.MultiplyAdd(proof, x, a)
 	return proof
-}
-
-func VerifyMulti(h *hash.Hash, As, Xs []curve.Point, proofs []curve.Scalar) bool {
-	t := len(Xs)
-	if len(As) != t || len(proofs) != t {
-		return false
-	}
-
-	es := challengeMult(h, As, Xs)
-
-	var lhs, rhs curve.Point
-	for l := range proofs {
-		lhs.ScalarBaseMult(&proofs[l])
-		rhs.ScalarMult(es[l], &Xs[l])
-		rhs.Add(&rhs, &As[l])
-		if !lhs.Equal(&rhs) {
-			return false
-		}
-	}
-	return true
 }
 
 func Verify(hash *hash.Hash, A, X *curve.Point, proof *curve.Scalar) bool {
