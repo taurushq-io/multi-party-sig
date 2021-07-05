@@ -97,7 +97,7 @@ func TestKeygen(t *testing.T) {
 
 	parties := make([]*testParty, N)
 	for _, s := range sessions {
-		r, err := NewRound(s)
+		r, err := Create(s)
 		require.NoError(t, err, "round creation should not result in an error")
 		parties[s.SelfIndex()] = &testParty{
 			id: s.SelfID(),
@@ -117,7 +117,7 @@ func TestRefresh(t *testing.T) {
 
 	parties := make([]*testParty, N)
 	for _, s := range sessions {
-		r, err := NewRound(s)
+		r, err := Create(s)
 		require.NoError(t, err, "round creation should not result in an error")
 		parties[s.SelfIndex()] = &testParty{
 			id: s.SelfID(),

@@ -8,10 +8,10 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
-const protocolID round.MessageProtocol = 3
+const protocolID round.ProtocolID = 3
 
 const (
-	MessageTypeSign1 = (round.MessageType(protocolID) << 16) + iota
+	MessageTypeSign1 = (round.MessageID(protocolID) << 16) + iota
 	MessageTypeSign2
 	MessageTypeSign3
 	MessageTypeSign4
@@ -22,7 +22,7 @@ func (m *Message) Validate() error {
 	if h == nil {
 		return errors.New("sign.Message: header is nil")
 	}
-	msgType := m.Type()
+	msgType := m.ID()
 	switch msgType {
 	case MessageTypeSign1:
 		return m.GetSign1().Validate()
@@ -37,7 +37,7 @@ func (m *Message) Validate() error {
 	}
 }
 
-func (m *Message) Type() round.MessageType {
+func (m *Message) ID() round.MessageID {
 	switch m.Content.(type) {
 	case *Message_Sign1:
 		return MessageTypeSign1
@@ -48,7 +48,7 @@ func (m *Message) Type() round.MessageType {
 	case *Message_Sign4:
 		return MessageTypeSign4
 	default:
-		return round.MessageTypeInvalid
+		return round.MessageIDInvalid
 	}
 }
 

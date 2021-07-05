@@ -15,7 +15,8 @@ enum Broadcast {
 }
 
 message Header {
-  string from = 1 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/party.ID", (gogoproto.nullable) = false];
-  string to = 2 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/party.ID", (gogoproto.nullable) = false];
-  Broadcast broadcast = 3;
+  bytes SSID = 1;
+  string from = 2 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/party.ID", (gogoproto.nullable) = false];
+  string to = 3 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/party.ID", (gogoproto.nullable) = false];
+  Broadcast broadcast = 4;
 }

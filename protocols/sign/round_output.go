@@ -7,6 +7,7 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
 	"github.com/taurusgroup/cmp-ecdsa/protocols/sign/signature"
 )
 
@@ -64,6 +65,18 @@ func (r *output) Finalize() (round.Round, error) {
 	return nil, nil
 }
 
-func (r *output) MessageType() round.MessageType {
+func (r *output) ExpectedMessageID() round.MessageID {
 	return MessageTypeSign4
+}
+
+func (r *output) GetSignature() (*signature.Signature, error) {
+	// This could be used to handle pre-signatures
+	if r.Signature != nil {
+		return r.Signature, nil
+	}
+	return nil, errors.New("sign.output: session was nil")
+}
+
+func (r *output) GetSession() (session.Session, error) {
+	return nil, errors.New("sign.output: protocol does not produce sessions")
 }

@@ -1,73 +1,97 @@
 # cmp-ecdsa
 
 cmp-ecdsa is a Go library that implements the _"UC Non-Interactive, Proactive, Threshold ECDSA with Identifiable Aborts"_ [[1]](#1).
+For a more detailed description of the protocol, see [threshold_protocol.pdf](threshold_protocol.pdf)
 
 ## Usage
 
-WIP.
+### Sessions
+
+Protocol data is stored in a `session.Session` struct.
 
 ### Keygen
 
+```go
+baseSession, err := session.NewKeygenSession([]party.ID{"a","b","c"}, 2, "a") (*Keygen, error) 
+if err != nil {
+	//handle err
+}
+p, err := protocols.NewProtocol(baseSession, refresh.Create)
+if err != nil {
+    //handle err
+}
+inChan, outChan, errChan := p.Start()
+// TODO handle message passing 
+refreshedSession, err := p.GetSession()
+if err != nil {
+    //handle err
+}
+```
 ### Refresh
 
+```go
+var oldSession session.Session
+if err != nil {
+	//handle err
+}
+p, err := protocols.NewProtocol(baseSession, refresh.Create)
+if err != nil {
+    //handle err
+}
+inChan, outChan, errChan := p.Start()
+// TODO handle message passing 
+refreshedSession, err := p.GetSession()
+if err != nil {
+    //handle err
+}
+
+```
 ### Sign
 
 For now, we only implement the 4 round interactive signing protocol. 
+```go
 
+var (
+	refreshedSession session.Session
+	message []byte
+	signers = []party.ID
+)
+signSession, err :=  NewSignSession(refreshedSession, signerIDs, message)
+if err != nil {
+	//handle err
+}
+p, err := protocols.NewProtocol(signSession, sign.Create)
+if err != nil {
+    //handle err
+}
+inChan, outChan, errChan := p.Start()
+// TODO handle message passing 
+sig, err := p.GetSignature()
+if err != nil {
+    //handle err
+}
+```
 ### Network
 
-The user of the library is responsible for providing a communication layer for sending all messages.
+The messages returned by the protocol can be transmitted through an authenticated point-to-point network.
 
-Messages produced by the protocol are encoded as `pb.Message` types, and are serializable using protocol buffers.
-They contain all necessary routing information as well as the message content.
-The content of the message is assumed to be public and does not need to be encrypted.
-However, the routing information may be sensitive and so it is good practice to encrypt the whole message.
+## Build
 
-Users are responsible for guaranteeing authenticity of the messages.
-This requires the 
+`cmp-ecdsa` requires a custom version of `gogo` which enables the use of `*big.Int` in protobufs. 
+This version can be compiled by applying the path from [trasc/casttypewith](https://github.com/trasc/protobuf)
+It can be installed using the following shell commands:
+```shell
+git clone https://github.com/gogo/protobuf $GOPATH/src/github.com/gogo/protobuf
+cd $GOPATH/src/github.com/gogo/protobuf
+git remote add trasc https://github.com/trasc/protobuf.git
+git fetch trasc
+git merge trasc/casttypewith
+cd protoc-gen-gogofaster
+go build
+cp protoc-gen-gogofaster $GOPATH/bin
+```
 
-
-When the protocol outputs a `pb.Message`, there are 3 different ways this message should be sent to other peers.
-
-#### Send to single
-
-If the `To` field is not empty, then the message is intended for a single recipient.
-The message can be sent via a point-to-point link.
-
-
-#### Basic broadcast/Send to all
-
-#### Reliable broadcast 
-
-When the user of the li message `msg *pb.Message`,  
-
-### General 
-
-Upon reception of a `pb.Message`, the library should check the following:
-- The message was correctly signed by 
-- The `From` field is consistent with the identity of the node who sent/signed the message
-- **TODO** check some HMAC (after refresh, we have a random ID which is shared by all parties)
-
-
-## TODO 
-
-### Config 
-
-All protocols require the following information:
-
-- Group description
-- Party list (sorted list of `party.ID` which are strings)
-
-#### Key Gen
-
-- *Optional:* Initial ECDSAPrivateShare
-
-Output: `keygen.Result`
-
-#### Refresh
-
-- Established ECDSAPrivateShare
-- 
+Once installed, running `make` in the root will regenerate all `.proto` files.
 
 
 ## Copyright

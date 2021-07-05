@@ -42,21 +42,24 @@ type LocalParty struct {
 	ShareReceived *curve.Scalar
 }
 
-func NewRound(s session.Session) (*round1, error) {
+func Create(s session.Session) (round.Round, error) {
 	var isDoingKeygen bool
+	var name string
 	switch s.(type) {
 	case *session.Keygen:
 		isDoingKeygen = true
+		name = "keygen"
 	case *session.Refresh:
 		isDoingKeygen = false
+		name = "refresh"
 	default:
-		return nil, errors.New("refresh.NewRound: session must be either session.Keygen or session.Refresh")
+		return nil, errors.New("refresh.Create: s must be either *session.Keygen or *session.Refresh")
 	}
 
 	// Create round with a clone of the original secret
-	base, err := round.NewBaseRound(s)
+	base, err := round.NewBaseRound(s, name)
 	if err != nil {
-		return nil, fmt.Errorf("refresh.NewRound: %w", err)
+		return nil, fmt.Errorf("refresh.Create: %w", err)
 	}
 
 	parties := make(map[party.ID]*LocalParty, s.N())
@@ -75,6 +78,10 @@ func NewRound(s session.Session) (*round1, error) {
 		LocalParties:  parties,
 		isDoingKeygen: isDoingKeygen,
 	}, nil
+}
+
+func (r round1) ProtocolID() round.ProtocolID {
+	return protocolID
 }
 
 // isKeygen is a convenience method for clarity

@@ -94,11 +94,12 @@ func (r *round1) GenerateMessages() ([]round.Message, error) {
 
 // Finalize implements round.Round
 func (r *round1) Finalize() (round.Round, error) {
+	r.Next()
 	return &round2{
 		round1: r,
 	}, nil
 }
 
-func (r *round1) MessageType() round.MessageType {
-	return round.MessageTypeInvalid
+func (r *round1) ExpectedMessageID() round.MessageID {
+	return round.MessageIDInvalid
 }

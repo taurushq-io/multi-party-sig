@@ -13,9 +13,14 @@ type BaseRound struct {
 
 	SelfID    party.ID
 	SelfIndex int
+
+	name   string
+	number int
 }
 
-func NewBaseRound(session session.Session) (*BaseRound, error) {
+type CreateFunc func(s session.Session) (Round, error)
+
+func NewBaseRound(session session.Session, name string) (*BaseRound, error) {
 	if err := session.Validate(); err != nil {
 		return nil, err
 	}
@@ -25,6 +30,7 @@ func NewBaseRound(session session.Session) (*BaseRound, error) {
 		Hash:      session.Hash(),
 		SelfID:    session.SelfID(),
 		SelfIndex: session.PartyIDs().GetIndex(session.SelfID()),
+		name:      name,
 	}, nil
 }
 
@@ -40,6 +46,22 @@ func (b BaseRound) Finalize() (Round, error) {
 	return nil, nil
 }
 
-func (b BaseRound) MessageType() MessageType {
-	return MessageTypeInvalid
+func (b BaseRound) ExpectedMessageID() MessageID {
+	return MessageIDInvalid
+}
+
+func (b BaseRound) ProtocolName() string {
+	return b.name
+}
+
+func (b BaseRound) ProtocolID() ProtocolID {
+	return 0
+}
+
+func (b BaseRound) Number() int {
+	return b.number
+}
+
+func (b *BaseRound) Next() {
+	b.number++
 }

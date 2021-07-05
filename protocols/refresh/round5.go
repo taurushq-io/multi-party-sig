@@ -15,6 +15,7 @@ import (
 
 type round5 struct {
 	*round4
+	newSession session.Session
 }
 
 // ProcessMessage implements round.Round
@@ -120,27 +121,27 @@ func (r *round5) GenerateMessages() ([]round.Message, error) {
 		public[idJ] = partyJ.Public.Clone()
 	}
 
-	newSession, err := session.NewRefreshSession(r.S.Threshold(), public, r.rho, publicKey, newSecret.Clone(), nil)
+	r.newSession, err = session.NewRefreshSession(r.S.Threshold(), public, r.rho, publicKey, newSecret.Clone(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("refresh.round5.GenerateMessages(): compute SSID: %w", err)
 	}
-	r.S = newSession
-	_, _ = r.Hash.Write(r.S.SSID())
+	_, _ = r.Hash.Write(r.newSession.SSID())
 
 	proof := zksch.Prove(r.Hash.CloneWithID(r.SelfID),
 		r.Self.SchnorrCommitments,
 		r.Self.Public.ECDSA,
 		r.SchnorrRand,
-		r.S.Secret().ECDSA)
+		r.newSession.Secret().ECDSA)
 
 	return NewMessageRefresh5(r.SelfID, proof), nil
 }
 
 // Finalize implements round.Round
 func (r *round5) Finalize() (round.Round, error) {
+	r.Next()
 	return &output{r}, nil
 }
 
-func (r *round5) MessageType() round.MessageType {
+func (r *round5) ExpectedMessageID() round.MessageID {
 	return MessageTypeRefresh4
 }

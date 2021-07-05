@@ -3,37 +3,42 @@ package round
 import "github.com/gogo/protobuf/proto"
 
 type (
-	MessageType     uint32
-	MessageNumber   uint16
-	MessageProtocol uint16
+	MessageID     uint32
+	MessageNumber uint16
 )
 
 const (
-	MessageTypeInvalid MessageType = 0
+	MessageIDInvalid MessageID = 0
 )
 
-func (m MessageType) IsSameOrNext(m2 MessageType) bool {
-	if m.Protocol() != m2.Protocol() {
+func (m MessageID) IsSameOrNext(m2 MessageID) bool {
+	if m.GetProtocolID() != m2.GetProtocolID() {
 		return false
 	}
 	return m >= m2
 }
 
-func (m MessageType) Number() MessageNumber {
+func (m MessageID) Number() MessageNumber {
 	return MessageNumber(m)
 }
 
-func (m MessageType) Protocol() MessageProtocol {
-	return MessageProtocol(m >> 16)
+func (m MessageID) IsProtocol(id ProtocolID) bool {
+	return m.GetProtocolID() == id
 }
 
-func (m MessageProtocol) Type() MessageType {
-	return MessageType(m) << 16
+func (m MessageID) GetProtocolID() ProtocolID {
+	return ProtocolID(m >> 16)
+}
+
+type ProtocolID uint16
+
+func (m ProtocolID) Type() MessageID {
+	return MessageID(m) << 16
 }
 
 type Message interface {
 	proto.Message
 	GetHeader() *Header
-	Type() MessageType
+	ID() MessageID
 	Validate() error
 }

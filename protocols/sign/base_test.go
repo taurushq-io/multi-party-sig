@@ -95,7 +95,7 @@ func TestRound(t *testing.T) {
 
 	parties := make([]*testParty, 0, T+1)
 	for _, s := range sessions {
-		r, err := NewRound(s)
+		r, err := Create(s)
 		if err != nil {
 			t.Error(err)
 		}
