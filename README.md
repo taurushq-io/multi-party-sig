@@ -1,7 +1,10 @@
 # cmp-ecdsa
 
-cmp-ecdsa is a Go library that implements the _"UC Non-Interactive, Proactive, Threshold ECDSA with Identifiable Aborts"_ [[1]](#1).
-For a more detailed description of the protocol, see [threshold_protocol.pdf](threshold_protocol.pdf)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+A Go implementation of the "CMP" protocol by [Canetti et al.](https://eprint.iacr.org/2021/060) for threshold ECDSA signing, with some additions to improve its practical reliability, including the "echo broadcast" from [Goldwasser and Lindell](https://doi.org/10.1007/s00145-005-0319-z).  We documented these in [threshold_protocol.pdf](threshold_protocol.pdf).
+
+Our implementation supports ECDSA with secp256k1.
 
 ## Usage
 
@@ -80,6 +83,7 @@ The messages returned by the protocol can be transmitted through an authenticate
 `cmp-ecdsa` requires a custom version of `gogo` which enables the use of `*big.Int` in protobufs. 
 This version can be compiled by applying the path from [trasc/casttypewith](https://github.com/trasc/protobuf)
 It can be installed using the following shell commands:
+
 ```shell
 git clone https://github.com/gogo/protobuf $GOPATH/src/github.com/gogo/protobuf
 cd $GOPATH/src/github.com/gogo/protobuf
@@ -94,14 +98,10 @@ cp protoc-gen-gogofaster $GOPATH/bin
 Once installed, running `make` in the root will regenerate all `.proto` files.
 
 
-## Copyright
+## Intellectual property
 
-(c) 2021 Adrian Hamelink
+This code is copyright (c) Adrian Hamelink and Taurus SA, 2021, and under Apache 2.0 license.
 
-(c) 2021 Taurus Group
 
-## Reference 
 
-<a name="1">1</a>: Ran Canetti, Rosario Gennaro, Steven Goldfeder, Nikolaos Makriyannis, and Udi Peled. “UC Non-Interactive, Proactive, Threshold ECDSA with Identifiable Aborts,” 2021. https://eprint.iacr.org/2021/060.
 
-<a name="2">2</a>: Shafi Goldwasser, and Yehuda Lindell. “Secure Multi-Party Computation without Agreement.” Journal of Cryptology 18, no. 3 (July 1, 2005): 247–87. https://doi.org/10.1007/s00145-005-0319-z.
