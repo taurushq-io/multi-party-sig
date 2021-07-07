@@ -2,9 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-A Go implementation of the "CMP" protocol by [Canetti et al.](https://eprint.iacr.org/2021/060) for threshold ECDSA signing, with some additions to improve its practical reliability, including the "echo broadcast" from [Goldwasser and Lindell](https://doi.org/10.1007/s00145-005-0319-z).  We documented these in [threshold_protocol.pdf](threshold_protocol.pdf).
-
-Our implementation supports ECDSA with secp256k1.
+A Go implementation of the "CMP" protocol by [Canetti et al.](https://eprint.iacr.org/2021/060) for threshold ECDSA signing, with some additions to improve its practical reliability, including the "echo broadcast" from [Goldwasser and Lindell](https://doi.org/10.1007/s00145-005-0319-z).  We documented these in [threshold_protocol.pdf](threshold_protocol.pdf). A list of proposed improvements is in [TODO.md](TODO.md).  Our implementation supports ECDSA with secp256k1.
 
 ## Usage
 
