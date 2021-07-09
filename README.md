@@ -15,17 +15,17 @@ Protocol data is stored in a `session.Session` struct.
 ```go
 baseSession, err := session.NewKeygenSession([]party.ID{"a","b","c"}, 2, "a") (*Keygen, error) 
 if err != nil {
-	//handle err
+	// handle error
 }
 p, err := protocols.NewProtocol(baseSession, refresh.Create)
 if err != nil {
-    //handle err
+    // handle error
 }
 inChan, outChan, errChan := p.Start()
-// TODO handle message passing 
+// handle message passing 
 refreshedSession, err := p.GetSession()
 if err != nil {
-    //handle err
+    // handle error
 }
 ```
 ### Refresh
@@ -33,17 +33,17 @@ if err != nil {
 ```go
 var oldSession session.Session
 if err != nil {
-	//handle err
+	// handle error
 }
 p, err := protocols.NewProtocol(baseSession, refresh.Create)
 if err != nil {
-    //handle err
+    // handle error
 }
 inChan, outChan, errChan := p.Start()
-// TODO handle message passing 
+// handle message passing 
 refreshedSession, err := p.GetSession()
 if err != nil {
-    //handle err
+    // handle error
 }
 
 ```
@@ -63,13 +63,13 @@ if err != nil {
 }
 p, err := protocols.NewProtocol(signSession, sign.Create)
 if err != nil {
-    //handle err
+    // handle error
 }
 inChan, outChan, errChan := p.Start()
-// TODO handle message passing 
+// handle message passing 
 sig, err := p.GetSignature()
 if err != nil {
-    //handle err
+    // handle error
 }
 ```
 ### Network
