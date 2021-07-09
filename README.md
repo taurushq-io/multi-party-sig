@@ -100,6 +100,11 @@ Once installed, running `make` in the root will regenerate all `.proto` files.
 
 This code is copyright (c) Adrian Hamelink and Taurus SA, 2021, and under Apache 2.0 license.
 
-
+On potential patents: The development of this protocol was sponsored by
+the company Fireblocks, [which
+stated](https://apnews.com/press-release/pr-newswire/26aab91e254bc254d331ceafc20b9859)
+that "all digital asset custodians and MPC vendors can access
+Fireblocks’ MPC-CMP protocol and use it for free as Fireblocks will not
+be applying for patents on this technology."
 
 
