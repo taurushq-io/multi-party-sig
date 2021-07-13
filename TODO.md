@@ -1,11 +1,5 @@
 # TODO
 
-## Generate Paillier modulus as product of _safe_ primes
-
-Up until now, the primes `p`,`q` generated for Paillier are only guaranteed to be such that `p,q = 3 mod 4`.
-The original description of the protocol requires them to be **safe** primes. 
-For efficiency reasons, we have not yet implemented this.
-
 ## Elliptic curve backend
 
 Our implementation currently uses the `secp256k1` curve implementation from [decred/dcrd]("https://github.com/decred/dcrd/dcrec/secp256k1/v3").
