@@ -192,5 +192,5 @@ func challenge(hash *hash.Hash, public Public, commitment *Commitment) *big.Int 
 		commitment.A, commitment.Bx, commitment.By,
 		commitment.E, commitment.S, commitment.F, commitment.T)
 
-	return hash.ReadFqNegative()
+	return sample.IntervalScalar(hash)
 }

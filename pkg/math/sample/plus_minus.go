@@ -49,3 +49,8 @@ func IntervalLN(rand io.Reader) *big.Int {
 func IntervalLEpsN(rand io.Reader) *big.Int {
 	return sampleNeg(rand, params.LPlusEpsilon+params.BitsIntModN)
 }
+
+// IntervalScalar returns an integer in the range ±q, with q the size of a Scalar
+func IntervalScalar(rand io.Reader) *big.Int {
+	return sampleNeg(rand, params.BytesScalar*8)
+}

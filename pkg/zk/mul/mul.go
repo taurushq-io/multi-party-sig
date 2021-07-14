@@ -112,5 +112,5 @@ func challenge(hash *hash.Hash, public Public, commitment *Commitment) *big.Int 
 	_, _ = hash.WriteAny(public.Prover,
 		public.X, public.Y, public.C,
 		commitment.A, commitment.B)
-	return hash.ReadFqNegative()
+	return sample.IntervalScalar(hash)
 }

@@ -30,24 +30,6 @@ func (hash *Hash) Read(buf []byte) (n int, err error) {
 	return hash.h.Read(buf)
 }
 
-// ReadFqNegative generates a big.Int in the interval ±q, by reading from hash.Hash.
-func (hash *Hash) ReadFqNegative() *big.Int {
-	var n big.Int
-	out := make([]byte, params.BytesScalar+1)
-	_, _ = hash.h.Read(out)
-
-	// use the first byte to determine if the result should be negative
-	isNeg := (out[0] & 1) == 1
-	out = out[1:]
-
-	n.SetBytes(out)
-	if isNeg {
-		n.Neg(&n)
-	}
-
-	return &n
-}
-
 // ReadBytes returns numBytes by reading from hash.Hash.
 // if in is nil, ReadBytes returns the minimum safe length
 func (hash *Hash) ReadBytes(in []byte) ([]byte, error) {
