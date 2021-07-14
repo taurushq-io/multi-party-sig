@@ -51,7 +51,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 
 	prover := public.Prover
 
-	alpha := sample.UnitModN(rand.Reader, N)
+	alpha := sample.IntervalLEps(rand.Reader)
 	r := sample.UnitModN(rand.Reader, N)
 	s := sample.UnitModN(rand.Reader, N)
 

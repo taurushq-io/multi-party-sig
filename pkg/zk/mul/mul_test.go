@@ -41,6 +41,7 @@ func TestMul(t *testing.T) {
 	require.NoError(t, proof2.Unmarshal(out), "failed to unmarshal proof")
 	assert.Equal(t, proof, proof2)
 	out2, err := proof2.Marshal()
+	require.NoError(t, err, "failed to marshal proof")
 	assert.Equal(t, out, out2)
 	proof3 := &Proof{}
 	require.NoError(t, proof3.Unmarshal(out2), "failed to marshal 2nd proof")
