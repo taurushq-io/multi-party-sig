@@ -11,7 +11,10 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-// Hash is a wrapper for sha3.ShakeHash which extends its functionality to work with CMP's data types.
+// Hash is the hash function we use for generating commitments, consuming CMP types, etc.
+//
+// Internally, this is a wrapper around sha3.ShakeHash, but any hash function with
+// an easily extendable output would work as well.
 type Hash struct {
 	h sha3.ShakeHash
 }
