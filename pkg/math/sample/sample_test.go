@@ -6,6 +6,17 @@ import (
 	"testing"
 )
 
+func TestModN(t *testing.T) {
+	n := new(big.Int).SetUint64(3 * 11 * 65519)
+	x := ModN(rand.Reader, n)
+	if x.Sign() < 0 {
+		t.Error("ModN generated a negative number: ", x)
+	}
+	if x.Cmp(n) >= 0 {
+		t.Errorf("ModN generated a number >= %v: %v", x, n)
+	}
+}
+
 const blumPrimeProbabilityIterations = 20
 
 func TestBlumPrime(t *testing.T) {
