@@ -128,6 +128,6 @@ func (hash *Hash) Clone() *Hash {
 // CloneWithID returns a copy of the Hash in its current state, but also writes the ID to the new state.
 func (hash *Hash) CloneWithID(id party.ID) *Hash {
 	cloned := hash.Clone()
-	cloned.Write([]byte(id))
+	_, _ = cloned.Write([]byte(id))
 	return cloned
 }
