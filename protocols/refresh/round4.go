@@ -3,6 +3,7 @@ package refresh
 import (
 	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
@@ -93,7 +94,10 @@ func (r *round4) GenerateMessages() ([]round.Message, error) {
 	}
 
 	// Write Rho to the hash state
-	_, _ = r.Hash.Write(r.rho)
+	_, _ = r.Hash.WriteAny(&writer.BytesWithDomain{
+		TheDomain: "Rho",
+		Bytes:     r.rho,
+	})
 
 	// Prove N is a blum prime with zkmod
 	mod := zkmod.NewProof(r.Hash.CloneWithID(r.SelfID), zkmod.Public{N: r.Self.Public.Pedersen.N}, zkmod.Private{

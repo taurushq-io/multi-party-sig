@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
@@ -127,7 +128,10 @@ func (s Refresh) Hash() *hash.Hash {
 	h := s.Keygen.Hash()
 
 	// RID (since secret is already set)
-	_, _ = h.Write(s.rid)
+	_, _ = h.WriteAny(&writer.BytesWithDomain{
+		TheDomain: "RID",
+		Bytes:     s.rid,
+	})
 
 	// write all public info from parties in order
 	for _, partyID := range s.PartyIDs() {

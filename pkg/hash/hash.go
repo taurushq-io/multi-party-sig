@@ -2,9 +2,9 @@ package hash
 
 import (
 	"fmt"
-	"io"
 	"math/big"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"golang.org/x/crypto/sha3"
@@ -50,14 +50,6 @@ func (hash *Hash) ReadBytes(in []byte) []byte {
 		panic(fmt.Sprintf("hash.ReadBytes: internal hash failure: %v", err))
 	}
 	return in
-}
-
-// Write writes data to the hash state.
-//
-// Implements io.Writer
-func (hash *Hash) Write(data []byte) (int, error) {
-	// the underlying hash function never returns an error
-	return hash.h.Write(data)
 }
 
 // WriteAny takes many different data types and writes them to the hash state.
@@ -126,6 +118,6 @@ func (hash *Hash) Clone() *Hash {
 // CloneWithID returns a copy of the Hash in its current state, but also writes the ID to the new state.
 func (hash *Hash) CloneWithID(id party.ID) *Hash {
 	cloned := hash.Clone()
-	_, _ = cloned.Write([]byte(id))
+	_, _ = hash.WriteAny(id)
 	return cloned
 }

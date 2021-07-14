@@ -41,7 +41,7 @@ func (Decommitment) Domain() string {
 // commitment = h(id, data, decommitment)
 func (hash *Hash) Commit(id party.ID, data ...interface{}) (Commitment, Decommitment, error) {
 	var err error
-	decommitment := make([]byte, params.SecBytes)
+	decommitment := Decommitment(make([]byte, params.SecBytes))
 
 	if _, err = rand.Read(decommitment); err != nil {
 		return nil, nil, fmt.Errorf("hash.Commit: failed to generate decommitment: %w", err)
@@ -55,7 +55,7 @@ func (hash *Hash) Commit(id party.ID, data ...interface{}) (Commitment, Decommit
 		}
 	}
 
-	_, _ = h.Write(decommitment)
+	_, _ = h.WriteAny(decommitment)
 
 	commitment := h.ReadBytes(nil)
 
@@ -78,7 +78,7 @@ func (hash *Hash) Decommit(id party.ID, c Commitment, d Decommitment, data ...in
 		}
 	}
 
-	_, _ = h.Write(d)
+	_, _ = h.WriteAny(d)
 
 	computedCommitment := h.ReadBytes(nil)
 
