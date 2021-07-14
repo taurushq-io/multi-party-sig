@@ -64,11 +64,14 @@ func (hash *Hash) WriteAny(data ...interface{}) (int64, error) {
 	for _, d := range data {
 		switch t := d.(type) {
 		case []byte:
-			n0, _ := hash.h.Write(t)
+			n0, err := hash.Write(t)
+			if err != nil {
+				return n, fmt.Errorf("hash.Hash: write []byte: %w", err)
+			}
 			n += int64(n0)
 		case []*curve.Point:
 			for _, p := range t {
-				n0, err := p.WriteTo(hash.h)
+				n0, err := p.WriteTo(hash)
 				n += n0
 				if err != nil {
 					return n, fmt.Errorf("hash.Hash: write []*curve.Point: %w", err)
@@ -76,7 +79,7 @@ func (hash *Hash) WriteAny(data ...interface{}) (int64, error) {
 			}
 		case []curve.Point:
 			for _, p := range t {
-				n0, err := p.WriteTo(hash.h)
+				n0, err := p.WriteTo(hash)
 				n += n0
 				if err != nil {
 					return n, fmt.Errorf("hash.Hash: write []curve.Point: %w", err)
@@ -90,19 +93,25 @@ func (hash *Hash) WriteAny(data ...interface{}) (int64, error) {
 			if t.BitLen() <= params.BitsIntModN && t.Sign() == 1 {
 				t.FillBytes(b)
 			} else {
-				b, _ = t.GobEncode()
+				var err error
+				b, err = t.GobEncode()
+				if err != nil {
+					return n, fmt.Errorf("hash.Hash: GobEncode: %w", err)
+				}
 			}
-			n0, _ := hash.h.Write(b)
+			n0, err := hash.Write(b)
+			if err != nil {
+				return n, fmt.Errorf("hash.Hash: write *big.Int: %w", err)
+			}
 			n += int64(n0)
 		case io.WriterTo:
-			n0, err := t.WriteTo(hash.h)
+			n0, err := t.WriteTo(hash)
 			n += n0
 			if err != nil {
 				return n, fmt.Errorf("hash.Hash: write io.WriterTo: %w", err)
 			}
 		default:
 			panic("hash.Hash: unsupported type")
-			//return n, errors.New("hash.Hash: unsupported type")
 		}
 	}
 	return n, nil
