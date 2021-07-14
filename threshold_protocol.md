@@ -140,3 +140,26 @@ where $S$ is a subset of $\{ 1, \ldots, n \}$ of size at least $t+1$, and $m$ is
 
 The protocol goes exactly as before, except that the `Session` will use $S$ to determine Lagrange coefficients and apply them to the set of public keys, as well as the signer's secret share.
 Therefore, the resulting shares represent an additive sharing of the secret, and the original protocol can be used.
+
+## Paillier Multiplication proof $\Pi^{\text{mod}}$
+
+This is figure 28 in the CMP paper.
+
+Summarizing, they sample $\alpha, r, s \leftarrow \mathbb{Z}_N^*$. They then calculate:
+
+$$
+\begin{aligned}
+&Y^{\alpha} \cdot r^N\\
+&(1 + N)^{\alpha} s^N
+\end{aligned}
+$$
+
+Both $s$ and $r$ are used to multiply other values, so sampling from the
+unit group makes sense. On the other hand, $\alpha$ is used as an exponent,
+so this doesn't make sense. We believe that this is a typo, and that instead
+we should have:
+$$
+\alpha \leftarrow \pm 2^{l + \epsilon}
+$$
+
+This matches the generation of other exponents, such as in figure 29.
