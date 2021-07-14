@@ -30,15 +30,6 @@ func (hash *Hash) Read(buf []byte) (n int, err error) {
 	return hash.h.Read(buf)
 }
 
-// ReadScalar generates a curve.Scalar by reading from hash.Hash.
-// To prevent statistical bias, we sample double the size.
-func (hash *Hash) ReadScalar() *curve.Scalar {
-	var scalar curve.Scalar
-	out := make([]byte, params.BytesScalar)
-	_, _ = hash.h.Read(out)
-	return scalar.SetBytes(out)
-}
-
 // ReadFqNegative generates a big.Int in the interval ±q, by reading from hash.Hash.
 func (hash *Hash) ReadFqNegative() *big.Int {
 	var n big.Int

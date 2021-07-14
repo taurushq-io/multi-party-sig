@@ -3,6 +3,7 @@ package zksch
 import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 )
 
 type Commitment struct {
@@ -22,17 +23,17 @@ type Proof struct {
 
 func challenge(hash *hash.Hash, A, X *curve.Point) *curve.Scalar {
 	_, _ = hash.WriteAny(A, X)
-	return hash.ReadScalar()
+	return sample.Scalar(hash)
 }
 
-func challengeMult(h *hash.Hash, As, Xs []curve.Point) []*curve.Scalar {
+func challengeMult(hash *hash.Hash, As, Xs []curve.Point) []*curve.Scalar {
 	t := len(Xs)
 	for l := 0; l < t; l++ {
-		_, _ = h.WriteAny(&As[l], &Xs[l])
+		_, _ = hash.WriteAny(&As[l], &Xs[l])
 	}
 	es := make([]*curve.Scalar, t)
 	for l := range es {
-		es[l] = h.ReadScalar()
+		es[l] = sample.Scalar(hash)
 	}
 	return es
 }
