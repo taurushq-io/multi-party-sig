@@ -61,46 +61,61 @@ func (hash *Hash) Write(data []byte) (int, error) {
 }
 
 // WriteAny takes many different data types and writes them to the hash state.
+//
+// Currently supported types:
+//
+//  - []byte
+//  - *big.Int
+//  - writer.WriterToWithDomain
+//
+// This function will apply its own domain separation for the first two types.
+// The last type already suggests which domain to use, and this function respects it.
 func (hash *Hash) WriteAny(data ...interface{}) (int64, error) {
-	n := int64(0)
+	total := int64(0)
 	for _, d := range data {
 		switch t := d.(type) {
 		case []byte:
-			n0, err := hash.Write(t)
+			n, err := writer.WriteWithDomain(hash.h, &writer.BytesWithDomain{
+				TheDomain: "[]byte",
+				Bytes:     t,
+			})
+			total += n
 			if err != nil {
-				return n, fmt.Errorf("hash.Hash: write []byte: %w", err)
+				return total, fmt.Errorf("hash.Hash: write []byte: %w", err)
 			}
-			n += int64(n0)
 		case *big.Int:
 			if t == nil {
-				return n, fmt.Errorf("hash.Hash: write *big.Int: nil")
+				return total, fmt.Errorf("hash.Hash: write *big.Int: nil")
 			}
-			b := make([]byte, params.BytesIntModN)
+			bytes := make([]byte, params.BytesIntModN)
 			if t.BitLen() <= params.BitsIntModN && t.Sign() == 1 {
-				t.FillBytes(b)
+				t.FillBytes(bytes)
 			} else {
 				var err error
-				b, err = t.GobEncode()
+				bytes, err = t.GobEncode()
 				if err != nil {
-					return n, fmt.Errorf("hash.Hash: GobEncode: %w", err)
+					return total, fmt.Errorf("hash.Hash: GobEncode: %w", err)
 				}
 			}
-			n0, err := hash.Write(b)
+			n, err := writer.WriteWithDomain(hash.h, &writer.BytesWithDomain{
+				TheDomain: "big.Int",
+				Bytes:     bytes,
+			})
+			total += n
 			if err != nil {
-				return n, fmt.Errorf("hash.Hash: write *big.Int: %w", err)
+				return total, fmt.Errorf("hash.Hash: write *big.Int: %w", err)
 			}
-			n += int64(n0)
-		case io.WriterTo:
-			n0, err := t.WriteTo(hash)
-			n += n0
+		case writer.WriterToWithDomain:
+			n, err := writer.WriteWithDomain(hash.h, t)
+			total += n
 			if err != nil {
-				return n, fmt.Errorf("hash.Hash: write io.WriterTo: %w", err)
+				return total, fmt.Errorf("hash.Hash: write io.WriterTo: %w", err)
 			}
 		default:
 			panic("hash.Hash: unsupported type")
 		}
 	}
-	return n, nil
+	return total, nil
 }
 
 // Clone returns a copy of the Hash in its current state.
