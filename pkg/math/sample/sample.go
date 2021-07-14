@@ -26,12 +26,13 @@ func mustReadBits(rand io.Reader, buf []byte) {
 // ModN samples an element of ℤₙ
 func ModN(rand io.Reader, n *big.Int) *big.Int {
 	out := new(big.Int)
+	buf := make([]byte, (n.BitLen()+7)/8)
 
-	buf := make([]byte, n.BitLen()/8)
-	mustReadBits(rand, buf)
-	// TODO: Make this sampling uniform
-	out.SetBytes(buf)
-	out.Mod(out, n)
+	for found := false; !found; found = out.Cmp(n) < 0 {
+		mustReadBits(rand, buf)
+		out.SetBytes(buf)
+		out.Mod(out, n)
+	}
 
 	return out
 }
