@@ -1,6 +1,7 @@
 package paillier
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -46,7 +47,7 @@ func NewPublicKey(n *big.Int) *PublicKey {
 //
 // ct = (1+N)ᵐρᴺ (mod N²)
 func (pk PublicKey) Enc(m *big.Int) (*Ciphertext, *big.Int) {
-	nonce := sample.UnitModN(pk.N)
+	nonce := sample.UnitModN(rand.Reader, pk.N)
 	return pk.EncWithNonce(m, nonce), nonce
 }
 

@@ -1,7 +1,7 @@
 package party
 
 import (
-	"math/rand"
+	"crypto/rand"
 	"testing"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -16,7 +16,7 @@ func TestSecret_Validate(t *testing.T) {
 	_, _ = rand.Read(ssid)
 	_, _ = rand.Read(rid)
 
-	x, X := sample.ScalarPointPair()
+	x, X := sample.ScalarPointPair(rand.Reader)
 
 	sk := paillier.NewSecretKey()
 	pk := sk.PublicKey

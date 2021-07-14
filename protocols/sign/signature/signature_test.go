@@ -1,6 +1,7 @@
 package signature
 
 import (
+	"crypto/rand"
 	"testing"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -9,7 +10,7 @@ import (
 
 func NewSignature(x *curve.Scalar, hash []byte, k *curve.Scalar) *Signature {
 	if k == nil {
-		k = sample.Scalar()
+		k = sample.Scalar(rand.Reader)
 	}
 	m := curve.NewScalar().SetHash(hash)
 	kInv := curve.NewScalar().Invert(k)
@@ -25,7 +26,7 @@ func NewSignature(x *curve.Scalar, hash []byte, k *curve.Scalar) *Signature {
 
 func TestSignature_Verify(t *testing.T) {
 	m := []byte("hello")
-	x := sample.Scalar()
+	x := sample.Scalar(rand.Reader)
 	X := curve.NewIdentityPoint().ScalarBaseMult(x)
 	sig := NewSignature(x, m, nil)
 	if !sig.Verify(X, m) {

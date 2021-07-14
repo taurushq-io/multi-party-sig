@@ -1,6 +1,7 @@
 package sign
 
 import (
+	"crypto/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,11 +23,11 @@ func Test_newMtA(t *testing.T) {
 	}
 	ski := zk.ProverPaillierSecret
 	skj := zk.VerifierPaillierSecret
-	ai, Ai := sample.ScalarPointPair()
-	aj, Aj := sample.ScalarPointPair()
+	ai, Ai := sample.ScalarPointPair(rand.Reader)
+	aj, Aj := sample.ScalarPointPair(rand.Reader)
 
-	bi := sample.Scalar()
-	bj := sample.Scalar()
+	bi := sample.Scalar(rand.Reader)
+	bj := sample.Scalar(rand.Reader)
 
 	Ki, _ := i.Paillier.Enc(bi.BigInt())
 	Kj, _ := j.Paillier.Enc(bj.BigInt())

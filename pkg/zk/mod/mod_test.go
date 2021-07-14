@@ -1,6 +1,7 @@
 package zkmod
 
 import (
+	"crypto/rand"
 	"math/big"
 	"testing"
 
@@ -48,7 +49,7 @@ func Test_set4thRoot(t *testing.T) {
 	n := big.NewInt(pInt * qInt)
 	phi := big.NewInt((pInt - 1) * (qInt - 1))
 	y := big.NewInt(502)
-	w := sample.QNR(n)
+	w := sample.QNR(rand.Reader, n)
 
 	a, b, x := makeQuadraticResidue(y, w, n, p, q)
 

@@ -1,6 +1,7 @@
 package zklogstar
 
 import (
+	"crypto/rand"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -58,10 +59,10 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 		public.G = curve.NewBasePoint()
 	}
 
-	alpha := sample.IntervalLEps()
-	r := sample.UnitModN(N)
-	mu := sample.IntervalLN()
-	gamma := sample.IntervalLEpsN()
+	alpha := sample.IntervalLEps(rand.Reader)
+	r := sample.UnitModN(rand.Reader, N)
+	mu := sample.IntervalLN(rand.Reader)
+	gamma := sample.IntervalLEpsN(rand.Reader)
 
 	commitment := &Commitment{
 		A: public.Prover.EncWithNonce(alpha, r),

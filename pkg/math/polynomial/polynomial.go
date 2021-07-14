@@ -1,6 +1,8 @@
 package polynomial
 
 import (
+	"crypto/rand"
+
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 )
@@ -22,7 +24,7 @@ func NewPolynomial(degree int, constant *curve.Scalar) *Polynomial {
 	polynomial.Coefficients[0] = *constant
 
 	for i := 1; i <= degree; i++ {
-		polynomial.Coefficients[i] = *sample.Scalar()
+		polynomial.Coefficients[i] = *sample.Scalar(rand.Reader)
 	}
 
 	return &polynomial

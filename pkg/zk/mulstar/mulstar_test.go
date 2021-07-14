@@ -1,6 +1,7 @@
 package zkmulstar
 
 import (
+	"crypto/rand"
 	"math/big"
 	"testing"
 
@@ -20,11 +21,11 @@ func TestMulG(t *testing.T) {
 	C, _ := verifierPaillier.Enc(c)
 
 	var X curve.Point
-	x := sample.IntervalL()
+	x := sample.IntervalL(rand.Reader)
 	X.ScalarBaseMult(curve.NewScalarBigInt(x))
 
 	D := C.Clone().Mul(verifierPaillier, x)
-	rho := sample.UnitModN(verifierPaillier.N)
+	rho := sample.UnitModN(rand.Reader, verifierPaillier.N)
 	D.Randomize(verifierPaillier, rho)
 
 	public := Public{

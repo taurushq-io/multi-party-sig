@@ -1,15 +1,16 @@
 package sample
 
 import (
+	"io"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
-func sampleNeg(bits int) *big.Int {
+func sampleNeg(rand io.Reader, bits int) *big.Int {
 	var n big.Int
 	buf := make([]byte, bits/8+1)
-	mustReadBits(buf)
+	mustReadBits(rand, buf)
 	neg := buf[0]&1 == 1
 	buf = buf[1:]
 	n.SetBytes(buf)
@@ -20,31 +21,31 @@ func sampleNeg(bits int) *big.Int {
 }
 
 // IntervalL returns an integer in the range ± 2ˡ.
-func IntervalL() *big.Int {
-	return sampleNeg(params.L)
+func IntervalL(rand io.Reader) *big.Int {
+	return sampleNeg(rand, params.L)
 }
 
 // IntervalLPrime returns an integer in the range ± 2ˡº.
-func IntervalLPrime() *big.Int {
-	return sampleNeg(params.LPrime)
+func IntervalLPrime(rand io.Reader) *big.Int {
+	return sampleNeg(rand, params.LPrime)
 }
 
 // IntervalLEps returns an integer in the range ± 2ˡ⁺ᵉ
-func IntervalLEps() *big.Int {
-	return sampleNeg(params.LPlusEpsilon)
+func IntervalLEps(rand io.Reader) *big.Int {
+	return sampleNeg(rand, params.LPlusEpsilon)
 }
 
 // IntervalLPrimeEps returns an integer in the range ± 2ˡº⁺ᵉ
-func IntervalLPrimeEps() *big.Int {
-	return sampleNeg(params.LPrimePlusEpsilon)
+func IntervalLPrimeEps(rand io.Reader) *big.Int {
+	return sampleNeg(rand, params.LPrimePlusEpsilon)
 }
 
 // IntervalLN returns an integer in the range ± 2ˡ•N, where N is the size of a Paillier modulus.
-func IntervalLN() *big.Int {
-	return sampleNeg(params.L + params.BitsIntModN)
+func IntervalLN(rand io.Reader) *big.Int {
+	return sampleNeg(rand, params.L+params.BitsIntModN)
 }
 
 // IntervalLEpsN returns an integer in the range ± 2ˡ⁺ᵉ•N, where N is the size of a Paillier modulus.
-func IntervalLEpsN() *big.Int {
-	return sampleNeg(params.LPlusEpsilon + params.BitsIntModN)
+func IntervalLEpsN(rand io.Reader) *big.Int {
+	return sampleNeg(rand, params.LPlusEpsilon+params.BitsIntModN)
 }

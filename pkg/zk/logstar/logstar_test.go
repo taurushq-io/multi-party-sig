@@ -1,6 +1,7 @@
 package zklogstar
 
 import (
+	"crypto/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,9 +16,9 @@ func TestLogStar(t *testing.T) {
 	verifier := zk.Pedersen
 	prover := zk.ProverPaillierPublic
 
-	G := curve.NewIdentityPoint().ScalarBaseMult(sample.Scalar())
+	G := curve.NewIdentityPoint().ScalarBaseMult(sample.Scalar(rand.Reader))
 
-	x := sample.IntervalL()
+	x := sample.IntervalL(rand.Reader)
 	C, rho := prover.Enc(x)
 	X := curve.NewIdentityPoint().ScalarMult(curve.NewScalarBigInt(x), G)
 	public := Public{

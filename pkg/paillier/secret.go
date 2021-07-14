@@ -1,6 +1,7 @@
 package paillier
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"math/big"
@@ -103,7 +104,7 @@ func (sk *SecretKey) Clone() *SecretKey {
 
 func (sk SecretKey) GeneratePedersen() (ped *pedersen.Parameters, lambda *big.Int) {
 	var s, t *big.Int
-	s, t, lambda = sample.Pedersen(sk.PublicKey.N, sk.Phi)
+	s, t, lambda = sample.Pedersen(rand.Reader, sk.PublicKey.N, sk.Phi)
 	return &pedersen.Parameters{
 		N: sk.PublicKey.N,
 		S: s,

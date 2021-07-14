@@ -14,7 +14,7 @@ var ErrMaxIterations = errors.New("failed to generate after 255 iterations")
 
 const maxIterations = 255
 
-func mustReadBits(buf []byte) {
+func mustReadBits(rand io.Reader, buf []byte) {
 	var err error
 	for i := 0; i < maxIterations; i++ {
 		if _, err = rand.Read(buf); err == nil {
@@ -25,12 +25,12 @@ func mustReadBits(buf []byte) {
 }
 
 // UnitModN returns a u ∈ ℤₙˣ
-func UnitModN(n *big.Int) *big.Int {
+func UnitModN(rand io.Reader, n *big.Int) *big.Int {
 	var u, gcd big.Int
 	one := big.NewInt(1)
 	buf := make([]byte, params.BitsIntModN/8)
 	for i := 0; i < maxIterations; i++ {
-		mustReadBits(buf)
+		mustReadBits(rand, buf)
 		u.SetBytes(buf)
 		u.Mod(&u, n)
 		gcd.GCD(nil, nil, &u, n)
@@ -42,11 +42,11 @@ func UnitModN(n *big.Int) *big.Int {
 }
 
 // QNR samples a random quadratic non-residue in Z_n.
-func QNR(n *big.Int) *big.Int {
+func QNR(rand io.Reader, n *big.Int) *big.Int {
 	var w big.Int
 	buf := make([]byte, params.BitsIntModN/8)
 	for i := 0; i < maxIterations; i++ {
-		mustReadBits(buf)
+		mustReadBits(rand, buf)
 		w.SetBytes(buf)
 		w.Mod(&w, n)
 		if big.Jacobi(&w, n) == -1 {
@@ -221,15 +221,15 @@ func Paillier() (p, q *big.Int) {
 }
 
 // Pedersen generates the s, t, λ such that s = tˡ
-func Pedersen(n, phi *big.Int) (s, t, lambda *big.Int) {
+func Pedersen(rand io.Reader, n, phi *big.Int) (s, t, lambda *big.Int) {
 	two := big.NewInt(2)
 	// sample lambda without statistical bias
 	lambdaBuf := make([]byte, (params.BitsIntModN+params.L)/8)
-	mustReadBits(lambdaBuf)
+	mustReadBits(rand, lambdaBuf)
 	lambda = new(big.Int).SetBytes(lambdaBuf)
 	lambda.Mod(lambda, phi)
 
-	tau := UnitModN(n)
+	tau := UnitModN(rand, n)
 
 	// t = τ² mod N
 	t = new(big.Int)
@@ -242,17 +242,17 @@ func Pedersen(n, phi *big.Int) (s, t, lambda *big.Int) {
 	return
 }
 
-func Scalar() *curve.Scalar {
+func Scalar(rand io.Reader) *curve.Scalar {
 	var s curve.Scalar
 	buffer := make([]byte, params.BytesScalar)
-	mustReadBits(buffer)
+	mustReadBits(rand, buffer)
 	s.SetBytes(buffer)
 	return &s
 }
 
-func ScalarPointPair() (*curve.Scalar, *curve.Point) {
+func ScalarPointPair(rand io.Reader) (*curve.Scalar, *curve.Point) {
 	var p curve.Point
-	s := Scalar()
+	s := Scalar(rand)
 	p.ScalarBaseMult(s)
 	return s, &p
 }

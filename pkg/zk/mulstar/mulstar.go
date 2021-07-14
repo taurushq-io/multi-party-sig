@@ -1,6 +1,7 @@
 package zkmulstar
 
 import (
+	"crypto/rand"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -53,12 +54,12 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 
 	verifier := public.Verifier
 
-	alpha := sample.IntervalLEps()
+	alpha := sample.IntervalLEps(rand.Reader)
 
-	r := sample.UnitModN(N0)
+	r := sample.UnitModN(rand.Reader, N0)
 
-	gamma := sample.IntervalLEpsN()
-	m := sample.IntervalLEpsN()
+	gamma := sample.IntervalLEpsN(rand.Reader)
+	m := sample.IntervalLEpsN(rand.Reader)
 
 	A := public.C.Clone().Mul(verifier, alpha)
 	A.Randomize(verifier, r)

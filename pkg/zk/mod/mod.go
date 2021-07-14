@@ -1,6 +1,7 @@
 package zkmod
 
 import (
+	"crypto/rand"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -126,7 +127,7 @@ func (p *Proof) IsValid(public Public) bool {
 //  - R = [(xᵢ aᵢ, bᵢ), zᵢ] for i = 1, …, m
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	n, p, q, phi := public.N, private.P, private.Q, private.Phi
-	w := sample.QNR(n)
+	w := sample.QNR(rand.Reader, n)
 
 	nInverse := new(big.Int).ModInverse(n, phi)
 

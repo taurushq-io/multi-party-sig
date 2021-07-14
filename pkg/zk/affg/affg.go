@@ -1,6 +1,7 @@
 package zkaffg
 
 import (
+	"crypto/rand"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -79,16 +80,16 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	verifier := public.Verifier
 	prover := public.Prover
 
-	alpha := sample.IntervalLEps()
-	beta := sample.IntervalLPrimeEps()
+	alpha := sample.IntervalLEps(rand.Reader)
+	beta := sample.IntervalLPrimeEps(rand.Reader)
 
-	r := sample.UnitModN(N0)
-	rY := sample.UnitModN(N1)
+	r := sample.UnitModN(rand.Reader, N0)
+	rY := sample.UnitModN(rand.Reader, N1)
 
-	gamma := sample.IntervalLEpsN()
-	m := sample.IntervalLEpsN()
-	delta := sample.IntervalLEpsN()
-	mu := sample.IntervalLN()
+	gamma := sample.IntervalLEpsN(rand.Reader)
+	m := sample.IntervalLEpsN(rand.Reader)
+	delta := sample.IntervalLEpsN(rand.Reader)
+	mu := sample.IntervalLN(rand.Reader)
 
 	cAlpha := public.C.Clone().Mul(verifier, alpha)           // = Cᵃ mod N₀ = α ⊙ C
 	A := verifier.EncWithNonce(beta, r).Add(verifier, cAlpha) // = Enc₀(β,r) ⊕ (α ⊙ C)

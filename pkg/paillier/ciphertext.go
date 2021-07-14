@@ -1,6 +1,7 @@
 package paillier
 
 import (
+	"crypto/rand"
 	"io"
 	"math/big"
 	"math/bits"
@@ -50,7 +51,7 @@ func (ct Ciphertext) Clone() *Ciphertext {
 func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *big.Int) *big.Int {
 	tmp := newCipherTextInt()
 	if nonce == nil {
-		nonce = sample.UnitModN(pk.N)
+		nonce = sample.UnitModN(rand.Reader, pk.N)
 	}
 	tmp.Exp(nonce, pk.N, pk.nSquared) // tmp = r^N
 	ct.C.Mul(ct.C, tmp)               // ct = ct * tmp
