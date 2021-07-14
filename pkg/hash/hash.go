@@ -5,7 +5,6 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"golang.org/x/crypto/sha3"
@@ -72,22 +71,6 @@ func (hash *Hash) WriteAny(data ...interface{}) (int64, error) {
 				return n, fmt.Errorf("hash.Hash: write []byte: %w", err)
 			}
 			n += int64(n0)
-		case []*curve.Point:
-			for _, p := range t {
-				n0, err := p.WriteTo(hash)
-				n += n0
-				if err != nil {
-					return n, fmt.Errorf("hash.Hash: write []*curve.Point: %w", err)
-				}
-			}
-		case []curve.Point:
-			for _, p := range t {
-				n0, err := p.WriteTo(hash)
-				n += n0
-				if err != nil {
-					return n, fmt.Errorf("hash.Hash: write []curve.Point: %w", err)
-				}
-			}
 		case *big.Int:
 			if t == nil {
 				return n, fmt.Errorf("hash.Hash: write *big.Int: nil")
