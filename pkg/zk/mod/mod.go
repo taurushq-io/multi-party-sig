@@ -218,16 +218,11 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(h *hash.Hash, n, w *big.Int) []*big.Int {
-	_, _ = h.WriteAny(n, w)
-	intBuffer := make([]byte, params.BytesIntModN)
+func challenge(hash *hash.Hash, n, w *big.Int) []*big.Int {
+	_, _ = hash.WriteAny(n, w)
 	out := make([]*big.Int, params.StatParam)
 	for i := range out {
-		var r big.Int
-		_, _ = h.ReadBytes(intBuffer)
-		r.SetBytes(intBuffer)
-		r.Mod(&r, n)
-		out[i] = &r
+		out[i] = sample.ModN(hash, n)
 	}
 
 	return out

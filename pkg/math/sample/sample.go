@@ -24,18 +24,29 @@ func mustReadBits(rand io.Reader, buf []byte) {
 	panic(ErrMaxIterations)
 }
 
+// ModN samples an element of ℤₙ
+func ModN(rand io.Reader, n *big.Int) *big.Int {
+	out := new(big.Int)
+
+	buf := make([]byte, n.BitLen()/8)
+	mustReadBits(rand, buf)
+	// TODO: Make this sampling uniform
+	out.SetBytes(buf)
+	out.Mod(out, n)
+
+	return out
+}
+
 // UnitModN returns a u ∈ ℤₙˣ
 func UnitModN(rand io.Reader, n *big.Int) *big.Int {
-	var u, gcd big.Int
+	gcd := new(big.Int)
 	one := big.NewInt(1)
-	buf := make([]byte, params.BitsIntModN/8)
 	for i := 0; i < maxIterations; i++ {
-		mustReadBits(rand, buf)
-		u.SetBytes(buf)
-		u.Mod(&u, n)
-		gcd.GCD(nil, nil, &u, n)
+		// PERF: Reuse buffer instead of allocating each time
+		u := ModN(rand, n)
+		gcd.GCD(nil, nil, u, n)
 		if gcd.Cmp(one) == 0 {
-			return &u
+			return u
 		}
 	}
 	panic(ErrMaxIterations)
