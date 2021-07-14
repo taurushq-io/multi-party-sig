@@ -158,3 +158,8 @@ func (s *Scalar) WriteTo(w io.Writer) (int64, error) {
 	n, err := w.Write(buf)
 	return int64(n), err
 }
+
+// Domain implements WriterToWithDomain, and separates this type within hash.Hash.
+func (*Scalar) Domain() string {
+	return "Scalar"
+}

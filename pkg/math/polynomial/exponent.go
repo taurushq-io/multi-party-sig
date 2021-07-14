@@ -153,23 +153,33 @@ func (p *Exponent) Constant() *curve.Point {
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
 func (p *Exponent) WriteTo(w io.Writer) (int64, error) {
-	// write the number of Coefficient
+	total := int64(0)
+
+	// write the number of Coefficients
 	_ = binary.Write(w, binary.BigEndian, uint32(p.Degree()))
-	nAll := int64(4)
 
 	if p.IsConstant {
 		// write only zeros
-		n0, _ := w.Write(make([]byte, params.BytesPoint))
-		nAll += int64(n0)
-	}
-
-	// write all Coefficient
-	for _, c := range p.Coefficients {
-		n, err := c.WriteTo(w)
-		nAll += n
+		n0, err := w.Write(make([]byte, params.BytesPoint))
+		total += int64(n0)
 		if err != nil {
-			return nAll, err
+			return total, err
 		}
 	}
-	return nAll, nil
+
+	// write all Coefficients
+	for _, c := range p.Coefficients {
+		n, err := c.WriteTo(w)
+		total += n
+		if err != nil {
+			return total, err
+		}
+	}
+
+	return total, nil
+}
+
+// Domain implements WriterToWithDomain, and separates this type within hash.Hash.
+func (*Exponent) Domain() string {
+	return "Exponent"
 }

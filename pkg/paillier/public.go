@@ -134,3 +134,8 @@ func (pk PublicKey) WriteTo(w io.Writer) (int64, error) {
 	n, err := w.Write(buf)
 	return int64(n), err
 }
+
+// Domain implements WriterToWithDomain, and separates this type within hash.Hash.
+func (PublicKey) Domain() string {
+	return "Paillier PublicKey"
+}
