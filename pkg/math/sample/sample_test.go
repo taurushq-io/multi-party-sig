@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"math/big"
 	"testing"
+
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
 func TestModN(t *testing.T) {
@@ -38,5 +40,16 @@ var resultBig *big.Int
 func BenchmarkBlumPrime(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		resultBig = BlumPrime(rand.Reader)
+	}
+}
+
+func BenchmarkModN(b *testing.B) {
+	b.StopTimer()
+	nBytes := make([]byte, (params.BitsPaillier+7)/8)
+	_, _ = rand.Read(nBytes)
+	n := new(big.Int).SetBytes(nBytes)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		resultBig = ModN(rand.Reader, n)
 	}
 }
