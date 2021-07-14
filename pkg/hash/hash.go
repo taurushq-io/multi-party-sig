@@ -30,23 +30,28 @@ func (hash *Hash) Read(buf []byte) (n int, err error) {
 	return hash.h.Read(buf)
 }
 
-// ReadBytes returns numBytes by reading from hash.Hash.
-// if in is nil, ReadBytes returns the minimum safe length
-func (hash *Hash) ReadBytes(in []byte) ([]byte, error) {
+// ReadBytes fills a buffer with bytes.
+//
+// If in is nil, then the default number of bytes are read into a new buffer.
+//
+// Otherwise, in is filled with exactly the right number of bytes.
+//
+// This function will panic if in is smaller than a safe number of bytes.
+func (hash *Hash) ReadBytes(in []byte) []byte {
 	if in == nil {
 		in = make([]byte, params.HashBytes)
 	}
 	if len(in) < params.HashBytes {
-		panic("hash.ReadBytes: tried to read less than 256 bits")
+		panic(fmt.Sprintf("hash.ReadBytes: tried to read less than %d bits", 8*params.HashBytes))
 	}
-	_, err := hash.h.Read(in)
-	if err != nil {
-		return nil, err
+	if _, err := hash.Read(in); err != nil {
+		panic(fmt.Sprintf("hash.ReadBytes: internal hash failure: %v", err))
 	}
-	return in, err
+	return in
 }
 
 // Write writes data to the hash state.
+//
 // Implements io.Writer
 func (hash *Hash) Write(data []byte) (int, error) {
 	// the underlying hash function never returns an error

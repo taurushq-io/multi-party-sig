@@ -61,7 +61,7 @@ type Session interface {
 }
 
 func computeSSID(s Session) []byte {
-	ssid, _ := s.Hash().ReadBytes(nil)
+	ssid := s.Hash().ReadBytes(nil)
 	return ssid
 }
 

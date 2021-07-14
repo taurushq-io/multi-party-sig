@@ -114,8 +114,7 @@ func challenge(hash *hash.Hash, public Public, A []*big.Int) []bool {
 	}
 
 	tmpBytes := make([]byte, params.StatParam)
-
-	_, _ = hash.ReadBytes(tmpBytes)
+	hash.ReadBytes(tmpBytes)
 
 	out := make([]bool, params.StatParam)
 	for i := range out {

@@ -34,7 +34,7 @@ func (hash *Hash) Commit(id party.ID, data ...interface{}) (Commitment, Decommit
 
 	_, _ = h.Write(decommitment)
 
-	commitment, _ := h.ReadBytes(nil)
+	commitment := h.ReadBytes(nil)
 
 	return commitment, decommitment, nil
 }
@@ -57,7 +57,7 @@ func (hash *Hash) Decommit(id party.ID, c Commitment, d Decommitment, data ...in
 
 	_, _ = h.Write(d)
 
-	computedCommitment, _ := h.ReadBytes(nil)
+	computedCommitment := h.ReadBytes(nil)
 
 	return bytes.Equal(computedCommitment, c)
 }
