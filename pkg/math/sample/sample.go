@@ -1,7 +1,6 @@
 package sample
 
 import (
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -206,11 +205,11 @@ var ErrMaxPrimeIterations = fmt.Errorf("sample: failed to generate prime after %
 // This means that q := (p - 1) / 2 is also a prime number.
 //
 // This implies that p = 3 mod 4, otherwise q wouldn't be prime.
-func BlumPrime() *big.Int {
+func BlumPrime(rand io.Reader) *big.Int {
 	// TODO be more flexible on the number of bits in P, Q to avoid square root attack
 	one := new(big.Int).SetUint64(1)
 	for i := 0; i < maxPrimeIterations; i++ {
-		p, err := potentialSafePrime(rand.Reader, params.BitsBlumPrime)
+		p, err := potentialSafePrime(rand, params.BitsBlumPrime)
 		if err != nil {
 			continue
 		}
@@ -235,8 +234,8 @@ func BlumPrime() *big.Int {
 // Paillier generate the necessary integers for a Paillier key pair.
 // p, q are safe primes ((p - 1) / 2 is also prime), and Blum primes (p = 3 mod 4)
 // n = pq
-func Paillier() (p, q *big.Int) {
-	p, q = BlumPrime(), BlumPrime()
+func Paillier(rand io.Reader) (p, q *big.Int) {
+	p, q = BlumPrime(rand), BlumPrime(rand)
 	return
 }
 

@@ -37,7 +37,7 @@ func KeyGen() (pk *PublicKey, sk *SecretKey) {
 }
 
 func NewSecretKey() *SecretKey {
-	return NewSecretKeyFromPrimes(sample.Paillier())
+	return NewSecretKeyFromPrimes(sample.Paillier(rand.Reader))
 }
 
 func NewSecretKeyFromPrimes(P, Q *big.Int) *SecretKey {
