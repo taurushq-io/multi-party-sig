@@ -22,6 +22,14 @@ func New() *Hash {
 	return hash
 }
 
+// Read makes Hash implement the io.Reader interface.
+//
+// Implementing this interface is convenient in ZK proofs, which need to use the
+// output of a hash function as randomness later on.
+func (hash *Hash) Read(buf []byte) (n int, err error) {
+	return hash.h.Read(buf)
+}
+
 // ReadScalar generates a curve.Scalar by reading from hash.Hash.
 // To prevent statistical bias, we sample double the size.
 func (hash *Hash) ReadScalar() *curve.Scalar {
