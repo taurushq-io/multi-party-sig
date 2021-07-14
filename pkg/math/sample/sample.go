@@ -3,6 +3,7 @@ package sample
 import (
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 
@@ -10,14 +11,13 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
-var ErrMaxIterations = errors.New("failed to generate after 255 iterations")
-
 const maxIterations = 255
 
+var ErrMaxIterations = fmt.Errorf("sample: failed to generate after %d iterations", maxIterations)
+
 func mustReadBits(rand io.Reader, buf []byte) {
-	var err error
 	for i := 0; i < maxIterations; i++ {
-		if _, err = rand.Read(buf); err == nil {
+		if _, err := io.ReadFull(rand, buf); err == nil {
 			return
 		}
 	}
@@ -192,6 +192,15 @@ func potentialSafePrime(rand io.Reader, bits int) (p *big.Int, err error) {
 // 20 is the same number that Go uses internally.
 const blumPrimalityIterations = 20
 
+// maxPrimeIterations is the number of times to try generating a new prime.
+//
+// This is substantially larger than the other max iterations we have for generation,
+// because of the sparsity of safe primes.
+const maxPrimeIterations = 100_000
+
+// ErrMaxPrimeIterations is the error we return when we fail to generate a prime.
+var ErrMaxPrimeIterations = fmt.Errorf("sample: failed to generate prime after %d iterations", maxPrimeIterations)
+
 // BlumPrime returns a safe prime p of size params.BitsBlumPrime.
 //
 // This means that q := (p - 1) / 2 is also a prime number.
@@ -200,7 +209,7 @@ const blumPrimalityIterations = 20
 func BlumPrime() *big.Int {
 	// TODO be more flexible on the number of bits in P, Q to avoid square root attack
 	one := new(big.Int).SetUint64(1)
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < maxPrimeIterations; i++ {
 		p, err := potentialSafePrime(rand.Reader, params.BitsBlumPrime)
 		if err != nil {
 			continue
@@ -220,7 +229,7 @@ func BlumPrime() *big.Int {
 		}
 		return p
 	}
-	panic(ErrMaxIterations)
+	panic(ErrMaxPrimeIterations)
 }
 
 // Paillier generate the necessary integers for a Paillier key pair.
