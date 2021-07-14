@@ -36,7 +36,7 @@ func (r *round2) GenerateMessages() ([]round.Message, error) {
 	// Broadcast the message we created in round1
 	h := r.Hash.Clone()
 	for _, partyID := range r.S.PartyIDs() {
-		_, err = h.Write(r.LocalParties[partyID].Commitment)
+		_, err = h.WriteAny(r.LocalParties[partyID].Commitment)
 		if err != nil {
 			return nil, fmt.Errorf("refresh.round2.GenerateMessages(): write commitments to hash: %w", err)
 		}

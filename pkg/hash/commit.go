@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
+	"io"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -14,11 +15,33 @@ type (
 	Decommitment []byte
 )
 
+// WriteTo implements the io.WriterTo interface for Commitment.
+func (c Commitment) WriteTo(w io.Writer) (int64, error) {
+	n, err := w.Write(c)
+	return int64(n), err
+}
+
+// Domain implements WriterToWithDomain, and separates this type within hash.Hash.
+func (Commitment) Domain() string {
+	return "Commitment"
+}
+
+// WriteTo implements the io.WriterTo interface for Decommitment.
+func (d Decommitment) WriteTo(w io.Writer) (int64, error) {
+	n, err := w.Write(d)
+	return int64(n), err
+}
+
+// Domain implements WriterToWithDomain, and separates this type within hash.Hash.
+func (Decommitment) Domain() string {
+	return "Decommitment"
+}
+
 // Commit creates a commitment to data, and returns a commitment hash, and a decommitment string such that
 // commitment = h(id, data, decommitment)
 func (hash *Hash) Commit(id party.ID, data ...interface{}) (Commitment, Decommitment, error) {
 	var err error
-	decommitment := make([]byte, params.SecBytes)
+	decommitment := Decommitment(make([]byte, params.SecBytes))
 
 	if _, err = rand.Read(decommitment); err != nil {
 		return nil, nil, fmt.Errorf("hash.Commit: failed to generate decommitment: %w", err)
@@ -32,7 +55,7 @@ func (hash *Hash) Commit(id party.ID, data ...interface{}) (Commitment, Decommit
 		}
 	}
 
-	_, _ = h.Write(decommitment)
+	_, _ = h.WriteAny(decommitment)
 
 	commitment := h.ReadBytes(nil)
 
@@ -55,7 +78,7 @@ func (hash *Hash) Decommit(id party.ID, c Commitment, d Decommitment, data ...in
 		}
 	}
 
-	_, _ = h.Write(d)
+	_, _ = h.WriteAny(d)
 
 	computedCommitment := h.ReadBytes(nil)
 

@@ -3,6 +3,7 @@ package refresh
 import (
 	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -125,7 +126,10 @@ func (r *round5) GenerateMessages() ([]round.Message, error) {
 	if err != nil {
 		return nil, fmt.Errorf("refresh.round5.GenerateMessages(): compute SSID: %w", err)
 	}
-	_, _ = r.Hash.Write(r.newSession.SSID())
+	_, _ = r.Hash.WriteAny(&writer.BytesWithDomain{
+		TheDomain: "SSID",
+		Bytes:     r.newSession.SSID(),
+	})
 
 	proof := zksch.Prove(r.Hash.CloneWithID(r.SelfID),
 		r.Self.SchnorrCommitments,

@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v3"
+	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -132,9 +133,21 @@ func (s Keygen) Hash() *hash.Hash {
 	h := hash.New()
 
 	// Write group information
-	_, _ = h.Write([]byte(s.group.Params().Name)) // 𝔾
-	_, _ = h.Write(s.group.Params().N.Bytes())    // q
-	_, _ = h.Write(s.group.Params().Gx.Bytes())   // Gₓ
+	// 𝔾
+	_, _ = h.WriteAny(&writer.BytesWithDomain{
+		TheDomain: "Group Name",
+		Bytes:     []byte(s.group.Params().Name),
+	})
+	// q
+	_, _ = h.WriteAny(&writer.BytesWithDomain{
+		TheDomain: "Group Order",
+		Bytes:     s.group.Params().N.Bytes(),
+	})
+	// Gₓ
+	_, _ = h.WriteAny(&writer.BytesWithDomain{
+		TheDomain: "Generator X Coordinate",
+		Bytes:     s.group.Params().Gx.Bytes(),
+	})
 
 	// write t
 	binary.BigEndian.PutUint64(intBuffer, uint64(s.threshold))

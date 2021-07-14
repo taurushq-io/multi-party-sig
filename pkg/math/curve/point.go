@@ -182,10 +182,10 @@ func (v Point) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
-//
-//func (v *Point) HasEvenY() bool {
-//	return v.Y.Bit(0) == 0
-//}
+// Domain implements WriterToWithDomain, and separates this type within hash.Hash.
+func (Point) Domain() string {
+	return "Point"
+}
 
 // FromPublicKey returns a new Point from an ECDSA public key.
 // It assumes the point is correct, and if not the result is undefined

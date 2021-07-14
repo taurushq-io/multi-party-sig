@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -115,7 +116,10 @@ func (s Sign) Hash() *hash.Hash {
 	_, _ = h.WriteAny(s.signerIDs)
 
 	// write Message
-	_, _ = h.Write(s.message)
+	_, _ = h.WriteAny(&writer.BytesWithDomain{
+		TheDomain: "Message",
+		Bytes:     s.message,
+	})
 
 	return h
 }
