@@ -1,6 +1,7 @@
 package zkmul
 
 import (
+	"crypto/rand"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -50,9 +51,9 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 
 	prover := public.Prover
 
-	alpha := sample.UnitModN(N)
-	r := sample.UnitModN(N)
-	s := sample.UnitModN(N)
+	alpha := sample.UnitModN(rand.Reader, N)
+	r := sample.UnitModN(rand.Reader, N)
+	s := sample.UnitModN(rand.Reader, N)
 
 	A := public.Y.Clone().Mul(prover, alpha)
 	A.Randomize(prover, r)
@@ -111,5 +112,5 @@ func challenge(hash *hash.Hash, public Public, commitment *Commitment) *big.Int 
 	_, _ = hash.WriteAny(public.Prover,
 		public.X, public.Y, public.C,
 		commitment.A, commitment.B)
-	return hash.ReadFqNegative()
+	return sample.IntervalScalar(hash)
 }

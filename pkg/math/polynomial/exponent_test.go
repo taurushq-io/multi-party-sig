@@ -1,6 +1,7 @@
 package polynomial
 
 import (
+	"crypto/rand"
 	"fmt"
 	"testing"
 
@@ -15,12 +16,12 @@ func TestExponent_Evaluate(t *testing.T) {
 		N := 1000
 		var secret *curve.Scalar
 		if x%2 == 0 {
-			secret = sample.Scalar()
+			secret = sample.Scalar(rand.Reader)
 		}
 		poly := NewPolynomial(N, secret)
 		polyExp := NewPolynomialExponent(poly)
 
-		randomIndex := sample.Scalar()
+		randomIndex := sample.Scalar(rand.Reader)
 
 		lhs.ScalarBaseMult(poly.Evaluate(randomIndex))
 		rhs1 := polyExp.evaluateHorner(randomIndex)
@@ -36,7 +37,7 @@ func TestSum(t *testing.T) {
 	N := 20
 	Deg := 10
 
-	randomIndex := sample.Scalar()
+	randomIndex := sample.Scalar(rand.Reader)
 
 	// compute f1(x) + f2(x) + …
 	evaluationScalar := curve.NewScalar()
@@ -47,7 +48,7 @@ func TestSum(t *testing.T) {
 	polys := make([]*Polynomial, N)
 	polysExp := make([]*Exponent, N)
 	for i := range polys {
-		sec := sample.Scalar()
+		sec := sample.Scalar(rand.Reader)
 		polys[i] = NewPolynomial(Deg, sec)
 		polysExp[i] = NewPolynomialExponent(polys[i])
 

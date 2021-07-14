@@ -1,7 +1,7 @@
 package session
 
 import (
-	"math/rand"
+	"crypto/rand"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
@@ -12,7 +12,7 @@ import (
 )
 
 func generateShares(parties party.IDSlice, t int) (shares []*curve.Scalar, sum *curve.Scalar) {
-	sum = sample.Scalar()
+	sum = sample.Scalar(rand.Reader)
 	f := polynomial.NewPolynomial(t, sum)
 
 	n := len(parties)

@@ -1,6 +1,7 @@
 package zkdec
 
 import (
+	"crypto/rand"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -48,11 +49,11 @@ func (p Proof) IsValid(public Public) bool {
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	N0 := public.Prover.N
 
-	alpha := sample.IntervalLEps()
+	alpha := sample.IntervalLEps(rand.Reader)
 
-	mu := sample.IntervalLN()
-	nu := sample.IntervalLEpsN()
-	r := sample.UnitModN(N0)
+	mu := sample.IntervalLN(rand.Reader)
+	nu := sample.IntervalLEpsN(rand.Reader)
+	r := sample.UnitModN(rand.Reader, N0)
 
 	gamma := curve.NewScalarBigInt(alpha)
 
@@ -116,5 +117,5 @@ func challenge(hash *hash.Hash, public Public, commitment *Commitment) *big.Int 
 		public.C, public.X,
 		commitment.S, commitment.T, commitment.A, commitment.Gamma)
 
-	return hash.ReadFqNegative()
+	return sample.IntervalScalar(hash)
 }

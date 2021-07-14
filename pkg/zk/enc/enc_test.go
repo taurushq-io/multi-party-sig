@@ -1,6 +1,7 @@
 package zkenc
 
 import (
+	"crypto/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,7 @@ func TestEnc(t *testing.T) {
 	verifier := zk.Pedersen
 	prover := zk.ProverPaillierPublic
 
-	k := sample.IntervalL()
+	k := sample.IntervalL(rand.Reader)
 	K, rho := prover.Enc(k)
 	public := Public{
 		K:      K,

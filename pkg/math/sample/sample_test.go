@@ -1,6 +1,7 @@
 package sample
 
 import (
+	"crypto/rand"
 	"math/big"
 	"testing"
 )
@@ -8,7 +9,7 @@ import (
 const blumPrimeProbabilityIterations = 20
 
 func TestBlumPrime(t *testing.T) {
-	p := BlumPrime()
+	p := BlumPrime(rand.Reader)
 	if !p.ProbablyPrime(blumPrimeProbabilityIterations) {
 		t.Error("BlumPrime generated a non prime number: ", p)
 	}
@@ -25,6 +26,6 @@ var resultBig *big.Int
 
 func BenchmarkBlumPrime(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		resultBig = BlumPrime()
+		resultBig = BlumPrime(rand.Reader)
 	}
 }

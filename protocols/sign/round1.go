@@ -1,6 +1,7 @@
 package sign
 
 import (
+	"crypto/rand"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -55,12 +56,12 @@ func (r *round1) ProcessMessage(round.Message) error {
 func (r *round1) GenerateMessages() ([]round.Message, error) {
 	// γᵢ <- 𝔽,
 	// Γᵢ = [γᵢ]⋅G
-	r.GammaShare, r.Self.BigGammaShare = sample.ScalarPointPair()
+	r.GammaShare, r.Self.BigGammaShare = sample.ScalarPointPair(rand.Reader)
 	// Gᵢ = Encᵢ(γᵢ;νᵢ)
 	r.Self.G, r.GNonce = r.Self.Paillier.Enc(r.GammaShare.BigInt())
 
 	// kᵢ <- 𝔽,
-	r.KShare = sample.Scalar()
+	r.KShare = sample.Scalar(rand.Reader)
 	// Kᵢ = Encᵢ(kᵢ;ρᵢ)
 	r.Self.K, r.KNonce = r.Self.Paillier.Enc(r.KShare.BigInt())
 

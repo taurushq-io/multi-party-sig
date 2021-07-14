@@ -1,6 +1,7 @@
 package zkenc
 
 import (
+	"crypto/rand"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -42,10 +43,10 @@ func (p Proof) IsValid(public Public) bool {
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	N := public.Prover.N
 
-	alpha := sample.IntervalLEps()
-	r := sample.UnitModN(N)
-	mu := sample.IntervalLN()
-	gamma := sample.IntervalLEpsN()
+	alpha := sample.IntervalLEps(rand.Reader)
+	r := sample.UnitModN(rand.Reader, N)
+	mu := sample.IntervalLN(rand.Reader)
+	gamma := sample.IntervalLEpsN(rand.Reader)
 
 	A := public.Prover.EncWithNonce(alpha, r)
 
@@ -101,5 +102,5 @@ func challenge(hash *hash.Hash, public Public, commitment *Commitment) *big.Int 
 	_, _ = hash.WriteAny(public.Aux, public.Prover, public.K,
 		commitment.S, commitment.A, commitment.C)
 
-	return hash.ReadFqNegative()
+	return sample.IntervalScalar(hash)
 }

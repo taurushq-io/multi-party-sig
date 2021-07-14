@@ -1,8 +1,8 @@
 package sample
 
 import (
-	"crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 
@@ -10,43 +10,53 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
-var ErrMaxIterations = errors.New("failed to generate after 255 iterations")
-
 const maxIterations = 255
 
-func mustReadBits(buf []byte) {
-	var err error
+var ErrMaxIterations = fmt.Errorf("sample: failed to generate after %d iterations", maxIterations)
+
+func mustReadBits(rand io.Reader, buf []byte) {
 	for i := 0; i < maxIterations; i++ {
-		if _, err = rand.Read(buf); err == nil {
+		if _, err := io.ReadFull(rand, buf); err == nil {
 			return
 		}
 	}
 	panic(ErrMaxIterations)
 }
 
+// ModN samples an element of ℤₙ
+func ModN(rand io.Reader, n *big.Int) *big.Int {
+	out := new(big.Int)
+
+	buf := make([]byte, n.BitLen()/8)
+	mustReadBits(rand, buf)
+	// TODO: Make this sampling uniform
+	out.SetBytes(buf)
+	out.Mod(out, n)
+
+	return out
+}
+
 // UnitModN returns a u ∈ ℤₙˣ
-func UnitModN(n *big.Int) *big.Int {
-	var u, gcd big.Int
+func UnitModN(rand io.Reader, n *big.Int) *big.Int {
+	gcd := new(big.Int)
 	one := big.NewInt(1)
-	buf := make([]byte, params.BitsIntModN/8)
 	for i := 0; i < maxIterations; i++ {
-		mustReadBits(buf)
-		u.SetBytes(buf)
-		u.Mod(&u, n)
-		gcd.GCD(nil, nil, &u, n)
+		// PERF: Reuse buffer instead of allocating each time
+		u := ModN(rand, n)
+		gcd.GCD(nil, nil, u, n)
 		if gcd.Cmp(one) == 0 {
-			return &u
+			return u
 		}
 	}
 	panic(ErrMaxIterations)
 }
 
 // QNR samples a random quadratic non-residue in Z_n.
-func QNR(n *big.Int) *big.Int {
+func QNR(rand io.Reader, n *big.Int) *big.Int {
 	var w big.Int
 	buf := make([]byte, params.BitsIntModN/8)
 	for i := 0; i < maxIterations; i++ {
-		mustReadBits(buf)
+		mustReadBits(rand, buf)
 		w.SetBytes(buf)
 		w.Mod(&w, n)
 		if big.Jacobi(&w, n) == -1 {
@@ -181,16 +191,25 @@ func potentialSafePrime(rand io.Reader, bits int) (p *big.Int, err error) {
 // 20 is the same number that Go uses internally.
 const blumPrimalityIterations = 20
 
+// maxPrimeIterations is the number of times to try generating a new prime.
+//
+// This is substantially larger than the other max iterations we have for generation,
+// because of the sparsity of safe primes.
+const maxPrimeIterations = 100_000
+
+// ErrMaxPrimeIterations is the error we return when we fail to generate a prime.
+var ErrMaxPrimeIterations = fmt.Errorf("sample: failed to generate prime after %d iterations", maxPrimeIterations)
+
 // BlumPrime returns a safe prime p of size params.BitsBlumPrime.
 //
 // This means that q := (p - 1) / 2 is also a prime number.
 //
 // This implies that p = 3 mod 4, otherwise q wouldn't be prime.
-func BlumPrime() *big.Int {
+func BlumPrime(rand io.Reader) *big.Int {
 	// TODO be more flexible on the number of bits in P, Q to avoid square root attack
 	one := new(big.Int).SetUint64(1)
-	for i := 0; i < 100000; i++ {
-		p, err := potentialSafePrime(rand.Reader, params.BitsBlumPrime)
+	for i := 0; i < maxPrimeIterations; i++ {
+		p, err := potentialSafePrime(rand, params.BitsBlumPrime)
 		if err != nil {
 			continue
 		}
@@ -209,27 +228,27 @@ func BlumPrime() *big.Int {
 		}
 		return p
 	}
-	panic(ErrMaxIterations)
+	panic(ErrMaxPrimeIterations)
 }
 
 // Paillier generate the necessary integers for a Paillier key pair.
 // p, q are safe primes ((p - 1) / 2 is also prime), and Blum primes (p = 3 mod 4)
 // n = pq
-func Paillier() (p, q *big.Int) {
-	p, q = BlumPrime(), BlumPrime()
+func Paillier(rand io.Reader) (p, q *big.Int) {
+	p, q = BlumPrime(rand), BlumPrime(rand)
 	return
 }
 
 // Pedersen generates the s, t, λ such that s = tˡ
-func Pedersen(n, phi *big.Int) (s, t, lambda *big.Int) {
+func Pedersen(rand io.Reader, n, phi *big.Int) (s, t, lambda *big.Int) {
 	two := big.NewInt(2)
 	// sample lambda without statistical bias
 	lambdaBuf := make([]byte, (params.BitsIntModN+params.L)/8)
-	mustReadBits(lambdaBuf)
+	mustReadBits(rand, lambdaBuf)
 	lambda = new(big.Int).SetBytes(lambdaBuf)
 	lambda.Mod(lambda, phi)
 
-	tau := UnitModN(n)
+	tau := UnitModN(rand, n)
 
 	// t = τ² mod N
 	t = new(big.Int)
@@ -242,17 +261,17 @@ func Pedersen(n, phi *big.Int) (s, t, lambda *big.Int) {
 	return
 }
 
-func Scalar() *curve.Scalar {
+func Scalar(rand io.Reader) *curve.Scalar {
 	var s curve.Scalar
 	buffer := make([]byte, params.BytesScalar)
-	mustReadBits(buffer)
+	mustReadBits(rand, buffer)
 	s.SetBytes(buffer)
 	return &s
 }
 
-func ScalarPointPair() (*curve.Scalar, *curve.Point) {
+func ScalarPointPair(rand io.Reader) (*curve.Scalar, *curve.Point) {
 	var p curve.Point
-	s := Scalar()
+	s := Scalar(rand)
 	p.ScalarBaseMult(s)
 	return s, &p
 }

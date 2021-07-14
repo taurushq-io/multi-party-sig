@@ -21,7 +21,7 @@ func TestPublic_Validate(t *testing.T) {
 	N := p.N
 	ped, _ := sk.GeneratePedersen()
 
-	_, X := sample.ScalarPointPair()
+	_, X := sample.ScalarPointPair(rand.Reader)
 	N2 := big.NewInt(1)
 	N2.Add(N2, N)
 	p2 := paillier.NewPublicKey(N2)
@@ -140,7 +140,7 @@ func TestPublic_MarshalJSON(t *testing.T) {
 	ped, _ := sk.GeneratePedersen()
 	p := Public{
 		ID:       RandomIDs(1)[0],
-		ECDSA:    curve.NewIdentityPoint().ScalarBaseMult(sample.Scalar()),
+		ECDSA:    curve.NewIdentityPoint().ScalarBaseMult(sample.Scalar(rand.Reader)),
 		Paillier: pk,
 		Pedersen: ped,
 	}

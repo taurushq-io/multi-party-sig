@@ -1,6 +1,7 @@
 package sign
 
 import (
+	"crypto/rand"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -53,7 +54,7 @@ func NewMtA(ai *curve.Scalar, Ai *curve.Point,
 	Kj *paillier.Ciphertext,
 	sender, receiver *party.Public) *MtA {
 
-	beta := sample.IntervalLPrime()
+	beta := sample.IntervalLPrime(rand.Reader)
 
 	betaNeg := new(big.Int).Neg(beta)
 	// Fⱼᵢ = encᵢ(-βᵢⱼ, rᵢⱼ)

@@ -72,7 +72,7 @@ func (r *round1) GenerateMessages() ([]round.Message, error) {
 	// if keygen then constant = secret, otherwise it is 0 (nil)
 	var constant *curve.Scalar
 	if r.isKeygen() {
-		constant = sample.Scalar()
+		constant = sample.Scalar(rand.Reader)
 	}
 	r.VSSSecret = polynomial.NewPolynomial(r.S.Threshold(), constant)
 
@@ -83,7 +83,7 @@ func (r *round1) GenerateMessages() ([]round.Message, error) {
 	r.Self.VSSPolynomial = polynomial.NewPolynomialExponent(r.VSSSecret)
 
 	// generate Schnorr randomness and commitments
-	r.SchnorrRand, r.Self.SchnorrCommitments = sample.ScalarPointPair()
+	r.SchnorrRand, r.Self.SchnorrCommitments = sample.ScalarPointPair(rand.Reader)
 
 	// Sample ρᵢ
 	r.Self.Rho = make([]byte, params.SecBytes)

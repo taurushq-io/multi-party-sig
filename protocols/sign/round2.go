@@ -93,7 +93,7 @@ func (r *round2) computeHashKJ() {
 		partyJ := r.parties[id]
 		_, _ = h.WriteAny(partyJ.K, partyJ.G)
 	}
-	r.EchoHash, _ = h.ReadBytes(nil)
+	r.EchoHash = h.ReadBytes(nil)
 	return
 }
 

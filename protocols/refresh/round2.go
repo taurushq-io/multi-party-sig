@@ -41,7 +41,7 @@ func (r *round2) GenerateMessages() ([]round.Message, error) {
 			return nil, fmt.Errorf("refresh.round2.GenerateMessages(): write commitments to hash: %w", err)
 		}
 	}
-	r.EchoHash, _ = h.ReadBytes(nil)
+	r.EchoHash = h.ReadBytes(nil)
 
 	return NewMessageRefresh2(r.SelfID, r.EchoHash), nil
 }

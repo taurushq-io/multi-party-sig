@@ -1,6 +1,7 @@
 package zkdec
 
 import (
+	"crypto/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,7 @@ func TestDec(t *testing.T) {
 	verifierPedersen := zk.Pedersen
 	prover := zk.ProverPaillierPublic
 
-	y := sample.IntervalL()
+	y := sample.IntervalL(rand.Reader)
 	x := curve.NewScalarBigInt(y)
 
 	C, rho := prover.Enc(y)

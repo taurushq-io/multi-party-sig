@@ -1,6 +1,7 @@
 package zkprm
 
 import (
+	"crypto/rand"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -43,7 +44,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 
 	for i := 0; i < params.StatParam; i++ {
 		// aᵢ ∈ mod ϕ(N)
-		a[i] = sample.IntervalLN()
+		a[i] = sample.IntervalLN(rand.Reader)
 		a[i].Mod(a[i], phi)
 
 		// Aᵢ = tᵃ mod N
@@ -113,8 +114,7 @@ func challenge(hash *hash.Hash, public Public, A []*big.Int) []bool {
 	}
 
 	tmpBytes := make([]byte, params.StatParam)
-
-	_, _ = hash.ReadBytes(tmpBytes)
+	hash.ReadBytes(tmpBytes)
 
 	out := make([]bool, params.StatParam)
 	for i := range out {

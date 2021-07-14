@@ -5,13 +5,15 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"golang.org/x/crypto/sha3"
 )
 
-// Hash is a wrapper for sha3.ShakeHash which extends its functionality to work with CMP's data types.
+// Hash is the hash function we use for generating commitments, consuming CMP types, etc.
+//
+// Internally, this is a wrapper around sha3.ShakeHash, but any hash function with
+// an easily extendable output would work as well.
 type Hash struct {
 	h sha3.ShakeHash
 }
@@ -22,50 +24,36 @@ func New() *Hash {
 	return hash
 }
 
-// ReadScalar generates a curve.Scalar by reading from hash.Hash.
-// To prevent statistical bias, we sample double the size.
-func (hash *Hash) ReadScalar() *curve.Scalar {
-	var scalar curve.Scalar
-	out := make([]byte, params.BytesScalar)
-	_, _ = hash.h.Read(out)
-	return scalar.SetBytes(out)
+// Read makes Hash implement the io.Reader interface.
+//
+// Implementing this interface is convenient in ZK proofs, which need to use the
+// output of a hash function as randomness later on.
+func (hash *Hash) Read(buf []byte) (n int, err error) {
+	return hash.h.Read(buf)
 }
 
-// ReadFqNegative generates a big.Int in the interval ±q, by reading from hash.Hash.
-func (hash *Hash) ReadFqNegative() *big.Int {
-	var n big.Int
-	out := make([]byte, params.BytesScalar+1)
-	_, _ = hash.h.Read(out)
-
-	// use the first byte to determine if the result should be negative
-	isNeg := (out[0] & 1) == 1
-	out = out[1:]
-
-	n.SetBytes(out)
-	if isNeg {
-		n.Neg(&n)
-	}
-
-	return &n
-}
-
-// ReadBytes returns numBytes by reading from hash.Hash.
-// if in is nil, ReadBytes returns the minimum safe length
-func (hash *Hash) ReadBytes(in []byte) ([]byte, error) {
+// ReadBytes fills a buffer with bytes.
+//
+// If in is nil, then the default number of bytes are read into a new buffer.
+//
+// Otherwise, in is filled with exactly the right number of bytes.
+//
+// This function will panic if in is smaller than a safe number of bytes.
+func (hash *Hash) ReadBytes(in []byte) []byte {
 	if in == nil {
 		in = make([]byte, params.HashBytes)
 	}
 	if len(in) < params.HashBytes {
-		panic("hash.ReadBytes: tried to read less than 256 bits")
+		panic(fmt.Sprintf("hash.ReadBytes: tried to read less than %d bits", 8*params.HashBytes))
 	}
-	_, err := hash.h.Read(in)
-	if err != nil {
-		return nil, err
+	if _, err := hash.Read(in); err != nil {
+		panic(fmt.Sprintf("hash.ReadBytes: internal hash failure: %v", err))
 	}
-	return in, err
+	return in
 }
 
 // Write writes data to the hash state.
+//
 // Implements io.Writer
 func (hash *Hash) Write(data []byte) (int, error) {
 	// the underlying hash function never returns an error
@@ -78,24 +66,11 @@ func (hash *Hash) WriteAny(data ...interface{}) (int64, error) {
 	for _, d := range data {
 		switch t := d.(type) {
 		case []byte:
-			n0, _ := hash.h.Write(t)
+			n0, err := hash.Write(t)
+			if err != nil {
+				return n, fmt.Errorf("hash.Hash: write []byte: %w", err)
+			}
 			n += int64(n0)
-		case []*curve.Point:
-			for _, p := range t {
-				n0, err := p.WriteTo(hash.h)
-				n += n0
-				if err != nil {
-					return n, fmt.Errorf("hash.Hash: write []*curve.Point: %w", err)
-				}
-			}
-		case []curve.Point:
-			for _, p := range t {
-				n0, err := p.WriteTo(hash.h)
-				n += n0
-				if err != nil {
-					return n, fmt.Errorf("hash.Hash: write []curve.Point: %w", err)
-				}
-			}
 		case *big.Int:
 			if t == nil {
 				return n, fmt.Errorf("hash.Hash: write *big.Int: nil")
@@ -104,19 +79,25 @@ func (hash *Hash) WriteAny(data ...interface{}) (int64, error) {
 			if t.BitLen() <= params.BitsIntModN && t.Sign() == 1 {
 				t.FillBytes(b)
 			} else {
-				b, _ = t.GobEncode()
+				var err error
+				b, err = t.GobEncode()
+				if err != nil {
+					return n, fmt.Errorf("hash.Hash: GobEncode: %w", err)
+				}
 			}
-			n0, _ := hash.h.Write(b)
+			n0, err := hash.Write(b)
+			if err != nil {
+				return n, fmt.Errorf("hash.Hash: write *big.Int: %w", err)
+			}
 			n += int64(n0)
 		case io.WriterTo:
-			n0, err := t.WriteTo(hash.h)
+			n0, err := t.WriteTo(hash)
 			n += n0
 			if err != nil {
 				return n, fmt.Errorf("hash.Hash: write io.WriterTo: %w", err)
 			}
 		default:
 			panic("hash.Hash: unsupported type")
-			//return n, errors.New("hash.Hash: unsupported type")
 		}
 	}
 	return n, nil
@@ -129,7 +110,7 @@ func (hash *Hash) Clone() *Hash {
 
 // CloneWithID returns a copy of the Hash in its current state, but also writes the ID to the new state.
 func (hash *Hash) CloneWithID(id party.ID) *Hash {
-	h2 := hash.h.Clone()
-	_, _ = h2.Write([]byte(id))
-	return &Hash{h: h2}
+	cloned := hash.Clone()
+	_, _ = cloned.Write([]byte(id))
+	return cloned
 }

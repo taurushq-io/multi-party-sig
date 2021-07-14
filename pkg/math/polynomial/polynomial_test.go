@@ -1,8 +1,9 @@
 package polynomial
 
 import (
+	"crypto/rand"
 	"math/big"
-	"math/rand"
+	mrand "math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +14,7 @@ import (
 
 func TestPolynomial_Constant(t *testing.T) {
 	deg := 10
-	secret := sample.Scalar()
+	secret := sample.Scalar(rand.Reader)
 	poly := NewPolynomial(deg, secret)
 	require.True(t, poly.Constant().Equal(secret))
 }
@@ -25,7 +26,7 @@ func TestPolynomial_Evaluate(t *testing.T) {
 	polynomial.Coefficients[2].SetUInt32(1)
 
 	for index := 0; index < 100; index++ {
-		x := rand.Uint32()
+		x := mrand.Uint32()
 		result := big.NewInt(int64(x))
 		result.Mul(result, result)
 		result.Add(result, big.NewInt(1))
