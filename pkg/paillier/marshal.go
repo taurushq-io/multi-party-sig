@@ -45,7 +45,7 @@ func (sk *SecretKey) UnmarshalJSON(bytes []byte) error {
 
 func (sk SecretKey) MarshalJSON() ([]byte, error) {
 	return json.Marshal(jsonSecretKey{
-		P: sk.P,
-		Q: sk.Q,
+		P: sk.P(),
+		Q: sk.Q(),
 	})
 }
