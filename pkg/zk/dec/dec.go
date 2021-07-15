@@ -40,14 +40,14 @@ func (p Proof) IsValid(public Public) bool {
 	if !public.Prover.ValidateCiphertexts(p.A) {
 		return false
 	}
-	if !arith.IsValidModN(public.Prover.N, p.W) {
+	if !arith.IsValidModN(public.Prover.N(), p.W) {
 		return false
 	}
 	return true
 }
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
-	N0 := public.Prover.N
+	N0 := public.Prover.N()
 
 	alpha := sample.IntervalLEps(rand.Reader)
 

@@ -17,7 +17,7 @@ func TestCiphertextValidate(t *testing.T) {
 	_, err := sk.Dec(ct)
 	assert.Error(t, err, "decrypting 0 should fail")
 
-	C.Set(pk.N)
+	C.Set(pk.n)
 	_, err = sk.Dec(ct)
 	assert.Error(t, err, "decrypting N should fail")
 
@@ -62,7 +62,7 @@ func TestCiphertext_Enc(t *testing.T) {
 
 		// Test multiplication
 		res := new(big.Int).Mul(c, r1)
-		res.Mod(res, pk.N)
+		res.Mod(res, pk.n)
 		decCt1Times2, err := sk.Dec(ct1times2)
 		require.Equal(t, 0, res.Cmp(decCt1Times2))
 	}

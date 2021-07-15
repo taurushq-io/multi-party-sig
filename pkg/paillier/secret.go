@@ -92,7 +92,7 @@ func NewSecretKeyFromPrimes(P, Q *big.Int) *SecretKey {
 // Dec decrypts c and returns the plaintext m ∈ ± (N-2)/2.
 // It returns an error if gcd(c, N²) != 1 or if c is not in [1, N²-1].
 func (sk *SecretKey) Dec(c *Ciphertext) (*big.Int, error) {
-	n := sk.PublicKey.N
+	n := sk.PublicKey.n
 	nSquared := sk.PublicKey.nSquared
 
 	if !sk.PublicKey.ValidateCiphertexts(c) {
@@ -129,9 +129,9 @@ func (sk *SecretKey) Clone() *SecretKey {
 
 func (sk SecretKey) GeneratePedersen() (ped *pedersen.Parameters, lambda *big.Int) {
 	var s, t *big.Int
-	s, t, lambda = sample.Pedersen(rand.Reader, sk.PublicKey.N, sk.phi)
+	s, t, lambda = sample.Pedersen(rand.Reader, sk.PublicKey.n, sk.phi)
 	return &pedersen.Parameters{
-		N: sk.PublicKey.N,
+		N: sk.PublicKey.n,
 		S: s,
 		T: t,
 	}, lambda
@@ -188,7 +188,7 @@ func (sk SecretKey) Validate() error {
 	}
 
 	// Compare N
-	if n.Cmp(sk.PublicKey.N) != 0 {
+	if n.Cmp(sk.PublicKey.n) != 0 {
 		return ErrModulusMismatch
 	}
 

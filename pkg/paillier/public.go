@@ -16,14 +16,20 @@ var (
 	ErrPaillierEven   = errors.New("modulus N is even")
 )
 
-// PublicKey is a Paillier public key. It is represented by N and caches N² and (N-1)/2
+// PublicKey is a Paillier public key. It is represented by a modulus N.
 type PublicKey struct {
-	// N = p⋅q
-	N *big.Int
-	// nSquared = N²
+	// n = p⋅q
+	n *big.Int
+	// These two values are cached, for performance.
+	// nSquared = n²
 	nSquared *big.Int
-	// nHalf = (N-1) / 2
+	// nHalf = (n-1) / 2
 	nHalf *big.Int
+}
+
+// N is the public modulus making up this key
+func (pk *PublicKey) N() *big.Int {
+	return pk.n
 }
 
 // NewPublicKey returns an initialized paillier.PublicKey and computes N, N² and (N-1)/2.
@@ -34,7 +40,7 @@ func NewPublicKey(n *big.Int) *PublicKey {
 	nSquared.Mul(n, n)
 	nHalf.Rsh(n, 1)
 	return &PublicKey{
-		N:        nNew.Set(n),
+		n:        nNew.Set(n),
 		nSquared: nSquared,
 		nHalf:    &nHalf,
 	}
@@ -47,7 +53,7 @@ func NewPublicKey(n *big.Int) *PublicKey {
 //
 // ct = (1+N)ᵐρᴺ (mod N²)
 func (pk PublicKey) Enc(m *big.Int) (*Ciphertext, *big.Int) {
-	nonce := sample.UnitModN(rand.Reader, pk.N)
+	nonce := sample.UnitModN(rand.Reader, pk.n)
 	return pk.EncWithNonce(m, nonce), nonce
 }
 
@@ -67,11 +73,11 @@ func (pk PublicKey) EncWithNonce(m, nonce *big.Int) *Ciphertext {
 	tmp := newCipherTextInt()
 	one := big.NewInt(1)
 
-	tmp.Set(pk.N)                 // N
+	tmp.Set(pk.n)                 // N
 	tmp.Add(tmp, one)             // N + 1
 	ct.C.Exp(tmp, m, pk.nSquared) // (N+1)ᵐ mod N²
 
-	tmp.Exp(nonce, pk.N, pk.nSquared) // rho ^ N mod N²
+	tmp.Exp(nonce, pk.n, pk.nSquared) // rho ^ N mod N²
 
 	ct.C.Mul(ct.C, tmp) // (N+1)ᵐ rho ^ N
 	ct.C.Mod(ct.C, pk.nSquared)
@@ -81,16 +87,16 @@ func (pk PublicKey) EncWithNonce(m, nonce *big.Int) *Ciphertext {
 
 // Equal returns true if pk = other.
 func (pk PublicKey) Equal(other *PublicKey) bool {
-	return pk.N.Cmp(other.N) == 0
+	return pk.n.Cmp(other.n) == 0
 }
 
 // Validate returns an error if the bit length of N is wrong or if it is even.
 func (pk PublicKey) Validate() error {
 	// log₂(N) = BitsPaillier
-	if bits := pk.N.BitLen(); bits != params.BitsPaillier {
+	if bits := pk.n.BitLen(); bits != params.BitsPaillier {
 		return fmt.Errorf("paillier.publicKey: have: %d, need %d: %w", bits, params.BitsPaillier, ErrPaillierLength)
 	}
-	if pk.N.Bit(0) != 1 {
+	if pk.n.Bit(0) != 1 {
 		return ErrPaillierEven
 	}
 
@@ -121,7 +127,7 @@ func (pk PublicKey) ValidateCiphertexts(cts ...*Ciphertext) bool {
 func (pk PublicKey) Clone() *PublicKey {
 	var N, NSquared, nHalf big.Int
 	return &PublicKey{
-		N:        N.Set(pk.N),
+		n:        N.Set(pk.n),
 		nSquared: NSquared.Set(pk.nSquared),
 		nHalf:    nHalf.Set(pk.nHalf),
 	}
@@ -130,7 +136,7 @@ func (pk PublicKey) Clone() *PublicKey {
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
 func (pk PublicKey) WriteTo(w io.Writer) (int64, error) {
 	buf := make([]byte, params.BytesPaillier)
-	pk.N.FillBytes(buf)
+	pk.n.FillBytes(buf)
 	n, err := w.Write(buf)
 	return int64(n), err
 }

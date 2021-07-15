@@ -46,14 +46,14 @@ func (p Proof) IsValid(public Public) bool {
 	if p.Y.IsIdentity() {
 		return false
 	}
-	if !arith.IsValidModN(public.Prover.N, p.Z2) {
+	if !arith.IsValidModN(public.Prover.N(), p.Z2) {
 		return false
 	}
 	return true
 }
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
-	N := public.Prover.N
+	N := public.Prover.N()
 
 	if public.G == nil {
 		public.G = curve.NewBasePoint()
