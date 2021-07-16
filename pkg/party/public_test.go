@@ -18,7 +18,7 @@ import (
 func TestPublic_Validate(t *testing.T) {
 	sk := paillier.NewSecretKey()
 	p := sk.PublicKey
-	N := p.N
+	N := p.N()
 	ped, _ := sk.GeneratePedersen()
 
 	_, X := sample.ScalarPointPair(rand.Reader)

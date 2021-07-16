@@ -37,7 +37,7 @@ type (
 )
 
 func (p Proof) IsValid(public Public) bool {
-	if !arith.IsValidModN(public.Verifier.N, p.W) {
+	if !arith.IsValidModN(public.Verifier.N(), p.W) {
 		return false
 	}
 	if !public.Verifier.ValidateCiphertexts(p.A) {
@@ -50,7 +50,7 @@ func (p Proof) IsValid(public Public) bool {
 }
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
-	N0 := public.Verifier.N
+	N0 := public.Verifier.N()
 
 	verifier := public.Verifier
 

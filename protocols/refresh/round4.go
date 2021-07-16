@@ -101,15 +101,15 @@ func (r *round4) GenerateMessages() ([]round.Message, error) {
 
 	// Prove N is a blum prime with zkmod
 	mod := zkmod.NewProof(r.Hash.CloneWithID(r.SelfID), zkmod.Public{N: r.Self.Public.Pedersen.N}, zkmod.Private{
-		P:   r.PaillierSecret.P,
-		Q:   r.PaillierSecret.Q,
-		Phi: r.PaillierSecret.Phi,
+		P:   r.PaillierSecret.P(),
+		Q:   r.PaillierSecret.Q(),
+		Phi: r.PaillierSecret.Phi(),
 	})
 
 	// prove s, t are correct as aux parameters with zkprm
 	prm := zkprm.NewProof(r.Hash.CloneWithID(r.SelfID), zkprm.Public{Pedersen: r.Self.Public.Pedersen}, zkprm.Private{
 		Lambda: r.PedersenSecret,
-		Phi:    r.PaillierSecret.Phi,
+		Phi:    r.PaillierSecret.Phi(),
 	})
 
 	// create messages with encrypted shares

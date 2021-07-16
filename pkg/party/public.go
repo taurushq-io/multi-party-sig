@@ -40,7 +40,7 @@ func (p *Public) Clone() *Public {
 	}
 
 	if p.Paillier != nil {
-		p2.Paillier = paillier.NewPublicKey(p.Paillier.N)
+		p2.Paillier = paillier.NewPublicKey(p.Paillier.N())
 	}
 	if p.ECDSA != nil {
 		p2.ECDSA = curve.NewIdentityPoint().Set(p.ECDSA)
@@ -88,7 +88,7 @@ func (p *Public) Validate() error {
 	}
 
 	// Both N's are the same
-	if p.Paillier.N.Cmp(p.Pedersen.N) != 0 {
+	if p.Paillier.N().Cmp(p.Pedersen.N) != 0 {
 		return errors.New("party.Public: Pedersen and Paillier should share the same N")
 	}
 

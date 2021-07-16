@@ -19,7 +19,7 @@ func TestMod(t *testing.T) {
 
 	proof := NewProof(hash.New(), public, Private{
 		Lambda: lambda,
-		Phi:    sk.Phi,
+		Phi:    sk.Phi(),
 	})
 	out, err := proof.Marshal()
 	require.NoError(t, err, "failed to marshal proof")

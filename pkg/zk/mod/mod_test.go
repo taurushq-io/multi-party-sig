@@ -13,13 +13,13 @@ import (
 )
 
 func TestMod(t *testing.T) {
-	p, q := zk.ProverPaillierSecret.P, zk.ProverPaillierSecret.Q
+	p, q := zk.ProverPaillierSecret.P(), zk.ProverPaillierSecret.Q()
 	sk := zk.ProverPaillierSecret
-	public := Public{N: sk.PublicKey.N}
+	public := Public{N: sk.PublicKey.N()}
 	proof := NewProof(hash.New(), public, Private{
 		P:   p,
 		Q:   q,
-		Phi: sk.Phi,
+		Phi: sk.Phi(),
 	})
 	out, err := proof.Marshal()
 	require.NoError(t, err, "failed to marshal proof")

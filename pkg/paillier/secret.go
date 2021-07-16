@@ -20,14 +20,39 @@ var (
 	ErrNotPrime        = errors.New("supposed prime factor is not prime")
 )
 
+// SecretKey is the secret key corresponding to a Public Paillier Key.
+//
+// A public key is a modulus N, and the secret key contains the information
+// needed to factor N into two primes, P and Q. This allows us to decrypt
+// values encrypted using this modulus.
 type SecretKey struct {
 	*PublicKey
-	// P, Q such that N = P⋅Q
-	P, Q *big.Int
-	// Phi = ϕ = (P-1)(Q-1)
-	Phi *big.Int
-	// PhiInv = ϕ⁻¹ mod N
-	PhiInv *big.Int
+	// p, q such that N = p⋅q
+	p, q *big.Int
+	// phi = ϕ = (p-1)(q-1)
+	phi *big.Int
+	// phiInv = ϕ⁻¹ mod N
+	phiInv *big.Int
+}
+
+// P returns the first of the two factors composing this key.
+func (sk *SecretKey) P() *big.Int {
+	return sk.p
+}
+
+// Q returns the second of the two factors composing this key.
+func (sk *SecretKey) Q() *big.Int {
+	return sk.q
+}
+
+// Phi returns ϕ = (P-1)(Q-1).
+//
+// This is the result of the totient function ϕ(N), where N = P⋅Q
+// is our public key. This function counts the number of units mod N.
+//
+// This quantity is useful in ZK proofs.
+func (sk *SecretKey) Phi() *big.Int {
+	return sk.phi
 }
 
 func KeyGen() (pk *PublicKey, sk *SecretKey) {
@@ -56,10 +81,10 @@ func NewSecretKeyFromPrimes(P, Q *big.Int) *SecretKey {
 	q.Set(Q)
 
 	return &SecretKey{
-		P:         p.Set(P),
-		Q:         q.Set(Q),
-		Phi:       &phi,
-		PhiInv:    &phiInv,
+		p:         p.Set(P),
+		q:         q.Set(Q),
+		phi:       &phi,
+		phiInv:    &phiInv,
 		PublicKey: NewPublicKey(&n),
 	}
 }
@@ -67,15 +92,15 @@ func NewSecretKeyFromPrimes(P, Q *big.Int) *SecretKey {
 // Dec decrypts c and returns the plaintext m ∈ ± (N-2)/2.
 // It returns an error if gcd(c, N²) != 1 or if c is not in [1, N²-1].
 func (sk *SecretKey) Dec(c *Ciphertext) (*big.Int, error) {
-	n := sk.PublicKey.N
+	n := sk.PublicKey.n
 	nSquared := sk.PublicKey.nSquared
 
 	if !sk.PublicKey.ValidateCiphertexts(c) {
 		return nil, errors.New("paillier: failed to decrypt invalid ciphertext")
 	}
 
-	phi := sk.Phi
-	phiInv := sk.PhiInv
+	phi := sk.phi
+	phiInv := sk.phiInv
 
 	result := new(big.Int)
 	result.Exp(c.C, phi, nSquared)    // r = c^Phi 						(mod N²)
@@ -94,19 +119,19 @@ func (sk *SecretKey) Dec(c *Ciphertext) (*big.Int, error) {
 func (sk *SecretKey) Clone() *SecretKey {
 	var p, q, phi, phiInv big.Int
 	return &SecretKey{
-		P:         p.Set(sk.P),
-		Q:         q.Set(sk.Q),
-		Phi:       phi.Set(sk.Phi),
-		PhiInv:    phiInv.Set(sk.PhiInv),
+		p:         p.Set(sk.p),
+		q:         q.Set(sk.q),
+		phi:       phi.Set(sk.phi),
+		phiInv:    phiInv.Set(sk.phiInv),
 		PublicKey: sk.PublicKey.Clone(),
 	}
 }
 
 func (sk SecretKey) GeneratePedersen() (ped *pedersen.Parameters, lambda *big.Int) {
 	var s, t *big.Int
-	s, t, lambda = sample.Pedersen(rand.Reader, sk.PublicKey.N, sk.Phi)
+	s, t, lambda = sample.Pedersen(rand.Reader, sk.PublicKey.n, sk.phi)
 	return &pedersen.Parameters{
-		N: sk.PublicKey.N,
+		N: sk.PublicKey.n,
 		S: s,
 		T: t,
 	}, lambda
@@ -120,50 +145,50 @@ func (sk SecretKey) Validate() error {
 	var n, phi, pMin1, qMin1 big.Int
 
 	// check == 3 (mod 4)
-	if !is3mod4(sk.P) {
+	if !is3mod4(sk.p) {
 		return fmt.Errorf("paillier.SecretKey: prime p: %w", ErrNotBlum)
 	}
-	if !is3mod4(sk.Q) {
+	if !is3mod4(sk.q) {
 		return fmt.Errorf("paillier.SecretKey: prime q: %w", ErrNotBlum)
 	}
 
 	// check bit lengths
 	const bitsWant = params.BitsBlumPrime
-	if bits := sk.P.BitLen(); bits != bitsWant {
+	if bits := sk.p.BitLen(); bits != bitsWant {
 		return fmt.Errorf("paillier.SecretKey: prime p have: %d, need %d: %w", bits, bitsWant, ErrPrimeBadLength)
 	}
-	if bits := sk.Q.BitLen(); bits != bitsWant {
+	if bits := sk.q.BitLen(); bits != bitsWant {
 		return fmt.Errorf("paillier.SecretKey: prime q have: %d, need %d: %w", bits, bitsWant, ErrPrimeBadLength)
 	}
 
 	// check prime
-	if !sk.P.ProbablyPrime(20) {
+	if !sk.p.ProbablyPrime(20) {
 		return fmt.Errorf("paillier.SecretKey: prime p: %w", ErrNotPrime)
 	}
 	// check prime
-	if !sk.Q.ProbablyPrime(20) {
+	if !sk.q.ProbablyPrime(20) {
 		return fmt.Errorf("paillier.SecretKey: prime q: %w", ErrNotPrime)
 	}
 
 	// check phi = (p-1)(q-1)
 	one := big.NewInt(1)
-	pMin1.Sub(sk.P, one)
-	qMin1.Sub(sk.Q, one)
+	pMin1.Sub(sk.p, one)
+	qMin1.Sub(sk.q, one)
 	phi.Mul(&pMin1, &qMin1)
-	if phi.Cmp(sk.Phi) != 0 {
+	if phi.Cmp(sk.phi) != 0 {
 		return ErrWrongPhi
 	}
 
 	// check ϕ * phiInv = 1 (mod N)
-	n.Mul(sk.P, sk.Q)
-	phi.Mul(&phi, sk.PhiInv)
+	n.Mul(sk.p, sk.q)
+	phi.Mul(&phi, sk.phiInv)
 	phi.Mod(&phi, &n)
 	if phi.Cmp(one) != 0 {
 		return ErrWrongPhiInv
 	}
 
 	// Compare N
-	if n.Cmp(sk.PublicKey.N) != 0 {
+	if n.Cmp(sk.PublicKey.n) != 0 {
 		return ErrModulusMismatch
 	}
 

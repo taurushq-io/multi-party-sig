@@ -51,9 +51,9 @@ func (ct Ciphertext) Clone() *Ciphertext {
 func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *big.Int) *big.Int {
 	tmp := newCipherTextInt()
 	if nonce == nil {
-		nonce = sample.UnitModN(rand.Reader, pk.N)
+		nonce = sample.UnitModN(rand.Reader, pk.n)
 	}
-	tmp.Exp(nonce, pk.N, pk.nSquared) // tmp = r^N
+	tmp.Exp(nonce, pk.n, pk.nSquared) // tmp = r^N
 	ct.C.Mul(ct.C, tmp)               // ct = ct * tmp
 	ct.C.Mod(ct.C, pk.nSquared)       // ct = ct*r^N
 	return nonce

@@ -61,10 +61,10 @@ func (p Proof) IsValid(public Public) bool {
 	if !public.Prover.ValidateCiphertexts(p.By) {
 		return false
 	}
-	if !arith.IsValidModN(public.Prover.N, p.Wy) {
+	if !arith.IsValidModN(public.Prover.N(), p.Wy) {
 		return false
 	}
-	if !arith.IsValidModN(public.Verifier.N, p.W) {
+	if !arith.IsValidModN(public.Verifier.N(), p.W) {
 		return false
 	}
 	if p.Bx.IsIdentity() {
@@ -74,8 +74,8 @@ func (p Proof) IsValid(public Public) bool {
 }
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
-	N0 := public.Verifier.N
-	N1 := public.Prover.N
+	N0 := public.Verifier.N()
+	N1 := public.Prover.N()
 
 	verifier := public.Verifier
 	prover := public.Prover

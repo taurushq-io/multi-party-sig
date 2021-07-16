@@ -30,7 +30,7 @@ func (pk *PublicKey) UnmarshalJSON(bytes []byte) error {
 }
 
 func (pk PublicKey) MarshalJSON() ([]byte, error) {
-	return json.Marshal(jsonPublicKey{N: pk.N})
+	return json.Marshal(jsonPublicKey{N: pk.n})
 }
 
 func (sk *SecretKey) UnmarshalJSON(bytes []byte) error {
@@ -45,7 +45,7 @@ func (sk *SecretKey) UnmarshalJSON(bytes []byte) error {
 
 func (sk SecretKey) MarshalJSON() ([]byte, error) {
 	return json.Marshal(jsonSecretKey{
-		P: sk.P,
-		Q: sk.Q,
+		P: sk.P(),
+		Q: sk.Q(),
 	})
 }
