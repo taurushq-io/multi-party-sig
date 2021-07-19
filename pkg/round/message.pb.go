@@ -7,7 +7,9 @@ import (
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	types "github.com/gogo/protobuf/types"
 	github_com_taurusgroup_cmp_ecdsa_pkg_party "github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	github_com_taurusgroup_cmp_ecdsa_pkg_types "github.com/taurusgroup/cmp-ecdsa/pkg/types"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -24,51 +26,31 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-type Broadcast int32
-
-const (
-	Broadcast_None     Broadcast = 0
-	Broadcast_Basic    Broadcast = 1
-	Broadcast_Reliable Broadcast = 2
-)
-
-var Broadcast_name = map[int32]string{
-	0: "None",
-	1: "Basic",
-	2: "Reliable",
+type Message struct {
+	// SSID is a byte string which uniquely identifies the session this message belongs to.
+	SSID []byte `protobuf:"bytes,1,opt,name=SSID,proto3" json:"SSID,omitempty"`
+	// From is the party.ID of the sender
+	From github_com_taurusgroup_cmp_ecdsa_pkg_party.ID `protobuf:"bytes,2,opt,name=from,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/pkg/party.ID" json:"from"`
+	// To is a list of intended recipients for this message.
+	// If To == nil, then the message should be interpreted as a broadcast message.
+	To []github_com_taurusgroup_cmp_ecdsa_pkg_party.ID `protobuf:"bytes,3,rep,name=to,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/pkg/party.ID" json:"to"`
+	// Protocol identifies the protocol this message belongs to
+	Protocol github_com_taurusgroup_cmp_ecdsa_pkg_types.ProtocolID `protobuf:"bytes,4,opt,name=protocol,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/pkg/types.ProtocolID" json:"protocol"`
+	// RoundNumber is the index of the round this message belongs to
+	RoundNumber github_com_taurusgroup_cmp_ecdsa_pkg_types.RoundNumber `protobuf:"varint,5,opt,name=roundNumber,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/pkg/types.RoundNumber" json:"roundNumber"`
+	// Content is the actual content consumed by the round.
+	Content *types.Any `protobuf:"bytes,20,opt,name=Content,proto3" json:"Content,omitempty"`
 }
 
-var Broadcast_value = map[string]int32{
-	"None":     0,
-	"Basic":    1,
-	"Reliable": 2,
-}
-
-func (x Broadcast) String() string {
-	return proto.EnumName(Broadcast_name, int32(x))
-}
-
-func (Broadcast) EnumDescriptor() ([]byte, []int) {
+func (m *Message) Reset()      { *m = Message{} }
+func (*Message) ProtoMessage() {}
+func (*Message) Descriptor() ([]byte, []int) {
 	return fileDescriptor_4b57c71b12807c0e, []int{0}
 }
-
-type Header struct {
-	SSID      []byte                                        `protobuf:"bytes,1,opt,name=SSID,proto3" json:"SSID,omitempty"`
-	From      github_com_taurusgroup_cmp_ecdsa_pkg_party.ID `protobuf:"bytes,2,opt,name=from,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/pkg/party.ID" json:"from"`
-	To        github_com_taurusgroup_cmp_ecdsa_pkg_party.ID `protobuf:"bytes,3,opt,name=to,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/pkg/party.ID" json:"to"`
-	Broadcast Broadcast                                     `protobuf:"varint,4,opt,name=broadcast,proto3,enum=round.Broadcast" json:"broadcast,omitempty"`
-}
-
-func (m *Header) Reset()         { *m = Header{} }
-func (m *Header) String() string { return proto.CompactTextString(m) }
-func (*Header) ProtoMessage()    {}
-func (*Header) Descriptor() ([]byte, []int) {
-	return fileDescriptor_4b57c71b12807c0e, []int{0}
-}
-func (m *Header) XXX_Unmarshal(b []byte) error {
+func (m *Message) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Header) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *Message) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	b = b[:cap(b)]
 	n, err := m.MarshalToSizedBuffer(b)
 	if err != nil {
@@ -76,63 +58,65 @@ func (m *Header) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	}
 	return b[:n], nil
 }
-func (m *Header) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Header.Merge(m, src)
+func (m *Message) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Message.Merge(m, src)
 }
-func (m *Header) XXX_Size() int {
+func (m *Message) XXX_Size() int {
 	return m.Size()
 }
-func (m *Header) XXX_DiscardUnknown() {
-	xxx_messageInfo_Header.DiscardUnknown(m)
+func (m *Message) XXX_DiscardUnknown() {
+	xxx_messageInfo_Message.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Header proto.InternalMessageInfo
+var xxx_messageInfo_Message proto.InternalMessageInfo
 
-func (m *Header) GetSSID() []byte {
+func (m *Message) GetSSID() []byte {
 	if m != nil {
 		return m.SSID
 	}
 	return nil
 }
 
-func (m *Header) GetBroadcast() Broadcast {
+func (m *Message) GetContent() *types.Any {
 	if m != nil {
-		return m.Broadcast
+		return m.Content
 	}
-	return Broadcast_None
+	return nil
 }
 
 func init() {
-	proto.RegisterEnum("round.Broadcast", Broadcast_name, Broadcast_value)
-	proto.RegisterType((*Header)(nil), "round.Header")
+	proto.RegisterType((*Message)(nil), "round.Message")
 }
 
 func init() { proto.RegisterFile("pkg/round/message.proto", fileDescriptor_4b57c71b12807c0e) }
 
 var fileDescriptor_4b57c71b12807c0e = []byte{
-	// 294 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x50, 0x3d, 0x6b, 0xc3, 0x30,
-	0x10, 0xb5, 0x5c, 0x27, 0xc4, 0x22, 0x14, 0xa3, 0xa5, 0xa6, 0x83, 0x12, 0x3a, 0x85, 0x40, 0x24,
-	0x68, 0xe9, 0x1f, 0x30, 0x29, 0x24, 0x4b, 0x07, 0x67, 0xeb, 0x26, 0xdb, 0x8a, 0x1a, 0x1a, 0xe7,
-	0x8c, 0x3e, 0x86, 0xfe, 0x8b, 0xfe, 0xac, 0x8c, 0x19, 0x43, 0x87, 0x50, 0xec, 0x3f, 0x52, 0xaa,
-	0xd2, 0x8f, 0xb1, 0xd0, 0xed, 0xbd, 0x77, 0x77, 0xef, 0xde, 0x1d, 0xbe, 0x68, 0x9e, 0x14, 0xd7,
-	0xe0, 0x76, 0x15, 0xaf, 0xa5, 0x31, 0x42, 0x49, 0xd6, 0x68, 0xb0, 0x40, 0x7a, 0x5e, 0xbc, 0x9c,
-	0xa9, 0x8d, 0x7d, 0x74, 0x05, 0x2b, 0xa1, 0xe6, 0x0a, 0x14, 0x70, 0x5f, 0x2d, 0xdc, 0xda, 0x33,
-	0x4f, 0x3c, 0xfa, 0x9c, 0xba, 0x3a, 0x21, 0xdc, 0x5f, 0x48, 0x51, 0x49, 0x4d, 0x08, 0x8e, 0x56,
-	0xab, 0xe5, 0x3c, 0x45, 0x63, 0x34, 0x19, 0xe6, 0x1e, 0x93, 0x25, 0x8e, 0xd6, 0x1a, 0xea, 0x34,
-	0x1c, 0xa3, 0x49, 0x9c, 0xdd, 0xee, 0x4f, 0xa3, 0xe0, 0xf5, 0x34, 0xfa, 0xbd, 0xc3, 0x0a, 0xa7,
-	0x9d, 0x51, 0x1a, 0x5c, 0xc3, 0xcb, 0xba, 0x99, 0xc9, 0xb2, 0x32, 0x82, 0x7f, 0x84, 0x6c, 0x84,
-	0xb6, 0xcf, 0x6c, 0x39, 0xcf, 0xbd, 0x05, 0xb9, 0xc3, 0xa1, 0x85, 0xf4, 0xec, 0x3f, 0x46, 0xa1,
-	0x05, 0xc2, 0x70, 0x5c, 0x68, 0x10, 0x55, 0x29, 0x8c, 0x4d, 0xa3, 0x31, 0x9a, 0x9c, 0x5f, 0x27,
-	0xcc, 0x9f, 0xce, 0xb2, 0x2f, 0x3d, 0xff, 0x69, 0x99, 0x32, 0x1c, 0x7f, 0xeb, 0x64, 0x80, 0xa3,
-	0x7b, 0xd8, 0xc9, 0x24, 0x20, 0x31, 0xee, 0x65, 0xc2, 0x6c, 0xca, 0x04, 0x91, 0x21, 0x1e, 0xe4,
-	0x72, 0xbb, 0x11, 0xc5, 0x56, 0x26, 0x61, 0xb6, 0xd8, 0xb7, 0x14, 0x1d, 0x5a, 0x8a, 0x8e, 0x2d,
-	0x45, 0x6f, 0x2d, 0x45, 0x2f, 0x1d, 0x0d, 0x0e, 0x1d, 0x0d, 0x8e, 0x1d, 0x0d, 0x1e, 0xa6, 0x7f,
-	0x0a, 0xec, 0xe3, 0x14, 0x7d, 0xff, 0xe1, 0x9b, 0xf7, 0x00, 0x00, 0x00, 0xff, 0xff, 0xc2, 0xc2,
-	0xa3, 0x03, 0xb2, 0x01, 0x00, 0x00,
+	// 349 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x2f, 0xc8, 0x4e, 0xd7,
+	0x2f, 0xca, 0x2f, 0xcd, 0x4b, 0xd1, 0xcf, 0x4d, 0x2d, 0x2e, 0x4e, 0x4c, 0x4f, 0xd5, 0x2b, 0x28,
+	0xca, 0x2f, 0xc9, 0x17, 0x62, 0x05, 0x0b, 0x4a, 0xe9, 0xa6, 0x67, 0x96, 0x64, 0x94, 0x26, 0xe9,
+	0x25, 0xe7, 0xe7, 0xea, 0xa7, 0xe7, 0xa7, 0xe7, 0xeb, 0x83, 0x65, 0x93, 0x4a, 0xd3, 0xc0, 0x3c,
+	0x30, 0x07, 0xcc, 0x82, 0xe8, 0x92, 0x92, 0x4c, 0xcf, 0xcf, 0x4f, 0xcf, 0x49, 0x45, 0xa8, 0x4a,
+	0xcc, 0xab, 0x84, 0x48, 0x29, 0x2d, 0x62, 0xe6, 0x62, 0xf7, 0x85, 0x58, 0x21, 0x24, 0xc4, 0xc5,
+	0x12, 0x1c, 0xec, 0xe9, 0x22, 0xc1, 0xa8, 0xc0, 0xa8, 0xc1, 0x13, 0x04, 0x66, 0x0b, 0x79, 0x72,
+	0xb1, 0xa4, 0x15, 0xe5, 0xe7, 0x4a, 0x30, 0x29, 0x30, 0x6a, 0x70, 0x3a, 0x99, 0x9e, 0xb8, 0x27,
+	0xcf, 0x70, 0xeb, 0x9e, 0x3c, 0xb2, 0xfd, 0x25, 0x89, 0xa5, 0x45, 0xa5, 0xc5, 0xe9, 0x45, 0xf9,
+	0xa5, 0x05, 0xfa, 0xc9, 0xb9, 0x05, 0xba, 0xa9, 0xc9, 0x29, 0xc5, 0x89, 0xfa, 0x20, 0x0f, 0x14,
+	0x24, 0x16, 0x95, 0x54, 0xea, 0x79, 0xba, 0x04, 0x81, 0x8d, 0x10, 0x72, 0xe5, 0x62, 0x2a, 0xc9,
+	0x97, 0x60, 0x56, 0x60, 0x26, 0xdf, 0x20, 0xa6, 0x92, 0x7c, 0xa1, 0x48, 0x2e, 0x0e, 0xb0, 0xd3,
+	0x93, 0xf3, 0x73, 0x24, 0x58, 0xc0, 0xae, 0xb2, 0x85, 0x1a, 0x66, 0x4a, 0x94, 0x61, 0x25, 0x95,
+	0x05, 0xa9, 0xc5, 0x7a, 0x01, 0x50, 0x23, 0x3c, 0x5d, 0x82, 0xe0, 0xc6, 0x09, 0x25, 0x70, 0x71,
+	0x83, 0xc3, 0xd7, 0xaf, 0x34, 0x37, 0x29, 0xb5, 0x48, 0x82, 0x55, 0x81, 0x51, 0x83, 0xd7, 0xc9,
+	0x0e, 0x6a, 0xba, 0x19, 0x09, 0xa6, 0x07, 0x21, 0x4c, 0x09, 0x42, 0x36, 0x52, 0x48, 0x8f, 0x8b,
+	0xdd, 0x39, 0x3f, 0xaf, 0x24, 0x35, 0xaf, 0x44, 0x42, 0x44, 0x81, 0x51, 0x83, 0xdb, 0x48, 0x44,
+	0x0f, 0x12, 0x37, 0x7a, 0xb0, 0xb8, 0xd1, 0x73, 0xcc, 0xab, 0x0c, 0x82, 0x29, 0xb2, 0x62, 0x99,
+	0xb1, 0x40, 0x9e, 0xc1, 0xc9, 0xe3, 0xc4, 0x23, 0x39, 0xc6, 0x0b, 0x8f, 0xe4, 0x18, 0x6f, 0x3c,
+	0x92, 0x63, 0x7c, 0xf0, 0x48, 0x8e, 0x71, 0xc2, 0x63, 0x39, 0x86, 0x0b, 0x8f, 0xe5, 0x18, 0x6e,
+	0x3c, 0x96, 0x63, 0x88, 0xd2, 0x22, 0xca, 0x61, 0x60, 0x57, 0x24, 0xb1, 0x81, 0xad, 0x31, 0x06,
+	0x04, 0x00, 0x00, 0xff, 0xff, 0x90, 0x99, 0x2f, 0x0a, 0x61, 0x02, 0x00, 0x00,
 }
 
-func (m *Header) Marshal() (dAtA []byte, err error) {
+func (m *Message) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -142,27 +126,50 @@ func (m *Header) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Header) MarshalTo(dAtA []byte) (int, error) {
+func (m *Message) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Header) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Message) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Broadcast != 0 {
-		i = encodeVarintMessage(dAtA, i, uint64(m.Broadcast))
+	if m.Content != nil {
+		{
+			size, err := m.Content.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintMessage(dAtA, i, uint64(size))
+		}
 		i--
-		dAtA[i] = 0x20
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0xa2
+	}
+	if m.RoundNumber != 0 {
+		i = encodeVarintMessage(dAtA, i, uint64(m.RoundNumber))
+		i--
+		dAtA[i] = 0x28
+	}
+	if len(m.Protocol) > 0 {
+		i -= len(m.Protocol)
+		copy(dAtA[i:], m.Protocol)
+		i = encodeVarintMessage(dAtA, i, uint64(len(m.Protocol)))
+		i--
+		dAtA[i] = 0x22
 	}
 	if len(m.To) > 0 {
-		i -= len(m.To)
-		copy(dAtA[i:], m.To)
-		i = encodeVarintMessage(dAtA, i, uint64(len(m.To)))
-		i--
-		dAtA[i] = 0x1a
+		for iNdEx := len(m.To) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.To[iNdEx])
+			copy(dAtA[i:], m.To[iNdEx])
+			i = encodeVarintMessage(dAtA, i, uint64(len(m.To[iNdEx])))
+			i--
+			dAtA[i] = 0x1a
+		}
 	}
 	if len(m.From) > 0 {
 		i -= len(m.From)
@@ -192,7 +199,7 @@ func encodeVarintMessage(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func (m *Header) Size() (n int) {
+func (m *Message) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -206,12 +213,22 @@ func (m *Header) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovMessage(uint64(l))
 	}
-	l = len(m.To)
+	if len(m.To) > 0 {
+		for _, s := range m.To {
+			l = len(s)
+			n += 1 + l + sovMessage(uint64(l))
+		}
+	}
+	l = len(m.Protocol)
 	if l > 0 {
 		n += 1 + l + sovMessage(uint64(l))
 	}
-	if m.Broadcast != 0 {
-		n += 1 + sovMessage(uint64(m.Broadcast))
+	if m.RoundNumber != 0 {
+		n += 1 + sovMessage(uint64(m.RoundNumber))
+	}
+	if m.Content != nil {
+		l = m.Content.Size()
+		n += 2 + l + sovMessage(uint64(l))
 	}
 	return n
 }
@@ -222,7 +239,7 @@ func sovMessage(x uint64) (n int) {
 func sozMessage(x uint64) (n int) {
 	return sovMessage(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (m *Header) Unmarshal(dAtA []byte) error {
+func (m *Message) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -245,10 +262,10 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Header: wiretype end group for non-group")
+			return fmt.Errorf("proto: Message: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Header: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Message: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -347,13 +364,13 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.To = github_com_taurusgroup_cmp_ecdsa_pkg_party.ID(dAtA[iNdEx:postIndex])
+			m.To = append(m.To, github_com_taurusgroup_cmp_ecdsa_pkg_party.ID(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 4:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Broadcast", wireType)
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Protocol", wireType)
 			}
-			m.Broadcast = 0
+			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowMessage
@@ -363,11 +380,79 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Broadcast |= Broadcast(b&0x7F) << shift
+				stringLen |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMessage
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Protocol = github_com_taurusgroup_cmp_ecdsa_pkg_types.ProtocolID(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RoundNumber", wireType)
+			}
+			m.RoundNumber = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.RoundNumber |= github_com_taurusgroup_cmp_ecdsa_pkg_types.RoundNumber(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 20:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Content", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMessage
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Content == nil {
+				m.Content = &types.Any{}
+			}
+			if err := m.Content.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipMessage(dAtA[iNdEx:])
