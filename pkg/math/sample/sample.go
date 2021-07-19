@@ -61,7 +61,6 @@ func ModN(rand io.Reader, n *big.Int) *big.Int {
 	for found := false; !found; found = out.Cmp(n) < 0 {
 		mustReadBits(rand, buf)
 		out.SetBytes(buf)
-		out.Mod(out, n)
 	}
 
 	return out
