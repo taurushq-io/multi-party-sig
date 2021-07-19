@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
@@ -28,21 +29,21 @@ var (
 type SecretKey struct {
 	*PublicKey
 	// p, q such that N = p⋅q
-	p, q *big.Int
+	p, q *safenum.Nat
 	// phi = ϕ = (p-1)(q-1)
-	phi *big.Int
+	phi *safenum.Nat
 	// phiInv = ϕ⁻¹ mod N
-	phiInv *big.Int
+	phiInv *safenum.Nat
 }
 
 // P returns the first of the two factors composing this key.
 func (sk *SecretKey) P() *big.Int {
-	return sk.p
+	return sk.p.Big()
 }
 
 // Q returns the second of the two factors composing this key.
 func (sk *SecretKey) Q() *big.Int {
-	return sk.q
+	return sk.q.Big()
 }
 
 // Phi returns ϕ = (P-1)(Q-1).
@@ -52,7 +53,7 @@ func (sk *SecretKey) Q() *big.Int {
 //
 // This quantity is useful in ZK proofs.
 func (sk *SecretKey) Phi() *big.Int {
-	return sk.phi
+	return sk.phi.Big()
 }
 
 func KeyGen() (pk *PublicKey, sk *SecretKey) {
@@ -66,84 +67,84 @@ func NewSecretKey() *SecretKey {
 }
 
 func NewSecretKeyFromPrimes(P, Q *big.Int) *SecretKey {
-	var n, p, q, phi, phiInv big.Int
-	one := big.NewInt(1)
+	p := new(safenum.Nat).SetBig(P, P.BitLen())
+	q := new(safenum.Nat).SetBig(Q, Q.BitLen())
 
-	n.Mul(P, Q)
+	n := new(safenum.Nat).Mul(p, q, -1)
+	nMod := safenum.ModulusFromNat(n)
 
-	p.Sub(P, one)   // P-1
-	q.Sub(Q, one)   // Q-1
-	phi.Mul(&p, &q) // ϕ = (P-1)(Q-1)
+	p.Sub(p, oneNat, -1)
+	q.Sub(p, oneNat, -1)
+	phi := new(safenum.Nat).Mul(p, q, -1)
+	// ϕ⁻¹ mod N
+	phiInv := new(safenum.Nat).ModInverse(phi, nMod)
 
-	phiInv.ModInverse(&phi, &n) // ϕ⁻¹ mod N
-
-	p.Set(P)
-	q.Set(Q)
+	p.SetBig(P, P.BitLen())
+	q.SetBig(Q, Q.BitLen())
 
 	return &SecretKey{
-		p:         p.Set(P),
-		q:         q.Set(Q),
-		phi:       &phi,
-		phiInv:    &phiInv,
-		PublicKey: NewPublicKey(&n),
+		p:         p,
+		q:         q,
+		phi:       phi,
+		phiInv:    phiInv,
+		PublicKey: NewPublicKey(n.Big()),
 	}
 }
 
 // Dec decrypts c and returns the plaintext m ∈ ± (N-2)/2.
 // It returns an error if gcd(c, N²) != 1 or if c is not in [1, N²-1].
-func (sk *SecretKey) Dec(c *Ciphertext) (*big.Int, error) {
+func (sk *SecretKey) Dec(ct *Ciphertext) (*big.Int, error) {
 	n := sk.PublicKey.n
 	nSquared := sk.PublicKey.nSquared
 
-	if !sk.PublicKey.ValidateCiphertexts(c) {
+	if !sk.PublicKey.ValidateCiphertexts(ct) {
 		return nil, errors.New("paillier: failed to decrypt invalid ciphertext")
 	}
+
+	c := new(safenum.Nat).SetBig(ct.C, ct.C.BitLen())
 
 	phi := sk.phi
 	phiInv := sk.phiInv
 
-	result := new(big.Int)
-	result.Exp(c.C, phi, nSquared)    // r = c^Phi 						(mod N²)
-	result.Sub(result, big.NewInt(1)) // r = c^Phi - 1
-	result.Div(result, n)             // r = [(c^Phi - 1)/N]
-	result.Mul(result, phiInv)        // r = [(c^Phi - 1)/N] • Phi^-1
-	result.Mod(result, n)             // r = [(c^Phi - 1)/N] • Phi^-1		(mod N)
+	result := new(safenum.Nat)
+	// r = c^Phi 						(mod N²)
+	result.Exp(c, phi, nSquared)
+	// r = c^Phi - 1
+	result.Sub(result, oneNat, -1)
+	// r = [(c^Phi - 1)/N]
+	result.Div(result, n, -1)
+	// r = [(c^Phi - 1)/N] • Phi^-1		(mod N)
+	result.ModMul(result, phiInv, n)
 
 	// see 6.1 https://www.iacr.org/archive/crypto2001/21390136.pdf
-	if result.Cmp(sk.PublicKey.nHalf) == 1 {
-		result.Sub(result, n)
-	}
-	return result, nil
+	return new(safenum.Int).SetModSymmetric(result, n).Big(), nil
 }
 
 func (sk *SecretKey) Clone() *SecretKey {
-	var p, q, phi, phiInv big.Int
 	return &SecretKey{
-		p:         p.Set(sk.p),
-		q:         q.Set(sk.q),
-		phi:       phi.Set(sk.phi),
-		phiInv:    phiInv.Set(sk.phiInv),
+		p:         sk.p.Clone(),
+		q:         sk.q.Clone(),
+		phi:       sk.phi.Clone(),
+		phiInv:    sk.phiInv.Clone(),
 		PublicKey: sk.PublicKey.Clone(),
 	}
 }
 
 func (sk SecretKey) GeneratePedersen() (ped *pedersen.Parameters, lambda *big.Int) {
 	var s, t *big.Int
-	s, t, lambda = sample.Pedersen(rand.Reader, sk.PublicKey.n, sk.phi)
+	s, t, lambda = sample.Pedersen(rand.Reader, sk.PublicKey.n.Big(), sk.phi.Big())
 	return &pedersen.Parameters{
-		N: sk.PublicKey.n,
+		N: sk.PublicKey.n.Big(),
 		S: s,
 		T: t,
 	}, lambda
 }
 
-func is3mod4(n *big.Int) bool {
-	return n.Bit(0) == 1 && n.Bit(1) == 1
+func is3mod4(n *safenum.Nat) bool {
+	return n.Byte(0)&0b11 == 3
 }
 
 func (sk SecretKey) Validate() error {
-	var n, phi, pMin1, qMin1 big.Int
-
 	// check == 3 (mod 4)
 	if !is3mod4(sk.p) {
 		return fmt.Errorf("paillier.SecretKey: prime p: %w", ErrNotBlum)
@@ -154,42 +155,45 @@ func (sk SecretKey) Validate() error {
 
 	// check bit lengths
 	const bitsWant = params.BitsBlumPrime
-	if bits := sk.p.BitLen(); bits != bitsWant {
+	// Technically, this leaks the number of bits, but this is fine, since returning
+	// an error asserts this number statically, anyways.
+	if bits := sk.p.TrueLen(); bits != bitsWant {
 		return fmt.Errorf("paillier.SecretKey: prime p have: %d, need %d: %w", bits, bitsWant, ErrPrimeBadLength)
 	}
-	if bits := sk.q.BitLen(); bits != bitsWant {
+	if bits := sk.q.TrueLen(); bits != bitsWant {
 		return fmt.Errorf("paillier.SecretKey: prime q have: %d, need %d: %w", bits, bitsWant, ErrPrimeBadLength)
 	}
 
+	// Hopefully this doesn't leak too much information about p or q
 	// check prime
-	if !sk.p.ProbablyPrime(20) {
+	if !sk.p.Big().ProbablyPrime(20) {
 		return fmt.Errorf("paillier.SecretKey: prime p: %w", ErrNotPrime)
 	}
 	// check prime
-	if !sk.q.ProbablyPrime(20) {
+	if !sk.q.Big().ProbablyPrime(20) {
 		return fmt.Errorf("paillier.SecretKey: prime q: %w", ErrNotPrime)
 	}
 
 	// check phi = (p-1)(q-1)
-	one := big.NewInt(1)
-	pMin1.Sub(sk.p, one)
-	qMin1.Sub(sk.q, one)
-	phi.Mul(&pMin1, &qMin1)
-	if phi.Cmp(sk.phi) != 0 {
+	pMinus1 := new(safenum.Nat).Sub(sk.p, oneNat, -1)
+	qMinus1 := new(safenum.Nat).Sub(sk.q, oneNat, -1)
+	phi := new(safenum.Nat).Mul(pMinus1, qMinus1, -1)
+	if phi.Eq(sk.phi) != 1 {
 		return ErrWrongPhi
 	}
 
-	// check ϕ * phiInv = 1 (mod N)
-	n.Mul(sk.p, sk.q)
-	phi.Mul(&phi, sk.phiInv)
-	phi.Mod(&phi, &n)
-	if phi.Cmp(one) != 0 {
-		return ErrWrongPhiInv
+	nNat := new(safenum.Nat).Mul(sk.p, sk.q, -1)
+	// Compare N
+	n := safenum.ModulusFromNat(nNat)
+	_, nEqual, _ := n.Cmp(sk.PublicKey.n)
+	if nEqual != 1 {
+		return ErrModulusMismatch
 	}
 
-	// Compare N
-	if n.Cmp(sk.PublicKey.n) != 0 {
-		return ErrModulusMismatch
+	// check ϕ * phiInv = 1 (mod N)
+	phi.ModMul(phi, sk.phiInv, n)
+	if phi.Eq(oneNat) != 0 {
+		return ErrWrongPhiInv
 	}
 
 	// check public key too

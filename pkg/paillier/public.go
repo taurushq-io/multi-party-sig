@@ -7,6 +7,7 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
@@ -16,33 +17,38 @@ var (
 	ErrPaillierEven   = errors.New("modulus N is even")
 )
 
+var oneNat *safenum.Nat = new(safenum.Nat).SetUint64(1)
+
 // PublicKey is a Paillier public key. It is represented by a modulus N.
 type PublicKey struct {
 	// n = p⋅q
-	n *big.Int
-	// These two values are cached, for performance.
+	n *safenum.Modulus
+	// These values are cached out of convenience, and performance
+	nNat *safenum.Nat
 	// nSquared = n²
-	nSquared *big.Int
-	// nHalf = (n-1) / 2
-	nHalf *big.Int
+	nSquared *safenum.Modulus
+	// nPlusOne = n + 1
+	nPlusOne *safenum.Nat
 }
 
 // N is the public modulus making up this key
 func (pk *PublicKey) N() *big.Int {
-	return pk.n
+	return pk.n.Big()
 }
 
 // NewPublicKey returns an initialized paillier.PublicKey and computes N, N² and (N-1)/2.
 // The input n is copied.
 func NewPublicKey(n *big.Int) *PublicKey {
-	var nNew, nHalf big.Int
-	nSquared := newCipherTextInt()
-	nSquared.Mul(n, n)
-	nHalf.Rsh(n, 1)
+	nNat := new(safenum.Nat).SetBig(n, n.BitLen())
+	nSquared := new(safenum.Nat).Mul(nNat, nNat, -1)
+	nPlusOne := new(safenum.Nat).Add(nNat, oneNat, -1)
+	// Tightening is fine, since n is public
+	nPlusOne.Resize(nPlusOne.TrueLen())
 	return &PublicKey{
-		n:        nNew.Set(n),
-		nSquared: nSquared,
-		nHalf:    &nHalf,
+		n:        safenum.ModulusFromNat(nNat),
+		nNat:     nNat,
+		nSquared: safenum.ModulusFromNat(nSquared),
+		nPlusOne: nPlusOne,
 	}
 }
 
@@ -53,8 +59,14 @@ func NewPublicKey(n *big.Int) *PublicKey {
 //
 // ct = (1+N)ᵐρᴺ (mod N²)
 func (pk PublicKey) Enc(m *big.Int) (*Ciphertext, *big.Int) {
-	nonce := sample.UnitModN(rand.Reader, pk.n)
-	return pk.EncWithNonce(m, nonce), nonce
+	cipher, nonce := pk.encNat(new(safenum.Int).SetBig(m, m.BitLen()))
+	return cipher, nonce.Big()
+}
+
+// Enc, but with Nat arguments
+func (pk PublicKey) encNat(m *safenum.Int) (*Ciphertext, *safenum.Nat) {
+	nonce := sample.UnitModNNat(rand.Reader, pk.n)
+	return pk.encWithNonceNat(m, nonce), nonce
 }
 
 // EncWithNonce returns the encryption of m under the public key pk.
@@ -64,30 +76,37 @@ func (pk PublicKey) Enc(m *big.Int) (*Ciphertext, *big.Int) {
 //
 // ct = (1+N)ᵐρᴺ (mod N²)
 func (pk PublicKey) EncWithNonce(m, nonce *big.Int) *Ciphertext {
-	if m.CmpAbs(pk.nHalf) == 1 {
+	mInt := new(safenum.Int).SetBig(m, m.BitLen())
+	nonceNat := new(safenum.Nat).SetBig(nonce, nonce.BitLen())
+
+	return pk.encWithNonceNat(mInt, nonceNat)
+}
+
+// EncWithNonce, but with Nat
+func (pk PublicKey) encWithNonceNat(m *safenum.Int, nonce *safenum.Nat) *Ciphertext {
+	if m.CheckInRange(pk.n) != 1 {
 		panic("paillier.Encrypt: tried to encrypt message outside of range [-(N-1)/2, …, (N-1)/2]")
 	}
 
-	ct := NewCiphertext()
+	// N + 1
+	ct := new(safenum.Nat).SetNat(pk.nPlusOne)
+	// (N+1)ᵐ mod N²
+	ct.ExpI(ct, m, pk.nSquared)
+	// rho ^ N mod N²
+	rhoN := new(safenum.Nat).Exp(nonce, pk.nNat, pk.nSquared)
+	// (N+1)ᵐ rho ^ N
+	ct.ModMul(ct, rhoN, pk.nSquared)
 
-	tmp := newCipherTextInt()
-	one := big.NewInt(1)
+	out := NewCiphertext()
+	out.C = ct.Big()
 
-	tmp.Set(pk.n)                 // N
-	tmp.Add(tmp, one)             // N + 1
-	ct.C.Exp(tmp, m, pk.nSquared) // (N+1)ᵐ mod N²
-
-	tmp.Exp(nonce, pk.n, pk.nSquared) // rho ^ N mod N²
-
-	ct.C.Mul(ct.C, tmp) // (N+1)ᵐ rho ^ N
-	ct.C.Mod(ct.C, pk.nSquared)
-
-	return ct
+	return out
 }
 
 // Equal returns true if pk = other.
 func (pk PublicKey) Equal(other *PublicKey) bool {
-	return pk.n.Cmp(other.n) == 0
+	_, eq, _ := pk.n.Cmp(other.n)
+	return eq == 1
 }
 
 // Validate returns an error if the bit length of N is wrong or if it is even.
@@ -96,7 +115,7 @@ func (pk PublicKey) Validate() error {
 	if bits := pk.n.BitLen(); bits != params.BitsPaillier {
 		return fmt.Errorf("paillier.publicKey: have: %d, need %d: %w", bits, params.BitsPaillier, ErrPaillierLength)
 	}
-	if pk.n.Bit(0) != 1 {
+	if pk.nNat.Byte(0)&1 != 1 {
 		return ErrPaillierEven
 	}
 
@@ -106,37 +125,36 @@ func (pk PublicKey) Validate() error {
 // ValidateCiphertexts checks if all ciphertexts are in the correct range and coprime to N²
 // ct ∈ [1, …, N²-1] AND GCD(ct,N²) = 1
 func (pk PublicKey) ValidateCiphertexts(cts ...*Ciphertext) bool {
-	var gcd big.Int
-	one := big.NewInt(1)
 	for _, ct := range cts {
-		if ct.C.Cmp(pk.nSquared) != -1 {
-			return false
-		}
-		gcd.GCD(nil, nil, ct.C, pk.nSquared)
-		if gcd.Cmp(one) != 0 {
-			return false
-		}
 		if ct.C.Sign() != 1 {
 			return false
 		}
+		cNat := new(safenum.Nat).SetBig(ct.C, ct.C.BitLen())
+		_, _, lt := cNat.CmpMod(pk.nSquared)
+		if lt != 1 {
+			return false
+		}
+		if cNat.IsUnit(pk.nSquared) != 1 {
+			return false
+		}
+
 	}
 	return true
 }
 
 // Clone performs a deep copy of the public key
 func (pk PublicKey) Clone() *PublicKey {
-	var N, NSquared, nHalf big.Int
 	return &PublicKey{
-		n:        N.Set(pk.n),
-		nSquared: NSquared.Set(pk.nSquared),
-		nHalf:    nHalf.Set(pk.nHalf),
+		n:        pk.n,
+		nNat:     pk.nNat.Clone(),
+		nSquared: pk.nSquared,
+		nPlusOne: pk.nPlusOne.Clone(),
 	}
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
 func (pk PublicKey) WriteTo(w io.Writer) (int64, error) {
-	buf := make([]byte, params.BytesPaillier)
-	pk.n.FillBytes(buf)
+	buf := pk.n.Bytes()
 	n, err := w.Write(buf)
 	return int64(n), err
 }

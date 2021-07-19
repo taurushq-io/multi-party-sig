@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"math/bits"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
@@ -18,8 +19,12 @@ func (ct *Ciphertext) Add(pk *PublicKey, otherCt *Ciphertext) *Ciphertext {
 	if otherCt == nil {
 		return ct
 	}
-	ct.C.Mul(ct.C, otherCt.C)
-	ct.C.Mod(ct.C, pk.nSquared)
+	c1 := new(safenum.Nat).SetBig(ct.C, ct.C.BitLen())
+	c2 := new(safenum.Nat).SetBig(otherCt.C, otherCt.C.BitLen())
+
+	c1.ModMul(c1, c2, pk.nSquared)
+
+	ct.C = c1.Big()
 	return ct
 }
 
@@ -29,7 +34,12 @@ func (ct *Ciphertext) Mul(pk *PublicKey, k *big.Int) *Ciphertext {
 	if k == nil {
 		return ct
 	}
-	ct.C.Exp(ct.C, k, pk.nSquared)
+	kNat := new(safenum.Nat).SetBig(k, k.BitLen())
+	c := new(safenum.Nat).SetBig(ct.C, ct.C.BitLen())
+
+	c.Exp(c, kNat, pk.nSquared)
+
+	ct.C = c.Big()
 	return ct
 }
 
@@ -49,13 +59,17 @@ func (ct Ciphertext) Clone() *Ciphertext {
 // ct *= nonceᴺ for some nonce either given or generated here (if nonce = nil).
 // The updated receiver is returned, as well as the nonce update
 func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *big.Int) *big.Int {
-	tmp := newCipherTextInt()
+	nonceNat := new(safenum.Nat)
+	c := new(safenum.Nat).SetBig(ct.C, ct.C.BitLen())
 	if nonce == nil {
-		nonce = sample.UnitModN(rand.Reader, pk.n)
+		nonceNat = sample.UnitModNNat(rand.Reader, pk.n)
+	} else {
+		nonceNat.SetBig(nonce, nonce.BitLen())
 	}
-	tmp.Exp(nonce, pk.n, pk.nSquared) // tmp = r^N
-	ct.C.Mul(ct.C, tmp)               // ct = ct * tmp
-	ct.C.Mod(ct.C, pk.nSquared)       // ct = ct*r^N
+	// c = c*r^N
+	nonceNat.Exp(nonceNat, pk.nNat, pk.nSquared)
+	c.ModMul(c, nonceNat, pk.nSquared)
+	ct.C = c.Big()
 	return nonce
 }
 
