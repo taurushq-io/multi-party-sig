@@ -1,10 +1,12 @@
 package sign
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 	zklogstar "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
 )
 
@@ -28,10 +30,9 @@ type round4 struct {
 //
 // - Get Δⱼ, δⱼ, ϕ''ᵢⱼ
 // - Verify Π(log*)(ϕ''ᵢⱼ, Δⱼ, Γ)
-func (r *round4) ProcessMessage(msg round.Message) error {
-	j := msg.GetHeader().From
-	partyJ := r.parties[j]
-	body := msg.(*Message).GetSign3()
+func (r *round4) ProcessMessage(from party.ID, content round.Content) error {
+	body := content.(*Sign4)
+	partyJ := r.Parties[from]
 
 	zkLogPublic := zklogstar.Public{
 		C:      partyJ.K,
@@ -40,14 +41,13 @@ func (r *round4) ProcessMessage(msg round.Message) error {
 		Prover: partyJ.Paillier,
 		Aux:    r.Self.Pedersen,
 	}
-	if !body.ProofLog.Verify(r.Hash.CloneWithID(j), zkLogPublic) {
-		return fmt.Errorf("sign.round4.ProcessMessage(): party %s: log proof failed to verify", j)
+	if !body.ProofLog.Verify(r.HashForID(from), zkLogPublic) {
+		return ErrRound4ZKLog
 	}
 
 	partyJ.BigDeltaShare = body.BigDeltaShare
 	partyJ.DeltaShare = body.DeltaShare
-
-	return nil // message is properly handled
+	return nil
 }
 
 // GenerateMessages implements round.Round
@@ -56,12 +56,12 @@ func (r *round4) ProcessMessage(msg round.Message) error {
 // - set Δ = ∑ⱼ Δⱼ
 // - verify Δ = [δ]G
 // - compute σᵢ = rχᵢ + kᵢm
-func (r *round4) GenerateMessages() ([]round.Message, error) {
+func (r *round4) GenerateMessages(out chan<- *round.Message) error {
 	// δ = ∑ⱼ δⱼ
 	// Δ = ∑ⱼ Δⱼ
 	r.Delta = curve.NewScalar()
 	r.BigDelta = curve.NewIdentityPoint()
-	for _, partyJ := range r.parties {
+	for _, partyJ := range r.Parties {
 		r.Delta.Add(r.Delta, partyJ.DeltaShare)
 		r.BigDelta.Add(r.BigDelta, partyJ.BigDeltaShare)
 	}
@@ -69,7 +69,7 @@ func (r *round4) GenerateMessages() ([]round.Message, error) {
 	// Δ == [δ]G
 	deltaComputed := curve.NewIdentityPoint().ScalarBaseMult(r.Delta)
 	if !deltaComputed.Equal(r.BigDelta) {
-		return nil, fmt.Errorf("sign.round4.GenerateMessages(): computed Δ is inconsistent with [δ]G")
+		return ErrRound4BigDelta
 	}
 
 	deltaInv := curve.NewScalar().Invert(r.Delta)                   // δ⁻¹
@@ -83,7 +83,12 @@ func (r *round4) GenerateMessages() ([]round.Message, error) {
 	// σᵢ = rχᵢ + kᵢm
 	r.Self.SigmaShare = curve.NewScalar().MultiplyAdd(r.r, r.ChiShare, km)
 
-	return NewMessageSign4(r.SelfID, &Sign4{SigmaShare: r.Self.SigmaShare}), nil
+	// Send to all
+	msg := r.MarshalMessage(&SignOutput{SigmaShare: r.Self.SigmaShare}, r.OtherPartyIDs()...)
+	if err := r.SendMessage(msg, out); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Next implements round.Round
