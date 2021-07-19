@@ -86,14 +86,28 @@ func (r *round4) GenerateMessages() ([]round.Message, error) {
 	return NewMessageSign4(r.SelfID, &Sign4{SigmaShare: r.Self.SigmaShare}), nil
 }
 
-// Finalize implements round.Round
-func (r *round4) Finalize() (round.Round, error) {
-	r.Next()
+// Next implements round.Round
+func (r *round4) Next() round.Round {
 	return &output{
 		round4: r,
-	}, nil
+	}
 }
 
-func (r *round4) ExpectedMessageID() round.MessageID {
-	return MessageTypeSign3
+func (r *round4) MessageContent() round.Content {
+	return &Sign4{}
+}
+
+func (m *Sign4) Validate() error {
+	if m == nil {
+		return errors.New("sign.round3: message is nil")
+	}
+	if m.DeltaShare == nil || m.BigDeltaShare == nil || m.ProofLog == nil {
+		return errors.New("sign.round3: message contains nil fields")
+	}
+
+	return nil
+}
+
+func (m *Sign4) RoundNumber() types.RoundNumber {
+	return 4
 }

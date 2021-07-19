@@ -44,7 +44,16 @@ func (r *round2) ProcessMessage(msg round.Message) error {
 // - compute Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
 func (r *round2) GenerateMessages() ([]round.Message, error) {
 	// compute Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
-	r.computeHashKJ()
+	// The papers says that we need to reliably broadcast this data, however unless we use
+	// a system like white-city, we can't actually do this.
+	// In the next round, if someone has a different hash, then we must abort, but there is no way of knowing who
+	// was the culprit. We could maybe assume that we have an honest majority, but this clashes with the base assumptions.
+	h := r.Hash()
+	for _, id := range r.PartyIDs() {
+		partyJ := r.Parties[id]
+		_, _ = h.WriteAny(partyJ.K, partyJ.G)
+	}
+	r.EchoHash = h.ReadBytes(nil)
 
 	zkPrivate := zklogstar.Private{
 		X:   r.GammaShare.BigInt(),
@@ -83,28 +92,27 @@ func (r *round2) GenerateMessages() ([]round.Message, error) {
 	return messages, nil
 }
 
-func (r *round2) computeHashKJ() {
-	// The papers says that we need to reliably broadcast this data, however unless we use
-	// a system like white-city, we can't actually do this.
-	// In the next round, if someone has a different hash, then we must abort, but there is no way of knowing who
-	// was the culprit. We could maybe assume that we have an honest majority, but this clashes with the base assumptions.
-	h := r.Hash.Clone()
-	for _, id := range r.S.PartyIDs() {
-		partyJ := r.parties[id]
-		_, _ = h.WriteAny(partyJ.K, partyJ.G)
-	}
-	r.EchoHash = h.ReadBytes(nil)
-	return
-}
-
-// Finalize implements round.Round
-func (r *round2) Finalize() (round.Round, error) {
-	r.Next()
+// Next implements round.Round
+func (r *round2) Next() round.Round {
 	return &round3{
 		round2: r,
-	}, nil
+	}
 }
 
-func (r *round2) ExpectedMessageID() round.MessageID {
-	return MessageTypeSign1
+func (r *round2) MessageContent() round.Content {
+	return &Sign2{}
+}
+
+func (m *Sign2) Validate() error {
+	if m == nil {
+		return errors.New("sign.round1: message is nil")
+	}
+	if m.G == nil || m.K == nil {
+		return errors.New("sign.round1: K or G is nil")
+	}
+	return nil
+}
+
+func (m *Sign2) RoundNumber() types.RoundNumber {
+	return 2
 }

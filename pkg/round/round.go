@@ -15,23 +15,14 @@ type Round interface {
 	// If an error has been detected, then no messages are returned.
 	GenerateMessages() ([]Message, error)
 
-	// Finalize performs
-	Finalize() (Round, error)
+	// Next returns the next round.
+	Next() Round
 
-	// ExpectedMessageID returns the expected MessageID for the current round.
-	ExpectedMessageID() MessageID
-
-	// Number returns the round's number in the protocol
-	Number() int
-
-	// ProtocolName returns a string representing the protocol
-	ProtocolName() string
-
-	ProtocolID() ProtocolID
+	// MessageContent returns an uninitialized message.Content for this round
+	MessageContent() Content
 }
 
-type FinalRound interface {
+type Final interface {
 	Round
-	GetSignature() (*signature.Signature, error)
-	GetSession() (session.Session, error)
+	Result() interface{}
 }

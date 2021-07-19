@@ -9,7 +9,6 @@ import (
 	proto "github.com/gogo/protobuf/proto"
 	github_com_taurusgroup_cmp_ecdsa_pkg_math_curve "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	paillier "github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	round "github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	affg "github.com/taurusgroup/cmp-ecdsa/pkg/zk/affg"
 	enc "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
 	logstar "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
@@ -29,207 +28,17 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-type Message struct {
-	Header *round.Header `protobuf:"bytes,1,opt,name=Header,proto3" json:"Header,omitempty"`
-	// Types that are valid to be assigned to Content:
-	//	*Message_Sign1
-	//	*Message_Sign2
-	//	*Message_Sign3
-	//	*Message_Sign4
-	Content isMessage_Content `protobuf_oneof:"Content"`
-}
-
-func (m *Message) Reset()         { *m = Message{} }
-func (m *Message) String() string { return proto.CompactTextString(m) }
-func (*Message) ProtoMessage()    {}
-func (*Message) Descriptor() ([]byte, []int) {
-	return fileDescriptor_2f793397d4c8dc61, []int{0}
-}
-func (m *Message) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *Message) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *Message) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Message.Merge(m, src)
-}
-func (m *Message) XXX_Size() int {
-	return m.Size()
-}
-func (m *Message) XXX_DiscardUnknown() {
-	xxx_messageInfo_Message.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Message proto.InternalMessageInfo
-
-type isMessage_Content interface {
-	isMessage_Content()
-	MarshalTo([]byte) (int, error)
-	Size() int
-}
-
-type Message_Sign1 struct {
-	Sign1 *Sign1 `protobuf:"bytes,2,opt,name=sign1,proto3,oneof" json:"sign1,omitempty"`
-}
-type Message_Sign2 struct {
-	Sign2 *Sign2 `protobuf:"bytes,3,opt,name=sign2,proto3,oneof" json:"sign2,omitempty"`
-}
-type Message_Sign3 struct {
-	Sign3 *Sign3 `protobuf:"bytes,4,opt,name=sign3,proto3,oneof" json:"sign3,omitempty"`
-}
-type Message_Sign4 struct {
-	Sign4 *Sign4 `protobuf:"bytes,5,opt,name=sign4,proto3,oneof" json:"sign4,omitempty"`
-}
-
-func (*Message_Sign1) isMessage_Content() {}
-func (*Message_Sign2) isMessage_Content() {}
-func (*Message_Sign3) isMessage_Content() {}
-func (*Message_Sign4) isMessage_Content() {}
-
-func (m *Message) GetContent() isMessage_Content {
-	if m != nil {
-		return m.Content
-	}
-	return nil
-}
-
-func (m *Message) GetHeader() *round.Header {
-	if m != nil {
-		return m.Header
-	}
-	return nil
-}
-
-func (m *Message) GetSign1() *Sign1 {
-	if x, ok := m.GetContent().(*Message_Sign1); ok {
-		return x.Sign1
-	}
-	return nil
-}
-
-func (m *Message) GetSign2() *Sign2 {
-	if x, ok := m.GetContent().(*Message_Sign2); ok {
-		return x.Sign2
-	}
-	return nil
-}
-
-func (m *Message) GetSign3() *Sign3 {
-	if x, ok := m.GetContent().(*Message_Sign3); ok {
-		return x.Sign3
-	}
-	return nil
-}
-
-func (m *Message) GetSign4() *Sign4 {
-	if x, ok := m.GetContent().(*Message_Sign4); ok {
-		return x.Sign4
-	}
-	return nil
-}
-
-// XXX_OneofWrappers is for the internal use of the proto package.
-func (*Message) XXX_OneofWrappers() []interface{} {
-	return []interface{}{
-		(*Message_Sign1)(nil),
-		(*Message_Sign2)(nil),
-		(*Message_Sign3)(nil),
-		(*Message_Sign4)(nil),
-	}
-}
-
-type Sign1 struct {
+type Sign2 struct {
 	ProofEnc *enc.Proof           `protobuf:"bytes,1,opt,name=ProofEnc,proto3" json:"ProofEnc,omitempty"`
 	K        *paillier.Ciphertext `protobuf:"bytes,2,opt,name=K,proto3" json:"K,omitempty"`
 	G        *paillier.Ciphertext `protobuf:"bytes,3,opt,name=G,proto3" json:"G,omitempty"`
-}
-
-func (m *Sign1) Reset()         { *m = Sign1{} }
-func (m *Sign1) String() string { return proto.CompactTextString(m) }
-func (*Sign1) ProtoMessage()    {}
-func (*Sign1) Descriptor() ([]byte, []int) {
-	return fileDescriptor_2f793397d4c8dc61, []int{1}
-}
-func (m *Sign1) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *Sign1) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *Sign1) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Sign1.Merge(m, src)
-}
-func (m *Sign1) XXX_Size() int {
-	return m.Size()
-}
-func (m *Sign1) XXX_DiscardUnknown() {
-	xxx_messageInfo_Sign1.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Sign1 proto.InternalMessageInfo
-
-type MtAMessage struct {
-	// D is Dᵢⱼ = (⋅ⱼ ⊙ Kᵢ) ⊕ encᵢ(- βⱼᵢ, sⱼᵢ)
-	D *paillier.Ciphertext `protobuf:"bytes,1,opt,name=D,proto3" json:"D,omitempty"`
-	// F is Fᵢⱼ = encⱼ(βⱼᵢ, rⱼᵢ)
-	F     *paillier.Ciphertext `protobuf:"bytes,2,opt,name=F,proto3" json:"F,omitempty"`
-	Proof *affg.Proof          `protobuf:"bytes,3,opt,name=Proof,proto3" json:"Proof,omitempty"`
-}
-
-func (m *MtAMessage) Reset()         { *m = MtAMessage{} }
-func (m *MtAMessage) String() string { return proto.CompactTextString(m) }
-func (*MtAMessage) ProtoMessage()    {}
-func (*MtAMessage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_2f793397d4c8dc61, []int{2}
-}
-func (m *MtAMessage) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *MtAMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *MtAMessage) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_MtAMessage.Merge(m, src)
-}
-func (m *MtAMessage) XXX_Size() int {
-	return m.Size()
-}
-func (m *MtAMessage) XXX_DiscardUnknown() {
-	xxx_messageInfo_MtAMessage.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_MtAMessage proto.InternalMessageInfo
-
-type Sign2 struct {
-	// EchoHash = Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
-	EchoHash      []byte                                                 `protobuf:"bytes,1,opt,name=EchoHash,proto3" json:"EchoHash,omitempty"`
-	BigGammaShare *github_com_taurusgroup_cmp_ecdsa_pkg_math_curve.Point `protobuf:"bytes,2,opt,name=BigGammaShare,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point" json:"BigGammaShare,omitempty"`
-	DeltaMtA      *MtAMessage                                            `protobuf:"bytes,3,opt,name=DeltaMtA,proto3" json:"DeltaMtA,omitempty"`
-	ChiMtA        *MtAMessage                                            `protobuf:"bytes,4,opt,name=ChiMtA,proto3" json:"ChiMtA,omitempty"`
-	ProofLog      *logstar.Proof                                         `protobuf:"bytes,5,opt,name=ProofLog,proto3" json:"ProofLog,omitempty"`
 }
 
 func (m *Sign2) Reset()         { *m = Sign2{} }
 func (m *Sign2) String() string { return proto.CompactTextString(m) }
 func (*Sign2) ProtoMessage()    {}
 func (*Sign2) Descriptor() ([]byte, []int) {
-	return fileDescriptor_2f793397d4c8dc61, []int{3}
+	return fileDescriptor_2f793397d4c8dc61, []int{0}
 }
 func (m *Sign2) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -254,17 +63,57 @@ func (m *Sign2) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Sign2 proto.InternalMessageInfo
 
+type MtAMessage struct {
+	// D is Dᵢⱼ = (⋅ⱼ ⊙ Kᵢ) ⊕ encᵢ(- βⱼᵢ, sⱼᵢ)
+	D *paillier.Ciphertext `protobuf:"bytes,1,opt,name=D,proto3" json:"D,omitempty"`
+	// F is Fᵢⱼ = encⱼ(βⱼᵢ, rⱼᵢ)
+	F     *paillier.Ciphertext `protobuf:"bytes,2,opt,name=F,proto3" json:"F,omitempty"`
+	Proof *affg.Proof          `protobuf:"bytes,3,opt,name=Proof,proto3" json:"Proof,omitempty"`
+}
+
+func (m *MtAMessage) Reset()         { *m = MtAMessage{} }
+func (m *MtAMessage) String() string { return proto.CompactTextString(m) }
+func (*MtAMessage) ProtoMessage()    {}
+func (*MtAMessage) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2f793397d4c8dc61, []int{1}
+}
+func (m *MtAMessage) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MtAMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	b = b[:cap(b)]
+	n, err := m.MarshalToSizedBuffer(b)
+	if err != nil {
+		return nil, err
+	}
+	return b[:n], nil
+}
+func (m *MtAMessage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MtAMessage.Merge(m, src)
+}
+func (m *MtAMessage) XXX_Size() int {
+	return m.Size()
+}
+func (m *MtAMessage) XXX_DiscardUnknown() {
+	xxx_messageInfo_MtAMessage.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MtAMessage proto.InternalMessageInfo
+
 type Sign3 struct {
-	DeltaShare    *github_com_taurusgroup_cmp_ecdsa_pkg_math_curve.Scalar `protobuf:"bytes,1,opt,name=DeltaShare,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar" json:"DeltaShare,omitempty"`
-	BigDeltaShare *github_com_taurusgroup_cmp_ecdsa_pkg_math_curve.Point  `protobuf:"bytes,2,opt,name=BigDeltaShare,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point" json:"BigDeltaShare,omitempty"`
-	ProofLog      *logstar.Proof                                          `protobuf:"bytes,3,opt,name=ProofLog,proto3" json:"ProofLog,omitempty"`
+	// EchoHash = Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
+	EchoHash      []byte                                                 `protobuf:"bytes,1,opt,name=EchoHash,proto3" json:"EchoHash,omitempty"`
+	BigGammaShare *github_com_taurusgroup_cmp_ecdsa_pkg_math_curve.Point `protobuf:"bytes,2,opt,name=BigGammaShare,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point" json:"BigGammaShare,omitempty"`
+	DeltaMtA      *MtAMessage                                            `protobuf:"bytes,3,opt,name=DeltaMtA,proto3" json:"DeltaMtA,omitempty"`
+	ChiMtA        *MtAMessage                                            `protobuf:"bytes,4,opt,name=ChiMtA,proto3" json:"ChiMtA,omitempty"`
+	ProofLog      *logstar.Proof                                         `protobuf:"bytes,5,opt,name=ProofLog,proto3" json:"ProofLog,omitempty"`
 }
 
 func (m *Sign3) Reset()         { *m = Sign3{} }
 func (m *Sign3) String() string { return proto.CompactTextString(m) }
 func (*Sign3) ProtoMessage()    {}
 func (*Sign3) Descriptor() ([]byte, []int) {
-	return fileDescriptor_2f793397d4c8dc61, []int{4}
+	return fileDescriptor_2f793397d4c8dc61, []int{2}
 }
 func (m *Sign3) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -290,14 +139,16 @@ func (m *Sign3) XXX_DiscardUnknown() {
 var xxx_messageInfo_Sign3 proto.InternalMessageInfo
 
 type Sign4 struct {
-	SigmaShare *github_com_taurusgroup_cmp_ecdsa_pkg_math_curve.Scalar `protobuf:"bytes,1,opt,name=SigmaShare,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar" json:"SigmaShare,omitempty"`
+	DeltaShare    *github_com_taurusgroup_cmp_ecdsa_pkg_math_curve.Scalar `protobuf:"bytes,1,opt,name=DeltaShare,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar" json:"DeltaShare,omitempty"`
+	BigDeltaShare *github_com_taurusgroup_cmp_ecdsa_pkg_math_curve.Point  `protobuf:"bytes,2,opt,name=BigDeltaShare,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point" json:"BigDeltaShare,omitempty"`
+	ProofLog      *logstar.Proof                                          `protobuf:"bytes,3,opt,name=ProofLog,proto3" json:"ProofLog,omitempty"`
 }
 
 func (m *Sign4) Reset()         { *m = Sign4{} }
 func (m *Sign4) String() string { return proto.CompactTextString(m) }
 func (*Sign4) ProtoMessage()    {}
 func (*Sign4) Descriptor() ([]byte, []int) {
-	return fileDescriptor_2f793397d4c8dc61, []int{5}
+	return fileDescriptor_2f793397d4c8dc61, []int{3}
 }
 func (m *Sign4) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -322,61 +173,87 @@ func (m *Sign4) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Sign4 proto.InternalMessageInfo
 
+type SignOutput struct {
+	SigmaShare *github_com_taurusgroup_cmp_ecdsa_pkg_math_curve.Scalar `protobuf:"bytes,1,opt,name=SigmaShare,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar" json:"SigmaShare,omitempty"`
+}
+
+func (m *SignOutput) Reset()         { *m = SignOutput{} }
+func (m *SignOutput) String() string { return proto.CompactTextString(m) }
+func (*SignOutput) ProtoMessage()    {}
+func (*SignOutput) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2f793397d4c8dc61, []int{4}
+}
+func (m *SignOutput) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *SignOutput) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	b = b[:cap(b)]
+	n, err := m.MarshalToSizedBuffer(b)
+	if err != nil {
+		return nil, err
+	}
+	return b[:n], nil
+}
+func (m *SignOutput) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SignOutput.Merge(m, src)
+}
+func (m *SignOutput) XXX_Size() int {
+	return m.Size()
+}
+func (m *SignOutput) XXX_DiscardUnknown() {
+	xxx_messageInfo_SignOutput.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SignOutput proto.InternalMessageInfo
+
 func init() {
-	proto.RegisterType((*Message)(nil), "sign.Message")
-	proto.RegisterType((*Sign1)(nil), "sign.Sign1")
-	proto.RegisterType((*MtAMessage)(nil), "sign.MtAMessage")
 	proto.RegisterType((*Sign2)(nil), "sign.Sign2")
+	proto.RegisterType((*MtAMessage)(nil), "sign.MtAMessage")
 	proto.RegisterType((*Sign3)(nil), "sign.Sign3")
 	proto.RegisterType((*Sign4)(nil), "sign.Sign4")
+	proto.RegisterType((*SignOutput)(nil), "sign.SignOutput")
 }
 
 func init() { proto.RegisterFile("protocols/sign/message.proto", fileDescriptor_2f793397d4c8dc61) }
 
 var fileDescriptor_2f793397d4c8dc61 = []byte{
-	// 609 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x54, 0xcb, 0x6a, 0xdb, 0x40,
-	0x14, 0xb5, 0x12, 0xe7, 0xd1, 0x49, 0x02, 0x41, 0x84, 0xd6, 0x84, 0x54, 0x29, 0x2e, 0x05, 0x2f,
-	0x9a, 0x11, 0xb5, 0xdd, 0x42, 0xb3, 0x8b, 0xed, 0xc4, 0x86, 0xd8, 0x10, 0xe4, 0x5d, 0x36, 0x65,
-	0x2c, 0x8f, 0x47, 0xc2, 0x92, 0x46, 0x8c, 0x46, 0xa5, 0x78, 0x93, 0x6d, 0x97, 0xf9, 0x84, 0x7e,
-	0x4e, 0x77, 0xcd, 0x32, 0x64, 0x11, 0x8a, 0xfd, 0x13, 0x5d, 0x96, 0x79, 0xc8, 0x51, 0x0c, 0xee,
-	0x03, 0xb2, 0xf0, 0x63, 0xce, 0x39, 0xba, 0xf7, 0x9e, 0x73, 0x07, 0x81, 0x83, 0x98, 0x51, 0x4e,
-	0x5d, 0x1a, 0x24, 0x76, 0xe2, 0x93, 0xc8, 0x0e, 0x71, 0x92, 0x20, 0x82, 0xa1, 0x84, 0xcd, 0xa2,
-	0xc0, 0xf6, 0x8f, 0x88, 0xcf, 0xbd, 0x74, 0x00, 0x5d, 0x1a, 0xda, 0x84, 0x12, 0x6a, 0x4b, 0x72,
-	0x90, 0x8e, 0xe4, 0x49, 0x1e, 0xe4, 0x3f, 0xf5, 0xd0, 0xfe, 0xcb, 0x78, 0x4c, 0xec, 0x18, 0xf9,
-	0x41, 0xe0, 0x63, 0x66, 0xbb, 0x7e, 0xec, 0x61, 0xc6, 0xf1, 0x17, 0xae, 0xe9, 0x3d, 0x41, 0x4f,
-	0xc6, 0x36, 0x8e, 0x5c, 0xf1, 0xd1, 0xe8, 0x73, 0x8d, 0xa2, 0xd1, 0x88, 0xc8, 0x2f, 0x8d, 0x1f,
-	0x68, 0x3c, 0xa0, 0x24, 0xe1, 0x88, 0x65, 0xbf, 0x9a, 0x7d, 0x21, 0x58, 0x46, 0xd3, 0x68, 0xf8,
-	0x78, 0xf0, 0xf2, 0x0f, 0x03, 0x6c, 0xf4, 0x14, 0x62, 0xbe, 0x01, 0xeb, 0x1d, 0x8c, 0x86, 0x98,
-	0x95, 0x8c, 0x57, 0x46, 0x65, 0xab, 0xba, 0x03, 0xe5, 0x13, 0x50, 0x81, 0x8e, 0x26, 0xcd, 0xd7,
-	0x60, 0x4d, 0xb8, 0x7d, 0x57, 0x5a, 0x91, 0xaa, 0x2d, 0x28, 0x4e, 0xb0, 0x2f, 0xa0, 0x4e, 0xc1,
-	0x51, 0x5c, 0x26, 0xaa, 0x96, 0x56, 0x17, 0x45, 0xd5, 0x4c, 0x54, 0xcd, 0x44, 0xb5, 0x52, 0x71,
-	0x51, 0x54, 0xcb, 0x44, 0xb5, 0x4c, 0x54, 0x2f, 0xad, 0x2d, 0x8a, 0xea, 0x99, 0xa8, 0xde, 0x78,
-	0x06, 0x36, 0x9a, 0x34, 0xe2, 0x38, 0xe2, 0xe5, 0x2b, 0xb0, 0x26, 0x67, 0x31, 0x2b, 0x60, 0xf3,
-	0x82, 0x51, 0x3a, 0x3a, 0x8d, 0x5c, 0x6d, 0x68, 0x1b, 0x4e, 0xc6, 0x22, 0x49, 0x09, 0x3b, 0x73,
-	0xd6, 0x2c, 0x03, 0xe3, 0x5c, 0xbb, 0xd9, 0x83, 0xd9, 0x42, 0x60, 0x73, 0xbe, 0x10, 0xc7, 0x38,
-	0x17, 0x9a, 0xb6, 0x36, 0xb3, 0x44, 0xd3, 0x3e, 0x2e, 0x7e, 0xfd, 0x76, 0x58, 0x28, 0x5f, 0x01,
-	0xd0, 0xe3, 0x27, 0x59, 0xa8, 0x65, 0x60, 0xb4, 0x74, 0xfb, 0x25, 0xcf, 0xb5, 0x84, 0xe6, 0xec,
-	0xcf, 0xfd, 0xcf, 0x44, 0x0c, 0x72, 0x5e, 0x3d, 0xc3, 0x0e, 0x9c, 0x8c, 0xe5, 0xf6, 0x95, 0x17,
-	0xc5, 0xe9, 0x01, 0xae, 0x57, 0x54, 0x04, 0x55, 0x73, 0x1f, 0x6c, 0x9e, 0xba, 0x1e, 0xed, 0xa0,
-	0xc4, 0x93, 0x33, 0x6c, 0x3b, 0xf3, 0xb3, 0xf9, 0x09, 0xec, 0x34, 0x7c, 0xd2, 0x46, 0x61, 0x88,
-	0xfa, 0x1e, 0x62, 0x58, 0x0e, 0xb0, 0xdd, 0xf8, 0x78, 0x77, 0x7f, 0xf8, 0x3e, 0x77, 0x8f, 0x39,
-	0x4a, 0x59, 0x9a, 0x10, 0x46, 0xd3, 0xd8, 0x76, 0xc3, 0xf8, 0x08, 0xbb, 0xc3, 0x04, 0xd9, 0xe2,
-	0x3a, 0x85, 0x88, 0x7b, 0xb6, 0x9b, 0xb2, 0xcf, 0x18, 0x5e, 0x50, 0x3f, 0xe2, 0xce, 0xe3, 0x7a,
-	0xe6, 0x5b, 0xb0, 0xd9, 0xc2, 0x01, 0x47, 0x3d, 0x7e, 0xa2, 0x87, 0xde, 0x55, 0xbb, 0x7b, 0x48,
-	0xc7, 0x99, 0x2b, 0xcc, 0x0a, 0x58, 0x6f, 0x7a, 0xbe, 0xd0, 0x16, 0x97, 0x68, 0x35, 0x2f, 0xea,
-	0x4a, 0xb7, 0x5d, 0x4a, 0xf4, 0x9d, 0xd8, 0x85, 0x93, 0x71, 0x76, 0xdf, 0xf3, 0xbb, 0xed, 0x52,
-	0xa2, 0x23, 0xf9, 0x65, 0xa8, 0x48, 0x6a, 0xe6, 0x25, 0x00, 0xb2, 0xa7, 0xf2, 0x2c, 0x43, 0x69,
-	0x1c, 0xdf, 0xdd, 0x1f, 0x7e, 0xf8, 0x5f, 0xcf, 0x7d, 0x17, 0x05, 0x88, 0x39, 0xb9, 0x6a, 0x3a,
-	0xd2, 0x5c, 0xf9, 0x27, 0x89, 0x34, 0xd7, 0x20, 0x6f, 0x7d, 0xf5, 0x1f, 0xad, 0xfb, 0xca, 0x79,
-	0x5d, 0x38, 0xef, 0xfb, 0x24, 0x7c, 0x3a, 0xe7, 0x0f, 0xd5, 0x54, 0xab, 0x46, 0xf7, 0xfb, 0xd4,
-	0x32, 0x6e, 0xa6, 0x96, 0x71, 0x3b, 0xb5, 0x8c, 0x9f, 0x53, 0xcb, 0xb8, 0x9e, 0x59, 0x85, 0x9b,
-	0x99, 0x55, 0xb8, 0x9d, 0x59, 0x85, 0x4b, 0xf8, 0xf7, 0x3e, 0xfa, 0x15, 0x2b, 0xdf, 0xb0, 0x83,
-	0x75, 0x79, 0xac, 0xfd, 0x0e, 0x00, 0x00, 0xff, 0xff, 0xf6, 0x77, 0x6e, 0x89, 0x7a, 0x05, 0x00,
-	0x00,
+	// 527 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x54, 0xbf, 0x6b, 0x1b, 0x31,
+	0x14, 0xf6, 0x25, 0x76, 0x30, 0xaa, 0x03, 0xe5, 0x08, 0xc5, 0x98, 0xf4, 0x5c, 0xdc, 0xc5, 0x43,
+	0x23, 0x41, 0xd2, 0x16, 0x9a, 0x2d, 0x8e, 0x13, 0x17, 0x62, 0xd3, 0x70, 0xde, 0xb2, 0x14, 0x59,
+	0x95, 0x75, 0xe2, 0x7e, 0xe8, 0xd0, 0xe9, 0x4a, 0xf1, 0x92, 0xb5, 0x63, 0xfe, 0x84, 0xfe, 0x39,
+	0x1d, 0x33, 0x86, 0x0c, 0xa1, 0xd8, 0xff, 0x44, 0xc7, 0x22, 0x9d, 0xec, 0x5c, 0x87, 0xa4, 0x0d,
+	0x78, 0xb8, 0x1f, 0xef, 0xbd, 0x4f, 0xef, 0x7d, 0xdf, 0x27, 0x21, 0xb0, 0x9b, 0x4a, 0xa1, 0x04,
+	0x11, 0x51, 0x86, 0x32, 0xce, 0x12, 0x14, 0xd3, 0x2c, 0xc3, 0x8c, 0x42, 0x93, 0x76, 0xab, 0x3a,
+	0xd7, 0xda, 0x63, 0x5c, 0x05, 0xf9, 0x04, 0x12, 0x11, 0x23, 0x26, 0x98, 0x40, 0xa6, 0x38, 0xc9,
+	0xa7, 0x26, 0x32, 0x81, 0xf9, 0x2b, 0x16, 0xb5, 0x5e, 0xa6, 0x21, 0x43, 0x29, 0xe6, 0x51, 0xc4,
+	0xa9, 0x44, 0x84, 0xa7, 0x01, 0x95, 0x8a, 0x7e, 0x53, 0xb6, 0xbc, 0xa3, 0xcb, 0xb3, 0x10, 0xd1,
+	0x84, 0xe8, 0xc7, 0x66, 0x5f, 0xd8, 0x2c, 0x9e, 0x4e, 0x99, 0x79, 0xd9, 0xfc, 0xae, 0xcd, 0x47,
+	0x82, 0x65, 0x0a, 0xcb, 0xe5, 0xb7, 0xa8, 0x76, 0x2e, 0x41, 0x6d, 0xcc, 0x59, 0xb2, 0xef, 0x76,
+	0x41, 0xfd, 0x5c, 0x0a, 0x31, 0x3d, 0x49, 0x48, 0xd3, 0x79, 0xe5, 0x74, 0x9f, 0xed, 0x37, 0xe0,
+	0x2c, 0xd4, 0xed, 0x4d, 0xda, 0x5f, 0x55, 0xdd, 0x0e, 0x70, 0xce, 0x9a, 0x1b, 0x06, 0xb2, 0x03,
+	0x97, 0x2c, 0xe1, 0xf1, 0x8a, 0xa5, 0xef, 0x9c, 0x69, 0xcc, 0xa0, 0xb9, 0xf9, 0x18, 0x66, 0x70,
+	0x58, 0xfd, 0xfe, 0xa3, 0x5d, 0xe9, 0x5c, 0x02, 0x30, 0x52, 0x47, 0xa3, 0xc2, 0x34, 0xbd, 0xae,
+	0x6f, 0xc7, 0x3f, 0xb0, 0xae, 0xaf, 0x31, 0xa7, 0x8f, 0xcf, 0x3f, 0x75, 0x5f, 0x83, 0x9a, 0xe1,
+	0x6b, 0x39, 0x6c, 0xc3, 0x59, 0x68, 0x2c, 0x29, 0xb4, 0x14, 0x35, 0x4b, 0xe0, 0x6a, 0xa3, 0xb0,
+	0xe0, 0xc0, 0x6d, 0x81, 0xfa, 0x09, 0x09, 0xc4, 0x47, 0x9c, 0x05, 0x86, 0x43, 0xc3, 0x5f, 0xc5,
+	0xee, 0x67, 0xb0, 0xdd, 0xe3, 0x6c, 0x80, 0xe3, 0x18, 0x8f, 0x03, 0x2c, 0xa9, 0x21, 0xd0, 0xe8,
+	0x7d, 0xb8, 0xbd, 0x6b, 0xbf, 0x2b, 0x6d, 0xae, 0xc2, 0xb9, 0xcc, 0x33, 0x26, 0x45, 0x9e, 0x22,
+	0x12, 0xa7, 0x7b, 0x94, 0x7c, 0xc9, 0x30, 0xd2, 0x3b, 0x10, 0x63, 0x15, 0x20, 0x92, 0xcb, 0xaf,
+	0x14, 0x9e, 0x0b, 0x9e, 0x28, 0xff, 0xef, 0x7e, 0xee, 0x1b, 0x50, 0xef, 0xd3, 0x48, 0xe1, 0x91,
+	0x3a, 0xb2, 0xa4, 0x9f, 0x43, 0x7d, 0x76, 0xe0, 0xbd, 0x3b, 0xfe, 0x0a, 0xe1, 0x76, 0xc1, 0xd6,
+	0x71, 0xc0, 0x35, 0xb6, 0xfa, 0x00, 0xd6, 0xd6, 0x75, 0x5f, 0xa3, 0x76, 0x28, 0x58, 0xb3, 0x66,
+	0xb1, 0xb3, 0x70, 0x79, 0x08, 0xca, 0x7b, 0x3b, 0x14, 0xcc, 0x5a, 0xf2, 0xdb, 0x29, 0x2c, 0x79,
+	0xeb, 0x5e, 0x00, 0x60, 0x66, 0x16, 0x9a, 0x8d, 0x29, 0xbd, 0xc3, 0xdb, 0xbb, 0xf6, 0xfb, 0xa7,
+	0x6a, 0x1e, 0x13, 0x1c, 0x61, 0xe9, 0x97, 0xba, 0x59, 0x4b, 0x4b, 0xed, 0xd7, 0x62, 0x69, 0x69,
+	0x40, 0x59, 0xfa, 0xe6, 0x7f, 0x4a, 0x4f, 0x00, 0xd0, 0xca, 0x3f, 0xe5, 0x2a, 0xcd, 0x95, 0x96,
+	0x3f, 0xe6, 0x2c, 0x5e, 0x9f, 0xfc, 0xfb, 0x6e, 0xc5, 0xbc, 0xde, 0xf0, 0xe7, 0xdc, 0x73, 0xae,
+	0xe7, 0x9e, 0x73, 0x33, 0xf7, 0x9c, 0x5f, 0x73, 0xcf, 0xb9, 0x5a, 0x78, 0x95, 0xeb, 0x85, 0x57,
+	0xb9, 0x59, 0x78, 0x95, 0x0b, 0xf8, 0xef, 0x39, 0xf6, 0xf2, 0x31, 0x77, 0xcf, 0x64, 0xcb, 0x84,
+	0x07, 0x7f, 0x02, 0x00, 0x00, 0xff, 0xff, 0xf6, 0x15, 0x40, 0x82, 0x94, 0x04, 0x00, 0x00,
 }
 
-func (m *Message) Marshal() (dAtA []byte, err error) {
+func (m *Sign2) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -386,140 +263,12 @@ func (m *Message) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Message) MarshalTo(dAtA []byte) (int, error) {
+func (m *Sign2) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Message) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Content != nil {
-		{
-			size := m.Content.Size()
-			i -= size
-			if _, err := m.Content.MarshalTo(dAtA[i:]); err != nil {
-				return 0, err
-			}
-		}
-	}
-	if m.Header != nil {
-		{
-			size, err := m.Header.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintMessage(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *Message_Sign1) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Message_Sign1) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Sign1 != nil {
-		{
-			size, err := m.Sign1.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintMessage(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x12
-	}
-	return len(dAtA) - i, nil
-}
-func (m *Message_Sign2) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Message_Sign2) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Sign2 != nil {
-		{
-			size, err := m.Sign2.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintMessage(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x1a
-	}
-	return len(dAtA) - i, nil
-}
-func (m *Message_Sign3) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Message_Sign3) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Sign3 != nil {
-		{
-			size, err := m.Sign3.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintMessage(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x22
-	}
-	return len(dAtA) - i, nil
-}
-func (m *Message_Sign4) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Message_Sign4) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.Sign4 != nil {
-		{
-			size, err := m.Sign4.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintMessage(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x2a
-	}
-	return len(dAtA) - i, nil
-}
-func (m *Sign1) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *Sign1) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Sign1) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Sign2) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -622,7 +371,7 @@ func (m *MtAMessage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Sign2) Marshal() (dAtA []byte, err error) {
+func (m *Sign3) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -632,12 +381,12 @@ func (m *Sign2) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Sign2) MarshalTo(dAtA []byte) (int, error) {
+func (m *Sign3) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Sign2) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Sign3) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -700,7 +449,7 @@ func (m *Sign2) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Sign3) Marshal() (dAtA []byte, err error) {
+func (m *Sign4) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -710,12 +459,12 @@ func (m *Sign3) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Sign3) MarshalTo(dAtA []byte) (int, error) {
+func (m *Sign4) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Sign3) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Sign4) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -759,7 +508,7 @@ func (m *Sign3) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Sign4) Marshal() (dAtA []byte, err error) {
+func (m *SignOutput) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -769,12 +518,12 @@ func (m *Sign4) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Sign4) MarshalTo(dAtA []byte) (int, error) {
+func (m *SignOutput) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Sign4) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *SignOutput) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -805,71 +554,7 @@ func encodeVarintMessage(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func (m *Message) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Header != nil {
-		l = m.Header.Size()
-		n += 1 + l + sovMessage(uint64(l))
-	}
-	if m.Content != nil {
-		n += m.Content.Size()
-	}
-	return n
-}
-
-func (m *Message_Sign1) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Sign1 != nil {
-		l = m.Sign1.Size()
-		n += 1 + l + sovMessage(uint64(l))
-	}
-	return n
-}
-func (m *Message_Sign2) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Sign2 != nil {
-		l = m.Sign2.Size()
-		n += 1 + l + sovMessage(uint64(l))
-	}
-	return n
-}
-func (m *Message_Sign3) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Sign3 != nil {
-		l = m.Sign3.Size()
-		n += 1 + l + sovMessage(uint64(l))
-	}
-	return n
-}
-func (m *Message_Sign4) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Sign4 != nil {
-		l = m.Sign4.Size()
-		n += 1 + l + sovMessage(uint64(l))
-	}
-	return n
-}
-func (m *Sign1) Size() (n int) {
+func (m *Sign2) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -911,7 +596,7 @@ func (m *MtAMessage) Size() (n int) {
 	return n
 }
 
-func (m *Sign2) Size() (n int) {
+func (m *Sign3) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -940,7 +625,7 @@ func (m *Sign2) Size() (n int) {
 	return n
 }
 
-func (m *Sign3) Size() (n int) {
+func (m *Sign4) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -961,7 +646,7 @@ func (m *Sign3) Size() (n int) {
 	return n
 }
 
-func (m *Sign4) Size() (n int) {
+func (m *SignOutput) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -980,7 +665,7 @@ func sovMessage(x uint64) (n int) {
 func sozMessage(x uint64) (n int) {
 	return sovMessage(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (m *Message) Unmarshal(dAtA []byte) error {
+func (m *Sign2) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1003,236 +688,10 @@ func (m *Message) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Message: wiretype end group for non-group")
+			return fmt.Errorf("proto: Sign2: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Message: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Header", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowMessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthMessage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthMessage
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Header == nil {
-				m.Header = &round.Header{}
-			}
-			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Sign1", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowMessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthMessage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthMessage
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &Sign1{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Content = &Message_Sign1{v}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Sign2", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowMessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthMessage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthMessage
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &Sign2{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Content = &Message_Sign2{v}
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Sign3", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowMessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthMessage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthMessage
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &Sign3{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Content = &Message_Sign3{v}
-			iNdEx = postIndex
-		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Sign4", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowMessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthMessage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthMessage
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &Sign4{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Content = &Message_Sign4{v}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipMessage(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthMessage
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *Sign1) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowMessage
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Sign1: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Sign1: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Sign2: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1522,7 +981,7 @@ func (m *MtAMessage) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Sign2) Unmarshal(dAtA []byte) error {
+func (m *Sign3) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1545,10 +1004,10 @@ func (m *Sign2) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Sign2: wiretype end group for non-group")
+			return fmt.Errorf("proto: Sign3: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Sign2: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Sign3: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1749,7 +1208,7 @@ func (m *Sign2) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Sign3) Unmarshal(dAtA []byte) error {
+func (m *Sign4) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1772,10 +1231,10 @@ func (m *Sign3) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Sign3: wiretype end group for non-group")
+			return fmt.Errorf("proto: Sign4: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Sign3: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Sign4: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1905,7 +1364,7 @@ func (m *Sign3) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Sign4) Unmarshal(dAtA []byte) error {
+func (m *SignOutput) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1928,10 +1387,10 @@ func (m *Sign4) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Sign4: wiretype end group for non-group")
+			return fmt.Errorf("proto: SignOutput: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Sign4: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: SignOutput: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:

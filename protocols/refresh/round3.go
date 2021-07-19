@@ -39,14 +39,27 @@ func (r *round3) GenerateMessages() ([]round.Message, error) {
 	}), nil
 }
 
-// Finalize implements round.Round
-func (r *round3) Finalize() (round.Round, error) {
-	r.Next()
+// Next implements round.Round
+func (r *round3) Next() round.Round {
 	return &round4{
 		round3: r,
-	}, nil
+	}
 }
 
-func (r *round3) ExpectedMessageID() round.MessageID {
-	return MessageTypeRefresh2
+func (r *round3) MessageContent() round.Content {
+	return &Keygen3{}
+}
+
+func (m *Keygen3) Validate() error {
+	if m == nil {
+		return errors.New("keygen.round2: message is nil")
+	}
+	if l := len(m.HashEcho); l != params.HashBytes {
+		return fmt.Errorf("keygen.round2: invalid echo hash length (got %d, expected %d)", l, params.HashBytes)
+	}
+	return nil
+}
+
+func (m *Keygen3) RoundNumber() types.RoundNumber {
+	return 3
 }

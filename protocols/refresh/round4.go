@@ -137,14 +137,40 @@ func (r *round4) GenerateMessages() ([]round.Message, error) {
 	return msgs, nil
 }
 
-// Finalize implements round.Round
-func (r *round4) Finalize() (round.Round, error) {
-	r.Next()
+// Next implements round.Round
+func (r *round4) Next() round.Round {
 	return &round5{
 		round4: r,
-	}, nil
+	}
 }
 
-func (r *round4) ExpectedMessageID() round.MessageID {
-	return MessageTypeRefresh3
+func (r *round4) MessageContent() round.Content {
+	return &Keygen4{}
+}
+
+func (m *Keygen4) Validate() error {
+	if m == nil {
+		return errors.New("keygen.round3: message is nil")
+	}
+	if lRho := len(m.RID); lRho != params.SecBytes {
+		return fmt.Errorf("keygen.round3: invalid Rho length (got %d, expected %d)", lRho, params.SecBytes)
+	}
+
+	if lU := len(m.Decommitment); lU != params.SecBytes {
+		return fmt.Errorf("keygen.round3: invalid Decommitment length (got %d, expected %d)", lU, params.SecBytes)
+	}
+
+	if err := m.Pedersen.Validate(); err != nil {
+		return fmt.Errorf("keygen.round3: %w", err)
+	}
+
+	if m.VSSPolynomial == nil {
+		return errors.New("keygen.round3: VSSPolynomial is nil")
+	}
+
+	return nil
+}
+
+func (m *Keygen4) RoundNumber() types.RoundNumber {
+	return 4
 }
