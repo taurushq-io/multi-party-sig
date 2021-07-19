@@ -1,4 +1,4 @@
-package signature
+package sign
 
 import (
 	"math/big"
