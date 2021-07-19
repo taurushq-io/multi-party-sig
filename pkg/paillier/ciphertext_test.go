@@ -61,6 +61,26 @@ func TestEncDecRoundTrip(t *testing.T) {
 	}
 }
 
+func testEncDecHomomorphic(a int64, b int64) bool {
+	ma := new(big.Int).SetInt64(a)
+	mb := new(big.Int).SetInt64(b)
+	ca, _ := paillierPublic.Enc(ma)
+	cb, _ := paillierPublic.Enc(mb)
+	expected := new(big.Int).Add(ma, mb)
+	actual, err := paillierSecret.Dec(ca.Add(paillierPublic, cb))
+	if err != nil {
+		return false
+	}
+	return actual.Cmp(expected) == 0
+}
+
+func TestEncDecHomomorphic(t *testing.T) {
+	err := quick.Check(testEncDecHomomorphic, &quick.Config{})
+	if err != nil {
+		t.Error(err)
+	}
+}
+
 func TestCiphertext_Enc(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		b := new(big.Int).SetBit(new(big.Int), 200, 1)
