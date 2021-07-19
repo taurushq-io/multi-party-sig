@@ -60,10 +60,7 @@ func testEncDecRoundTrip(x int64) bool {
 	if err != nil {
 		return false
 	}
-	if m.Cmp(shouldBeM) != 0 {
-		return false
-	}
-	return true
+	return m.Cmp(shouldBeM) == 0
 }
 
 func TestEncDecRoundTrip(t *testing.T) {
@@ -86,10 +83,7 @@ func testEncDecHomomorphic(a int64, b int64) bool {
 	if err != nil {
 		return false
 	}
-	if actual.Cmp(expected) != 0 {
-		return false
-	}
-	return true
+	return actual.Cmp(expected) == 0
 }
 
 func TestEncDecHomomorphic(t *testing.T) {

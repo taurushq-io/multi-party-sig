@@ -79,13 +79,6 @@ func NewCiphertext() *Ciphertext {
 	return &Ciphertext{C: c}
 }
 
-func newCipherTextInt() *big.Int {
-	tmpBuf := make([]big.Word, 0, cipherTextWordSize)
-	var tmp big.Int
-	tmp.SetBits(tmpBuf)
-	return &tmp
-}
-
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
 func (ct *Ciphertext) WriteTo(w io.Writer) (int64, error) {
 	buf := make([]byte, params.BytesCiphertext)
