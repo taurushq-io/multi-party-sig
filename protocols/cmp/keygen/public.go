@@ -1,4 +1,4 @@
-package refresh
+package keygen
 
 import (
 	"encoding/json"

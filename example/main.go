@@ -10,7 +10,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
-	refresh2 "github.com/taurusgroup/cmp-ecdsa/protocols/cmp/refresh"
+	"github.com/taurusgroup/cmp-ecdsa/protocols/cmp/keygen"
 	"github.com/taurusgroup/cmp-ecdsa/protocols/cmp/sign"
 )
 

@@ -10,7 +10,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
-	refresh2 "github.com/taurusgroup/cmp-ecdsa/protocols/cmp/refresh"
 )
 
 // protocolSignID for the "3 round" variant using echo broadcast

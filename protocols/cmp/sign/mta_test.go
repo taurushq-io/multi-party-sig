@@ -9,7 +9,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk"
-	refresh2 "github.com/taurusgroup/cmp-ecdsa/protocols/cmp/refresh"
 )
 
 func Test_newMtA(t *testing.T) {

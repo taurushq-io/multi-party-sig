@@ -9,7 +9,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	zkaffg "github.com/taurusgroup/cmp-ecdsa/pkg/zk/affg"
-	refresh2 "github.com/taurusgroup/cmp-ecdsa/protocols/cmp/refresh"
 )
 
 // MtA holds the local data for the multiplicative-to-additive share conversion protocol.
