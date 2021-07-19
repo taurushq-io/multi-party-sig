@@ -1,15 +1,27 @@
 package refresh
 
 import (
-	"errors"
+	"crypto/rand"
 	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
+)
+
+const (
+	// threshold keygen with echo broadcast
+	protocolKeygenID types.ProtocolID = "cmp/keygen-threshold-echo"
+	// threshold refresh with echo broadcast
+	protocolRefreshID types.ProtocolID = "cmp/refresh-threshold-echo"
+
+	protocolRounds types.RoundNumber = 6
 )
 
 var (
@@ -23,7 +35,9 @@ var (
 // LocalParty is the state we store for a remote party.
 // The messages are embedded to make access to the attributes easier.
 type LocalParty struct {
-	Public *party.Public
+	// Public is the struct for the new refreshed data. The Paillier and Pedersen fields are ignored.
+	// The ECDSA field is the previous public key share if a refresh is being done, and the point at infinity otherwise.
+	*party.Public
 
 	// SchnorrCommitments is the Aⱼ used in the proof of knowledge in the last round
 	SchnorrCommitments *curve.Point // Aⱼ
@@ -31,9 +45,8 @@ type LocalParty struct {
 	// Commitment = H(msg3 ∥ Decommitment)
 	Commitment hash.Commitment
 
-	// Rho = ρⱼ
-	// if keygen, then this is RIDⱼ
-	Rho []byte
+	// RID = ρⱼ
+	RID session.RID
 
 	// VSSPolynomial = Fⱼ(X) = fⱼ(X)•G
 	VSSPolynomial *polynomial.Exponent
@@ -42,53 +55,83 @@ type LocalParty struct {
 	ShareReceived *curve.Scalar
 }
 
-func Create(s session.Session) (round.Round, error) {
-	var isDoingKeygen bool
-	var name string
-	switch s.(type) {
-	case *session.Keygen:
-		isDoingKeygen = true
-		name = "keygen"
-	case *session.Refresh:
-		isDoingKeygen = false
-		name = "refresh"
-	default:
-		return nil, errors.New("refresh.Create: s must be either *session.Keygen or *session.Refresh")
-	}
-
-	// Create round with a clone of the original secret
-	base, err := round.NewBaseRound(s, name)
-	if err != nil {
-		return nil, fmt.Errorf("refresh.Create: %w", err)
-	}
-
-	parties := make(map[party.ID]*LocalParty, s.N())
-	for _, idJ := range s.PartyIDs() {
-		// Set the public data to a clone of the current data
-		parties[idJ] = &LocalParty{
-			Public: &party.Public{
-				ID: idJ,
-			},
+func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
+	return func() (round.Round, protocol.Info, error) {
+		SID, err := session.newSID(partyIDs, threshold)
+		if err != nil {
+			return nil, nil, fmt.Errorf("refresh.StartKeygen: %w", err)
 		}
+		helper := round.NewHelper(
+			protocolKeygenID,
+			protocolRounds,
+			selfID,
+			SID.partyIDs,
+			SID.Hash(),
+		)
+		parties := make(map[party.ID]*LocalParty, len(partyIDs))
+		for _, idJ := range partyIDs {
+			// Set the public data to a clone of the current data
+			parties[idJ] = &LocalParty{
+				Public: &party.Public{
+					ID:    idJ,
+					ECDSA: curve.NewIdentityPoint(),
+				},
+			}
+		}
+
+		secret := sample.Scalar(rand.Reader)
+
+		return &round1{
+			Helper:  helper,
+			SID:     SID,
+			Self:    parties[selfID],
+			Parties: parties,
+			Secret: &party.Secret{
+				ID:    selfID,
+				ECDSA: curve.NewScalar(),
+			},
+			PublicKey: curve.NewIdentityPoint(),
+			// sample fᵢ(X) deg(fᵢ) = t, fᵢ(0) = secretᵢ
+			VSSSecret: polynomial.NewPolynomial(threshold, secret),
+		}, helper, nil
 	}
-
-	return &round1{
-		BaseRound:     base,
-		Self:          parties[base.SelfID],
-		LocalParties:  parties,
-		isDoingKeygen: isDoingKeygen,
-	}, nil
 }
 
-func (r round1) ProtocolID() round.ProtocolID {
-	return protocolID
-}
+func StartRefresh(s *session.Session, secret *party.Secret) protocol.StartFunc {
+	return func() (round.Round, protocol.Info, error) {
+		selfID := secret.ID
 
-// isKeygen is a convenience method for clarity
-func (r round1) isKeygen() bool {
-	return r.isDoingKeygen
-}
+		parties := make(map[party.ID]*LocalParty, len(s.public))
+		for idJ, publicJ := range s.public {
+			// Set the public data to a clone of the current data
+			parties[idJ] = &LocalParty{
+				Public: &party.Public{
+					ID:    idJ,
+					ECDSA: curve.NewIdentityPoint().Set(publicJ.ECDSA),
+				},
+			}
+		}
 
-func (r round1) isRefresh() bool {
-	return !r.isDoingKeygen
+		helper := round.NewHelper(
+			protocolRefreshID,
+			protocolRounds,
+			selfID,
+			s.partyIDs,
+			s.Hash(),
+		)
+
+		return &round1{
+			Helper:  helper,
+			SID:     s.sid,
+			Self:    parties[selfID],
+			Parties: parties,
+			Secret: &party.Secret{
+				ID:    selfID,
+				ECDSA: curve.NewScalar().Set(secret.ECDSA),
+			},
+			PublicKey: curve.FromPublicKey(s.publicKey),
+			// sample fᵢ(X) deg(fᵢ) = t, fᵢ(0) = 0
+			VSSSecret: polynomial.NewPolynomial(s.threshold, nil),
+		}, helper, nil
+	}
 }

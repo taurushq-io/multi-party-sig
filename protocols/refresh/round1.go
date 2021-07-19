@@ -2,7 +2,6 @@ package refresh
 
 import (
 	"crypto/rand"
-	"fmt"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -10,19 +9,32 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/zk"
 )
 
 type round1 struct {
-	*round.BaseRound
+	*round.Helper
 
-	Self         *LocalParty
-	LocalParties map[party.ID]*LocalParty
+	// SID = (𝔾, t,n,P₁,…,Pₙ)
+	SID *session.sid
 
-	// PaillierSecret is the newly generated Paillier key
-	PaillierSecret *paillier.SecretKey
+	// Self is the local data of the party executing the round
+	Self    *LocalParty
+	Parties map[party.ID]*LocalParty
+
+	// PublicKey is the public key being refreshed. If keygen is being done, then it is the identity.
+	PublicKey *curve.Point
+
+	// Secret contains the previous secret ECDSA key share which is being refreshed
+	// If a keygen is being performed, then it is 0.
+	Secret *party.Secret
+
+	// Threshold plus 1 is the minimum number of shares necessary to reconstruct the resulting secret
+	Threshold int
+
 	// PedersenSecret is λᵢ used to generate the Pedersen parameters
 	PedersenSecret *big.Int
 
@@ -35,12 +47,10 @@ type round1 struct {
 	// SchnorrRand is an array to t+1 random aₗ ∈ 𝔽 used to compute Schnorr commitments of
 	// the coefficients of the exponent polynomial Fᵢ(X)
 	SchnorrRand *curve.Scalar
-
-	isDoingKeygen bool
 }
 
 // ProcessMessage implements round.Round
-func (r *round1) ProcessMessage(round.Message) error {
+func (r *round1) ProcessMessage(party.ID, round.Content) error {
 	// In the first round, no messages are expected.
 	return nil
 }
@@ -59,46 +69,64 @@ func (r *round1) ProcessMessage(round.Message) error {
 //   - if keygen, this is RIDᵢ
 //   - if refresh, this is used to bind the zk proof to a random value
 // - commit to message
-func (r *round1) GenerateMessages() ([]round.Message, error) {
-	var err error
-
+func (r *round1) GenerateMessages(out chan<- *round.Message) error {
 	// generate Paillier and Pedersen
-	skPaillier := paillier.NewSecretKey()
-	r.Self.Public.Pedersen, r.PedersenSecret = skPaillier.GeneratePedersen()
-	r.PaillierSecret = skPaillier
-	r.Self.Public.Paillier = skPaillier.PublicKey
-
-	// sample fᵢ(X) deg(fᵢ) = t, fᵢ(0) = constant
-	// if keygen then constant = secret, otherwise it is 0 (nil)
-	var constant *curve.Scalar
-	if r.isKeygen() {
-		constant = sample.Scalar(rand.Reader)
+	// TODO DEBUG
+	var paillierSecret *paillier.SecretKey
+	if r.SelfID() == "a" {
+		paillierSecret = zk.ProverPaillierSecret
+	} else if r.SelfID() == "b" {
+		paillierSecret = zk.VerifierPaillierSecret
+	} else {
+		paillierSecret = paillier.NewSecretKey()
 	}
-	r.VSSSecret = polynomial.NewPolynomial(r.S.Threshold(), constant)
+	paillierPublic := paillierSecret.PublicKey
+	pedersenPublic, pedersenSecret := paillierSecret.GeneratePedersen()
 
 	// save our own share already so we are consistent with what we receive from others
-	r.Self.ShareReceived = r.VSSSecret.Evaluate(r.SelfID.Scalar())
+	ownShare := r.VSSSecret.Evaluate(r.Self.ID.Scalar())
 
 	// set Fᵢ(X) = fᵢ(X)•G
-	r.Self.VSSPolynomial = polynomial.NewPolynomialExponent(r.VSSSecret)
+	vssPublic := polynomial.NewPolynomialExponent(r.VSSSecret)
 
 	// generate Schnorr randomness and commitments
-	r.SchnorrRand, r.Self.SchnorrCommitments = sample.ScalarPointPair(rand.Reader)
+	schnorrRand, schnorrCommitment := sample.ScalarPointPair(rand.Reader)
 
-	// Sample ρᵢ
-	r.Self.Rho = make([]byte, params.SecBytes)
-	if _, err = rand.Read(r.Self.Rho); err != nil {
-		return nil, fmt.Errorf("refresh.round1.GenerateMessages(): sample Rho: %w", err)
+	// Sample RIDᵢ
+	var rid session.RID
+	if _, err := rand.Read(rid[:]); err != nil {
+		return ErrRound1SampleRho
 	}
 
 	// commit to data in message 2
-	r.Self.Commitment, r.Decommitment, err = r.Hash.Commit(r.SelfID,
-		r.Self.Rho, r.Self.VSSPolynomial, r.Self.SchnorrCommitments, r.Self.Public.Pedersen)
+	commitment, decommitment, err := r.HashForID(r.Self.ID).Commit(
+		rid, vssPublic, schnorrCommitment, pedersenPublic)
 	if err != nil {
-		return nil, fmt.Errorf("refresh.round1.GenerateMessages(): commit: %w", err)
+		return ErrRound1Commit
 	}
 
-	return NewMessageRefresh1(r.SelfID, r.Self.Commitment), nil
+	// should be broadcast but we don't need that here
+	msg := r.MarshalMessage(&Keygen2{Commitment: commitment}, r.OtherPartyIDs()...)
+	if err = r.SendMessage(msg, out); err != nil {
+		return err
+	}
+
+	r.Secret.Paillier = paillierSecret
+	r.Self.Paillier = paillierPublic
+	r.Self.Pedersen = pedersenPublic
+	r.PedersenSecret = pedersenSecret
+
+	r.Self.VSSPolynomial = vssPublic
+
+	r.SchnorrRand = schnorrRand
+	r.Self.SchnorrCommitments = schnorrCommitment
+
+	r.Self.ShareReceived = ownShare
+	r.Self.RID = rid
+	r.Self.Commitment = commitment
+	r.Decommitment = decommitment
+
+	return nil
 }
 
 // Next implements round.Round

@@ -1,19 +1,22 @@
 package refresh
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 	zkmod "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mod"
 	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm"
 )
 
 type round4 struct {
 	*round3
-	rho []byte
+	rid session.RID
 }
 
 // ProcessMessage implements round.Round
@@ -25,54 +28,49 @@ type round4 struct {
 // - validate Paillier
 // - validate Pedersen
 // - validate commitments
-func (r *round4) ProcessMessage(msg round.Message) error {
-	j := msg.GetHeader().From
-	partyJ := r.LocalParties[j]
-
-	body := msg.(*Message).GetRefresh3()
-
-	// verify Rho
-	if len(body.Rho) != params.SecBytes {
-		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: Rho is wrong lenght", j)
-	}
+func (r *round4) ProcessMessage(from party.ID, content round.Content) error {
+	body := content.(*Keygen4)
+	partyJ := r.Parties[from]
 
 	// Save all X, VSSCommitments
 	polyExp := body.VSSPolynomial
 	// check that the constant coefficient is 0
 	// if refresh then the polynomial is constant
-	if !(r.isRefresh() == polyExp.IsConstant) {
-		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: exponent polynomial has non 0 constant", j)
+	if !(r.VSSSecret.Constant().IsZero() == polyExp.IsConstant) {
+		return ErrRound4VSSConstant
 	}
 	// check deg(Fⱼ) = t
-	if polyExp.Degree() != r.S.Threshold() {
-		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: exponent polynomial has wrong degree", j)
+	if polyExp.Degree() != r.SID.threshold {
+		return ErrRound4VSSDegree
 	}
 
 	// Set Paillier
 	Nj := body.Pedersen.N
 	paillierPublicKey := paillier.NewPublicKey(Nj)
 	if err := paillierPublicKey.Validate(); err != nil {
-		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: %w", j, err)
+		return err
 	}
 
 	// Verify Pedersen
 	if err := body.Pedersen.Validate(); err != nil {
-		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: %w", j, err)
+		return err
 	}
 
 	// Verify decommit
-	if !r.Hash.Decommit(j, partyJ.Commitment, body.Decommitment,
-		body.Rho, polyExp, body.SchnorrCommitments, body.Pedersen) {
-		return fmt.Errorf("refresh.round4.ProcessMessage(): party %s: failed to decommit", j)
+	var rid session.RID
+	rid.FromBytes(body.RID)
+
+	if !r.HashForID(from).Decommit(partyJ.Commitment, body.Decommitment,
+		rid, polyExp, body.SchnorrCommitments, body.Pedersen) {
+		return ErrRound4Decommit
 	}
 
-	partyJ.Rho = body.Rho
-	partyJ.Public.Pedersen = body.Pedersen
-	partyJ.Public.Paillier = paillierPublicKey
+	partyJ.RID = rid
+	partyJ.Pedersen = body.Pedersen
+	partyJ.Paillier = paillierPublicKey
 	partyJ.VSSPolynomial = polyExp
 	partyJ.SchnorrCommitments = body.SchnorrCommitments
-
-	return nil // message is properly handled
+	return nil
 }
 
 // GenerateMessages implements round.Round
@@ -84,57 +82,58 @@ func (r *round4) ProcessMessage(msg round.Message) error {
 //   - if refresh skip constant coefficient
 //
 // - send proofs and encryption of share for Pⱼ
-func (r *round4) GenerateMessages() ([]round.Message, error) {
-	// ρ = ⊕ⱼ ρⱼ
-	r.rho = make([]byte, params.SecBytes)
-	for _, partyJ := range r.LocalParties {
+func (r *round4) GenerateMessages(out chan<- *round.Message) error {
+	// RID = ⊕ⱼ RIDⱼ
+	var rid session.RID
+	for _, partyJ := range r.Parties {
 		for i := 0; i < params.SecBytes; i++ {
-			r.rho[i] ^= partyJ.Rho[i]
+			rid[i] ^= partyJ.RID[i]
 		}
 	}
 
-	// Write Rho to the hash state
-	_, _ = r.Hash.WriteAny(&writer.BytesWithDomain{
-		TheDomain: "Rho",
-		Bytes:     r.rho,
-	})
+	h := r.Hash()
+	_, _ = h.WriteAny(rid, r.Self.ID)
 
 	// Prove N is a blum prime with zkmod
-	mod := zkmod.NewProof(r.Hash.CloneWithID(r.SelfID), zkmod.Public{N: r.Self.Public.Pedersen.N}, zkmod.Private{
-		P:   r.PaillierSecret.P(),
-		Q:   r.PaillierSecret.Q(),
-		Phi: r.PaillierSecret.Phi(),
+	mod := zkmod.NewProof(h.Clone(), zkmod.Public{N: r.Self.Pedersen.N}, zkmod.Private{
+		P:   r.Secret.Paillier.P(),
+		Q:   r.Secret.Paillier.Q(),
+		Phi: r.Secret.Paillier.Phi(),
 	})
 
 	// prove s, t are correct as aux parameters with zkprm
-	prm := zkprm.NewProof(r.Hash.CloneWithID(r.SelfID), zkprm.Public{Pedersen: r.Self.Public.Pedersen}, zkprm.Private{
+	prm := zkprm.NewProof(h.Clone(), zkprm.Public{Pedersen: r.Self.Pedersen}, zkprm.Private{
 		Lambda: r.PedersenSecret,
-		Phi:    r.PaillierSecret.Phi(),
+		Phi:    r.Secret.Paillier.Phi(),
 	})
 
 	// create messages with encrypted shares
-	msgs := make([]round.Message, 0, r.S.N()-1)
-	for _, idJ := range r.S.PartyIDs() {
-		if idJ == r.SelfID {
+	for idJ, partyJ := range r.Parties {
+		if idJ == r.Self.ID {
 			continue
 		}
-
-		partyJ := r.LocalParties[idJ]
 
 		// compute fᵢ(idJ)
 		index := idJ.Scalar()
 		share := r.VSSSecret.Evaluate(index)
 		// Encrypt share
-		C, _ := partyJ.Public.Paillier.Enc(share.BigInt())
+		C, _ := partyJ.Paillier.Enc(share.BigInt())
 
-		msgs = append(msgs, NewMessageRefresh4(r.SelfID, idJ, &Refresh4{
+		msg := r.MarshalMessage(&Keygen5{
 			Mod:   mod,
 			Prm:   prm,
 			Share: C,
-		}))
+		}, idJ)
+		if err := r.SendMessage(msg, out); err != nil {
+			return err
+		}
 	}
 
-	return msgs, nil
+	// Write Rho to the hash state
+	r.rid = rid
+	r.UpdateHashState(rid)
+
+	return nil
 }
 
 // Next implements round.Round
