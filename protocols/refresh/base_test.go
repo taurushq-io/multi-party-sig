@@ -14,7 +14,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
 )
 
 var roundTypes = []reflect.Type{
@@ -77,7 +76,7 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
 		}
 	}
 
-	newSessions := make([]*session.Session, 0, N)
+	newSessions := make([]*Session, 0, N)
 	newSecrets := make([]*party.Secret, 0, N)
 	for _, r := range rounds {
 		newSessions = append(newSessions, r.(*output).newSession)
@@ -118,7 +117,7 @@ func TestRefresh(t *testing.T) {
 	rid := make([]byte, params.SecBytes)
 	rand.Read(rid)
 
-	sessions, secrets, err := session.FakeSession(N, T)
+	sessions, secrets, err := FakeSession(N, T)
 	require.NoError(t, err)
 
 	parties := make(map[party.ID]round.Round, N)

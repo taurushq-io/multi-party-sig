@@ -11,7 +11,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
@@ -46,7 +45,7 @@ type LocalParty struct {
 	Commitment hash.Commitment
 
 	// RID = ρⱼ
-	RID session.RID
+	RID RID
 
 	// VSSPolynomial = Fⱼ(X) = fⱼ(X)•G
 	VSSPolynomial *polynomial.Exponent
@@ -97,7 +96,7 @@ func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.S
 	}
 }
 
-func StartRefresh(s *session.Session, secret *party.Secret) protocol.StartFunc {
+func StartRefresh(s *Session, secret *party.Secret) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
 		selfID := secret.ID
 

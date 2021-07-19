@@ -8,7 +8,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 	zkmod "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mod"
 	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm"
@@ -16,7 +15,7 @@ import (
 
 type round4 struct {
 	*round3
-	rid session.RID
+	rid RID
 }
 
 // ProcessMessage implements round.Round
@@ -57,7 +56,7 @@ func (r *round4) ProcessMessage(from party.ID, content round.Content) error {
 	}
 
 	// Verify decommit
-	var rid session.RID
+	var rid RID
 	rid.FromBytes(body.RID)
 
 	if !r.HashForID(from).Decommit(partyJ.Commitment, body.Decommitment,
@@ -84,7 +83,7 @@ func (r *round4) ProcessMessage(from party.ID, content round.Content) error {
 // - send proofs and encryption of share for Pⱼ
 func (r *round4) GenerateMessages(out chan<- *round.Message) error {
 	// RID = ⊕ⱼ RIDⱼ
-	var rid session.RID
+	var rid RID
 	for _, partyJ := range r.Parties {
 		for i := 0; i < params.SecBytes; i++ {
 			rid[i] ^= partyJ.RID[i]
