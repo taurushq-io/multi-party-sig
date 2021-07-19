@@ -6,6 +6,7 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
@@ -18,6 +19,35 @@ func mustReadBits(rand io.Reader, buf []byte) {
 	for i := 0; i < maxIterations; i++ {
 		if _, err := io.ReadFull(rand, buf); err == nil {
 			return
+		}
+	}
+	panic(ErrMaxIterations)
+}
+
+// TODO: Once we don't use big.Int anymore, merge these methods
+
+// ModNNat samples an element of ℤₙ
+func ModNNat(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
+	out := new(safenum.Nat)
+	buf := make([]byte, (n.BitLen()+7)/8)
+	for {
+		mustReadBits(rand, buf)
+		out.SetBytes(buf)
+		_, _, lt := out.CmpMod(n)
+		if lt == 1 {
+			break
+		}
+	}
+	return out
+}
+
+// UnitModNNat returns a u ∈ ℤₙˣ
+func UnitModNNat(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
+	for i := 0; i < maxIterations; i++ {
+		// PERF: Reuse buffer instead of allocating each time
+		u := ModNNat(rand, n)
+		if u.IsUnit(n) == 1 {
+			return u
 		}
 	}
 	panic(ErrMaxIterations)
