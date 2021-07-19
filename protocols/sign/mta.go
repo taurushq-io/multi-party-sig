@@ -8,8 +8,8 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	zkaffg "github.com/taurusgroup/cmp-ecdsa/pkg/zk/affg"
+	"github.com/taurusgroup/cmp-ecdsa/protocols/refresh"
 )
 
 // MtA holds the local data for the multiplicative-to-additive share conversion protocol.
@@ -17,7 +17,7 @@ import (
 // The Sender and Receiver are denoted by index i and j respectively, and we take the perspective of party i.
 // i has share aᵢ and j has share bⱼ
 type MtA struct {
-	Sender, Receiver *party.Public
+	Sender, Receiver *refresh.Public
 
 	// Secret is the senders share aᵢ
 	Secret *curve.Scalar
@@ -52,7 +52,7 @@ type MtA struct {
 // - Kⱼ is the encryption of bⱼ sent by j in the previous round
 func NewMtA(ai *curve.Scalar, Ai *curve.Point,
 	Kj *paillier.Ciphertext,
-	sender, receiver *party.Public) *MtA {
+	sender, receiver *refresh.Public) *MtA {
 
 	beta := sample.IntervalLPrime(rand.Reader)
 
@@ -87,7 +87,7 @@ func NewMtA(ai *curve.Scalar, Ai *curve.Point,
 // public parameters are used.
 // This function is specified as to make clear which parameters must be input to zkaffg.
 // h is a hash function initialized with i's ID
-func (mta *MtA) ProofAffG(h *hash.Hash, verifier *party.Public) *MtAMessage {
+func (mta *MtA) ProofAffG(h *hash.Hash, verifier *refresh.Public) *MtAMessage {
 	if verifier == nil {
 		verifier = mta.Receiver
 	}
@@ -120,7 +120,7 @@ func (mta *MtA) ProofAffG(h *hash.Hash, verifier *party.Public) *MtAMessage {
 // - Ki is the receiver's public Kᵢ
 func (mta *MtAMessage) VerifyAffG(h *hash.Hash,
 	Aj *curve.Point, Ki *paillier.Ciphertext,
-	sender, receiver, verifier *party.Public) bool {
+	sender, receiver, verifier *refresh.Public) bool {
 	if verifier == nil {
 		verifier = receiver
 	}

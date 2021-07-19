@@ -10,7 +10,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 )
 
-func FakeSession(N, T int) (map[party.ID]*Session, map[party.ID]*party.Secret, error) {
+func FakeSession(N, T int) (map[party.ID]*Session, map[party.ID]*Secret, error) {
 	partyIDs := party.RandomIDs(N)
 	public, secrets := FakeData(partyIDs, T)
 	var rid RID
@@ -30,10 +30,10 @@ func FakeSession(N, T int) (map[party.ID]*Session, map[party.ID]*party.Secret, e
 	return sessions, secrets, nil
 }
 
-func FakeData(partyIDs party.IDSlice, threshold int) (map[party.ID]*party.Public, map[party.ID]*party.Secret) {
+func FakeData(partyIDs party.IDSlice, threshold int) (map[party.ID]*Public, map[party.ID]*Secret) {
 	n := len(partyIDs)
-	secrets := make(map[party.ID]*party.Secret, n)
-	public := make(map[party.ID]*party.Public, n)
+	secrets := make(map[party.ID]*Secret, n)
+	public := make(map[party.ID]*Public, n)
 
 	shares, _ := generateShares(partyIDs, threshold)
 
@@ -42,13 +42,13 @@ func FakeData(partyIDs party.IDSlice, threshold int) (map[party.ID]*party.Public
 		pail := sk.PublicKey
 		ped, _ := sk.GeneratePedersen()
 
-		secrets[pid] = &party.Secret{
+		secrets[pid] = &Secret{
 			ID:       pid,
 			ECDSA:    shares[i],
 			Paillier: sk,
 		}
 		X := curve.NewIdentityPoint().ScalarBaseMult(shares[i])
-		public[pid] = &party.Public{
+		public[pid] = &Public{
 			ID:       pid,
 			ECDSA:    X,
 			Paillier: pail,

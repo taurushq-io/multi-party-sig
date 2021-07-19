@@ -17,7 +17,7 @@ import (
 type round5 struct {
 	*round4
 	newSession *Session
-	newSecret  *party.Secret
+	newSecret  *Secret
 }
 
 // ProcessMessage implements round.Round
@@ -87,7 +87,7 @@ func (r *round5) GenerateMessages(out chan<- *round.Message) error {
 	}
 
 	// compute the new public key share Xⱼ = F(j) (+X'ⱼ if doing a refresh)
-	newPublic := make(map[party.ID]*party.Public, len(r.Parties))
+	newPublic := make(map[party.ID]*Public, len(r.Parties))
 	for idJ, partyJ := range r.Parties {
 		newPublicJ := partyJ.Clone()
 		newPublicShareECDSA := summedPoly.Evaluate(idJ.Scalar())

@@ -29,7 +29,7 @@ type round1 struct {
 
 	// Secret contains the previous secret ECDSA key share which is being refreshed
 	// If a keygen is being performed, then it is 0.
-	Secret *party.Secret
+	Secret *Secret
 
 	// Threshold plus 1 is the minimum number of shares necessary to reconstruct the resulting secret
 	Threshold int

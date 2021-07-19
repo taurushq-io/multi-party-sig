@@ -1,4 +1,4 @@
-package party
+package refresh
 
 import (
 	"crypto/rand"
@@ -8,6 +8,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 )
 
 func TestSecret_Validate(t *testing.T) {
@@ -22,7 +23,7 @@ func TestSecret_Validate(t *testing.T) {
 	pk := sk.PublicKey
 	ped, _ := sk.GeneratePedersen()
 
-	id := ID("blabla")
+	id := party.ID("blabla")
 	public := &Public{
 		ID:       id,
 		ECDSA:    X,
@@ -35,7 +36,7 @@ func TestSecret_Validate(t *testing.T) {
 	//pk2 := paillier.NewPublicKey(N2)
 
 	type fields struct {
-		ID       ID
+		ID       party.ID
 		ECDSA    *curve.Scalar
 		Paillier *paillier.SecretKey
 	}

@@ -27,7 +27,7 @@ var (
 	_ round.Round = (*output)(nil)
 )
 
-func StartSign(s *refresh.Session, secret *party.Secret, signers []party.ID, message []byte) protocol.StartFunc {
+func StartSign(s *refresh.Session, secret *refresh.Secret, signers []party.ID, message []byte) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
 		// validate session
 		if err := s.Validate(); err != nil {
@@ -65,7 +65,7 @@ func StartSign(s *refresh.Session, secret *party.Secret, signers []party.ID, mes
 			publicJ := s.Public(partyJ)
 			lagrange := signerIDs.Lagrange(partyJ)
 			parties[partyJ] = &LocalParty{
-				Public: &party.Public{
+				Public: &refresh.Public{
 					ID:       partyJ,
 					ECDSA:    curve.NewIdentityPoint().ScalarMult(lagrange, publicJ.ECDSA),
 					Paillier: publicJ.Paillier,

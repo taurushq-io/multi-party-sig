@@ -38,7 +38,7 @@ type Session struct {
 
 	// public maps party.ID to party. It contains all public information associated to a party.
 	// When keygen has not yet run, all party.Public should contain only the ID
-	public map[party.ID]*party.Public
+	public map[party.ID]*Public
 
 	// publicKey is the full ECDSA public key
 	publicKey *ecdsa.PublicKey
@@ -73,7 +73,7 @@ func newSID(partyIDs []party.ID, threshold int) (*sid, error) {
 // newSession creates a session from given keygen material, and performs full verification.
 // If SSID is given, then it checked against the recomputed one.
 // No copy of the given data is performed
-func newSession(sid *sid, publicInfo map[party.ID]*party.Public, rid RID) (*Session, error) {
+func newSession(sid *sid, publicInfo map[party.ID]*Public, rid RID) (*Session, error) {
 	s := &Session{
 		sid:    sid,
 		public: publicInfo,
@@ -109,7 +109,7 @@ func (s sid) SSID() []byte { return s.sid }
 func (s Session) SSID() []byte { return s.ssid }
 
 // Public returns the public key material we have stored for the party with the given id.
-func (s Session) Public(id party.ID) *party.Public { return s.public[id] }
+func (s Session) Public(id party.ID) *Public { return s.public[id] }
 
 // PublicKey returns the group's public ECDSA key
 func (s Session) PublicKey() *ecdsa.PublicKey { return s.publicKey }
@@ -257,7 +257,7 @@ func (s Session) Validate() error {
 	return nil
 }
 
-func (s Session) ValidateSecret(secret *party.Secret) error {
+func (s Session) ValidateSecret(secret *Secret) error {
 	// verify our ID is present
 	if !s.partyIDs.Contains(secret.ID) {
 		return errors.New("session: selfID mismatch")
@@ -287,7 +287,7 @@ func (s sid) Clone() *sid {
 
 // Clone performs a deep copy of a all fields.
 func (s Session) Clone() *Session {
-	public2 := make(map[party.ID]*party.Public, len(s.public))
+	public2 := make(map[party.ID]*Public, len(s.public))
 	for j, publicJ := range s.public {
 		public2[j] = publicJ.Clone()
 	}
@@ -324,15 +324,15 @@ var _ json.Unmarshaler = (*Session)(nil)
 type jsonSession struct {
 	// TODO include Group information
 	//Group string `json:"group"`
-	Threshold int             `json:"threshold"`
-	PublicKey *curve.Point    `json:"public_key"`
-	RID       []byte          `json:"rid"`
-	SSID      []byte          `json:"ssid"`
-	Public    []*party.Public `json:"public"`
+	Threshold int          `json:"threshold"`
+	PublicKey *curve.Point `json:"public_key"`
+	RID       []byte       `json:"rid"`
+	SSID      []byte       `json:"ssid"`
+	Public    []*Public    `json:"public"`
 }
 
 func (s Session) MarshalJSON() ([]byte, error) {
-	public := make([]*party.Public, 0, len(s.public))
+	public := make([]*Public, 0, len(s.public))
 	for _, publicJ := range s.public {
 		public = append(public, publicJ)
 	}
@@ -354,7 +354,7 @@ func (s *Session) UnmarshalJSON(b []byte) error {
 	}
 
 	n := len(x.Public)
-	public := make(map[party.ID]*party.Public, n)
+	public := make(map[party.ID]*Public, n)
 	partyIDs := make(party.IDSlice, 0, n)
 	for _, partyJ := range x.Public {
 		partyIDs = append(partyIDs, partyJ.ID)
