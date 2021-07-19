@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
@@ -19,7 +20,7 @@ type round2 struct {
 // ProcessMessage implements round.Round
 //
 // - store commitment Vⱼ
-func (r *round2) ProcessMessage(from party.ID, content round.Content) error {
+func (r *round2) ProcessMessage(from party.ID, content message.Content) error {
 	body := content.(*Keygen2)
 	partyJ := r.Parties[from]
 
@@ -33,7 +34,7 @@ func (r *round2) ProcessMessage(from party.ID, content round.Content) error {
 // the hash. Everybody sends a hash of all hashes.
 //
 // - send Hash(ssid, V₁, …, Vₙ)
-func (r *round2) GenerateMessages(out chan<- *round.Message) error {
+func (r *round2) GenerateMessages(out chan<- *message.Message) error {
 	// Broadcast the message we created in round1
 	h := r.Hash()
 	for _, partyID := range r.PartyIDs() {
@@ -58,7 +59,7 @@ func (r *round2) Next() round.Round {
 	}
 }
 
-func (r *round2) MessageContent() round.Content {
+func (r *round2) MessageContent() message.Content {
 	return &Keygen2{}
 }
 

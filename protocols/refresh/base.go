@@ -56,7 +56,7 @@ type LocalParty struct {
 
 func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
-		SID, err := session.newSID(partyIDs, threshold)
+		SID, err := newSID(partyIDs, threshold)
 		if err != nil {
 			return nil, nil, fmt.Errorf("refresh.StartKeygen: %w", err)
 		}

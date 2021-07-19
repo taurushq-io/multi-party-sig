@@ -1,4 +1,4 @@
-package round
+package message
 
 import (
 	"errors"

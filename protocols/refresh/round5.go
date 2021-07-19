@@ -6,6 +6,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
@@ -24,7 +25,7 @@ type round5 struct {
 //
 // - decrypt share
 // - verify VSS
-func (r *round5) ProcessMessage(from party.ID, content round.Content) error {
+func (r *round5) ProcessMessage(from party.ID, content message.Content) error {
 	body := content.(*Keygen5)
 	partyJ := r.Parties[from]
 	// decrypt share
@@ -67,7 +68,7 @@ func (r *round5) ProcessMessage(from party.ID, content round.Content) error {
 // - validate Session
 // - write new ssid hash to old hash state
 // - create proof of knowledge of secret
-func (r *round5) GenerateMessages(out chan<- *round.Message) error {
+func (r *round5) GenerateMessages(out chan<- *message.Message) error {
 	// add all shares to our secret
 	newSecret := r.Secret.Clone()
 	for _, partyJ := range r.Parties {
@@ -95,7 +96,7 @@ func (r *round5) GenerateMessages(out chan<- *round.Message) error {
 		newPublic[idJ] = newPublicJ
 	}
 
-	updatedSession, err := session.newSession(r.SID, newPublic, r.rid)
+	updatedSession, err := newSession(r.SID, newPublic, r.rid)
 	if err != nil {
 		return err
 	}
@@ -135,7 +136,7 @@ func (r *round5) Next() round.Round {
 	return &output{r}
 }
 
-func (r *round5) MessageContent() round.Content {
+func (r *round5) MessageContent() message.Content {
 	return &Keygen5{}
 }
 

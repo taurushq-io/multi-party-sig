@@ -7,6 +7,7 @@ import (
 	any "github.com/gogo/protobuf/types"
 	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
@@ -77,10 +78,10 @@ func (r *Helper) UpdateHashState(value writer.WriterToWithDomain) {
 // If to is empty, then the message will be interpreted as "Broadcast".
 // For "Send to all" behavior, the full list of parties can be given.
 // It panics if the content is not able to be marshalled.
-func (h *Helper) MarshalMessage(content Content, to ...party.ID) *Message {
+func (h *Helper) MarshalMessage(content message.Content, to ...party.ID) *message.Message {
 	c, err := any.MarshalAny(content)
 	if err == nil {
-		return &Message{
+		return &message.Message{
 			SSID:        h.ssid,
 			From:        h.selfID,
 			To:          to,
@@ -92,7 +93,7 @@ func (h *Helper) MarshalMessage(content Content, to ...party.ID) *Message {
 	panic("protocol: unable to marshal message content")
 }
 
-func (h *Helper) SendMessage(msg *Message, out chan<- *Message) error {
+func (h *Helper) SendMessage(msg *message.Message, out chan<- *message.Message) error {
 	select {
 	case out <- msg:
 		return nil

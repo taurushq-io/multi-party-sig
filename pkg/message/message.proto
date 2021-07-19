@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package round;
+package message;
 
-option go_package = "github.com/taurusgroup/cmp-ecdsa/pkg/round";
+option go_package = "github.com/taurusgroup/cmp-ecdsa/pkg/message";
 
 option (gogoproto.stable_marshaler_all) = true;
 

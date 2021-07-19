@@ -7,6 +7,7 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	zkenc "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
@@ -42,7 +43,7 @@ type round1 struct {
 }
 
 // ProcessMessage implements round.Round
-func (r *round1) ProcessMessage(party.ID, round.Content) error {
+func (r *round1) ProcessMessage(party.ID, message.Content) error {
 	// In the first protocol, no messages are expected.
 	return nil
 }
@@ -61,7 +62,7 @@ func (r *round1) ProcessMessage(party.ID, round.Content) error {
 //
 // In the next round, we send a hash of all the {Kⱼ,Gⱼ}ⱼ.
 // In two rounds, we compare the hashes received and if they are different then we abort.
-func (r *round1) GenerateMessages(out chan<- *round.Message) error {
+func (r *round1) GenerateMessages(out chan<- *message.Message) error {
 	// γᵢ <- 𝔽,
 	// Γᵢ = [γᵢ]⋅G
 	r.GammaShare, r.Self.BigGammaShare = sample.ScalarPointPair(rand.Reader)
@@ -108,6 +109,6 @@ func (r *round1) Next() round.Round {
 	}
 }
 
-func (r *round1) MessageContent() round.Content {
-	return &round.First{}
+func (r *round1) MessageContent() message.Content {
+	return &message.First{}
 }

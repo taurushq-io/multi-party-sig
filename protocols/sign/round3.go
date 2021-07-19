@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
@@ -26,7 +27,7 @@ type round3 struct {
 // - verify Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
 // - store MtA data
 // - verify zkproofs affg (2x) zklog*
-func (r *round3) ProcessMessage(from party.ID, content round.Content) error {
+func (r *round3) ProcessMessage(from party.ID, content message.Content) error {
 	body := content.(*Sign3)
 	partyJ := r.Parties[from]
 
@@ -78,7 +79,7 @@ func (r *round3) ProcessMessage(from party.ID, content round.Content) error {
 // - Δᵢ = [kᵢ]Γ
 // - δᵢ = γᵢ kᵢ + ∑ⱼ δᵢⱼ
 // - χᵢ = xᵢ kᵢ + ∑ⱼ χᵢⱼ
-func (r *round3) GenerateMessages(out chan<- *round.Message) error {
+func (r *round3) GenerateMessages(out chan<- *message.Message) error {
 	// Γ = ∑ⱼ Γⱼ
 	r.Gamma = curve.NewIdentityPoint()
 	for _, partyJ := range r.Parties {
@@ -142,7 +143,7 @@ func (r *round3) Next() round.Round {
 		round3: r,
 	}
 }
-func (r *round3) MessageContent() round.Content {
+func (r *round3) MessageContent() message.Content {
 	return &Sign3{}
 }
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
@@ -30,7 +31,7 @@ type round4 struct {
 //
 // - Get Δⱼ, δⱼ, ϕ''ᵢⱼ
 // - Verify Π(log*)(ϕ''ᵢⱼ, Δⱼ, Γ)
-func (r *round4) ProcessMessage(from party.ID, content round.Content) error {
+func (r *round4) ProcessMessage(from party.ID, content message.Content) error {
 	body := content.(*Sign4)
 	partyJ := r.Parties[from]
 
@@ -56,7 +57,7 @@ func (r *round4) ProcessMessage(from party.ID, content round.Content) error {
 // - set Δ = ∑ⱼ Δⱼ
 // - verify Δ = [δ]G
 // - compute σᵢ = rχᵢ + kᵢm
-func (r *round4) GenerateMessages(out chan<- *round.Message) error {
+func (r *round4) GenerateMessages(out chan<- *message.Message) error {
 	// δ = ∑ⱼ δⱼ
 	// Δ = ∑ⱼ Δⱼ
 	r.Delta = curve.NewScalar()
@@ -98,7 +99,7 @@ func (r *round4) Next() round.Round {
 	}
 }
 
-func (r *round4) MessageContent() round.Content {
+func (r *round4) MessageContent() message.Content {
 	return &Sign4{}
 }
 

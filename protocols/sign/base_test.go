@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
@@ -34,7 +35,7 @@ func processRound(t *testing.T, parties map[party.ID]*testParty, expectedRoundTy
 	N := len(parties)
 	t.Logf("starting round %v", expectedRoundType)
 	// get the second set of  messages
-	out := make(chan *round.Message, N*N)
+	out := make(chan *message.Message, N*N)
 	for _, partyJ := range parties {
 		assert.EqualValues(t, expectedRoundType, reflect.TypeOf(partyJ.r))
 		err := partyJ.r.GenerateMessages(out)
@@ -65,7 +66,7 @@ func processRound(t *testing.T, parties map[party.ID]*testParty, expectedRoundTy
 		msgBytes, err := proto.Marshal(msg)
 		require.NoError(t, err, "failed to marshal message")
 		for idJ, partyJ := range parties {
-			var m round.Message
+			var m message.Message
 			require.NoError(t, proto.Unmarshal(msgBytes, &m), "failed to unmarshal message")
 			if m.From == idJ {
 				continue
