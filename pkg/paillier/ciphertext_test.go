@@ -1,14 +1,11 @@
 package paillier
 
 import (
-	"crypto/rand"
 	"math/big"
 	"testing"
 	"testing/quick"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 )
 
 var (
@@ -97,42 +94,5 @@ func TestEncDecScalingHomomorphic(t *testing.T) {
 	err := quick.Check(testEncDecScalingHomomorphic, &quick.Config{})
 	if err != nil {
 		t.Error(err)
-	}
-}
-
-func TestCiphertext_Enc(t *testing.T) {
-	for i := 0; i < 10; i++ {
-		b := new(big.Int).SetBit(new(big.Int), 200, 1)
-		sample.IntervalL(rand.Reader)
-		r1, err := rand.Int(rand.Reader, b)
-		require.NoError(t, err)
-		r2, err := rand.Int(rand.Reader, b)
-		require.NoError(t, err)
-		c, err := rand.Int(rand.Reader, b)
-		require.NoError(t, err)
-
-		// Test decryption
-		ct1, _ := paillierPublic.Enc(r1)
-		ct2, _ := paillierPublic.Enc(r2)
-
-		ct1plus2 := ct1.Clone().Add(paillierPublic, ct2)
-
-		r1plus2, err := paillierSecret.Dec(ct1plus2)
-		assert.NoError(t, err, "should be able to decrypt")
-
-		decCt1, err := paillierSecret.Dec(ct1)
-		assert.NoError(t, err, "should be able to decrypt")
-		require.Equal(t, 0, decCt1.Cmp(r1), "r1= ct1")
-
-		// Test adding
-		require.Equal(t, 0, new(big.Int).Add(r1, r2).Cmp(r1plus2))
-
-		ct1times2 := ct1.Clone().Mul(paillierPublic, c)
-
-		// Test multiplication
-		res := new(big.Int).Mul(c, r1)
-		res.Mod(res, paillierPublic.n)
-		decCt1Times2, err := paillierSecret.Dec(ct1times2)
-		require.Equal(t, 0, res.Cmp(decCt1Times2))
 	}
 }
