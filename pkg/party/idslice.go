@@ -11,6 +11,13 @@ import (
 
 type IDSlice []ID
 
+// NewIDSlice returns a sorted slice of partyIDs.
+func NewIDSlice(partyIDs []ID) IDSlice {
+	ids := IDSlice(partyIDs).Copy()
+	ids.Sort()
+	return ids
+}
+
 func (partyIDs IDSlice) Len() int           { return len(partyIDs) }
 func (partyIDs IDSlice) Less(i, j int) bool { return partyIDs[i] < partyIDs[j] }
 func (partyIDs IDSlice) Swap(i, j int)      { partyIDs[i], partyIDs[j] = partyIDs[j], partyIDs[i] }
@@ -30,9 +37,27 @@ func (partyIDs IDSlice) Sorted() bool {
 
 // Contains returns true if partyIDs contains id.
 // Assumes that partyIDs is sorted.
-func (partyIDs IDSlice) Contains(id ID) bool {
-	_, ok := partyIDs.Search(id)
-	return ok
+func (partyIDs IDSlice) Contains(ids ...ID) bool {
+	for _, id := range ids {
+		if _, ok := partyIDs.Search(id); !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// ContainsDuplicates returns true if a duplicated item is contained.
+// Assumes partyIDs is sorted.
+func (partyIDs IDSlice) ContainsDuplicates() bool {
+	for i := range partyIDs {
+		if i == 0 {
+			continue
+		}
+		if partyIDs[i-1] == partyIDs[i] {
+			return true
+		}
+	}
+	return false
 }
 
 // GetIndex returns the index of id in partyIDs.
@@ -54,11 +79,22 @@ func (partyIDs IDSlice) Search(x ID) (int, bool) {
 	return 0, false
 }
 
+// Copy returns an identical copy of the received
 func (partyIDs IDSlice) Copy() IDSlice {
 	a := make(IDSlice, len(partyIDs))
 	copy(a, partyIDs)
-	a.Sort()
 	return a
+}
+
+// Remove finds id in partyIDs and returns a copy of the slice if it was found.
+func (partyIDs IDSlice) Remove(id ID) IDSlice {
+	newPartyIDs := make(IDSlice, 0, len(partyIDs))
+	for _, partyID := range partyIDs {
+		if partyID != id {
+			newPartyIDs = append(newPartyIDs, partyID)
+		}
+	}
+	return newPartyIDs
 }
 
 // Lagrange returns the Lagrange coefficient
@@ -118,6 +154,19 @@ func RandomIDs(n int) IDSlice {
 	}
 	partyIDs.Sort()
 	return partyIDs
+}
+
+// Equal checks if both IDSlice are equal, assuming they are sorted.
+func (partyIDs IDSlice) Equal(otherPartyIDs IDSlice) bool {
+	if len(partyIDs) != len(otherPartyIDs) {
+		return false
+	}
+	for i := range partyIDs {
+		if partyIDs[i] != otherPartyIDs[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
