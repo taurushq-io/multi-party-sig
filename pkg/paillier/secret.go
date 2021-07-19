@@ -74,7 +74,7 @@ func NewSecretKeyFromPrimes(P, Q *big.Int) *SecretKey {
 	nMod := safenum.ModulusFromNat(n)
 
 	p.Sub(p, oneNat, -1)
-	q.Sub(p, oneNat, -1)
+	q.Sub(q, oneNat, -1)
 	phi := new(safenum.Nat).Mul(p, q, -1)
 	// ϕ⁻¹ mod N
 	phiInv := new(safenum.Nat).ModInverse(phi, nMod)
@@ -192,7 +192,7 @@ func (sk SecretKey) Validate() error {
 
 	// check ϕ * phiInv = 1 (mod N)
 	phi.ModMul(phi, sk.phiInv, n)
-	if phi.Eq(oneNat) != 0 {
+	if phi.Eq(oneNat) != 1 {
 		return ErrWrongPhiInv
 	}
 

@@ -21,6 +21,9 @@ func init() {
 	q.SetString("154015006160854235002007557023803468376448277365405705676551314882683128790125170467276370601034321782779924625687921529410458399255587689405771572795902602356870537998583671038752961901536910952455193645347654842352350434852963582643875873134652544209964216130513008483123534718118886460747385334474444035767", 10)
 	paillierSecret = NewSecretKeyFromPrimes(&p, &q)
 	paillierPublic = paillierSecret.PublicKey
+	if err := paillierSecret.Validate(); err != nil {
+		panic(err)
+	}
 }
 
 func reinit() {
@@ -57,7 +60,10 @@ func testEncDecRoundTrip(x int64) bool {
 	if err != nil {
 		return false
 	}
-	return m.Cmp(shouldBeM) == 0
+	if m.Cmp(shouldBeM) != 0 {
+		return false
+	}
+	return true
 }
 
 func TestEncDecRoundTrip(t *testing.T) {
@@ -80,7 +86,10 @@ func testEncDecHomomorphic(a int64, b int64) bool {
 	if err != nil {
 		return false
 	}
-	return actual.Cmp(expected) == 0
+	if actual.Cmp(expected) != 0 {
+		return false
+	}
+	return true
 }
 
 func TestEncDecHomomorphic(t *testing.T) {
