@@ -4,14 +4,11 @@ import (
 	"crypto/rand"
 	"io"
 	"math/big"
-	"math/bits"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
-
-const cipherTextWordSize = 4*params.BitsPaillier/bits.UintSize + 8
 
 // Add sets ct to the homomorphic sum ct ct₁ ⊕ ct₂.
 // ct = ct₁•ct₂ (mod N²)
@@ -19,12 +16,9 @@ func (ct *Ciphertext) Add(pk *PublicKey, otherCt *Ciphertext) *Ciphertext {
 	if otherCt == nil {
 		return ct
 	}
-	c1 := new(safenum.Nat).SetBig(ct.C, ct.C.BitLen())
-	c2 := new(safenum.Nat).SetBig(otherCt.C, otherCt.C.BitLen())
 
-	c1.ModMul(c1, c2, pk.nSquared)
+	ct.C.ModMul(ct.C, otherCt.C, pk.nSquared)
 
-	ct.C = c1.Big()
 	return ct
 }
 
@@ -34,24 +28,22 @@ func (ct *Ciphertext) Mul(pk *PublicKey, k *big.Int) *Ciphertext {
 	if k == nil {
 		return ct
 	}
+
 	kInt := new(safenum.Int).SetBig(k, k.BitLen())
-	c := new(safenum.Nat).SetBig(ct.C, ct.C.BitLen())
+	ct.C.ExpI(ct.C, kInt, pk.nSquared)
 
-	c.ExpI(c, kInt, pk.nSquared)
-
-	ct.C = c.Big()
 	return ct
 }
 
 // Equal check whether ct ≡ ctₐ (mod N²)
 func (ct *Ciphertext) Equal(ctA *Ciphertext) bool {
-	return ct.C.Cmp(ctA.C) == 0
+	return ct.C.Eq(ctA.C) == 0
 }
 
 // Clone returns a deep copy of ct
 func (ct Ciphertext) Clone() *Ciphertext {
 	c := NewCiphertext()
-	c.C.Set(ct.C)
+	c.C.SetNat(ct.C)
 	return c
 }
 
@@ -60,7 +52,6 @@ func (ct Ciphertext) Clone() *Ciphertext {
 // The updated receiver is returned, as well as the nonce update
 func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *big.Int) *big.Int {
 	nonceNat := new(safenum.Nat)
-	c := new(safenum.Nat).SetBig(ct.C, ct.C.BitLen())
 	if nonce == nil {
 		nonceNat = sample.UnitModNNat(rand.Reader, pk.n)
 	} else {
@@ -68,15 +59,12 @@ func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *big.Int) *big.Int {
 	}
 	// c = c*r^N
 	nonceNat.Exp(nonceNat, pk.nNat, pk.nSquared)
-	c.ModMul(c, nonceNat, pk.nSquared)
-	ct.C = c.Big()
+	ct.C.ModMul(ct.C, nonceNat, pk.nSquared)
 	return nonce
 }
 
 func NewCiphertext() *Ciphertext {
-	buf := make([]big.Word, 0, cipherTextWordSize+2)
-	c := new(big.Int).SetBits(buf)
-	return &Ciphertext{C: c}
+	return &Ciphertext{C: new(safenum.Nat)}
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.

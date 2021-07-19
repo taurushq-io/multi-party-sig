@@ -101,14 +101,12 @@ func (sk *SecretKey) Dec(ct *Ciphertext) (*big.Int, error) {
 		return nil, errors.New("paillier: failed to decrypt invalid ciphertext")
 	}
 
-	c := new(safenum.Nat).SetBig(ct.C, ct.C.BitLen())
-
 	phi := sk.phi
 	phiInv := sk.phiInv
 
 	result := new(safenum.Nat)
 	// r = c^Phi 						(mod N²)
-	result.Exp(c, phi, nSquared)
+	result.Exp(ct.C, phi, nSquared)
 	// r = c^Phi - 1
 	result.Sub(result, oneNat, -1)
 	// r = [(c^Phi - 1)/N]

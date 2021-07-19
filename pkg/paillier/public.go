@@ -86,18 +86,16 @@ func (pk PublicKey) encWithNonceNat(m *safenum.Int, nonce *safenum.Nat) *Ciphert
 	if m.CheckInRange(pk.n) != 1 {
 		panic("paillier.Encrypt: tried to encrypt message outside of range [-(N-1)/2, …, (N-1)/2]")
 	}
+	out := NewCiphertext()
 
 	// N + 1
-	ct := new(safenum.Nat).SetNat(pk.nPlusOne)
+	out.C.SetNat(pk.nPlusOne)
 	// (N+1)ᵐ mod N²
-	ct.ExpI(ct, m, pk.nSquared)
+	out.C.ExpI(out.C, m, pk.nSquared)
 	// rho ^ N mod N²
 	rhoN := new(safenum.Nat).Exp(nonce, pk.nNat, pk.nSquared)
 	// (N+1)ᵐ rho ^ N
-	ct.ModMul(ct, rhoN, pk.nSquared)
-
-	out := NewCiphertext()
-	out.C = ct.Big()
+	out.C.ModMul(out.C, rhoN, pk.nSquared)
 
 	return out
 }
@@ -125,15 +123,11 @@ func (pk PublicKey) Validate() error {
 // ct ∈ [1, …, N²-1] AND GCD(ct,N²) = 1
 func (pk PublicKey) ValidateCiphertexts(cts ...*Ciphertext) bool {
 	for _, ct := range cts {
-		if ct.C.Sign() != 1 {
-			return false
-		}
-		cNat := new(safenum.Nat).SetBig(ct.C, ct.C.BitLen())
-		_, _, lt := cNat.CmpMod(pk.nSquared)
+		_, _, lt := ct.C.CmpMod(pk.nSquared)
 		if lt != 1 {
 			return false
 		}
-		if cNat.IsUnit(pk.nSquared) != 1 {
+		if ct.C.IsUnit(pk.nSquared) != 1 {
 			return false
 		}
 	}

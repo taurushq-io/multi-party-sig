@@ -6,6 +6,7 @@ import (
 	"testing"
 	"testing/quick"
 
+	"github.com/cronokirby/safenum"
 	"github.com/stretchr/testify/assert"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 )
@@ -35,20 +36,20 @@ func TestCiphertextValidate(t *testing.T) {
 		reinit()
 	}
 
-	C := big.NewInt(0)
-	ct := &Ciphertext{C: C}
+	C := new(safenum.Nat)
+	ct := &Ciphertext{C}
 	_, err := paillierSecret.Dec(ct)
 	assert.Error(t, err, "decrypting 0 should fail")
 
-	C.Set(paillierPublic.n.Big())
+	C.SetNat(paillierPublic.nNat)
 	_, err = paillierSecret.Dec(ct)
 	assert.Error(t, err, "decrypting N should fail")
 
-	C.Mul(C, big.NewInt(2))
+	C.Add(C, C, -1)
 	_, err = paillierSecret.Dec(ct)
 	assert.Error(t, err, "decrypting 2N should fail")
 
-	C.Set(paillierPublic.nSquared.Big())
+	C.SetNat(paillierPublic.nSquared.Nat())
 	_, err = paillierSecret.Dec(ct)
 	assert.Error(t, err, "decrypting N^2 should fail")
 }
