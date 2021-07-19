@@ -81,6 +81,25 @@ func TestEncDecHomomorphic(t *testing.T) {
 	}
 }
 
+func testEncDecScalingHomomorphic(s int64, x int64) bool {
+	m := new(big.Int).SetInt64(x)
+	sBig := new(big.Int).SetInt64(s)
+	c, _ := paillierPublic.Enc(m)
+	expected := new(big.Int).Mul(m, sBig)
+	actual, err := paillierSecret.Dec(c.Mul(paillierPublic, sBig))
+	if err != nil {
+		return false
+	}
+	return actual.Cmp(expected) == 0
+}
+
+func TestEncDecScalingHomomorphic(t *testing.T) {
+	err := quick.Check(testEncDecScalingHomomorphic, &quick.Config{})
+	if err != nil {
+		t.Error(err)
+	}
+}
+
 func TestCiphertext_Enc(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		b := new(big.Int).SetBit(new(big.Int), 200, 1)
