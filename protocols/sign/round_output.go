@@ -8,13 +8,12 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
-	"github.com/taurusgroup/cmp-ecdsa/protocols/sign/signature"
 )
 
 type output struct {
 	*round4
 	// Signature wraps (R,S)
-	Signature *signature.Signature
+	Signature *Signature
 }
 
 // ProcessMessage implements round.Round
@@ -42,7 +41,7 @@ func (r *output) GenerateMessages(out chan<- *round.Message) error {
 		S.Add(S, partyJ.SigmaShare)
 	}
 
-	r.Signature = &signature.Signature{
+	r.Signature = &Signature{
 		R: r.BigR,
 		S: S,
 	}
