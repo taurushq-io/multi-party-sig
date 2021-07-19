@@ -134,14 +134,39 @@ func (r *round3) GenerateMessages() ([]round.Message, error) {
 	return messages, nil
 }
 
-// Finalize implements round.Round
-func (r *round3) Finalize() (round.Round, error) {
-	r.Next()
+// Next implements round.Round
+func (r *round3) Next() round.Round {
 	return &round4{
 		round3: r,
-	}, nil
+	}
+}
+func (r *round3) MessageContent() round.Content {
+	return &Sign3{}
 }
 
-func (r *round3) ExpectedMessageID() round.MessageID {
-	return MessageTypeSign2
+func (m *Sign3) Validate() error {
+	if m == nil {
+		return errors.New("sign.round2: message is nil")
+	}
+	if m.BigGammaShare == nil || m.DeltaMtA == nil || m.ChiMtA == nil || m.ProofLog == nil {
+		return errors.New("sign.round2: message contains nil fields")
+	}
+	if err := m.DeltaMtA.Validate(); err != nil {
+		return fmt.Errorf("sign: %w", err)
+	}
+	if err := m.ChiMtA.Validate(); err != nil {
+		return fmt.Errorf("sign: %w", err)
+	}
+	return nil
+}
+
+func (m *Sign3) RoundNumber() types.RoundNumber {
+	return 3
+}
+
+func (m *MtAMessage) Validate() error {
+	if m.D == nil || m.F == nil || m.Proof == nil {
+		return errors.New("sign.mta: message contains nil fields")
+	}
+	return nil
 }

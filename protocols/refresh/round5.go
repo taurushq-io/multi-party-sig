@@ -140,12 +140,31 @@ func (r *round5) GenerateMessages() ([]round.Message, error) {
 	return NewMessageRefresh5(r.SelfID, proof), nil
 }
 
-// Finalize implements round.Round
-func (r *round5) Finalize() (round.Round, error) {
-	r.Next()
-	return &output{r}, nil
+// Next implements round.Round
+func (r *round5) Next() round.Round {
+	return &output{r}
 }
 
-func (r *round5) ExpectedMessageID() round.MessageID {
-	return MessageTypeRefresh4
+func (r *round5) MessageContent() round.Content {
+	return &Keygen5{}
+}
+
+func (m *Keygen5) Validate() error {
+	if m == nil {
+		return errors.New("keygen.round4: message is nil")
+	}
+	if m.Mod == nil {
+		return errors.New("keygen.round4: zkmod proof is nil")
+	}
+	if m.Prm == nil {
+		return errors.New("keygen.round4: zkprm proof is nil")
+	}
+	if m.Share == nil {
+		return errors.New("keygen.round4: Share proof is nil")
+	}
+	return nil
+}
+
+func (m *Keygen5) RoundNumber() types.RoundNumber {
+	return 5
 }

@@ -46,14 +46,27 @@ func (r *round2) GenerateMessages() ([]round.Message, error) {
 	return NewMessageRefresh2(r.SelfID, r.EchoHash), nil
 }
 
-// Finalize implements round.Round
-func (r *round2) Finalize() (round.Round, error) {
-	r.Next()
+// Next implements round.Round
+func (r *round2) Next() round.Round {
 	return &round3{
 		round2: r,
-	}, nil
+	}
 }
 
-func (r *round2) ExpectedMessageID() round.MessageID {
-	return MessageTypeRefresh1
+func (r *round2) MessageContent() round.Content {
+	return &Keygen2{}
+}
+
+func (m *Keygen2) Validate() error {
+	if m == nil {
+		return errors.New("keygen.round1: message is nil")
+	}
+	if l := len(m.Commitment); l != params.HashBytes {
+		return fmt.Errorf("keygen.round1: invalid commitment length (got %d, expected %d)", l, params.HashBytes)
+	}
+	return nil
+}
+
+func (m *Keygen2) RoundNumber() types.RoundNumber {
+	return 2
 }

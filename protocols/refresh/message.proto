@@ -13,37 +13,25 @@ import "pkg/math/polynomial/exponent.proto";
 import "pkg/zk/mod/mod.proto";
 import "pkg/zk/prm/prm.proto";
 import "pkg/pedersen/pedersen.proto";
-import "pkg/round/message.proto";
 
-message Message {
-  round.Header Header = 1;
-  oneof Content {
-    Refresh1 refresh1 = 2;
-    Refresh2 refresh2 = 3;
-    Refresh3 refresh3 = 4;
-    Refresh4 refresh4 = 5;
-    Refresh5 refresh5 = 6;
-  };
-}
-
-message Refresh1 {
+message Keygen2 {
   option (gogoproto.goproto_getters) = false;
   // Commitment = Vᵢ = H(ρᵢ, Fᵢ(X), Aᵢ, Nᵢ, sᵢ, tᵢ, uᵢ)
   bytes Commitment = 1;
 }
 
-message Refresh2 {
+message Keygen3 {
   option (gogoproto.goproto_getters) = false;
   // HashEcho = H(V₁, …, Vₙ)
-  // This is essentially an echo of all messages from Refresh1.
+  // This is essentially an echo of all messages from Keygen2.
   // If one party received something different then everybody must abort.
   bytes HashEcho = 1;
 }
 
-message Refresh3 {
+message Keygen4 {
   option (gogoproto.goproto_getters) = false;
-  // Rho = ρᵢ
-  bytes Rho = 1;
+  // RID = RIDᵢ
+  bytes RID = 1;
   // VSSPolynomial = Fᵢ(X) VSSPolynomial
   polynomial.Exponent VSSPolynomial = 2;
   // SchnorrCommitments = Aᵢ Schnorr commitment for the final confirmation
@@ -54,7 +42,7 @@ message Refresh3 {
   bytes Decommitment = 5;
 }
 
-message Refresh4 {
+message Keygen5 {
   option (gogoproto.goproto_getters) = false;
   zkmod.Proof Mod = 1;
   zkprm.Proof Prm = 2;
@@ -62,7 +50,7 @@ message Refresh4 {
   paillier.Ciphertext Share = 3;
 }
 
-message Refresh5 {
+message KeygenOutput {
   option (gogoproto.goproto_getters) = false;
   // Proof is the Schnorr proof of knowledge of the new secret share
   bytes Proof = 1 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar"];

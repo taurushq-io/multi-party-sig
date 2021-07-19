@@ -101,12 +101,11 @@ func (r *round1) GenerateMessages() ([]round.Message, error) {
 	return NewMessageRefresh1(r.SelfID, r.Self.Commitment), nil
 }
 
-// Finalize implements round.Round
-func (r *round1) Finalize() (round.Round, error) {
-	r.Next()
-	return &round2{r, nil}, nil
+// Next implements round.Round
+func (r *round1) Next() round.Round {
+	return &round2{r, nil}
 }
 
-func (r *round1) ExpectedMessageID() round.MessageID {
-	return round.MessageIDInvalid
+func (r *round1) MessageContent() round.Content {
+	return &round.First{}
 }

@@ -37,23 +37,36 @@ func (r *output) GenerateMessages() ([]round.Message, error) {
 	return nil, nil
 }
 
-// Finalize implements round.Round
-func (r *output) Finalize() (round.Round, error) {
-	return nil, nil
+// Next implements round.Round
+func (r *output) Next() round.Round {
+	return nil
 }
 
-func (r *output) ExpectedMessageID() round.MessageID {
-	return MessageTypeRefresh5
-}
-
-func (r *output) GetSignature() (*signature.Signature, error) {
-	return nil, errors.New("refresh.output: protocol does not produce signatures")
-}
-
-func (r *output) GetSession() (session.Session, error) {
+func (r *output) Result() interface{} {
 	// This could be used to handle pre-signatures
-	if r.newSession != nil {
-		return r.newSession, nil
+	if r.newSession != nil && r.newSecret != nil {
+		return &Result{
+			Session: r.newSession,
+			Secret:  r.newSecret,
+		}
 	}
-	return nil, errors.New("refresh.output: session was nil")
+	return nil
+}
+
+func (r *output) MessageContent() round.Content {
+	return &KeygenOutput{}
+}
+
+func (m *KeygenOutput) Validate() error {
+	if m == nil {
+		return errors.New("keygen.round5: message is nil")
+	}
+	if m.Proof == nil {
+		return errors.New("keygen.round5: sch proof is nil")
+	}
+	return nil
+}
+
+func (m *KeygenOutput) RoundNumber() types.RoundNumber {
+	return 6
 }

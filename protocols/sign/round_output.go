@@ -60,23 +60,36 @@ func (r *output) GenerateMessages() ([]round.Message, error) {
 	return nil, nil
 }
 
-// Finalize implements round.Round
-func (r *output) Finalize() (round.Round, error) {
-	return nil, nil
+	return nil
 }
 
-func (r *output) ExpectedMessageID() round.MessageID {
-	return MessageTypeSign4
+// Next implements round.Round
+func (r *output) Next() round.Round {
+	return nil
 }
 
-func (r *output) GetSignature() (*signature.Signature, error) {
+func (r *output) Result() interface{} {
 	// This could be used to handle pre-signatures
 	if r.Signature != nil {
-		return r.Signature, nil
+		return &Result{Signature: r.Signature}
 	}
-	return nil, errors.New("sign.output: session was nil")
+	return nil
 }
 
-func (r *output) GetSession() (session.Session, error) {
-	return nil, errors.New("sign.output: protocol does not produce sessions")
+func (r *output) MessageContent() round.Content {
+	return &SignOutput{}
+}
+
+func (m *SignOutput) Validate() error {
+	if m == nil {
+		return errors.New("sign.round4: message is nil")
+	}
+	if m.SigmaShare == nil {
+		return errors.New("sign.round4: message contains nil fields")
+	}
+	return nil
+}
+
+func (m *SignOutput) RoundNumber() types.RoundNumber {
+	return 5
 }
