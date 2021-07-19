@@ -9,8 +9,8 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
+	"github.com/taurusgroup/cmp-ecdsa/protocols/refresh"
 )
 
 // protocolSignID for the "3 round" variant using echo broadcast
@@ -27,7 +27,7 @@ var (
 	_ round.Round = (*output)(nil)
 )
 
-func StartSign(s *session.Session, secret *party.Secret, signers []party.ID, message []byte) protocol.StartFunc {
+func StartSign(s *refresh.Session, secret *party.Secret, signers []party.ID, message []byte) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
 		// validate session
 		if err := s.Validate(); err != nil {

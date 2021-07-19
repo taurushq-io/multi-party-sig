@@ -12,7 +12,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
+	"github.com/taurusgroup/cmp-ecdsa/protocols/refresh"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -91,7 +91,7 @@ func TestRound(t *testing.T) {
 	_, _ = rand.Read(rid)
 
 	t.Log("generating sessions")
-	sessions, secrets, err := session.FakeSession(N, T)
+	sessions, secrets, err := refresh.FakeSession(N, T)
 	require.NoError(t, err)
 	partyIDs := make([]party.ID, 0, T+1)
 	for id := range sessions {

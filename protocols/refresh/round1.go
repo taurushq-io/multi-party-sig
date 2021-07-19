@@ -11,7 +11,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk"
 )
 
@@ -93,7 +92,7 @@ func (r *round1) GenerateMessages(out chan<- *round.Message) error {
 	schnorrRand, schnorrCommitment := sample.ScalarPointPair(rand.Reader)
 
 	// Sample RIDᵢ
-	var rid session.RID
+	var rid RID
 	if _, err := rand.Read(rid[:]); err != nil {
 		return ErrRound1SampleRho
 	}
