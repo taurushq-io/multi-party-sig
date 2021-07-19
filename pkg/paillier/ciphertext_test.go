@@ -1,11 +1,13 @@
 package paillier
 
 import (
+	"crypto/rand"
 	"math/big"
 	"testing"
 	"testing/quick"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 )
 
 var (
@@ -110,5 +112,37 @@ func TestEncDecScalingHomomorphic(t *testing.T) {
 	err := quick.Check(testEncDecScalingHomomorphic, &quick.Config{})
 	if err != nil {
 		t.Error(err)
+	}
+}
+
+// Used to avoid benchmark optimization
+var resultCiphertext *Ciphertext
+
+func BenchmarkEncryption(b *testing.B) {
+	b.StopTimer()
+	m := sample.IntervalLEps(rand.Reader)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		resultCiphertext, _ = paillierPublic.Enc(m)
+	}
+}
+
+func BenchmarkAddCiphertext(b *testing.B) {
+	b.StopTimer()
+	m := sample.IntervalLEps(rand.Reader)
+	c, _ := paillierPublic.Enc(m)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		resultCiphertext = c.Add(paillierPublic, c)
+	}
+}
+
+func BenchmarkMulCiphertext(b *testing.B) {
+	b.StopTimer()
+	m := sample.IntervalLEps(rand.Reader)
+	c, _ := paillierPublic.Enc(m)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		resultCiphertext = c.Mul(paillierPublic, m)
 	}
 }
