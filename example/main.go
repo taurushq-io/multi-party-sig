@@ -7,28 +7,28 @@ import (
 	"log"
 	"sync"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/protocols/refresh"
 	sign2 "github.com/taurusgroup/cmp-ecdsa/protocols/sign"
 )
 
 type Network interface {
-	Send(msg *round.Message)
-	Next(id party.ID) <-chan *round.Message
+	Send(msg *message.Message)
+	Next(id party.ID) <-chan *message.Message
 }
 
 type chanNetwork struct {
 	parties        party.IDSlice
-	listenChannels map[party.ID]chan *round.Message
+	listenChannels map[party.ID]chan *message.Message
 }
 
 func newNetwork(parties party.IDSlice) Network {
 	n := len(parties)
-	lc := make(map[party.ID]chan *round.Message, n)
+	lc := make(map[party.ID]chan *message.Message, n)
 	for _, id := range parties {
-		lc[id] = make(chan *round.Message, 2*n)
+		lc[id] = make(chan *message.Message, 2*n)
 	}
 	return &chanNetwork{
 		parties:        parties,
@@ -36,11 +36,11 @@ func newNetwork(parties party.IDSlice) Network {
 	}
 }
 
-func (c *chanNetwork) Next(id party.ID) <-chan *round.Message {
+func (c *chanNetwork) Next(id party.ID) <-chan *message.Message {
 	return c.listenChannels[id]
 }
 
-func (c *chanNetwork) Send(msg *round.Message) {
+func (c *chanNetwork) Send(msg *message.Message) {
 	if len(msg.To) == 0 {
 		for _, id := range c.parties {
 			if id == msg.From {

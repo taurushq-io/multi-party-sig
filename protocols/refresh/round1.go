@@ -8,6 +8,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
@@ -18,7 +19,7 @@ type round1 struct {
 	*round.Helper
 
 	// SID = (𝔾, t,n,P₁,…,Pₙ)
-	SID *session.sid
+	SID *sid
 
 	// Self is the local data of the party executing the round
 	Self    *LocalParty
@@ -49,7 +50,7 @@ type round1 struct {
 }
 
 // ProcessMessage implements round.Round
-func (r *round1) ProcessMessage(party.ID, round.Content) error {
+func (r *round1) ProcessMessage(party.ID, message.Content) error {
 	// In the first round, no messages are expected.
 	return nil
 }
@@ -68,7 +69,7 @@ func (r *round1) ProcessMessage(party.ID, round.Content) error {
 //   - if keygen, this is RIDᵢ
 //   - if refresh, this is used to bind the zk proof to a random value
 // - commit to message
-func (r *round1) GenerateMessages(out chan<- *round.Message) error {
+func (r *round1) GenerateMessages(out chan<- *message.Message) error {
 	// generate Paillier and Pedersen
 	// TODO DEBUG
 	var paillierSecret *paillier.SecretKey
@@ -133,6 +134,6 @@ func (r *round1) Next() round.Round {
 	return &round2{r, nil}
 }
 
-func (r *round1) MessageContent() round.Content {
-	return &round.First{}
+func (r *round1) MessageContent() message.Content {
+	return &message.First{}
 }

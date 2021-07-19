@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
@@ -19,7 +20,7 @@ type output struct {
 // ProcessMessage implements round.Round
 //
 // - σⱼ != 0
-func (r *output) ProcessMessage(from party.ID, content round.Content) error {
+func (r *output) ProcessMessage(from party.ID, content message.Content) error {
 	body := content.(*SignOutput)
 	partyJ := r.Parties[from]
 
@@ -34,7 +35,7 @@ func (r *output) ProcessMessage(from party.ID, content round.Content) error {
 //
 // - compute σ = ∑ⱼ σⱼ
 // - verify signature
-func (r *output) GenerateMessages(out chan<- *round.Message) error {
+func (r *output) GenerateMessages(out chan<- *message.Message) error {
 	// compute σ = ∑ⱼ σⱼ
 	S := curve.NewScalar()
 	for _, partyJ := range r.Parties {
@@ -72,7 +73,7 @@ func (r *output) Result() interface{} {
 	return nil
 }
 
-func (r *output) MessageContent() round.Content {
+func (r *output) MessageContent() message.Content {
 	return &SignOutput{}
 }
 

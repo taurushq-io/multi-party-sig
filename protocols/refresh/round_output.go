@@ -3,6 +3,7 @@ package refresh
 import (
 	"errors"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
@@ -16,7 +17,7 @@ type output struct {
 // ProcessMessage implements round.Round
 //
 // - verify all Schnorr proof for the new ecdsa share
-func (r *output) ProcessMessage(from party.ID, content round.Content) error {
+func (r *output) ProcessMessage(from party.ID, content message.Content) error {
 	body := content.(*KeygenOutput)
 	partyJ := r.Parties[from]
 
@@ -30,7 +31,7 @@ func (r *output) ProcessMessage(from party.ID, content round.Content) error {
 }
 
 // GenerateMessages implements round.Round
-func (r *output) GenerateMessages(chan<- *round.Message) error {
+func (r *output) GenerateMessages(chan<- *message.Message) error {
 	return nil
 }
 
@@ -50,7 +51,7 @@ func (r *output) Result() interface{} {
 	return nil
 }
 
-func (r *output) MessageContent() round.Content {
+func (r *output) MessageContent() message.Content {
 	return &KeygenOutput{}
 }
 

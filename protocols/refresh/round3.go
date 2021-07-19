@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
@@ -18,7 +19,7 @@ type round3 struct {
 // ProcessMessage implements round.Round
 //
 // - verify Hash(SSID, V₁, …, Vₙ) against received hash
-func (r *round3) ProcessMessage(from party.ID, content round.Content) error {
+func (r *round3) ProcessMessage(from party.ID, content message.Content) error {
 	body := content.(*Keygen3)
 
 	if !bytes.Equal(body.HashEcho, r.EchoHash) {
@@ -30,7 +31,7 @@ func (r *round3) ProcessMessage(from party.ID, content round.Content) error {
 // GenerateMessages implements round.Round
 //
 // - send all committed data
-func (r *round3) GenerateMessages(out chan<- *round.Message) error {
+func (r *round3) GenerateMessages(out chan<- *message.Message) error {
 	// Send the message we created in round1 to all
 	msg := r.MarshalMessage(&Keygen4{
 		RID:                r.Self.RID[:],
@@ -52,7 +53,7 @@ func (r *round3) Next() round.Round {
 	}
 }
 
-func (r *round3) MessageContent() round.Content {
+func (r *round3) MessageContent() message.Content {
 	return &Keygen3{}
 }
 

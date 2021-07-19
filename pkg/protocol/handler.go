@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
@@ -20,7 +21,7 @@ type Handler struct {
 	mtx   sync.Mutex
 
 	doneChan chan struct{}
-	outChan  chan *round.Message
+	outChan  chan *message.Message
 	r        round.Round
 	result   interface{}
 	err      error
@@ -40,7 +41,7 @@ func NewHandler(create StartFunc) (*Handler, error) {
 		queue:    newQueue(info.N() * int(info.FinalRoundNumber())),
 		info:     info,
 		doneChan: make(chan struct{}),
-		outChan:  make(chan *round.Message, info.N()),
+		outChan:  make(chan *message.Message, info.N()),
 
 		r:        r,
 		received: received,
@@ -52,7 +53,7 @@ func NewHandler(create StartFunc) (*Handler, error) {
 	return h, nil
 }
 
-func (h *Handler) validate(msg *round.Message) error {
+func (h *Handler) validate(msg *message.Message) error {
 	if msg.Content == nil {
 		return ErrMessageNilContent
 	}
@@ -102,7 +103,7 @@ func (h *Handler) validate(msg *round.Message) error {
 	return nil
 }
 
-func (h *Handler) handleMessage(msg *round.Message) error {
+func (h *Handler) handleMessage(msg *message.Message) error {
 	if msg.RoundNumber != h.roundNumber() {
 		fmt.Println("storing ", msg)
 		return h.queue.Store(msg)
@@ -194,7 +195,7 @@ func (h *Handler) finishRound() error {
 	return nil
 }
 
-func (h *Handler) Update(msg *round.Message) error {
+func (h *Handler) Update(msg *message.Message) error {
 	fmt.Println(h.info.SelfID(), h.roundNumber(), "Update", msg)
 	h.mtx.Lock()
 	defer h.mtx.Unlock()
@@ -244,11 +245,11 @@ func (h *Handler) roundNumber() types.RoundNumber {
 
 // Listen returns a channel with outgoing messages that must be sent to other parties.
 // If Message.To is nil, then it should be reliably broadcast to all parties.
-func (h *Handler) Listen() <-chan *round.Message {
+func (h *Handler) Listen() <-chan *message.Message {
 	h.mtx.Lock()
 	defer h.mtx.Unlock()
 	if h.done() {
-		c := make(chan *round.Message)
+		c := make(chan *message.Message)
 		close(c)
 		return c
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
@@ -29,7 +30,7 @@ func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundTy
 	N := len(rounds)
 	t.Logf("starting round %v", expectedRoundType)
 	// get the second set of  messages
-	out := make(chan *round.Message, N*N)
+	out := make(chan *message.Message, N*N)
 	for idJ, r := range rounds {
 		require.EqualValues(t, expectedRoundType, reflect.TypeOf(r))
 		err := r.GenerateMessages(out)
@@ -47,7 +48,7 @@ func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundTy
 		msgBytes, err := proto.Marshal(msg)
 		require.NoError(t, err, "failed to marshal message")
 		for idJ, r := range rounds {
-			var m round.Message
+			var m message.Message
 			require.NoError(t, proto.Unmarshal(msgBytes, &m), "failed to unmarshal message")
 			if m.From == idJ {
 				continue
@@ -139,7 +140,7 @@ func TestProtocol(t *testing.T) {
 	threshold := 1
 	ps := map[party.ID]*protocol.Handler{}
 
-	handleMessage := func(msg *round.Message) {
+	handleMessage := func(msg *message.Message) {
 		if msg == nil {
 			return
 		}

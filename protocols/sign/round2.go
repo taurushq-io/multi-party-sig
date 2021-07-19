@@ -3,6 +3,7 @@ package sign
 import (
 	"errors"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
@@ -22,7 +23,7 @@ type round2 struct {
 //
 // - store Kⱼ, Gⱼ
 // - verify zkenc(Kⱼ)
-func (r *round2) ProcessMessage(from party.ID, content round.Content) error {
+func (r *round2) ProcessMessage(from party.ID, content message.Content) error {
 	body := content.(*Sign2)
 	partyJ := r.Parties[from]
 
@@ -42,7 +43,7 @@ func (r *round2) ProcessMessage(from party.ID, content round.Content) error {
 // GenerateMessages implements round.Round
 //
 // - compute Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
-func (r *round2) GenerateMessages(out chan<- *round.Message) error {
+func (r *round2) GenerateMessages(out chan<- *message.Message) error {
 	// compute Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
 	// The papers says that we need to reliably broadcast this data, however unless we use
 	// a system like white-city, we can't actually do this.
@@ -100,7 +101,7 @@ func (r *round2) Next() round.Round {
 	}
 }
 
-func (r *round2) MessageContent() round.Content {
+func (r *round2) MessageContent() message.Content {
 	return &Sign2{}
 }
 

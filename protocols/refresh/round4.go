@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -27,7 +28,7 @@ type round4 struct {
 // - validate Paillier
 // - validate Pedersen
 // - validate commitments
-func (r *round4) ProcessMessage(from party.ID, content round.Content) error {
+func (r *round4) ProcessMessage(from party.ID, content message.Content) error {
 	body := content.(*Keygen4)
 	partyJ := r.Parties[from]
 
@@ -81,7 +82,7 @@ func (r *round4) ProcessMessage(from party.ID, content round.Content) error {
 //   - if refresh skip constant coefficient
 //
 // - send proofs and encryption of share for Pⱼ
-func (r *round4) GenerateMessages(out chan<- *round.Message) error {
+func (r *round4) GenerateMessages(out chan<- *message.Message) error {
 	// RID = ⊕ⱼ RIDⱼ
 	var rid RID
 	for _, partyJ := range r.Parties {
@@ -142,7 +143,7 @@ func (r *round4) Next() round.Round {
 	}
 }
 
-func (r *round4) MessageContent() round.Content {
+func (r *round4) MessageContent() message.Content {
 	return &Keygen4{}
 }
 
