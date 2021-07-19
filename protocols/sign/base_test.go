@@ -1,12 +1,15 @@
 package sign
 
 import (
+	"crypto/rand"
 	"reflect"
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
@@ -14,31 +17,28 @@ import (
 )
 
 type testParty struct {
-	id party.ID
-	r  round.Round
+	r round.Round
 
 	k, gamma, x, delta, chi, sigma *curve.Scalar
 }
 
 var roundTypes = []reflect.Type{
-	reflect.TypeOf((*round1)(nil)),
-	reflect.TypeOf((*round2)(nil)),
-	reflect.TypeOf((*round3)(nil)),
-	reflect.TypeOf((*round4)(nil)),
-	reflect.TypeOf((*output)(nil)),
+	reflect.TypeOf(&round1{}),
+	reflect.TypeOf(&round2{}),
+	reflect.TypeOf(&round3{}),
+	reflect.TypeOf(&round4{}),
+	reflect.TypeOf(&output{}),
 }
 
-func processRound(t *testing.T, parties []*testParty, expectedRoundType reflect.Type) {
+func processRound(t *testing.T, parties map[party.ID]*testParty, expectedRoundType reflect.Type) {
 	N := len(parties)
 	t.Logf("starting round %v", expectedRoundType)
 	// get the second set of  messages
-	outgoingMessages := make([]round.Message, 0, N*N)
+	out := make(chan *round.Message, N*N)
 	for _, partyJ := range parties {
-		require.EqualValues(t, reflect.TypeOf(partyJ.r), expectedRoundType)
-		messagesJ, err := partyJ.r.GenerateMessages()
+		assert.EqualValues(t, expectedRoundType, reflect.TypeOf(partyJ.r))
+		err := partyJ.r.GenerateMessages(out)
 		require.NoError(t, err, "failed to generate messages")
-
-		outgoingMessages = append(outgoingMessages, messagesJ...)
 
 		switch r := partyJ.r.(type) {
 		case *round1:
@@ -53,28 +53,30 @@ func processRound(t *testing.T, parties []*testParty, expectedRoundType reflect.
 
 		}
 
-		newRound, err := partyJ.r.Finalize()
+		newRound := partyJ.r.Next()
 		require.NoError(t, err, "failed to generate messages")
 		if newRound != nil {
 			partyJ.r = newRound
 		}
 	}
+	close(out)
 
-	for _, msg := range outgoingMessages {
+	for msg := range out {
 		msgBytes, err := proto.Marshal(msg)
 		require.NoError(t, err, "failed to marshal message")
-		for _, partyJ := range parties {
-			var unmarshalledMessage Message
-			require.NoError(t, proto.Unmarshal(msgBytes, &unmarshalledMessage), "failed to unmarshal message")
-			h := unmarshalledMessage.GetHeader()
-			require.NotNilf(t, h, "header is nil")
-			if h.From == partyJ.id {
+		for idJ, partyJ := range parties {
+			var m round.Message
+			require.NoError(t, proto.Unmarshal(msgBytes, &m), "failed to unmarshal message")
+			if m.From == idJ {
 				continue
 			}
-			if h.To != "" && h.To != partyJ.id {
-				continue
+			if len(m.To) == 0 || party.IDSlice(m.To).Contains(idJ) {
+				content := partyJ.r.MessageContent()
+				err = msg.UnmarshalContent(content)
+				require.NoError(t, err)
+				require.NoError(t, partyJ.r.ProcessMessage(msg.From, content))
 			}
-			require.NoError(t, partyJ.r.ProcessMessage(&unmarshalledMessage))
+
 		}
 	}
 
@@ -82,31 +84,36 @@ func processRound(t *testing.T, parties []*testParty, expectedRoundType reflect.
 }
 
 func TestRound(t *testing.T) {
-	N := 3
-	T := 2
+	N := 2
+	T := 1
+
+	rid := make([]byte, params.SecBytes)
+	_, _ = rand.Read(rid)
+
+	t.Log("generating sessions")
+	sessions, secrets, err := session.FakeSession(N, T)
+	require.NoError(t, err)
+	partyIDs := make([]party.ID, 0, T+1)
+	for id := range sessions {
+		partyIDs = append(partyIDs, id)
+		if len(partyIDs) == T+1 {
+			break
+		}
+	}
+	t.Log("done generating sessions")
 
 	message := []byte("hello")
 	messageHash := make([]byte, 64)
 	sha3.ShakeSum128(messageHash, message)
 
-	sessions := session.FakeSign(N, T, messageHash)
-
-	x := curve.NewScalar()
-
-	parties := make([]*testParty, 0, T+1)
-	for _, s := range sessions {
-		r, err := Create(s)
-		if err != nil {
-			t.Error(err)
-		}
-
-		x.Add(s.Secret().ECDSA, x)
-
-		parties = append(parties, &testParty{
-			id: s.SelfID(),
-			r:  r,
-		})
+	parties := make(map[party.ID]*testParty, N)
+	for _, partyID := range partyIDs {
+		s := sessions[partyID]
+		r, _, err := StartSign(s, secrets[partyID], partyIDs, messageHash)()
+		require.NoError(t, err, "round creation should not result in an error")
+		parties[partyID] = &testParty{r: r}
 	}
+
 	for _, roundType := range roundTypes {
 		processRound(t, parties, roundType)
 	}

@@ -1,9 +1,11 @@
 package sign
 
 import (
-	"fmt"
+	"errors"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 	zkenc "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
 	zklogstar "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
 )
@@ -20,29 +22,27 @@ type round2 struct {
 //
 // - store Kⱼ, Gⱼ
 // - verify zkenc(Kⱼ)
-func (r *round2) ProcessMessage(msg round.Message) error {
-	j := msg.GetHeader().From
-	partyJ := r.parties[j]
-	body := msg.(*Message).GetSign1()
+func (r *round2) ProcessMessage(from party.ID, content round.Content) error {
+	body := content.(*Sign2)
+	partyJ := r.Parties[from]
 
-	if !body.ProofEnc.Verify(r.Hash.CloneWithID(j), zkenc.Public{
+	if !body.ProofEnc.Verify(r.HashForID(from), zkenc.Public{
 		K:      body.K,
 		Prover: partyJ.Public.Paillier,
 		Aux:    r.Self.Public.Pedersen,
 	}) {
-		return fmt.Errorf("sign.round2.ProcessMessage(): party %s: enc proof failed to verify", j)
+		return ErrRound2ZKEnc
 	}
 
 	partyJ.K = body.K
 	partyJ.G = body.G
-
-	return nil // message is properly handled
+	return nil
 }
 
 // GenerateMessages implements round.Round
 //
 // - compute Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
-func (r *round2) GenerateMessages() ([]round.Message, error) {
+func (r *round2) GenerateMessages(out chan<- *round.Message) error {
 	// compute Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
 	// The papers says that we need to reliably broadcast this data, however unless we use
 	// a system like white-city, we can't actually do this.
@@ -59,10 +59,10 @@ func (r *round2) GenerateMessages() ([]round.Message, error) {
 		X:   r.GammaShare.BigInt(),
 		Rho: r.GNonce,
 	}
+
 	// Broadcast the message we created in round1
-	messages := make([]round.Message, 0, r.S.N()-1)
-	for j, partyJ := range r.parties {
-		if j == r.SelfID {
+	for j, partyJ := range r.Parties {
+		if j == r.Self.ID {
 			continue
 		}
 
@@ -71,25 +71,26 @@ func (r *round2) GenerateMessages() ([]round.Message, error) {
 		partyJ.ChiMtA = NewMtA(r.Secret.ECDSA, r.Self.ECDSA, partyJ.K,
 			r.Self.Public, partyJ.Public)
 
-		proofLog := zklogstar.NewProof(r.Hash.CloneWithID(r.SelfID), zklogstar.Public{
+		proofLog := zklogstar.NewProof(r.HashForID(r.Self.ID), zklogstar.Public{
 			C:      r.Self.G,
 			X:      r.Self.BigGammaShare,
 			Prover: r.Self.Paillier,
 			Aux:    partyJ.Pedersen,
 		}, zkPrivate)
 
-		sign2 := &Sign2{
+		msg := r.MarshalMessage(&Sign3{
 			EchoHash:      r.EchoHash,
 			BigGammaShare: r.Self.BigGammaShare,
-			DeltaMtA:      partyJ.DeltaMtA.ProofAffG(r.Hash.CloneWithID(r.SelfID), nil),
-			ChiMtA:        partyJ.ChiMtA.ProofAffG(r.Hash.CloneWithID(r.SelfID), nil),
+			DeltaMtA:      partyJ.DeltaMtA.ProofAffG(r.HashForID(r.Self.ID), nil),
+			ChiMtA:        partyJ.ChiMtA.ProofAffG(r.HashForID(r.Self.ID), nil),
 			ProofLog:      proofLog,
+		}, partyJ.ID)
+		if err := r.SendMessage(msg, out); err != nil {
+			return err
 		}
-
-		messages = append(messages, NewMessageSign2(r.SelfID, partyJ.ID, sign2))
 	}
 
-	return messages, nil
+	return nil
 }
 
 // Next implements round.Round

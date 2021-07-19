@@ -1,6 +1,7 @@
 package sign
 
 import (
+	"crypto/ecdsa"
 	"crypto/rand"
 	"math/big"
 
@@ -12,11 +13,17 @@ import (
 )
 
 type round1 struct {
-	*round.BaseRound
+	*round.Helper
 
-	Self    *LocalParty
-	parties map[party.ID]*LocalParty
-	Secret  *party.Secret
+	Self *LocalParty
+
+	Secret *party.Secret
+
+	PublicKey *ecdsa.PublicKey
+
+	Parties map[party.ID]*LocalParty
+
+	SignerIDs party.IDSlice
 
 	// GammaShare = γᵢ <- 𝔽
 	GammaShare *curve.Scalar
@@ -34,8 +41,8 @@ type round1 struct {
 }
 
 // ProcessMessage implements round.Round
-func (r *round1) ProcessMessage(round.Message) error {
-	// In the first round, no messages are expected.
+func (r *round1) ProcessMessage(party.ID, round.Content) error {
+	// In the first protocol, no messages are expected.
 	return nil
 }
 
@@ -53,7 +60,7 @@ func (r *round1) ProcessMessage(round.Message) error {
 //
 // In the next round, we send a hash of all the {Kⱼ,Gⱼ}ⱼ.
 // In two rounds, we compare the hashes received and if they are different then we abort.
-func (r *round1) GenerateMessages() ([]round.Message, error) {
+func (r *round1) GenerateMessages(out chan<- *round.Message) error {
 	// γᵢ <- 𝔽,
 	// Γᵢ = [γᵢ]⋅G
 	r.GammaShare, r.Self.BigGammaShare = sample.ScalarPointPair(rand.Reader)
@@ -65,14 +72,12 @@ func (r *round1) GenerateMessages() ([]round.Message, error) {
 	// Kᵢ = Encᵢ(kᵢ;ρᵢ)
 	r.Self.K, r.KNonce = r.Self.Paillier.Enc(r.KShare.BigInt())
 
-	messages := make([]round.Message, 0, r.S.N()-1)
-
-	for j, partyJ := range r.parties {
-		if j == r.SelfID {
+	for j, partyJ := range r.Parties {
+		if j == r.Self.ID {
 			continue
 		}
 
-		proof := zkenc.NewProof(r.Hash.CloneWithID(r.SelfID), zkenc.Public{
+		proof := zkenc.NewProof(r.HashForID(r.Self.ID), zkenc.Public{
 			K:      r.Self.K,
 			Prover: r.Self.Paillier,
 			Aux:    partyJ.Pedersen,
@@ -81,16 +86,18 @@ func (r *round1) GenerateMessages() ([]round.Message, error) {
 			Rho: r.KNonce,
 		})
 
-		msg1 := NewMessageSign1(r.SelfID, j, &Sign1{
+		// ignore error
+		msg := r.MarshalMessage(&Sign2{
 			ProofEnc: proof,
 			K:        r.Self.K,
 			G:        r.Self.G,
-		})
-
-		messages = append(messages, msg1)
+		}, j)
+		if err := r.SendMessage(msg, out); err != nil {
+			return err
+		}
 	}
 
-	return messages, nil
+	return nil
 }
 
 // Next implements round.Round
