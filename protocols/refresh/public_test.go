@@ -1,4 +1,4 @@
-package party
+package refresh
 
 import (
 	"crypto/rand"
@@ -12,6 +12,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 )
 
@@ -26,7 +27,7 @@ func TestPublic_Validate(t *testing.T) {
 	N2.Add(N2, N)
 	p2 := paillier.NewPublicKey(N2)
 	type fields struct {
-		ID       ID
+		ID       party.ID
 		ECDSA    *curve.Point
 		Paillier *paillier.PublicKey
 		Pedersen *pedersen.Parameters
@@ -139,7 +140,7 @@ func TestPublic_MarshalJSON(t *testing.T) {
 	pk := sk.PublicKey
 	ped, _ := sk.GeneratePedersen()
 	p := Public{
-		ID:       RandomIDs(1)[0],
+		ID:       party.RandomIDs(1)[0],
 		ECDSA:    curve.NewIdentityPoint().ScalarBaseMult(sample.Scalar(rand.Reader)),
 		Paillier: pk,
 		Pedersen: ped,

@@ -1,4 +1,4 @@
-package party
+package refresh
 
 import (
 	"errors"
@@ -6,10 +6,11 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 )
 
 type Secret struct {
-	ID ID `json:"id"`
+	ID party.ID `json:"id"`
 
 	// ECDSA is a party's share xᵢ of the secret ECDSA x
 	ECDSA *curve.Scalar `json:"ecdsa"`

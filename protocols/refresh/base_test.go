@@ -77,7 +77,7 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
 	}
 
 	newSessions := make([]*Session, 0, N)
-	newSecrets := make([]*party.Secret, 0, N)
+	newSecrets := make([]*Secret, 0, N)
 	for _, r := range rounds {
 		newSessions = append(newSessions, r.(*output).newSession)
 		newSecrets = append(newSecrets, r.(*output).newSecret)

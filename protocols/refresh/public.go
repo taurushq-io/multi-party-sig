@@ -1,4 +1,4 @@
-package party
+package refresh
 
 import (
 	"encoding/json"
@@ -8,12 +8,13 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 )
 
 type Public struct {
 	// ID of the party this data is associated with
-	ID ID
+	ID party.ID
 
 	// ECDSA public key, may be nil if the keygen has not run yet
 	ECDSA *curve.Point
@@ -99,7 +100,7 @@ var _ json.Marshaler = (*Public)(nil)
 var _ json.Unmarshaler = (*Public)(nil)
 
 type jsonParty struct {
-	ID    ID           `json:"id"`
+	ID    party.ID     `json:"id"`
 	ECDSA *curve.Point `json:"ecdsa"`
 	N     []byte       `json:"n"`
 	S     []byte       `json:"s"`

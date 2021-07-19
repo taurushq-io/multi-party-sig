@@ -36,7 +36,7 @@ var (
 type LocalParty struct {
 	// Public is the struct for the new refreshed data. The Paillier and Pedersen fields are ignored.
 	// The ECDSA field is the previous public key share if a refresh is being done, and the point at infinity otherwise.
-	*party.Public
+	*Public
 
 	// SchnorrCommitments is the Aⱼ used in the proof of knowledge in the last round
 	SchnorrCommitments *curve.Point // Aⱼ
@@ -71,7 +71,7 @@ func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.S
 		for _, idJ := range partyIDs {
 			// Set the public data to a clone of the current data
 			parties[idJ] = &LocalParty{
-				Public: &party.Public{
+				Public: &Public{
 					ID:    idJ,
 					ECDSA: curve.NewIdentityPoint(),
 				},
@@ -85,7 +85,7 @@ func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.S
 			SID:     SID,
 			Self:    parties[selfID],
 			Parties: parties,
-			Secret: &party.Secret{
+			Secret: &Secret{
 				ID:    selfID,
 				ECDSA: curve.NewScalar(),
 			},
@@ -96,7 +96,7 @@ func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.S
 	}
 }
 
-func StartRefresh(s *Session, secret *party.Secret) protocol.StartFunc {
+func StartRefresh(s *Session, secret *Secret) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
 		selfID := secret.ID
 
@@ -104,7 +104,7 @@ func StartRefresh(s *Session, secret *party.Secret) protocol.StartFunc {
 		for idJ, publicJ := range s.public {
 			// Set the public data to a clone of the current data
 			parties[idJ] = &LocalParty{
-				Public: &party.Public{
+				Public: &Public{
 					ID:    idJ,
 					ECDSA: curve.NewIdentityPoint().Set(publicJ.ECDSA),
 				},
@@ -124,7 +124,7 @@ func StartRefresh(s *Session, secret *party.Secret) protocol.StartFunc {
 			SID:     s.sid,
 			Self:    parties[selfID],
 			Parties: parties,
-			Secret: &party.Secret{
+			Secret: &Secret{
 				ID:    selfID,
 				ECDSA: curve.NewScalar().Set(secret.ECDSA),
 			},
