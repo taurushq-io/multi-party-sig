@@ -5,6 +5,10 @@ package sign
 
 import (
 	fmt "fmt"
+	io "io"
+	math "math"
+	math_bits "math/bits"
+
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_taurusgroup_cmp_ecdsa_pkg_math_curve "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -12,9 +16,6 @@ import (
 	affg "github.com/taurusgroup/cmp-ecdsa/pkg/zk/affg"
 	enc "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
 	logstar "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
-	io "io"
-	math "math"
-	math_bits "math/bits"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
