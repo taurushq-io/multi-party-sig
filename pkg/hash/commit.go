@@ -7,7 +7,6 @@ import (
 	"io"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 )
 
 type (
@@ -38,8 +37,8 @@ func (Decommitment) Domain() string {
 }
 
 // Commit creates a commitment to data, and returns a commitment hash, and a decommitment string such that
-// commitment = h(id, data, decommitment)
-func (hash *Hash) Commit(id party.ID, data ...interface{}) (Commitment, Decommitment, error) {
+// commitment = h(data, decommitment)
+func (hash *Hash) Commit(data ...interface{}) (Commitment, Decommitment, error) {
 	var err error
 	decommitment := Decommitment(make([]byte, params.SecBytes))
 
@@ -47,7 +46,7 @@ func (hash *Hash) Commit(id party.ID, data ...interface{}) (Commitment, Decommit
 		return nil, nil, fmt.Errorf("hash.Commit: failed to generate decommitment: %w", err)
 	}
 
-	h := hash.CloneWithID(id)
+	h := hash.Clone()
 
 	for _, item := range data {
 		if _, err = h.WriteAny(item); err != nil {
@@ -63,14 +62,14 @@ func (hash *Hash) Commit(id party.ID, data ...interface{}) (Commitment, Decommit
 }
 
 // Decommit verifies that the commitment corresponds to the data and decommitment such that
-// commitment = h(id, data, decommitment)
-func (hash *Hash) Decommit(id party.ID, c Commitment, d Decommitment, data ...interface{}) bool {
+// commitment = h(data, decommitment)
+func (hash *Hash) Decommit(c Commitment, d Decommitment, data ...interface{}) bool {
 	var err error
 	if len(c) != params.HashBytes || len(d) != params.SecBytes {
 		return false
 	}
 
-	h := hash.CloneWithID(id)
+	h := hash.Clone()
 
 	for _, item := range data {
 		if _, err = h.WriteAny(item); err != nil {
