@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"math/big"
 	"testing"
+	"testing/quick"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,6 +42,23 @@ func TestCiphertextValidate(t *testing.T) {
 	C.Set(paillierPublic.nSquared)
 	_, err = paillierSecret.Dec(ct)
 	assert.Error(t, err, "decrypting N^2 should fail")
+}
+
+func testEncDecRoundTrip(x uint64) bool {
+	m := new(big.Int).SetUint64(x)
+	ciphertext, _ := paillierPublic.Enc(m)
+	shouldBeM, err := paillierSecret.Dec(ciphertext)
+	if err != nil {
+		return false
+	}
+	return m.Cmp(shouldBeM) == 0
+}
+
+func TestEncDecRoundTrip(t *testing.T) {
+	err := quick.Check(testEncDecRoundTrip, &quick.Config{})
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 func TestCiphertext_Enc(t *testing.T) {
