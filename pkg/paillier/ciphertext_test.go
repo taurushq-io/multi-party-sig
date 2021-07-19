@@ -44,8 +44,8 @@ func TestCiphertextValidate(t *testing.T) {
 	assert.Error(t, err, "decrypting N^2 should fail")
 }
 
-func testEncDecRoundTrip(x uint64) bool {
-	m := new(big.Int).SetUint64(x)
+func testEncDecRoundTrip(x int64) bool {
+	m := new(big.Int).SetInt64(x)
 	ciphertext, _ := paillierPublic.Enc(m)
 	shouldBeM, err := paillierSecret.Dec(ciphertext)
 	if err != nil {
