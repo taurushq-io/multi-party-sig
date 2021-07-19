@@ -1,108 +1,132 @@
 package refresh
 
 import (
+	"fmt"
+	"math/rand"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
 )
 
-type testParty struct {
-	id party.ID
-	r  round.Round
-}
-
 var roundTypes = []reflect.Type{
-	reflect.TypeOf((*round1)(nil)),
-	reflect.TypeOf((*round2)(nil)),
-	reflect.TypeOf((*round3)(nil)),
-	reflect.TypeOf((*round4)(nil)),
-	reflect.TypeOf((*round5)(nil)),
-	reflect.TypeOf((*output)(nil)),
+	reflect.TypeOf(&round1{}),
+	reflect.TypeOf(&round2{}),
+	reflect.TypeOf(&round3{}),
+	reflect.TypeOf(&round4{}),
+	reflect.TypeOf(&round5{}),
+	reflect.TypeOf(&output{}),
 }
 
-func processRound(t *testing.T, parties []*testParty, expectedRoundType reflect.Type) {
-	N := len(parties)
+func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundType reflect.Type) {
+	N := len(rounds)
 	t.Logf("starting round %v", expectedRoundType)
 	// get the second set of  messages
-	outgoingMessages := make([]round.Message, 0, N*N)
-	for _, partyJ := range parties {
-		require.EqualValues(t, reflect.TypeOf(partyJ.r), expectedRoundType)
-		messagesJ, err := partyJ.r.GenerateMessages()
+	out := make(chan *round.Message, N*N)
+	for idJ, r := range rounds {
+		require.EqualValues(t, expectedRoundType, reflect.TypeOf(r))
+		err := r.GenerateMessages(out)
 		require.NoError(t, err, "failed to generate messages")
 
-		outgoingMessages = append(outgoingMessages, messagesJ...)
-
-		newRound, err := partyJ.r.Finalize()
+		newRound := r.Next()
 		require.NoError(t, err, "failed to generate messages")
 		if newRound != nil {
-			partyJ.r = newRound
+			rounds[idJ] = newRound
 		}
 	}
+	close(out)
 
-	for _, msg := range outgoingMessages {
+	for msg := range out {
 		msgBytes, err := proto.Marshal(msg)
 		require.NoError(t, err, "failed to marshal message")
-		for _, partyJ := range parties {
-			var unmarshalledMessage Message
-			require.NoError(t, proto.Unmarshal(msgBytes, &unmarshalledMessage), "failed to unmarshal message")
-			h := unmarshalledMessage.GetHeader()
-			require.NotNilf(t, h, "header is nil")
-			if h.From == partyJ.id {
+		for idJ, r := range rounds {
+			var m round.Message
+			require.NoError(t, proto.Unmarshal(msgBytes, &m), "failed to unmarshal message")
+			if m.From == idJ {
 				continue
 			}
-			if h.To != "" && h.To != partyJ.id {
-				continue
+			if len(msg.To) == 0 || party.IDSlice(msg.To).Contains(idJ) {
+				content := r.MessageContent()
+				err = msg.UnmarshalContent(content)
+				require.NoError(t, err)
+				require.NoError(t, r.ProcessMessage(msg.From, content))
 			}
-			require.NoError(t, partyJ.r.ProcessMessage(&unmarshalledMessage))
 		}
 	}
 
 	t.Logf("round %v done", expectedRoundType)
 }
 
-func checkOutput(t *testing.T, parties []*testParty) {
-	N := len(parties)
-	//// check rid is the same for all
-	var rho []byte
-	for idx, p := range parties {
-		if idx == 0 {
-			rho = p.r.(*output).rho
+func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
+	N := len(rounds)
+	// check rid is the same for all
+	var rid []byte
+	for _, r := range rounds {
+		if rid == nil {
+			rid = r.(*output).rid[:]
 		} else {
-			require.EqualValues(t, rho, p.r.(*output).rho, "rhos should be the same")
+			require.EqualValues(t, rid, r.(*output).rid[:], "rhos should be the same")
 		}
 	}
 
-	newSessions := make([]session.Session, 0, N)
-	for _, p := range parties {
-		newSessions = append(newSessions, p.r.(*output).S)
+	newSessions := make([]*session.Session, 0, N)
+	newSecrets := make([]*party.Secret, 0, N)
+	for _, r := range rounds {
+		newSessions = append(newSessions, r.(*output).newSession)
+		newSecrets = append(newSecrets, r.(*output).newSecret)
 	}
 
 	firstSession := newSessions[0]
-	for _, s := range newSessions {
-		assert.NoError(t, s.Validate(), "failed to validate new session")
+	for i, s := range newSessions {
+		assert.NoError(t, s.ValidateSecret(newSecrets[i]), "failed to validate new session")
 		assert.Equal(t, firstSession.SSID(), s.SSID(), "ssid mismatch")
-		assert.True(t, s.Secret().KeygenDone(), "new session should be in refreshed state")
+		assert.True(t, newSecrets[i].KeygenDone(), "new session should be in refreshed state")
 	}
 }
 
 func TestKeygen(t *testing.T) {
-	N := 3
-	sessions := session.FakeKeygen(N, N-1)
+	N := 2
+	partyIDs := party.RandomIDs(N)
 
-	parties := make([]*testParty, N)
-	for _, s := range sessions {
-		r, err := Create(s)
+	rounds := make(map[party.ID]round.Round, N)
+	for _, partyID := range partyIDs {
+		r, _, err := StartKeygen(partyIDs, N-1, partyID)()
 		require.NoError(t, err, "round creation should not result in an error")
-		parties[s.SelfIndex()] = &testParty{
-			id: s.SelfID(),
-			r:  r,
-		}
+		rounds[partyID] = r
+
+	}
+
+	for _, roundType := range roundTypes {
+		processRound(t, rounds, roundType)
+	}
+	checkOutput(t, rounds)
+}
+
+func TestRefresh(t *testing.T) {
+
+	N := 2
+	T := N - 1
+
+	rid := make([]byte, params.SecBytes)
+	rand.Read(rid)
+
+	sessions, secrets, err := session.FakeSession(N, T)
+	require.NoError(t, err)
+
+	parties := make(map[party.ID]round.Round, N)
+	for partyID, s := range sessions {
+		r, _, err := StartRefresh(s, secrets[partyID])()
+		require.NoError(t, err, "round creation should not result in an error")
+		parties[partyID] = r
+
 	}
 
 	for _, roundType := range roundTypes {
@@ -111,22 +135,88 @@ func TestKeygen(t *testing.T) {
 	checkOutput(t, parties)
 }
 
-func TestRefresh(t *testing.T) {
-	N := 3
-	sessions := session.FakeRefresh(N, N-1)
+func TestProtocol(t *testing.T) {
+	ids := party.IDSlice{"a", "b"}
+	threshold := 1
+	ps := map[party.ID]*protocol.Handler{}
 
-	parties := make([]*testParty, N)
-	for _, s := range sessions {
-		r, err := Create(s)
-		require.NoError(t, err, "round creation should not result in an error")
-		parties[s.SelfIndex()] = &testParty{
-			id: s.SelfID(),
-			r:  r,
+	handleMessage := func(msg *round.Message) {
+		if msg == nil {
+			return
+		}
+		for id, p := range ps {
+			if msg.From == id {
+				continue
+			}
+			if len(msg.To) == 0 || party.IDSlice(msg.To).Contains(id) {
+				err := p.Update(msg)
+				assert.NoError(t, err)
+			}
 		}
 	}
 
-	for _, roundType := range roundTypes {
-		processRound(t, parties, roundType)
+	wg := new(sync.WaitGroup)
+	getMessages := func(p *protocol.Handler) {
+		for msg := range p.Listen() {
+			fmt.Println("\t\t\tchan", msg)
+			handleMessage(msg)
+		}
+		fmt.Println("done")
+		wg.Done()
+		//for {
+		//	select {
+		//	case <-p.Done():
+		//		return
+		//	case msg := <-p.Listen():
+		//	}
+		//}
 	}
-	checkOutput(t, parties)
+
+	for _, id := range ids {
+		p, err := protocol.NewHandler(StartKeygen(ids, threshold, id))
+		require.NoError(t, err)
+		ps[id] = p
+	}
+	for _, p := range ps {
+		wg.Add(1)
+		go getMessages(p)
+	}
+	wg.Wait()
+
+	for _, p := range ps {
+		r, err := p.Result()
+		assert.NoError(t, err)
+		assert.IsType(t, &Result{}, r)
+		res := r.(*Result)
+		err = res.Session.Validate()
+		assert.NoError(t, err)
+		err = res.Session.ValidateSecret(res.Secret)
+		assert.NoError(t, err)
+	}
+
+	newPs := map[party.ID]*protocol.Handler{}
+	for id, p := range ps {
+		r, _ := p.Result()
+		res := r.(*Result)
+		p2, err := protocol.NewHandler(StartRefresh(res.Session, res.Secret))
+		require.NoError(t, err)
+		newPs[id] = p2
+	}
+	ps = newPs
+	for _, p := range ps {
+		wg.Add(1)
+		go getMessages(p)
+	}
+	wg.Wait()
+
+	for _, p := range ps {
+		r, err := p.Result()
+		assert.NoError(t, err)
+		assert.IsType(t, &Result{}, r)
+		res := r.(*Result)
+		err = res.Session.Validate()
+		assert.NoError(t, err)
+		err = res.Session.ValidateSecret(res.Secret)
+		assert.NoError(t, err)
+	}
 }

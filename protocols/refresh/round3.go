@@ -2,9 +2,13 @@ package refresh
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
 type round3 struct {
@@ -14,29 +18,31 @@ type round3 struct {
 // ProcessMessage implements round.Round
 //
 // - verify Hash(SSID, V₁, …, Vₙ) against received hash
-func (r *round3) ProcessMessage(msg round.Message) error {
-	j := msg.GetHeader().From
-	content := msg.(*Message).GetRefresh2()
+func (r *round3) ProcessMessage(from party.ID, content round.Content) error {
+	body := content.(*Keygen3)
 
-	if !bytes.Equal(content.HashEcho, r.EchoHash) {
-		return fmt.Errorf("refresh.round3.ProcessMessage(): party %s sent different hash than ours", j)
+	if !bytes.Equal(body.HashEcho, r.EchoHash) {
+		return ErrRound3EchoHash
 	}
-
-	return nil // message is properly handled
+	return nil
 }
 
 // GenerateMessages implements round.Round
 //
 // - send all committed data
-func (r *round3) GenerateMessages() ([]round.Message, error) {
-	// Broadcast the message we created in round1
-	return NewMessageRefresh3(r.SelfID, &Refresh3{
-		Rho:                r.Self.Rho,
+func (r *round3) GenerateMessages(out chan<- *round.Message) error {
+	// Send the message we created in round1 to all
+	msg := r.MarshalMessage(&Keygen4{
+		RID:                r.Self.RID[:],
 		VSSPolynomial:      r.Self.VSSPolynomial,
 		SchnorrCommitments: r.Self.SchnorrCommitments,
-		Pedersen:           r.Self.Public.Pedersen,
+		Pedersen:           r.Self.Pedersen,
 		Decommitment:       r.Decommitment,
-	}), nil
+	}, r.OtherPartyIDs()...)
+	if err := r.SendMessage(msg, out); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Next implements round.Round

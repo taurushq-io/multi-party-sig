@@ -2,12 +2,11 @@ package refresh
 
 import (
 	"errors"
-	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
-	"github.com/taurusgroup/cmp-ecdsa/protocols/sign/signature"
 )
 
 type output struct {
@@ -17,24 +16,22 @@ type output struct {
 // ProcessMessage implements round.Round
 //
 // - verify all Schnorr proof for the new ecdsa share
-func (r *output) ProcessMessage(msg round.Message) error {
-	j := msg.GetHeader().From
-	partyJ := r.LocalParties[j]
-	body := msg.(*Message).GetRefresh5()
+func (r *output) ProcessMessage(from party.ID, content round.Content) error {
+	body := content.(*KeygenOutput)
+	partyJ := r.Parties[from]
 
-	if !zksch.Verify(r.Hash.CloneWithID(j),
+	if !zksch.Verify(r.HashForID(from),
 		partyJ.SchnorrCommitments,
-		r.newSession.Public(j).ECDSA,
+		r.newSession.Public(from).ECDSA,
 		body.Proof) {
-		return fmt.Errorf("refresh.output.ProcessMessage(): party %s proof of knowledge of share failed", j)
+		return ErrRoundOutputZKSch
 	}
-
-	return nil // message is properly handled
+	return nil
 }
 
 // GenerateMessages implements round.Round
-func (r *output) GenerateMessages() ([]round.Message, error) {
-	return nil, nil
+func (r *output) GenerateMessages(chan<- *round.Message) error {
+	return nil
 }
 
 // Next implements round.Round

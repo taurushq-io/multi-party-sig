@@ -1,7 +1,7 @@
 package refresh
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -9,6 +9,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 	zkmod "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mod"
 	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm"
 	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
@@ -16,51 +17,47 @@ import (
 
 type round5 struct {
 	*round4
-	newSession session.Session
+	newSession *session.Session
+	newSecret  *party.Secret
 }
 
 // ProcessMessage implements round.Round
 //
-// - verify all Schnorr proofs
-//   - if refresh, skip first coefficient
 // - decrypt share
 // - verify VSS
-func (r *round5) ProcessMessage(msg round.Message) error {
-	j := msg.GetHeader().From
-	partyJ := r.LocalParties[j]
-	body := msg.(*Message).GetRefresh4()
-
+func (r *round5) ProcessMessage(from party.ID, content round.Content) error {
+	body := content.(*Keygen5)
+	partyJ := r.Parties[from]
 	// decrypt share
-	xJdec, err := r.PaillierSecret.Dec(body.Share)
+	xJdec, err := r.Secret.Paillier.Dec(body.Share)
 	if err != nil {
-		return fmt.Errorf("refresh.round5.ProcessMessage(): party %s: %w", j, err)
+		return err
 	}
 	xJ := curve.NewScalarBigInt(xJdec)
 	if xJdec.Cmp(xJ.BigInt()) != 0 {
-		return fmt.Errorf("refresh.round5.ProcessMessage(): party %s: decrypted share is not in correct range", j)
+		return ErrRound5Decrypt
 	}
 
 	// verify share with VSS
-	index := r.SelfID.Scalar()
+	index := r.Self.ID.Scalar()
 	vss := partyJ.VSSPolynomial.Evaluate(index) // Fⱼ(idJ)
 	X := curve.NewIdentityPoint().ScalarBaseMult(xJ)
 	if !X.Equal(vss) {
-		return fmt.Errorf("refresh.round5.ProcessMessage(): party %s: failed to validate share from VSS", j)
+		return ErrRound5VSS
 	}
 
 	// verify zkmod
-	if !body.Mod.Verify(r.Hash.CloneWithID(j), zkmod.Public{N: partyJ.Public.Pedersen.N}) {
-		return fmt.Errorf("refresh.round5.ProcessMessage(): party %s: mod proof failed to verify", j)
+	if !body.Mod.Verify(r.HashForID(from), zkmod.Public{N: partyJ.Pedersen.N}) {
+		return ErrRound5ZKMod
 	}
 
 	// verify zkprm
-	if !body.Prm.Verify(r.Hash.CloneWithID(j), zkprm.Public{Pedersen: partyJ.Public.Pedersen}) {
-		return fmt.Errorf("refresh.round5.ProcessMessage(): party %s: prm proof failed to verify", j)
+	if !body.Prm.Verify(r.HashForID(from), zkprm.Public{Pedersen: partyJ.Pedersen}) {
+		return ErrRound5ZKPrm
 	}
 
 	partyJ.ShareReceived = xJ
-
-	return nil // message is properly handled
+	return nil
 }
 
 // GenerateMessages implements round.Round
@@ -71,73 +68,67 @@ func (r *round5) ProcessMessage(msg round.Message) error {
 // - validate Session
 // - write new ssid hash to old hash state
 // - create proof of knowledge of secret
-func (r *round5) GenerateMessages() ([]round.Message, error) {
+func (r *round5) GenerateMessages(out chan<- *round.Message) error {
 	// add all shares to our secret
-	newSecretShareECDSA := curve.NewScalar()
-	if r.isRefresh() {
-		newSecretShareECDSA.Add(newSecretShareECDSA, r.S.Secret().ECDSA)
-	}
-	for _, partyJ := range r.LocalParties {
-		newSecretShareECDSA.Add(newSecretShareECDSA, partyJ.ShareReceived)
-	}
-	newSecret := &party.Secret{
-		ID:       r.SelfID,
-		ECDSA:    newSecretShareECDSA,
-		Paillier: r.PaillierSecret,
+	newSecret := r.Secret.Clone()
+	for _, partyJ := range r.Parties {
+		newSecret.ECDSA.Add(newSecret.ECDSA, partyJ.ShareReceived)
 	}
 
 	// [F₁(X), …, Fₙ(X)]
-	allPolyExps := make([]*polynomial.Exponent, r.S.N())
-	for i, partyIDJ := range r.S.PartyIDs() {
-		partyJ := r.LocalParties[partyIDJ]
-		allPolyExps[i] = partyJ.VSSPolynomial
+	allPolyExps := make([]*polynomial.Exponent, 0, len(r.Parties))
+	for _, partyJ := range r.Parties {
+		allPolyExps = append(allPolyExps, partyJ.VSSPolynomial)
 	}
+
 	// summedPoly = F(X) = ∑Fⱼ(X)
 	summedPoly, err := polynomial.Sum(allPolyExps)
 	if err != nil {
-		return nil, fmt.Errorf("refresh.round5.GenerateMessages(): sum polynomial exponent: %w", err)
+		return err
 	}
 
-	// compute public key Xⱼ = F(j)
-	for _, idJ := range r.S.PartyIDs() {
-		index := idJ.Scalar()
-		newPublicShareECDSA := summedPoly.Evaluate(index)
-		if r.isRefresh() {
-			oldPublicShareECDSA := r.S.Public(idJ).ECDSA
-			newPublicShareECDSA.Add(newPublicShareECDSA, oldPublicShareECDSA)
-		}
-
-		r.LocalParties[idJ].Public.ECDSA = newPublicShareECDSA
+	// compute the new public key share Xⱼ = F(j) (+X'ⱼ if doing a refresh)
+	newPublic := make(map[party.ID]*party.Public, len(r.Parties))
+	for idJ, partyJ := range r.Parties {
+		newPublicJ := partyJ.Clone()
+		newPublicShareECDSA := summedPoly.Evaluate(idJ.Scalar())
+		newPublicJ.ECDSA.Add(newPublicJ.ECDSA, newPublicShareECDSA)
+		newPublic[idJ] = newPublicJ
 	}
 
-	newPublicECDSA := summedPoly.Constant()
-	if r.isRefresh() {
-		oldPublicECDSA := curve.FromPublicKey(r.S.PublicKey())
-		newPublicECDSA.Add(newPublicECDSA, oldPublicECDSA)
-	}
-	publicKey := newPublicECDSA.ToPublicKey()
-
-	public := make(map[party.ID]*party.Public, r.S.N())
-	for idJ, partyJ := range r.LocalParties {
-		public[idJ] = partyJ.Public.Clone()
-	}
-
-	r.newSession, err = session.NewRefreshSession(r.S.Threshold(), public, r.rho, publicKey, newSecret.Clone(), nil)
+	updatedSession, err := session.newSession(r.SID, newPublic, r.rid)
 	if err != nil {
-		return nil, fmt.Errorf("refresh.round5.GenerateMessages(): compute SSID: %w", err)
+		return err
 	}
-	_, _ = r.Hash.WriteAny(&writer.BytesWithDomain{
+
+	// write new ssid to hash, to bind the Schnorr proof to this new session
+	// Write SSID, selfID to temporary hash
+	h := r.Hash()
+	_, _ = h.WriteAny(&writer.BytesWithDomain{
 		TheDomain: "SSID",
-		Bytes:     r.newSession.SSID(),
-	})
+		Bytes:     updatedSession.SSID(),
+	}, r.Self.ID)
 
-	proof := zksch.Prove(r.Hash.CloneWithID(r.SelfID),
+	proof := zksch.Prove(h,
 		r.Self.SchnorrCommitments,
-		r.Self.Public.ECDSA,
+		newPublic[r.Self.ID].ECDSA,
 		r.SchnorrRand,
-		r.newSession.Secret().ECDSA)
+		newSecret.ECDSA)
 
-	return NewMessageRefresh5(r.SelfID, proof), nil
+	// send to all
+	msg := r.MarshalMessage(&KeygenOutput{Proof: proof}, r.OtherPartyIDs()...)
+	if err = r.SendMessage(msg, out); err != nil {
+		return err
+	}
+
+	r.UpdateHashState(&writer.BytesWithDomain{
+		TheDomain: "SSID",
+		Bytes:     updatedSession.SSID(),
+	})
+	r.newSession = updatedSession
+	r.newSecret = newSecret
+
+	return nil
 }
 
 // Next implements round.Round

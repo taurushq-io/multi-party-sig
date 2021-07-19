@@ -1,9 +1,13 @@
 package refresh
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
 type round2 struct {
@@ -15,14 +19,12 @@ type round2 struct {
 // ProcessMessage implements round.Round
 //
 // - store commitment Vⱼ
-func (r *round2) ProcessMessage(msg round.Message) error {
-	j := msg.GetHeader().From
-	partyJ := r.LocalParties[j]
-	content := msg.(*Message).GetRefresh1()
+func (r *round2) ProcessMessage(from party.ID, content round.Content) error {
+	body := content.(*Keygen2)
+	partyJ := r.Parties[from]
 
-	partyJ.Commitment = content.Commitment
-
-	return nil // message is properly handled
+	partyJ.Commitment = body.Commitment
+	return nil
 }
 
 // GenerateMessages implements round.Round
@@ -31,19 +33,22 @@ func (r *round2) ProcessMessage(msg round.Message) error {
 // the hash. Everybody sends a hash of all hashes.
 //
 // - send Hash(ssid, V₁, …, Vₙ)
-func (r *round2) GenerateMessages() ([]round.Message, error) {
-	var err error
+func (r *round2) GenerateMessages(out chan<- *round.Message) error {
 	// Broadcast the message we created in round1
-	h := r.Hash.Clone()
-	for _, partyID := range r.S.PartyIDs() {
-		_, err = h.WriteAny(r.LocalParties[partyID].Commitment)
-		if err != nil {
-			return nil, fmt.Errorf("refresh.round2.GenerateMessages(): write commitments to hash: %w", err)
-		}
+	h := r.Hash()
+	for _, partyID := range r.PartyIDs() {
+		_, _ = h.WriteAny(r.Parties[partyID].Commitment)
 	}
-	r.EchoHash = h.ReadBytes(nil)
+	echoHash := h.ReadBytes(nil)
 
-	return NewMessageRefresh2(r.SelfID, r.EchoHash), nil
+	// send to all
+	msg := r.MarshalMessage(&Keygen3{HashEcho: echoHash}, r.OtherPartyIDs()...)
+	if err := r.SendMessage(msg, out); err != nil {
+		return err
+	}
+
+	r.EchoHash = echoHash
+	return nil
 }
 
 // Next implements round.Round
