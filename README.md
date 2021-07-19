@@ -6,75 +6,170 @@ A Go implementation of the "CMP" protocol by [Canetti et al.](https://eprint.iac
 
 ## Usage
 
-### Sessions
+`cmp-ecdsa` was designed with the goal of supporting multiple threshold signature schemes.
+Protocols such as [`keygen`](protocols/keygen) or [`sign`](protocols/sign) are defined in the [protocols](/protocols) directory.
+These packages define:
+- one or more `Start...(...)` functions for initializing a protocol.
+- a `Result` struct containing the output.
 
-Protocol data is stored in a `session.Session` struct.
+
+### Protocol Handler
+A [`protocol.Handler`](pkg/protocol/handler.go) takes care of validating and processing messages.
+It is created by calling `protocol.NewHandler` with the `Start...(...)` function as argument:
+
+```go
+handler, err := protocol.NewHandler(Start...(arguments...))
+```
+
+The following code snippet is a simplified description of what a standard protocol execution would look like,
+and a full example is given in [/example](/example).
+
+After the handler has been created, the user can start a loop for incoming/outgoing messages. 
+The `handler.Done()` function works in the same way as `context.Done()`.
+Details about `Send()` and `Receive()` are given in the next section.
+
+```go
+// Message handling loop
+for {
+    select {
+    case <-handler.Done():                // The protocol is done executing
+        return
+    case msgOut := <-handler.Listen():    // msg to be sent to other parties
+        Send(msgOut)
+    case msgIn := <- Receive():     // handle incoming message
+        err := handler.Update(msgIn)
+        if err != nil {
+            // the message was not process but failed validation
+        }
+    }
+}
+```
+
+Once the above loops ends, the protocol execution will have either aborted due to an error, or successfully terminated.
+The outcome is described by `handler.Result()`. 
+
+If an error has occurred, it will be returned here.
+A malicious error will be described by a [`protocol.Error`](pkg/protocol/error.go), which may contain information on the responsible party.
+
+When the protocol successfully completes, the result must be cast to the appropriate type.
+```go
+// The protocol has stopped running, either because it is finished or it failed due to an error.
+r, err := handler.Result()
+
+// An error has occurred and the result is nil
+if err != nil {
+    var protocolErr protocol.Error
+    // if the error is a protocol.Error, then it may contains the identity of the misbehaving party,
+    // as well as information about when this error occurred.
+    if ok := errors.As(err, &protocolErr); ok {
+        culprit := protocolErr.Culprit
+        // if culprit != "", then we can exclude it from next executions. }
+    }
+    return
+}
+
+// cast r as the appropriate result
+result := r.(*Result)
+```
+
+### Network
+
+The messages returned by the protocol can be transmitted through a point-to-point network guaranteeing authentication and integrity.
+GGCMP21 assumes the availability of a _reliable broadcast_ channel, which guarantees that all participants receive the same broadcasted message.
+
+This assumption is a requirement for identifiable aborts, but since it is harder to guarantee in practice,
+we adapted the protocols to use a broadcast channel where each party simply sends the message to all others using a point-to-point channel.
+
+In the future, we may implement protocols that rely on this assumption.
+A `Send()` function in this case would look like the following: 
+```go
+// Send sends a message to the parties defined in msg.To
+func Send(msg *protocol.Message) {
+    // An empty msg.To fields indicated that the message must be _reliably_ broadcast to all parties. 
+    // This is a requirement for identifiable aborts.
+    if len(msg.To) == 0 {
+        // Send msg reliably to all parties
+        return
+    }  
+    
+    // Otherwise, we send the same message to each party individually
+    for _, id := range msg.To {
+        // Send message to each party using point-to-point communication	
+    }
+}
+
+// Receive returns a channel with new messages received from other participants
+func Receive() <-chan *protocol.Message
+```
 
 ### Keygen
 
-```go
-baseSession, err := session.NewKeygenSession([]party.ID{"a","b","c"}, 2, "a") (*Keygen, error) 
-if err != nil {
-	// handle error
-}
-p, err := protocols.NewProtocol(baseSession, refresh.Create)
-if err != nil {
-    // handle error
-}
-inChan, outChan, errChan := p.Start()
-// handle message passing 
-refreshedSession, err := p.GetSession()
-if err != nil {
-    // handle error
-}
-```
-### Refresh
+The [`protocols/keygen`](protocols/keygen) package can be used to perform a distributed key generation. 
+A `protocol.Handler` is created by specifying the list of `partyIDs` who will receive a share,
+and the `selfID` corresponding to this party's ID.
+
+The `threshold` defines the maximum number of corrupt parties tolerated. 
+That is, the secret key may only be reconstructed using any `threshold+1` different key shares.
+This is therefore also the minimum number of participants required to create a signature.
 
 ```go
-var oldSession session.Session
-if err != nil {
-	// handle error
-}
-p, err := protocols.NewProtocol(baseSession, refresh.Create)
-if err != nil {
-    // handle error
-}
-inChan, outChan, errChan := p.Start()
-// handle message passing 
-refreshedSession, err := p.GetSession()
-if err != nil {
-    // handle error
-}
+partyIDs := []party.ID{"a", "b", "c", "d", "e"}
+selfID := party.ID("a")
+threshold := 3
+
+keygenHandler, err := protocol.NewHandler(keygen.StartKeygen(partyIDs, threshold, selfID))
+
+// use the handler as described above
+
+keygenResult := r.(*refresh.Result)
+```
+
+The `keygenResult` has two fields: `Session` and `Secret`.
+
+A `keygen.Session` contains all public information required to sign a message with the set of parties, as well as the resulting ECDSA public key.
+All parties receive this same information, 
+
+The `keygen.Secret` contains the party's share of the ECDSA secret key, as well as the auxiliary Paillier secret key.
+
+### Refresh
+
+Participant's shares of the ECDSA private key can be refreshed after the initial key generation was successfully performed.
+It requires all share holders to be present, and the result is a new `keygen.Session`/`keygen.Secret` pair.
+
+The original ECDSA public key remains the same, but the secret is not.
+
+```go
+refreshHandler, err := protocol.NewHandler(keygen.StartRefresh(keygenResult.Session, keygenResult.Secret))
+
+// use the handler as described above
+
+refreshResult := r.(*refresh.Result)
 
 ```
 ### Sign
 
-For now, we only implement the 4 round interactive signing protocol. 
+The `sign` protocol implements the "3 Round" signing protocol from CGGMP21, without pre-signing or identifiable aborts.
+Both these features may be implemented in a future version of `cmp-ecdsa`.
+
+The resulting signature is a valid ECDSA key.
+
 ```go
+message := []byte("hello, world")
+// since threshold is 3, we need for or more parties to 
+signers := []party.ID{"a", "b", "c", "d"}
 
-var (
-	refreshedSession session.Session
-	message []byte
-	signers = []party.ID
-)
-signSession, err :=  NewSignSession(refreshedSession, signerIDs, message)
-if err != nil {
-	//handle err
-}
-p, err := protocols.NewProtocol(signSession, sign.Create)
-if err != nil {
-    // handle error
-}
-inChan, outChan, errChan := p.Start()
-// handle message passing 
-sig, err := p.GetSignature()
-if err != nil {
-    // handle error
-}
+signHandler, err := protocol.NewHandler(sign.StartSign(refreshResult.Session, refreshResult.Secret, signers, message))
+
+// use the handler as described above
+
+// get the signature from the result
+signature := r.(*sign.Result).Signature
+
+// verify using standard ecdsa.
+r, s := signature.ToRS()
+ecdsa.Verify(refreshResult.Session.PublicKey(), message, r, s)
 ```
-### Network
 
-The messages returned by the protocol can be transmitted through an authenticated point-to-point network.
 
 ## Build
 
