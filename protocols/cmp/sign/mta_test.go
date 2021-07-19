@@ -9,15 +9,15 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk"
-	"github.com/taurusgroup/cmp-ecdsa/protocols/refresh"
+	refresh2 "github.com/taurusgroup/cmp-ecdsa/protocols/cmp/refresh"
 )
 
 func Test_newMtA(t *testing.T) {
-	i := &refresh.Public{
+	i := &refresh2.Public{
 		Paillier: zk.ProverPaillierPublic,
 		Pedersen: zk.Pedersen,
 	}
-	j := &refresh.Public{
+	j := &refresh2.Public{
 		Paillier: zk.VerifierPaillierPublic,
 		Pedersen: zk.Pedersen,
 	}

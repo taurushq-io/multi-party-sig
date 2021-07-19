@@ -11,7 +11,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	zkenc "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
-	"github.com/taurusgroup/cmp-ecdsa/protocols/refresh"
+	refresh2 "github.com/taurusgroup/cmp-ecdsa/protocols/cmp/refresh"
 )
 
 type round1 struct {
@@ -19,7 +19,7 @@ type round1 struct {
 
 	Self *LocalParty
 
-	Secret *refresh.Secret
+	Secret *refresh2.Secret
 
 	PublicKey *ecdsa.PublicKey
 

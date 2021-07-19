@@ -7,7 +7,7 @@ A Go implementation of the "CMP" protocol by [Canetti et al.](https://eprint.iac
 ## Usage
 
 `cmp-ecdsa` was designed with the goal of supporting multiple threshold signature schemes.
-Protocols such as [`keygen`](protocols/keygen) or [`sign`](protocols/sign) are defined in the [protocols](/protocols) directory.
+Protocols such as [`keygen`](protocols/keygen) or [`sign`](protocols/cmp/sign) are defined in the [protocols](/protocols) directory.
 These packages define:
 - one or more `Start...(...)` functions for initializing a protocol.
 - a `Result` struct containing the output.

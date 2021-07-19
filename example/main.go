@@ -10,8 +10,8 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
-	"github.com/taurusgroup/cmp-ecdsa/protocols/refresh"
-	sign2 "github.com/taurusgroup/cmp-ecdsa/protocols/sign"
+	refresh2 "github.com/taurusgroup/cmp-ecdsa/protocols/cmp/refresh"
+	"github.com/taurusgroup/cmp-ecdsa/protocols/cmp/sign"
 )
 
 type Network interface {
@@ -100,8 +100,8 @@ func Do(id party.ID, ids party.IDSlice, threshold int, message []byte, n Network
 		return err
 	}
 
-	keygenSession := keygenResult.(*refresh.Result).Session
-	keygenSecret := keygenResult.(*refresh.Result).Secret
+	keygenSession := keygenResult.(*refresh2.Result).Session
+	keygenSecret := keygenResult.(*refresh2.Result).Secret
 
 	// REFRESH
 	hRefresh, err := protocol.NewHandler(keygen.StartRefresh(keygenSession, keygenSecret))
@@ -120,8 +120,8 @@ func Do(id party.ID, ids party.IDSlice, threshold int, message []byte, n Network
 		return err
 	}
 
-	refreshSession := refreshResult.(*refresh.Result).Session
-	refreshSecret := refreshResult.(*refresh.Result).Secret
+	refreshSession := refreshResult.(*refresh2.Result).Session
+	refreshSecret := refreshResult.(*refresh2.Result).Secret
 
 	// SIGN
 	signers := ids[:threshold+1]
@@ -129,7 +129,7 @@ func Do(id party.ID, ids party.IDSlice, threshold int, message []byte, n Network
 		return nil
 	}
 
-	hSign, err := protocol.NewHandler(sign2.StartSign(refreshSession, refreshSecret, signers, message))
+	hSign, err := protocol.NewHandler(sign.StartSign(refreshSession, refreshSecret, signers, message))
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func Do(id party.ID, ids party.IDSlice, threshold int, message []byte, n Network
 	if err != nil {
 		return err
 	}
-	signature := signResult.(*sign2.Result).Signature
+	signature := signResult.(*sign.Result).Signature
 	r, s := signature.ToRS()
 	if !ecdsa.Verify(refreshSession.PublicKey(), message, r, s) {
 		return errors.New("signature failed to verify")

@@ -10,7 +10,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
-	"github.com/taurusgroup/cmp-ecdsa/protocols/refresh"
+	refresh2 "github.com/taurusgroup/cmp-ecdsa/protocols/cmp/refresh"
 )
 
 // protocolSignID for the "3 round" variant using echo broadcast
@@ -27,7 +27,7 @@ var (
 	_ round.Round = (*output)(nil)
 )
 
-func StartSign(s *refresh.Session, secret *refresh.Secret, signers []party.ID, message []byte) protocol.StartFunc {
+func StartSign(s *refresh2.Session, secret *refresh2.Secret, signers []party.ID, message []byte) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
 		// validate session
 		if err := s.Validate(); err != nil {
@@ -65,7 +65,7 @@ func StartSign(s *refresh.Session, secret *refresh.Secret, signers []party.ID, m
 			publicJ := s.Public(partyJ)
 			lagrange := signerIDs.Lagrange(partyJ)
 			parties[partyJ] = &LocalParty{
-				Public: &refresh.Public{
+				Public: &refresh2.Public{
 					ID:       partyJ,
 					ECDSA:    curve.NewIdentityPoint().ScalarMult(lagrange, publicJ.ECDSA),
 					Paillier: publicJ.Paillier,

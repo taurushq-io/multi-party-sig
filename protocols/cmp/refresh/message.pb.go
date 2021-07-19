@@ -5,6 +5,10 @@ package refresh
 
 import (
 	fmt "fmt"
+	io "io"
+	math "math"
+	math_bits "math/bits"
+
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_taurusgroup_cmp_ecdsa_pkg_math_curve "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -13,9 +17,6 @@ import (
 	pedersen "github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 	mod "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mod"
 	prm "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm"
-	io "io"
-	math "math"
-	math_bits "math/bits"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
