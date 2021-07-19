@@ -21,7 +21,14 @@ func init() {
 	paillierPublic = paillierSecret.PublicKey
 }
 
+func reinit() {
+	paillierPublic, paillierSecret = KeyGen()
+}
+
 func TestCiphertextValidate(t *testing.T) {
+	if !testing.Short() {
+		reinit()
+	}
 
 	C := big.NewInt(0)
 	ct := &Ciphertext{C: C}
@@ -52,6 +59,9 @@ func testEncDecRoundTrip(x int64) bool {
 }
 
 func TestEncDecRoundTrip(t *testing.T) {
+	if !testing.Short() {
+		reinit()
+	}
 	err := quick.Check(testEncDecRoundTrip, &quick.Config{})
 	if err != nil {
 		t.Error(err)
@@ -72,6 +82,9 @@ func testEncDecHomomorphic(a int64, b int64) bool {
 }
 
 func TestEncDecHomomorphic(t *testing.T) {
+	if !testing.Short() {
+		reinit()
+	}
 	err := quick.Check(testEncDecHomomorphic, &quick.Config{})
 	if err != nil {
 		t.Error(err)
@@ -91,6 +104,9 @@ func testEncDecScalingHomomorphic(s int64, x int64) bool {
 }
 
 func TestEncDecScalingHomomorphic(t *testing.T) {
+	if !testing.Short() {
+		reinit()
+	}
 	err := quick.Check(testEncDecScalingHomomorphic, &quick.Config{})
 	if err != nil {
 		t.Error(err)
