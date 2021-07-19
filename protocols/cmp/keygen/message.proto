@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package refresh;
 
-option go_package = "github.com/taurusgroup/cmp-ecdsa/protocol/refresh";
+option go_package = "github.com/taurusgroup/cmp-ecdsa/protocol/keygen";
 
 option (gogoproto.stable_marshaler_all) = true;
 

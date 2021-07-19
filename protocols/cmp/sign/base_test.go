@@ -13,7 +13,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
-	refresh2 "github.com/taurusgroup/cmp-ecdsa/protocols/cmp/refresh"
 	"golang.org/x/crypto/sha3"
 )
 
