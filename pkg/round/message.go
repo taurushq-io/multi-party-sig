@@ -1,44 +1,43 @@
 package round
 
-import "github.com/gogo/protobuf/proto"
+import (
+	"errors"
+	"fmt"
 
-type (
-	MessageID     uint32
-	MessageNumber uint16
+	"github.com/gogo/protobuf/proto"
+	any "github.com/gogo/protobuf/types"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
-const (
-	MessageIDInvalid MessageID = 0
-)
-
-func (m MessageID) IsSameOrNext(m2 MessageID) bool {
-	if m.GetProtocolID() != m2.GetProtocolID() {
-		return false
-	}
-	return m >= m2
-}
-
-func (m MessageID) Number() MessageNumber {
-	return MessageNumber(m)
-}
-
-func (m MessageID) IsProtocol(id ProtocolID) bool {
-	return m.GetProtocolID() == id
-}
-
-func (m MessageID) GetProtocolID() ProtocolID {
-	return ProtocolID(m >> 16)
-}
-
-type ProtocolID uint16
-
-func (m ProtocolID) Type() MessageID {
-	return MessageID(m) << 16
-}
-
-type Message interface {
+// First is an empty message used for completeness for the first round
+type First struct {
 	proto.Message
-	GetHeader() *Header
-	ID() MessageID
+}
+
+func (m *First) Validate() error {
+	return errors.New("message: First is not a valid message")
+}
+
+func (m *First) RoundNumber() types.RoundNumber {
+	return 1
+}
+
+type Content interface {
+	proto.Message
 	Validate() error
+	RoundNumber() types.RoundNumber
+}
+
+func (m *Message) UnmarshalContent(content Content) error {
+	if err := any.UnmarshalAny(m.Content, content); err != nil {
+		return err
+	}
+	if m.RoundNumber != content.RoundNumber() {
+		return errors.New("message: given RoundNumber is inconsistent with content")
+	}
+	return content.Validate()
+}
+
+func (m Message) String() string {
+	return fmt.Sprintf("Message:\t %v -> %v \tRound: %d", m.From, m.To, m.RoundNumber)
 }
