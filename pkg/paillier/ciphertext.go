@@ -34,10 +34,10 @@ func (ct *Ciphertext) Mul(pk *PublicKey, k *big.Int) *Ciphertext {
 	if k == nil {
 		return ct
 	}
-	kNat := new(safenum.Nat).SetBig(k, k.BitLen())
+	kInt := new(safenum.Int).SetBig(k, k.BitLen())
 	c := new(safenum.Nat).SetBig(ct.C, ct.C.BitLen())
 
-	c.Exp(c, kNat, pk.nSquared)
+	c.ExpI(c, kInt, pk.nSquared)
 
 	ct.C = c.Big()
 	return ct
