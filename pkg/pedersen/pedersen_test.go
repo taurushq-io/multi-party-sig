@@ -24,8 +24,8 @@ var resultBool bool
 
 func BenchmarkPedersenCommit(b *testing.B) {
 	b.StopTimer()
-	x := sample.IntervalL(rand.Reader)
-	y := sample.IntervalL(rand.Reader)
+	x := sample.IntervalLSecret(rand.Reader)
+	y := sample.IntervalLSecret(rand.Reader)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		resultBig = benchParams.Commit(x, y)

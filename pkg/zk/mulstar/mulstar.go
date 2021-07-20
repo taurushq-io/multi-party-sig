@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"math/big"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -55,20 +56,25 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	verifier := public.Verifier
 
 	alpha := sample.IntervalLEps(rand.Reader)
+	alphaSafe := new(safenum.Int).SetBig(alpha, alpha.BitLen())
 
 	r := sample.UnitModN(rand.Reader, N0)
 
 	gamma := sample.IntervalLEpsN(rand.Reader)
+	gammaSafe := new(safenum.Int).SetBig(gamma, gamma.BitLen())
 	m := sample.IntervalLEpsN(rand.Reader)
+	mSafe := new(safenum.Int).SetBig(m, m.BitLen())
 
 	A := public.C.Clone().Mul(verifier, alpha)
 	A.Randomize(verifier, r)
 
+	xSafe := new(safenum.Int).SetBig(private.X, private.X.BitLen())
+
 	commitment := &Commitment{
 		A:  A,
 		Bx: *curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarBigInt(alpha)),
-		E:  public.Aux.Commit(alpha, gamma),
-		S:  public.Aux.Commit(private.X, m),
+		E:  public.Aux.Commit(alphaSafe, gammaSafe),
+		S:  public.Aux.Commit(xSafe, mSafe),
 	}
 
 	e := challenge(hash, public, commitment)
