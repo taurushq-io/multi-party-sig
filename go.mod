@@ -3,6 +3,7 @@ module github.com/taurusgroup/cmp-ecdsa
 go 1.14
 
 require (
+	github.com/cronokirby/safenum v0.24.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v3 v3.0.0
 	github.com/gogo/protobuf v1.3.2
