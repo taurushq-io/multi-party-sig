@@ -58,7 +58,7 @@ func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.S
 	return func() (round.Round, protocol.Info, error) {
 		SID, err := newSID(partyIDs, threshold)
 		if err != nil {
-			return nil, nil, fmt.Errorf("refresh.StartKeygen: %w", err)
+			return nil, nil, fmt.Errorf("keygen.StartKeygen: %w", err)
 		}
 		helper := round.NewHelper(
 			protocolKeygenID,

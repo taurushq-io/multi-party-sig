@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package refresh;
+package keygen;
 
 option go_package = "github.com/taurusgroup/cmp-ecdsa/protocol/keygen";
 

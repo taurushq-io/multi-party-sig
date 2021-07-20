@@ -22,22 +22,22 @@ message Commitment {
   paillier.Ciphertext By = 3;
 
   // E = sᵃ tᵍ
-  bytes E = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes E = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // S = sˣ tᵐ
-  bytes S = 5 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes S = 5 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
 
   // F = sᵇ tᵈ
-  bytes F = 6 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes F = 6 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // T = sʸ tᵘ
-  bytes T = 7 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes T = 7 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
 }
 
 message Proof {
   Commitment C = 1 [(gogoproto.embed) = true];
-  bytes Z1 = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
-  bytes Z2 = 3 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
-  bytes Z3 = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
-  bytes Z4 = 5 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
-  bytes W = 6 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
-  bytes Wy = 7 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes Z1 = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes Z2 = 3 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes Z3 = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes Z4 = 5 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes W = 6 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes Wy = 7 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
 }

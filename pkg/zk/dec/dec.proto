@@ -13,9 +13,9 @@ import "pkg/paillier/ciphertext.proto";
 
 message Commitment {
   // S = sʸ tᵘ
-  bytes S = 1 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes S = 1 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // T = sᵃ tᵛ
-  bytes T = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes T = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // A = Enc₀(α; r)
   paillier.Ciphertext A = 4;
   // Gamma = alpha (mod q)
@@ -25,9 +25,9 @@ message Commitment {
 message Proof {
   Commitment C = 1 [(gogoproto.embed) = true];
   // Z1 = α + e•y
-  bytes Z1 = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes Z1 = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // Z2 = ν + e•μ
-  bytes Z2 = 3 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes Z2 = 3 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // W  = r ρ ᵉ (mod N₀)
-  bytes W = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes W = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
 }

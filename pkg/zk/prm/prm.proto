@@ -10,6 +10,6 @@ option (gogoproto.goproto_getters_all) = false;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 message Proof {
-  bytes a = 1 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/proto.IntSlice;github.com/taurusgroup/cmp-ecdsa/proto.IntSliceCaster"];
-  bytes z = 2 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/proto.IntSlice;github.com/taurusgroup/cmp-ecdsa/proto.IntSliceCaster"];
+  bytes a = 1 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/internal/proto.IntSlice;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntSliceCaster"];
+  bytes z = 2 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/internal/proto.IntSlice;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntSliceCaster"];
 }

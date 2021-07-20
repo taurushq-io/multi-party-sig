@@ -100,8 +100,8 @@ func Do(id party.ID, ids party.IDSlice, threshold int, message []byte, n Network
 		return err
 	}
 
-	keygenSession := keygenResult.(*refresh2.Result).Session
-	keygenSecret := keygenResult.(*refresh2.Result).Secret
+	keygenSession := keygenResult.(*keygen.Result).Session
+	keygenSecret := keygenResult.(*keygen.Result).Secret
 
 	// REFRESH
 	hRefresh, err := protocol.NewHandler(keygen.StartRefresh(keygenSession, keygenSecret))
@@ -120,8 +120,8 @@ func Do(id party.ID, ids party.IDSlice, threshold int, message []byte, n Network
 		return err
 	}
 
-	refreshSession := refreshResult.(*refresh2.Result).Session
-	refreshSecret := refreshResult.(*refresh2.Result).Secret
+	refreshSession := refreshResult.(*keygen.Result).Session
+	refreshSecret := refreshResult.(*keygen.Result).Secret
 
 	// SIGN
 	signers := ids[:threshold+1]

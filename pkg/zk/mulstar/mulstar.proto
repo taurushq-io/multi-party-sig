@@ -19,17 +19,17 @@ message Commitment {
   bytes Bx = 2 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point", (gogoproto.nullable) = false];
 
   // E = sᵃ tᵍ
-  bytes E = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes E = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // S = sˣ tᵐ
-  bytes S = 5 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes S = 5 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
 }
 
 message Proof {
   Commitment C = 1 [(gogoproto.embed) = true];
   // Z = α + ex
-  bytes Z1 = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes Z1 = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // U = r⋅ρᵉ mod N
-  bytes Z2 = 3 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes Z2 = 3 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // V = s⋅ρₓᵉ
-  bytes W = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes W = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
 }
