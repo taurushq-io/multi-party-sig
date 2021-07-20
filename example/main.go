@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
@@ -43,9 +42,6 @@ func (c *chanNetwork) Next(id party.ID) <-chan *message.Message {
 func (c *chanNetwork) Send(msg *message.Message) {
 	if len(msg.To) == 0 {
 		for _, id := range c.parties {
-			if id == msg.From {
-				continue
-			}
 			c.listenChannels[id] <- msg
 		}
 	} else {
@@ -58,24 +54,22 @@ func (c *chanNetwork) Send(msg *message.Message) {
 func handlerLoop(id party.ID, h *protocol.Handler, n Network) error {
 	for {
 		select {
-		case <-h.Done():
-			fmt.Println("done")
-			return nil
-		case msg := <-h.Listen():
-			// Get new message to send
-			if msg == nil {
-				fmt.Println("Got nil")
-				continue
+		case msg, ok := <-h.Listen():
+			if !ok {
+				h.Log.Info().Msg("done")
+				return nil
 			}
 			go n.Send(msg)
 		case msg := <-n.Next(id):
 			// process new message
-			if msg == nil {
-				continue
-			}
 			err := h.Update(msg)
 			if err != nil {
-				return err
+				var roundErr protocol.Error
+				if errors.As(err, &roundErr) {
+					h.Log.Error().Err(roundErr).Msg("protocol failed")
+					return err
+				}
+				h.Log.Warn().Err(err).Msg("non fatal error error")
 			}
 		}
 	}
@@ -88,13 +82,10 @@ func Do(id party.ID, ids party.IDSlice, threshold int, message []byte, n Network
 	if err != nil {
 		return err
 	}
-	log.Println(id, "starting keygen")
 	err = handlerLoop(id, hKeygen, n)
 	if err != nil {
 		return err
 	}
-
-	log.Println(id, "finished keygen")
 	keygenResult, err := hKeygen.Result()
 	if err != nil {
 		return err
@@ -108,12 +99,10 @@ func Do(id party.ID, ids party.IDSlice, threshold int, message []byte, n Network
 	if err != nil {
 		return err
 	}
-	log.Println(id, "starting refresh")
 	err = handlerLoop(id, hRefresh, n)
 	if err != nil {
 		return err
 	}
-	log.Println(id, "finished refresh")
 
 	refreshResult, err := hRefresh.Result()
 	if err != nil {
@@ -133,12 +122,10 @@ func Do(id party.ID, ids party.IDSlice, threshold int, message []byte, n Network
 	if err != nil {
 		return err
 	}
-	log.Println(id, "starting sign")
 	err = handlerLoop(id, hSign, n)
 	if err != nil {
 		return err
 	}
-	log.Println(id, "finished sign")
 
 	signResult, err := hSign.Result()
 	if err != nil {
@@ -153,9 +140,8 @@ func Do(id party.ID, ids party.IDSlice, threshold int, message []byte, n Network
 }
 
 func main() {
-	ids := party.IDSlice{"a", "b", "c"}
-	//ids := party.IDSlice{"a", "b", "c", "d", "e"}
-	threshold := 2
+	ids := party.IDSlice{"a", "b", "c", "d", "e"}
+	threshold := 4
 	message_to_sign := []byte("hello")
 
 	net := newNetwork(ids)

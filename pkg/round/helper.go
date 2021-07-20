@@ -121,6 +121,4 @@ func (h *Helper) SSID() []byte { return h.ssid }
 func (h *Helper) N() int { return len(h.partyIDs) }
 
 // OtherPartyIDs returns a sorted list of parties that does not contain SelfID
-func (h *Helper) OtherPartyIDs() party.IDSlice {
-	return h.partyIDs.Remove(h.selfID)
-}
+func (h *Helper) OtherPartyIDs() party.IDSlice { return h.partyIDs.Remove(h.selfID) }

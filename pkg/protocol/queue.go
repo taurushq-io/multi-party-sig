@@ -7,22 +7,9 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
-type Queue interface {
-	Store(msg *message.Message) error
-	Get(roundNumber types.RoundNumber) []*message.Message
-}
-
 type queue struct {
 	messages []*message.Message
-	size     int
 	mtx      sync.Mutex
-}
-
-func newQueue(size int) *queue {
-	return &queue{
-		messages: make([]*message.Message, 0, size),
-		size:     size,
-	}
 }
 
 func (q *queue) Store(msg *message.Message) error {
@@ -39,18 +26,18 @@ func (q *queue) Store(msg *message.Message) error {
 	return nil
 }
 
-func (q *queue) Get(roundNumber types.RoundNumber) []*message.Message {
+func (q *queue) Get(roundNumber types.RoundNumber) (out []*message.Message) {
 	q.mtx.Lock()
 	defer q.mtx.Unlock()
-	outChan := make([]*message.Message, 0, q.size)
-	newMessages := make([]*message.Message, 0, q.size)
+
+	newMessages := q.messages[:0]
 	for _, msg := range q.messages {
 		if msg.RoundNumber == roundNumber {
-			outChan = append(outChan, msg)
+			out = append(out, msg)
 		} else {
 			newMessages = append(newMessages, msg)
 		}
 	}
 	q.messages = newMessages
-	return outChan
+	return out
 }
