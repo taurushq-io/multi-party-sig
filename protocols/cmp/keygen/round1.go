@@ -12,7 +12,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/zk"
 )
 
 type round1 struct {
@@ -71,15 +70,7 @@ func (r *round1) ProcessMessage(party.ID, message.Content) error {
 // - commit to message
 func (r *round1) GenerateMessages(out chan<- *message.Message) error {
 	// generate Paillier and Pedersen
-	// TODO DEBUG
-	var paillierSecret *paillier.SecretKey
-	if r.SelfID() == "a" {
-		paillierSecret = zk.ProverPaillierSecret
-	} else if r.SelfID() == "b" {
-		paillierSecret = zk.VerifierPaillierSecret
-	} else {
-		paillierSecret = paillier.NewSecretKey()
-	}
+	paillierSecret := paillier.NewSecretKey()
 	paillierPublic := paillierSecret.PublicKey
 	pedersenPublic, pedersenSecret := paillierSecret.GeneratePedersen()
 

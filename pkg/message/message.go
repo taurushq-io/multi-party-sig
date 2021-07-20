@@ -39,5 +39,5 @@ func (m *Message) UnmarshalContent(content Content) error {
 }
 
 func (m Message) String() string {
-	return fmt.Sprintf("Message:\t %v -> %v \tRound: %d", m.From, m.To, m.RoundNumber)
+	return fmt.Sprintf("message: round %d, from: %s, to %v, protocol: %s", m.RoundNumber, m.From, m.To, m.Protocol)
 }

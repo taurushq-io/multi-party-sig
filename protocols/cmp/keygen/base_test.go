@@ -163,13 +163,6 @@ func TestProtocol(t *testing.T) {
 		}
 		fmt.Println("done")
 		wg.Done()
-		//for {
-		//	select {
-		//	case <-p.Done():
-		//		return
-		//	case msg := <-p.Listen():
-		//	}
-		//}
 	}
 
 	for _, id := range ids {

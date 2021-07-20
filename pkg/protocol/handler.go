@@ -6,21 +6,25 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/rs/zerolog"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
-// StartFunc is function that creates the first round of a protocol for a given session.Session.
+// StartFunc is function that creates the first round of a protocol. It returns
 type StartFunc func() (round.Round, Info, error)
 
 type Handler struct {
-	queue Queue
+	queue *queue
 	info  Info
 	mtx   sync.Mutex
 
-	doneChan chan struct{}
+	Log zerolog.Logger
+
+	done bool
+
 	outChan  chan *message.Message
 	r        round.Round
 	result   interface{}
@@ -38,19 +42,88 @@ func NewHandler(create StartFunc) (*Handler, error) {
 		received[id] = false
 	}
 	h := &Handler{
-		queue:    newQueue(info.N() * int(info.FinalRoundNumber())),
+		queue:    &queue{},
 		info:     info,
-		doneChan: make(chan struct{}),
-		outChan:  make(chan *message.Message, info.N()),
-
+		outChan:  make(chan *message.Message, 2*info.N()),
 		r:        r,
 		received: received,
 	}
+	h.Log = zerolog.New(zerolog.NewConsoleWriter()).Level(zerolog.InfoLevel).With().
+		Str("protocol", string(info.ProtocolID())).
+		Str("party", string(info.SelfID())).
+		Int("round", int(h.roundNumber())).
+		Stack().
+		Logger()
+	h.Log.Info().Msg("start")
 
 	if err = h.finishRound(); err != nil {
 		return nil, err
 	}
 	return h, nil
+}
+
+// Listen returns a channel with outgoing messages that must be sent to other parties.
+// If Message.To is nil, then it should be reliably broadcast to all parties.
+// The channel is closed
+func (h *Handler) Listen() <-chan *message.Message {
+	h.mtx.Lock()
+	defer h.mtx.Unlock()
+	return h.outChan
+}
+
+func (h *Handler) Result() (interface{}, error) {
+	h.mtx.Lock()
+	defer h.mtx.Unlock()
+	if h.result != nil {
+		return h.result, nil
+	}
+	if h.err != nil {
+		return nil, h.err
+	}
+	return nil, errors.New("protocol: not finished")
+}
+
+func (h *Handler) Update(msg *message.Message) error {
+	h.mtx.Lock()
+	defer func() {
+		if h.err != nil {
+			h.stop()
+		}
+		h.mtx.Unlock()
+	}()
+
+	h.Log.Debug().Stringer("msg", msg).Msg("got new message")
+
+	if h.err != nil {
+		return h.err
+	}
+
+	if h.receivedAll() {
+		if err := h.finishRound(); err != nil {
+			h.Log.Error().Err(err).Msg("finish round")
+			return err
+		}
+	}
+
+	if msg != nil {
+		if err := h.validate(msg); err != nil {
+			h.Log.Error().Err(err).Stringer("msg", msg).Msg("failed to validate")
+			return err
+		}
+		if err := h.handleMessage(msg); err != nil {
+			h.Log.Error().Err(err).Stringer("msg", msg).Msg("failed to handle")
+			return err
+		}
+	}
+
+	if h.receivedAll() {
+		if err := h.finishRound(); err != nil {
+			h.Log.Error().Err(err).Stringer("msg", msg).Msg("failed to finish")
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (h *Handler) validate(msg *message.Message) error {
@@ -105,7 +178,7 @@ func (h *Handler) validate(msg *message.Message) error {
 
 func (h *Handler) handleMessage(msg *message.Message) error {
 	if msg.RoundNumber != h.roundNumber() {
-		fmt.Println("storing ", msg)
+		h.Log.Info().Stringer("msg", msg).Msg("storing message")
 		return h.queue.Store(msg)
 	}
 	if h.received[msg.From] {
@@ -129,31 +202,18 @@ func (h *Handler) handleMessage(msg *message.Message) error {
 	return nil
 }
 
-func (h *Handler) receivedAll() bool {
-	for _, received := range h.received {
-		if !received {
-			return false
-		}
-	}
-	return true
-}
-
 func (h *Handler) finishRound() error {
 	defer func() {
 		if h.err != nil || h.result != nil {
-			fmt.Println("stopping finish")
-			h.stop()
-			select {
-			case <-h.doneChan:
-				fmt.Println("closed real")
-			default:
-				fmt.Println("not closed")
+			if h.err != nil {
+				h.Log.Error().Err(h.err).Msg("finished with err")
 			}
 		}
 	}()
 	// get new messages
 	if err := h.r.GenerateMessages(h.outChan); err != nil {
 		h.err = h.wrapError(err, "")
+		h.Log.Error().Err(h.err).Msg("generate messages")
 		return h.err
 	}
 
@@ -167,12 +227,15 @@ func (h *Handler) finishRound() error {
 		if h.result == nil {
 			h.err = ErrProtocolFinalRoundNotReached
 		}
-		h.stop()
+		h.done = true
 		return h.err
 	}
 
 	h.r = nextRound
-	fmt.Println(h.info.SelfID(), "next", h.roundNumber())
+	h.Log.UpdateContext(func(c zerolog.Context) zerolog.Context {
+		return c.Int("round", int(h.roundNumber()))
+	})
+	h.Log.Info().Msg("round advanced")
 
 	// reset received state
 	newReceived := make(map[party.ID]bool, len(h.received))
@@ -181,122 +244,49 @@ func (h *Handler) finishRound() error {
 	}
 	h.received = newReceived
 
-	for _, msg := range h.queue.Get(h.roundNumber()) {
+	queued := h.queue.Get(h.roundNumber())
+	if len(queued) > 0 {
+		h.Log.Info().Int("count", len(queued)).Msg("retrieving from queue")
+	}
+	for _, msg := range queued {
 		if err := h.handleMessage(msg); err != nil {
 			return err
 		}
 	}
 
 	if h.receivedAll() {
-		fmt.Println("rec")
+		h.Log.Info().Msg("recursion")
 		return h.finishRound()
 	}
 
 	return nil
 }
 
-func (h *Handler) Update(msg *message.Message) error {
-	fmt.Println(h.info.SelfID(), h.roundNumber(), "Update", msg)
-	h.mtx.Lock()
-	defer h.mtx.Unlock()
-
-	if h.done() {
-		if h.err != nil {
-			return h.err
-		}
-		return nil
-	}
-
-	if h.receivedAll() {
-		return h.finishRound()
-	}
-
-	if msg != nil {
-		if err := h.validate(msg); err != nil {
-			return err
-		}
-		if err := h.handleMessage(msg); err != nil {
-			return err
+func (h *Handler) receivedAll() bool {
+	for _, received := range h.received {
+		if !received {
+			return false
 		}
 	}
-
-	if h.receivedAll() {
-		return h.finishRound()
-	}
-
-	return nil
+	return true
 }
 
 // wrapError wraps a Round error with information about the current round and a possible culprit
 func (h *Handler) wrapError(err error, culprit party.ID) error {
-	if err != nil {
-		return &Error{
-			RoundNumber: h.roundNumber(),
-			Culprit:     culprit,
-			Err:         err,
-		}
+	return &Error{
+		RoundNumber: h.roundNumber(),
+		Culprit:     culprit,
+		Err:         err,
 	}
-	return nil
 }
 
 func (h *Handler) roundNumber() types.RoundNumber {
 	return h.r.MessageContent().RoundNumber()
 }
 
-// Listen returns a channel with outgoing messages that must be sent to other parties.
-// If Message.To is nil, then it should be reliably broadcast to all parties.
-func (h *Handler) Listen() <-chan *message.Message {
-	h.mtx.Lock()
-	defer h.mtx.Unlock()
-	if h.done() {
-		c := make(chan *message.Message)
-		close(c)
-		return c
-	}
-	return h.outChan
-}
-
 func (h *Handler) stop() {
-	select {
-	case <-h.doneChan:
-	default:
+	if !h.done {
+		h.done = true
 		close(h.outChan)
-		close(h.doneChan)
-		fmt.Println("close")
 	}
-}
-
-func (h *Handler) Stop() {
-	h.mtx.Lock()
-	defer h.mtx.Unlock()
-	h.stop()
-}
-
-// Done can be used within a select statement to know when the protocol reaches an error or
-// is finished.
-func (h *Handler) Done() <-chan struct{} {
-	h.mtx.Lock()
-	defer h.mtx.Unlock()
-	return h.doneChan
-}
-
-func (h *Handler) done() bool {
-	select {
-	case <-h.doneChan:
-		return true
-	default:
-		return false
-	}
-}
-
-func (h *Handler) Result() (interface{}, error) {
-	h.mtx.Lock()
-	defer h.mtx.Unlock()
-	if !h.done() {
-		return nil, errors.New("protocol: not finished")
-	}
-	if h.err != nil {
-		return nil, h.err
-	}
-	return h.result, nil
 }

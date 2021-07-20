@@ -31,7 +31,8 @@ func (r *output) ProcessMessage(from party.ID, content message.Content) error {
 }
 
 // GenerateMessages implements round.Round
-func (r *output) GenerateMessages(chan<- *message.Message) error {
+func (r *output) GenerateMessages(out chan<- *message.Message) error {
+	close(out)
 	return nil
 }
 

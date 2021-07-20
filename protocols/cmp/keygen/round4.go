@@ -132,7 +132,6 @@ func (r *round4) GenerateMessages(out chan<- *message.Message) error {
 	// Write Rho to the hash state
 	r.rid = rid
 	r.UpdateHashState(rid)
-
 	return nil
 }
 
