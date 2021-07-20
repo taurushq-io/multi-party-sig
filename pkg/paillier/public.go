@@ -1,12 +1,14 @@
 package paillier
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
 	"math/big"
 
 	"github.com/cronokirby/safenum"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
@@ -63,8 +65,7 @@ func (pk PublicKey) Enc(m *big.Int) (*Ciphertext, *big.Int) {
 
 // Enc, but with Nat arguments
 func (pk PublicKey) encNat(m *safenum.Int) (*Ciphertext, *safenum.Nat) {
-	//nonce := sample.UnitModNNat(rand.Reader, pk.n)
-	nonce := oneNat
+	nonce := sample.UnitModNNat(rand.Reader, pk.n)
 	return pk.encWithNonceNat(m, nonce), nonce
 }
 
