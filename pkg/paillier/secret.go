@@ -106,7 +106,7 @@ func (sk *SecretKey) Dec(ct *Ciphertext) (*big.Int, error) {
 
 	result := new(safenum.Nat)
 	// r = c^Phi 						(mod N²)
-	result.Exp(ct.C, phi, nSquared)
+	result.Exp(ct.C.Nat, phi, nSquared)
 	// r = c^Phi - 1
 	result.Sub(result, oneNat, -1)
 	// r = [(c^Phi - 1)/N]

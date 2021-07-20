@@ -8,20 +8,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var marshaller *NatMarshaller = &NatMarshaller{}
-
 func testMarshallingNatRoundtrip(bytes []byte) bool {
 	x := new(safenum.Nat).SetBytes(bytes)
-	out := make([]byte, marshaller.Size(x))
-	_, err := marshaller.MarshalTo(x, out)
+	m := NatMarshaller{x}
+	out := make([]byte, m.Size())
+	_, err := m.MarshalTo(out)
 	if err != nil {
 		return false
 	}
-	shouldBeX, err := marshaller.Unmarshal(out)
+	err = m.Unmarshal(out)
 	if err != nil {
 		return false
 	}
-	return x.Eq(shouldBeX) == 1
+	return x.Eq(m.Nat) == 1
 }
 
 func TestMarshallingNatRoundtrip(t *testing.T) {
@@ -33,6 +32,7 @@ func TestMarshallingNatRoundtrip(t *testing.T) {
 
 func TestMarshallingNatWithSmallBufferFails(t *testing.T) {
 	x := new(safenum.Nat).SetUint64(64)
-	_, err := marshaller.MarshalTo(x, nil)
+	m := NatMarshaller{x}
+	_, err := m.MarshalTo(nil)
 	assert.NotNil(t, err)
 }

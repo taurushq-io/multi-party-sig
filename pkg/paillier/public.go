@@ -92,11 +92,11 @@ func (pk PublicKey) encWithNonceNat(m *safenum.Int, nonce *safenum.Nat) *Ciphert
 	// N + 1
 	out.C.SetNat(pk.nPlusOne)
 	// (N+1)ᵐ mod N²
-	out.C.ExpI(out.C, m, pk.nSquared)
+	out.C.ExpI(out.C.Nat, m, pk.nSquared)
 	// rho ^ N mod N²
 	rhoN := new(safenum.Nat).Exp(nonce, pk.nNat, pk.nSquared)
 	// (N+1)ᵐ rho ^ N
-	out.C.ModMul(out.C, rhoN, pk.nSquared)
+	out.C.ModMul(out.C.Nat, rhoN, pk.nSquared)
 
 	return out
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/cronokirby/safenum"
 	"github.com/stretchr/testify/assert"
+	"github.com/taurusgroup/cmp-ecdsa/internal/proto"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 )
 
@@ -37,7 +38,7 @@ func TestCiphertextValidate(t *testing.T) {
 	}
 
 	C := new(safenum.Nat)
-	ct := &Ciphertext{C}
+	ct := &Ciphertext{&proto.NatMarshaller{C}}
 	_, err := paillierSecret.Dec(ct)
 	assert.Error(t, err, "decrypting 0 should fail")
 

@@ -9,7 +9,6 @@ option (gogoproto.stable_marshaler_all) = true;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 message Ciphertext {
-  option (gogoproto.equal) = false;
   option (gogoproto.goproto_getters) = false;
-  bytes c = 1 [(gogoproto.casttypewith) = "github.com/cronokirby/safenum.Nat;github.com/taurusgroup/cmp-ecdsa/internal/proto.NatMarshaller"];
+  bytes c = 1 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/internal/proto.NatMarshaller"];
 }
