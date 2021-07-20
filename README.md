@@ -7,7 +7,7 @@ A Go implementation of the "CMP" protocol by [Canetti et al.](https://eprint.iac
 ## Usage
 
 `cmp-ecdsa` was designed with the goal of supporting multiple threshold signature schemes.
-Protocols such as [`keygen`](protocols/keygen) or [`sign`](protocols/cmp/sign) are defined in the [protocols](/protocols) directory.
+Protocols such as [`keygen`](protocols/cmp/keygen) or [`sign`](protocols/cmp/sign) are defined in the [protocols](/protocols) directory.
 These packages define:
 - one or more `Start...(...)` functions for initializing a protocol.
 - a `Result` struct containing the output.
@@ -104,7 +104,7 @@ func Receive() <-chan *protocol.Message
 
 ### Keygen
 
-The [`protocols/keygen`](protocols/keygen) package can be used to perform a distributed key generation. 
+The [`protocols/keygen`](protocols/cmp/keygen) package can be used to perform a distributed key generation. 
 A `protocol.Handler` is created by specifying the list of `partyIDs` who will receive a share,
 and the `selfID` corresponding to this party's ID.
 
@@ -121,7 +121,7 @@ keygenHandler, err := protocol.NewHandler(keygen.StartKeygen(partyIDs, threshold
 
 // use the handler as described above
 
-keygenResult := r.(*refresh.Result)
+keygenResult := r.(*keygen.Result)
 ```
 
 The `keygenResult` has two fields: `Session` and `Secret`.
@@ -143,7 +143,7 @@ refreshHandler, err := protocol.NewHandler(keygen.StartRefresh(keygenResult.Sess
 
 // use the handler as described above
 
-refreshResult := r.(*refresh.Result)
+refreshResult := r.(*keygen.Result)
 
 ```
 ### Sign

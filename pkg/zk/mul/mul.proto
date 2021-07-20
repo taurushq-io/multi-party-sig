@@ -22,9 +22,9 @@ message Commitment {
 message Proof {
   Commitment C = 1 [(gogoproto.embed) = true];
   // Z = α + ex
-  bytes Z = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes Z = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // U = r⋅ρᵉ mod N
-  bytes U = 3 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes U = 3 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // V = s⋅ρₓᵉ
-  bytes V = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes V = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
 }

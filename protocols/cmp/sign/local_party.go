@@ -3,12 +3,13 @@ package sign
 import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+	"github.com/taurusgroup/cmp-ecdsa/protocols/cmp/keygen"
 )
 
 // LocalParty is the state we store for a remote party.
 // The messages are embedded to make access to the attributes easier.
 type LocalParty struct {
-	*refresh2.Public
+	*keygen.Public
 
 	DeltaMtA, ChiMtA *MtA
 

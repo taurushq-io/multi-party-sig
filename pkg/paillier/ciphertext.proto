@@ -11,5 +11,5 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 message Ciphertext {
   option (gogoproto.equal) = false;
   option (gogoproto.goproto_getters) = false;
-  bytes c = 1 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster"];
+  bytes c = 1 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
 }
