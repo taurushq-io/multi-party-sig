@@ -38,7 +38,7 @@ func TestCiphertextValidate(t *testing.T) {
 	}
 
 	C := new(safenum.Nat)
-	ct := &Ciphertext{&proto.NatMarshaller{C}}
+	ct := &Ciphertext{&proto.NatMarshaller{Nat: C}}
 	_, err := paillierSecret.Dec(ct)
 	assert.Error(t, err, "decrypting 0 should fail")
 

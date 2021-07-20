@@ -65,7 +65,7 @@ func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *big.Int) *big.Int {
 }
 
 func NewCiphertext() *Ciphertext {
-	return &Ciphertext{C: &proto.NatMarshaller{new(safenum.Nat)}}
+	return &Ciphertext{C: &proto.NatMarshaller{Nat: new(safenum.Nat)}}
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
