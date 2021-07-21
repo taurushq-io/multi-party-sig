@@ -59,8 +59,8 @@ func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *big.Int) *big.Int {
 		nonceNat.SetBig(nonce, nonce.BitLen())
 	}
 	// c = c*r^N
-	nonceNat.Exp(nonceNat, pk.nNat, pk.nSquared)
-	ct.C.ModMul(ct.C.Nat, nonceNat, pk.nSquared)
+	tmp := new(safenum.Nat).Exp(nonceNat, pk.nNat, pk.nSquared)
+	ct.C.ModMul(ct.C.Nat, tmp, pk.nSquared)
 	return nonceNat.Big()
 }
 
