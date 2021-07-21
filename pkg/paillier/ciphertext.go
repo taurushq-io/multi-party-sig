@@ -38,7 +38,7 @@ func (ct *Ciphertext) Mul(pk *PublicKey, k *big.Int) *Ciphertext {
 
 // Equal check whether ct ≡ ctₐ (mod N²)
 func (ct *Ciphertext) Equal(ctA *Ciphertext) bool {
-	return ct.C.Eq(ctA.C.Nat) == 0
+	return ct.C.Eq(ctA.C.Nat) == 1
 }
 
 // Clone returns a deep copy of ct
