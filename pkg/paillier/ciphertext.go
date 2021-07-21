@@ -61,7 +61,7 @@ func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *big.Int) *big.Int {
 	// c = c*r^N
 	nonceNat.Exp(nonceNat, pk.nNat, pk.nSquared)
 	ct.C.ModMul(ct.C.Nat, nonceNat, pk.nSquared)
-	return nonce
+	return nonceNat.Big()
 }
 
 func NewCiphertext() *Ciphertext {
