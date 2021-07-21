@@ -1,7 +1,6 @@
 package protocol
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -29,28 +28,3 @@ func (e Error) Error() string {
 func (e Error) Unwrap() error {
 	return e.Err
 }
-
-// MessageError may be returned by Round.ProcessMessage and provides information to the caller about
-// what should be done with the message.
-type MessageError string
-
-const (
-	ErrMessageDuplicate          MessageError = "protocol: message was already handled"
-	ErrMessageUnknownSender      MessageError = "protocol: unknown sender"
-	ErrMessageNilContent         MessageError = "protocol: message content is nil"
-	ErrMessageWrongSSID          MessageError = "protocol: SSID mismatch"
-	ErrMessageWrongProtocolID    MessageError = "protocol: wrong protocol ID"
-	ErrMessageFromSelf           MessageError = "protocol: message is from Self"
-	ErrMessageNotSorted          MessageError = "protocol: msg.To field is not sorted"
-	ErrMessageWrongDestination   MessageError = "protocol: message is not intended for selfID"
-	ErrMessageInvalidRoundNumber MessageError = "protocol: round number is invalid for this protocol"
-)
-
-// Error implements error
-func (err MessageError) Error() string {
-	return string(err)
-}
-
-var (
-	ErrProtocolFinalRoundNotReached = errors.New("protocol: failed without error before reaching the final round")
-)

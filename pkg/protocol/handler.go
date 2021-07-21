@@ -127,50 +127,45 @@ func (h *Handler) Update(msg *message.Message) error {
 }
 
 func (h *Handler) validate(msg *message.Message) error {
-	if msg.Content == nil {
-		return ErrMessageNilContent
+	if err := msg.Validate(); err != nil {
+		return err
+	}
+
+	if !msg.IsFor(h.info.SelfID()) {
+		return message.ErrMessageWrongDestination
 	}
 
 	// check SSID
 	if !bytes.Equal(h.info.SSID(), msg.SSID) {
-		return ErrMessageWrongSSID
+		return message.ErrMessageWrongSSID
 	}
 
 	// check protocol ID
 	if msg.Protocol != h.info.ProtocolID() {
-		return ErrMessageWrongProtocolID
+		return message.ErrMessageWrongProtocolID
 	}
 
-	// check if message for previous round or beyond expected
-	if msg.RoundNumber <= round.First || msg.RoundNumber > h.info.FinalRoundNumber() {
-		return ErrMessageInvalidRoundNumber
-	}
-
-	// message cannot be from ourselves
-	if msg.From == h.info.SelfID() {
-		return ErrMessageFromSelf
+	// check if message for unexpected round
+	if msg.RoundNumber > h.info.FinalRoundNumber() {
+		return message.ErrMessageInvalidRoundNumber
 	}
 
 	// do we know the sender
 	if _, ok := h.received[msg.From]; !ok {
-		return ErrMessageUnknownSender
+		return message.ErrMessageUnknownSender
 	}
 
 	destination := party.IDSlice(msg.To)
-	// .To must be sorted
-	if !destination.Sorted() {
-		return ErrMessageNotSorted
-	}
 
 	// if not broadcast, make sure we are the intended recipient
 	if len(destination) != 0 && !destination.Contains(h.info.SelfID()) {
-		return ErrMessageWrongDestination
+		return message.ErrMessageWrongDestination
 	}
 
 	// previous round
 	currentRound := h.roundNumber()
 	if msg.RoundNumber < currentRound {
-		return ErrMessageDuplicate
+		return message.ErrMessageDuplicate
 	}
 
 	return nil
