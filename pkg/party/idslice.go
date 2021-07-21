@@ -5,6 +5,7 @@ import (
 	"io"
 	"math/rand"
 	"sort"
+	"strings"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 )
@@ -14,6 +15,9 @@ type IDSlice []ID
 // NewIDSlice returns a sorted slice of partyIDs.
 func NewIDSlice(partyIDs []ID) IDSlice {
 	ids := IDSlice(partyIDs).Copy()
+	if ids.Sorted() {
+		return ids
+	}
 	ids.Sort()
 	return ids
 }
@@ -196,4 +200,13 @@ func (partyIDs IDSlice) WriteTo(w io.Writer) (int64, error) {
 // Domain implements WriterToWithDomain, and separates this type within hash.Hash.
 func (IDSlice) Domain() string {
 	return "IDSlice"
+}
+
+// String implements fmt.Stringer
+func (partyIDs IDSlice) String() string {
+	ss := make([]string, len(partyIDs))
+	for i, id := range partyIDs {
+		ss[i] = string(id)
+	}
+	return strings.Join(ss, ", ")
 }
