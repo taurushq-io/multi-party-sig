@@ -31,16 +31,12 @@ func (r *output) ProcessMessage(from party.ID, content message.Content) error {
 }
 
 // GenerateMessages implements round.Round
-func (r *output) GenerateMessages(out chan<- *message.Message) error {
-	close(out)
-	return nil
-}
+func (r *output) GenerateMessages(out chan<- *message.Message) error { return nil }
 
 // Next implements round.Round
-func (r *output) Next() round.Round {
-	return nil
-}
+func (r *output) Next() round.Round { return nil }
 
+// Result implements round.Final
 func (r *output) Result() interface{} {
 	// This could be used to handle pre-signatures
 	if r.newSession != nil && r.newSecret != nil {
@@ -52,10 +48,10 @@ func (r *output) Result() interface{} {
 	return nil
 }
 
-func (r *output) MessageContent() message.Content {
-	return &KeygenOutput{}
-}
+// MessageContent implements round.Round
+func (r *output) MessageContent() message.Content { return &KeygenOutput{} }
 
+// Validate implements message.Content
 func (m *KeygenOutput) Validate() error {
 	if m == nil {
 		return errors.New("keygen.round5: message is nil")
@@ -66,6 +62,5 @@ func (m *KeygenOutput) Validate() error {
 	return nil
 }
 
-func (m *KeygenOutput) RoundNumber() types.RoundNumber {
-	return 6
-}
+// RoundNumber implements message.Content
+func (m *KeygenOutput) RoundNumber() types.RoundNumber { return 6 }

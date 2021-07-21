@@ -132,14 +132,12 @@ func (r *round5) GenerateMessages(out chan<- *message.Message) error {
 }
 
 // Next implements round.Round
-func (r *round5) Next() round.Round {
-	return &output{r}
-}
+func (r *round5) Next() round.Round { return &output{r} }
 
-func (r *round5) MessageContent() message.Content {
-	return &Keygen5{}
-}
+// MessageContent implements round.Round
+func (r *round5) MessageContent() message.Content { return &Keygen5{} }
 
+// Validate implements message.Content
 func (m *Keygen5) Validate() error {
 	if m == nil {
 		return errors.New("keygen.round4: message is nil")
@@ -156,6 +154,5 @@ func (m *Keygen5) Validate() error {
 	return nil
 }
 
-func (m *Keygen5) RoundNumber() types.RoundNumber {
-	return 5
-}
+// RoundNumber implements message.Content
+func (m *Keygen5) RoundNumber() types.RoundNumber { return 5 }

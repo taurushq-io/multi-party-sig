@@ -43,10 +43,7 @@ type round1 struct {
 }
 
 // ProcessMessage implements round.Round
-func (r *round1) ProcessMessage(party.ID, message.Content) error {
-	// In the first protocol, no messages are expected.
-	return nil
-}
+func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 
 // GenerateMessages implements round.Round
 //
@@ -103,12 +100,7 @@ func (r *round1) GenerateMessages(out chan<- *message.Message) error {
 }
 
 // Next implements round.Round
-func (r *round1) Next() round.Round {
-	return &round2{
-		round1: r,
-	}
-}
+func (r *round1) Next() round.Round { return &round2{round1: r} }
 
-func (r *round1) MessageContent() message.Content {
-	return &message.First{}
-}
+// MessageContent implements round.Round
+func (r *round1) MessageContent() message.Content { return &message.First{} }

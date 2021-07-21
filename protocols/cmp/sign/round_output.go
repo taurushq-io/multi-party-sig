@@ -57,7 +57,6 @@ func (r *output) GenerateMessages(out chan<- *message.Message) error {
 		return ErrRoundOutputValidateSigFailed
 	}
 
-	close(out)
 	return nil
 }
 
