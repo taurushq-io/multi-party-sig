@@ -4,13 +4,12 @@ import (
 	"crypto/rand"
 	"io"
 	"math/big"
-	"math/bits"
 
+	"github.com/cronokirby/safenum"
+	"github.com/taurusgroup/cmp-ecdsa/internal/proto"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
-
-const cipherTextWordSize = 4*params.BitsPaillier/bits.UintSize + 8
 
 // Add sets ct to the homomorphic sum ct ct₁ ⊕ ct₂.
 // ct = ct₁•ct₂ (mod N²)
@@ -18,8 +17,9 @@ func (ct *Ciphertext) Add(pk *PublicKey, otherCt *Ciphertext) *Ciphertext {
 	if otherCt == nil {
 		return ct
 	}
-	ct.C.Mul(ct.C, otherCt.C)
-	ct.C.Mod(ct.C, pk.nSquared)
+
+	ct.C.ModMul(ct.C.Nat, otherCt.C.Nat, pk.nSquared)
+
 	return ct
 }
 
@@ -29,19 +29,22 @@ func (ct *Ciphertext) Mul(pk *PublicKey, k *big.Int) *Ciphertext {
 	if k == nil {
 		return ct
 	}
-	ct.C.Exp(ct.C, k, pk.nSquared)
+
+	kInt := new(safenum.Int).SetBig(k, k.BitLen())
+	ct.C.ExpI(ct.C.Nat, kInt, pk.nSquared)
+
 	return ct
 }
 
 // Equal check whether ct ≡ ctₐ (mod N²)
 func (ct *Ciphertext) Equal(ctA *Ciphertext) bool {
-	return ct.C.Cmp(ctA.C) == 0
+	return ct.C.Eq(ctA.C.Nat) == 1
 }
 
 // Clone returns a deep copy of ct
 func (ct Ciphertext) Clone() *Ciphertext {
 	c := NewCiphertext()
-	c.C.Set(ct.C)
+	c.C.SetNat(ct.C.Nat)
 	return c
 }
 
@@ -49,27 +52,20 @@ func (ct Ciphertext) Clone() *Ciphertext {
 // ct *= nonceᴺ for some nonce either given or generated here (if nonce = nil).
 // The updated receiver is returned, as well as the nonce update
 func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *big.Int) *big.Int {
-	tmp := newCipherTextInt()
+	nonceNat := new(safenum.Nat)
 	if nonce == nil {
-		nonce = sample.UnitModN(rand.Reader, pk.n)
+		nonceNat = sample.UnitModNNat(rand.Reader, pk.n)
+	} else {
+		nonceNat.SetBig(nonce, nonce.BitLen())
 	}
-	tmp.Exp(nonce, pk.n, pk.nSquared) // tmp = r^N
-	ct.C.Mul(ct.C, tmp)               // ct = ct * tmp
-	ct.C.Mod(ct.C, pk.nSquared)       // ct = ct*r^N
-	return nonce
+	// c = c*r^N
+	tmp := new(safenum.Nat).Exp(nonceNat, pk.nNat, pk.nSquared)
+	ct.C.ModMul(ct.C.Nat, tmp, pk.nSquared)
+	return nonceNat.Big()
 }
 
 func NewCiphertext() *Ciphertext {
-	buf := make([]big.Word, 0, cipherTextWordSize+2)
-	c := new(big.Int).SetBits(buf)
-	return &Ciphertext{C: c}
-}
-
-func newCipherTextInt() *big.Int {
-	tmpBuf := make([]big.Word, 0, cipherTextWordSize)
-	var tmp big.Int
-	tmp.SetBits(tmpBuf)
-	return &tmp
+	return &Ciphertext{C: &proto.NatMarshaller{Nat: new(safenum.Nat)}}
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
