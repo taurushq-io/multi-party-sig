@@ -32,6 +32,9 @@ func (m *NatMarshaller) MarshalTo(data []byte) (n int, err error) {
 
 // Unmarshal parses bytes to create a Nat value.
 func (m *NatMarshaller) Unmarshal(data []byte) error {
+	if m.Nat == nil {
+		m.Nat = new(safenum.Nat)
+	}
 	m.SetBytes(data)
 	return nil
 }
@@ -48,6 +51,9 @@ func (m NatMarshaller) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON reads this struct from JSON
 func (m *NatMarshaller) UnmarshalJSON(data []byte) error {
+	if m.Nat == nil {
+		m.Nat = new(safenum.Nat)
+	}
 	// Since base64 uses 4 characters for every 3 bytes, this gives us a reasonable
 	// estimate of how many byes we'll have
 	theBytes := make([]byte, 0, 3*len(data)/4)
