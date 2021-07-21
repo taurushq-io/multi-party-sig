@@ -42,34 +42,41 @@ func (p Proof) IsValid(public Public) bool {
 }
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
-	N := public.Prover.N()
-
-	alpha := sample.IntervalLEps(rand.Reader)
-	alphaSafe := new(safenum.Int).SetBig(alpha, alpha.BitLen())
-	r := sample.UnitModN(rand.Reader, N)
-	mu := sample.IntervalLN(rand.Reader)
-	muSafe := new(safenum.Int).SetBig(mu, mu.BitLen())
-	gamma := sample.IntervalLEpsN(rand.Reader)
-	gammaSafe := new(safenum.Int).SetBig(gamma, gamma.BitLen())
-
-	A := public.Prover.EncWithNonce(alpha, r)
-
+	NBig := public.Prover.N()
+	N := safenum.ModulusFromNat(new(safenum.Nat).SetBig(NBig, NBig.BitLen()))
 	kSafe := new(safenum.Int).SetBig(private.K, private.K.BitLen())
+	rhoSafe := new(safenum.Nat).SetBig(private.Rho, private.Rho.BitLen())
+
+	alpha := sample.IntervalLEpsSecret(rand.Reader)
+	r := sample.UnitModNNat(rand.Reader, N)
+	mu := sample.IntervalLNSecret(rand.Reader)
+	gamma := sample.IntervalLEpsNSecret(rand.Reader)
+
+	A := public.Prover.EncWithNonce(alpha.Big(), r.Big())
 
 	commitment := &Commitment{
-		S: public.Aux.Commit(kSafe, muSafe),
+		S: public.Aux.Commit(kSafe, mu),
 		A: A,
-		C: public.Aux.Commit(alphaSafe, gammaSafe),
+		C: public.Aux.Commit(alpha, gamma),
 	}
 
-	e := challenge(hash, public, commitment)
+	eBig := challenge(hash, public, commitment)
+	e := new(safenum.Int).SetBig(eBig, eBig.BitLen())
 
-	var z1, z2, z3 big.Int
+	z1 := new(safenum.Int).Mul(e, kSafe, -1)
+	z1.Add(z1, alpha, -1)
+
+	z2 := new(safenum.Nat).ExpI(rhoSafe, e, N)
+	z2.ModMul(z2, r, N)
+
+	z3 := new(safenum.Int).Mul(e, mu, -1)
+	z3.Add(z3, gamma, -1)
+
 	return &Proof{
 		Commitment: commitment,
-		Z1:         z1.Mul(e, private.K).Add(&z1, alpha),
-		Z2:         z2.Exp(private.Rho, e, N).Mul(&z2, r).Mod(&z2, N),
-		Z3:         z3.Mul(e, mu).Add(&z3, gamma),
+		Z1:         z1.Big(),
+		Z2:         z2.Big(),
+		Z3:         z3.Big(),
 	}
 }
 
