@@ -54,7 +54,10 @@ func (p Proof) IsValid(public Public) bool {
 }
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
-	N := public.Prover.N()
+	NBig := public.Prover.N()
+	N := safenum.ModulusFromNat(new(safenum.Nat).SetBig(NBig, NBig.BitLen()))
+	xSafe := new(safenum.Int).SetBig(private.X, private.X.BitLen())
+	rhoSafe := new(safenum.Nat).SetBig(private.Rho, private.Rho.BitLen())
 
 	if public.G == nil {
 		public.G = curve.NewBasePoint()
@@ -62,29 +65,35 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 
 	alpha := sample.IntervalLEps(rand.Reader)
 	alphaSafe := new(safenum.Int).SetBig(alpha, alpha.BitLen())
-	r := sample.UnitModN(rand.Reader, N)
-	mu := sample.IntervalLN(rand.Reader)
-	muSafe := new(safenum.Int).SetBig(mu, mu.BitLen())
-	gamma := sample.IntervalLEpsN(rand.Reader)
-	gammaSafe := new(safenum.Int).SetBig(gamma, gamma.BitLen())
-
-	xSafe := new(safenum.Int).SetBig(private.X, private.X.BitLen())
+	r := sample.UnitModNNat(rand.Reader, N)
+	mu := sample.IntervalLNSecret(rand.Reader)
+	gamma := sample.IntervalLEpsNSecret(rand.Reader)
 
 	commitment := &Commitment{
-		A: public.Prover.EncWithNonce(alpha, r),
+		A: public.Prover.EncWithNonce(alpha, r.Big()),
 		Y: *curve.NewIdentityPoint().ScalarMult(curve.NewScalarBigInt(alpha), public.G),
-		S: public.Aux.Commit(xSafe, muSafe),
-		D: public.Aux.Commit(alphaSafe, gammaSafe),
+		S: public.Aux.Commit(xSafe, mu),
+		D: public.Aux.Commit(alphaSafe, gamma),
 	}
 
-	e := challenge(hash, public, commitment)
+	eBig := challenge(hash, public, commitment)
+	e := new(safenum.Int).SetBig(eBig, eBig.BitLen())
 
-	var z1, z2, z3 big.Int
+	// z1 = α + e x,
+	z1 := new(safenum.Int).Mul(e, xSafe, -1)
+	z1.Add(z1, alphaSafe, -1)
+	// z2 = r ρᵉ mod Nₐ,
+	z2 := new(safenum.Nat).ExpI(rhoSafe, e, N)
+	z2.ModMul(z2, r, N)
+	// z3 = γ + e μ,
+	z3 := new(safenum.Int).Mul(e, mu, -1)
+	z3.Add(z3, gamma, -1)
+
 	return &Proof{
 		Commitment: commitment,
-		Z1:         z1.Mul(e, private.X).Add(&z1, alpha),              // z1 = α + e x,
-		Z2:         z2.Exp(private.Rho, e, N).Mul(&z2, r).Mod(&z2, N), // z2 = r ρᵉ mod Nₐ,
-		Z3:         z3.Mul(e, mu).Add(&z3, gamma),                     // z3 = γ + e μ,
+		Z1:         z1.Big(),
+		Z2:         z2.Big(),
+		Z3:         z3.Big(),
 	}
 }
 

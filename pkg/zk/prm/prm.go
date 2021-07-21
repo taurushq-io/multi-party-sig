@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"math/big"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
@@ -37,18 +38,19 @@ func (p Proof) IsValid(public Public) bool {
 // s = t^lambda (mod N)
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	n := public.Pedersen.N
-	phi := private.Phi
+	lambda := new(safenum.Nat).SetBig(private.Lambda, private.Lambda.BitLen())
+	phi := safenum.ModulusFromNat(new(safenum.Nat).SetBig(private.Phi, private.Phi.BitLen()))
 
-	a := make([]*big.Int, params.StatParam)
+	a := make([]*safenum.Nat, params.StatParam)
 	A := make([]*big.Int, params.StatParam)
 
 	for i := 0; i < params.StatParam; i++ {
 		// aᵢ ∈ mod ϕ(N)
-		a[i] = sample.IntervalLN(rand.Reader)
-		a[i].Mod(a[i], phi)
+		a[i] = sample.ModNNat(rand.Reader, phi)
 
 		// Aᵢ = tᵃ mod N
-		A[i] = new(big.Int).Exp(public.Pedersen.T, a[i], n)
+		A[i] = a[i].Big()
+		A[i] = A[i].Exp(public.Pedersen.T, A[i], n)
 	}
 
 	es := challenge(hash, public, A)
@@ -56,11 +58,11 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	Z := make([]*big.Int, params.StatParam)
 	for i := 0; i < params.StatParam; i++ {
 		z := a[i]
+		// The challenge is public, so branching is ok
 		if es[i] {
-			z.Add(z, private.Lambda)
-			z.Mod(z, phi)
+			z.ModAdd(z, lambda, phi)
 		}
-		Z[i] = z
+		Z[i] = z.Big()
 	}
 
 	return &Proof{

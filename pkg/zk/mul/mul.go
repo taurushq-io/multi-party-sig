@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"math/big"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
@@ -47,29 +48,44 @@ func (p *Proof) IsValid(public Public) bool {
 }
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
-	N := public.Prover.N()
+	NBig := public.Prover.N()
+	N := safenum.ModulusFromNat(new(safenum.Nat).SetBig(NBig, NBig.BitLen()))
+	xSafe := new(safenum.Int).SetBig(private.X, private.X.BitLen())
+	rhoSafe := new(safenum.Nat).SetBig(private.Rho, private.Rho.BitLen())
+	rhoXSafe := new(safenum.Nat).SetBig(private.RhoX, private.RhoX.BitLen())
 
 	prover := public.Prover
 
 	alpha := sample.IntervalLEps(rand.Reader)
-	r := sample.UnitModN(rand.Reader, N)
-	s := sample.UnitModN(rand.Reader, N)
+	alphaSafe := new(safenum.Int).SetBig(alpha, alpha.BitLen())
+	r := sample.UnitModNNat(rand.Reader, N)
+	s := sample.UnitModNNat(rand.Reader, N)
 
 	A := public.Y.Clone().Mul(prover, alpha)
-	A.Randomize(prover, r)
+	A.Randomize(prover, r.Big())
 
 	commitment := &Commitment{
 		A: A,
-		B: prover.EncWithNonce(alpha, s),
+		B: prover.EncWithNonce(alpha, s.Big()),
 	}
-	e := challenge(hash, public, commitment)
+	eBig := challenge(hash, public, commitment)
+	e := new(safenum.Int).SetBig(eBig, eBig.BitLen())
 
-	var z, u, v big.Int
+	// Z = α + ex
+	z := new(safenum.Int).Mul(e, xSafe, -1)
+	z.Add(z, alphaSafe, -1)
+	// U = r⋅ρᵉ mod N
+	u := new(safenum.Nat).ExpI(rhoSafe, e, N)
+	u.ModMul(u, r, N)
+	// V = s⋅ρₓᵉ
+	v := new(safenum.Nat).ExpI(rhoXSafe, e, N)
+	v.ModMul(v, s, N)
+
 	return &Proof{
 		Commitment: commitment,
-		Z:          z.Mul(e, private.X).Add(&z, alpha),              // Z = α + ex
-		U:          u.Exp(private.Rho, e, N).Mul(&u, r).Mod(&u, N),  // U = r⋅ρᵉ mod N
-		V:          v.Exp(private.RhoX, e, N).Mul(&v, s).Mod(&v, N), // V = s⋅ρₓᵉ
+		Z:          z.Big(),
+		U:          u.Big(),
+		V:          v.Big(),
 	}
 }
 

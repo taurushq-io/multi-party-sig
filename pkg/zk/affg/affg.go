@@ -75,8 +75,10 @@ func (p Proof) IsValid(public Public) bool {
 }
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
-	N0 := public.Verifier.N()
-	N1 := public.Prover.N()
+	N0Big := public.Verifier.N()
+	N0 := safenum.ModulusFromNat(new(safenum.Nat).SetBig(N0Big, N0Big.BitLen()))
+	N1Big := public.Prover.N()
+	N1 := safenum.ModulusFromNat(new(safenum.Nat).SetBig(N1Big, N1Big.BitLen()))
 
 	verifier := public.Verifier
 	prover := public.Prover
@@ -86,8 +88,8 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	beta := sample.IntervalLPrimeEps(rand.Reader)
 	betaSafe := new(safenum.Int).SetBig(beta, beta.BitLen())
 
-	r := sample.UnitModN(rand.Reader, N0)
-	rY := sample.UnitModN(rand.Reader, N1)
+	r := sample.UnitModNNat(rand.Reader, N0)
+	rY := sample.UnitModNNat(rand.Reader, N1)
 
 	gamma := sample.IntervalLEpsN(rand.Reader)
 	gammaSafe := new(safenum.Int).SetBig(gamma, gamma.BitLen())
@@ -98,8 +100,8 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	mu := sample.IntervalLN(rand.Reader)
 	muSafe := new(safenum.Int).SetBig(mu, mu.BitLen())
 
-	cAlpha := public.C.Clone().Mul(verifier, alpha)           // = Cᵃ mod N₀ = α ⊙ C
-	A := verifier.EncWithNonce(beta, r).Add(verifier, cAlpha) // = Enc₀(β,r) ⊕ (α ⊙ C)
+	cAlpha := public.C.Clone().Mul(verifier, alpha)                 // = Cᵃ mod N₀ = α ⊙ C
+	A := verifier.EncWithNonce(beta, r.Big()).Add(verifier, cAlpha) // = Enc₀(β,r) ⊕ (α ⊙ C)
 
 	xSafe := new(safenum.Int).SetBig(private.X, private.X.BitLen())
 	ySafe := new(safenum.Int).SetBig(private.Y, private.Y.BitLen())
@@ -107,25 +109,46 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	commitment := &Commitment{
 		A:  A,
 		Bx: *curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarBigInt(alpha)),
-		By: prover.EncWithNonce(beta, rY),
+		By: prover.EncWithNonce(beta, rY.Big()),
 		E:  public.Aux.Commit(alphaSafe, gammaSafe),
 		S:  public.Aux.Commit(xSafe, mSafe),
 		F:  public.Aux.Commit(betaSafe, deltaSafe),
 		T:  public.Aux.Commit(ySafe, muSafe),
 	}
 
-	e := challenge(hash, public, commitment)
+	eBig := challenge(hash, public, commitment)
+	e := new(safenum.Int).SetBig(eBig, eBig.BitLen())
 
-	var z1, z2, z3, z4, w, wy big.Int
+	rhoSafe := new(safenum.Nat).SetBig(private.Rho, private.Rho.BitLen())
+	rhoYSafe := new(safenum.Nat).SetBig(private.RhoY, private.RhoY.BitLen())
+
+	// e•x+α
+	z1 := new(safenum.Int).Mul(e, xSafe, -1)
+	z1.Add(z1, alphaSafe, -1)
+	// e•y+β
+	z2 := new(safenum.Int).Mul(e, ySafe, -1)
+	z2.Add(z2, betaSafe, -1)
+	// e•m+γ
+	z3 := new(safenum.Int).Mul(e, mSafe, -1)
+	z3.Add(z3, gammaSafe, -1)
+	// e•μ+δ
+	z4 := new(safenum.Int).Mul(e, muSafe, -1)
+	z4.Add(z4, deltaSafe, -1)
+	// (ρᵉ mod N₀)•r mod N₀
+	w := new(safenum.Nat).ExpI(rhoSafe, e, N0)
+	w.ModMul(w, r, N0)
+	// ( (ρy)ᵉ mod N₁)•ry mod N₁
+	wY := new(safenum.Nat).ExpI(rhoYSafe, e, N1)
+	wY.ModMul(wY, rY, N1)
 
 	return &Proof{
 		Commitment: commitment,
-		Z1:         z1.Mul(e, private.X).Add(&z1, alpha),                  // e•x+α
-		Z2:         z2.Mul(e, private.Y).Add(&z2, beta),                   // e•y+β
-		Z3:         z3.Mul(e, m).Add(&z3, gamma),                          // e•m+γ
-		Z4:         z4.Mul(e, mu).Add(&z4, delta),                         // e•μ+δ
-		W:          w.Exp(private.Rho, e, N0).Mul(&w, r).Mod(&w, N0),      // (ρᵉ mod N₀)•r mod N₀
-		Wy:         wy.Exp(private.RhoY, e, N1).Mul(&wy, rY).Mod(&wy, N1), // ( (ρy)ᵉ mod N₁)•ry mod N₁
+		Z1:         z1.Big(),
+		Z2:         z2.Big(),
+		Z3:         z3.Big(),
+		Z4:         z4.Big(),
+		W:          w.Big(),
+		Wy:         wY.Big(),
 	}
 }
 
