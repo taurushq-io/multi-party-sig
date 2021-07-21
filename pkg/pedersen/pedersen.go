@@ -6,6 +6,7 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
@@ -53,14 +54,21 @@ func (p *Parameters) Validate() error {
 }
 
 // Commit computes sˣ tʸ (mod N)
-func (p Parameters) Commit(x, y *big.Int) *big.Int {
-	result, tmp := bigint(), bigint()
+//
+// x and y are taken as safenum.Int, because we want to keep these values in secret,
+// in general. The commitment produced, on the other hand, hides their values,
+// and can be safely shared. This is why we produce a big.Int instead.
+func (p Parameters) Commit(x, y *safenum.Int) *big.Int {
+	sx := new(safenum.Nat).SetBig(p.S, p.S.BitLen())
+	ty := new(safenum.Nat).SetBig(p.T, p.T.BitLen())
+	nMod := safenum.ModulusFromNat(new(safenum.Nat).SetBig(p.N, p.N.BitLen()))
 
-	result.Exp(p.S, x, p.N)
-	tmp.Exp(p.T, y, p.N)
-	result.Mul(result, tmp)
-	result.Mod(result, p.N)
-	return result
+	sx.ExpI(sx, x, nMod)
+	ty.ExpI(ty, y, nMod)
+
+	result := sx.ModMul(sx, ty, nMod)
+
+	return result.Big()
 }
 
 // Verify returns true if sᵃ tᵇ ≡ S Tᵉ (mod N)

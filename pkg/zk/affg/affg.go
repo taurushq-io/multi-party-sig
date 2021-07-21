@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"math/big"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -81,27 +82,36 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	prover := public.Prover
 
 	alpha := sample.IntervalLEps(rand.Reader)
+	alphaSafe := new(safenum.Int).SetBig(alpha, alpha.BitLen())
 	beta := sample.IntervalLPrimeEps(rand.Reader)
+	betaSafe := new(safenum.Int).SetBig(beta, beta.BitLen())
 
 	r := sample.UnitModN(rand.Reader, N0)
 	rY := sample.UnitModN(rand.Reader, N1)
 
 	gamma := sample.IntervalLEpsN(rand.Reader)
+	gammaSafe := new(safenum.Int).SetBig(gamma, gamma.BitLen())
 	m := sample.IntervalLEpsN(rand.Reader)
+	mSafe := new(safenum.Int).SetBig(m, m.BitLen())
 	delta := sample.IntervalLEpsN(rand.Reader)
+	deltaSafe := new(safenum.Int).SetBig(delta, delta.BitLen())
 	mu := sample.IntervalLN(rand.Reader)
+	muSafe := new(safenum.Int).SetBig(mu, mu.BitLen())
 
 	cAlpha := public.C.Clone().Mul(verifier, alpha)           // = Cᵃ mod N₀ = α ⊙ C
 	A := verifier.EncWithNonce(beta, r).Add(verifier, cAlpha) // = Enc₀(β,r) ⊕ (α ⊙ C)
+
+	xSafe := new(safenum.Int).SetBig(private.X, private.X.BitLen())
+	ySafe := new(safenum.Int).SetBig(private.Y, private.Y.BitLen())
 
 	commitment := &Commitment{
 		A:  A,
 		Bx: *curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarBigInt(alpha)),
 		By: prover.EncWithNonce(beta, rY),
-		E:  public.Aux.Commit(alpha, gamma),
-		S:  public.Aux.Commit(private.X, m),
-		F:  public.Aux.Commit(beta, delta),
-		T:  public.Aux.Commit(private.Y, mu),
+		E:  public.Aux.Commit(alphaSafe, gammaSafe),
+		S:  public.Aux.Commit(xSafe, mSafe),
+		F:  public.Aux.Commit(betaSafe, deltaSafe),
+		T:  public.Aux.Commit(ySafe, muSafe),
 	}
 
 	e := challenge(hash, public, commitment)
