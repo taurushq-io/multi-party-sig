@@ -4,66 +4,150 @@ import (
 	"crypto/rand"
 	"math/big"
 	"testing"
+	"testing/quick"
 
+	"github.com/cronokirby/safenum"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/taurusgroup/cmp-ecdsa/internal/proto"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 )
 
-func TestCiphertextValidate(t *testing.T) {
-	pk, sk := KeyGen()
+var (
+	paillierPublic *PublicKey
+	paillierSecret *SecretKey
+)
 
-	C := big.NewInt(0)
-	ct := &Ciphertext{C: C}
-	_, err := sk.Dec(ct)
+func init() {
+	var p, q big.Int
+	p.SetString("178057883835183286117512200677440244390145099259082383308945719698013763573399954450532998268905835885924159614319313406003087379446561971296106546809183979483713400989852915992871444851374827190424830370732455638126086633695206754034038375138787276649530329444888582356387252561437032663445969018257131309467", 10)
+	q.SetString("154015006160854235002007557023803468376448277365405705676551314882683128790125170467276370601034321782779924625687921529410458399255587689405771572795902602356870537998583671038752961901536910952455193645347654842352350434852963582643875873134652544209964216130513008483123534718118886460747385334474444035767", 10)
+	paillierSecret = NewSecretKeyFromPrimes(&p, &q)
+	paillierPublic = paillierSecret.PublicKey
+	if err := paillierSecret.Validate(); err != nil {
+		panic(err)
+	}
+}
+
+func reinit() {
+	paillierPublic, paillierSecret = KeyGen()
+}
+
+func TestCiphertextValidate(t *testing.T) {
+	if !testing.Short() {
+		reinit()
+	}
+
+	C := new(safenum.Nat)
+	ct := &Ciphertext{&proto.NatMarshaller{Nat: C}}
+	_, err := paillierSecret.Dec(ct)
 	assert.Error(t, err, "decrypting 0 should fail")
 
-	C.Set(pk.n)
-	_, err = sk.Dec(ct)
+	C.SetNat(paillierPublic.nNat)
+	_, err = paillierSecret.Dec(ct)
 	assert.Error(t, err, "decrypting N should fail")
 
-	C.Mul(C, big.NewInt(2))
-	_, err = sk.Dec(ct)
+	C.Add(C, C, -1)
+	_, err = paillierSecret.Dec(ct)
 	assert.Error(t, err, "decrypting 2N should fail")
 
-	C.Set(pk.nSquared)
-	_, err = sk.Dec(ct)
+	C.SetNat(paillierPublic.nSquared.Nat())
+	_, err = paillierSecret.Dec(ct)
 	assert.Error(t, err, "decrypting N^2 should fail")
 }
 
-func TestCiphertext_Enc(t *testing.T) {
-	pk, sk := KeyGen()
-	for i := 0; i < 10; i++ {
+func testEncDecRoundTrip(x int64) bool {
+	m := new(big.Int).SetInt64(x)
+	ciphertext, _ := paillierPublic.Enc(m)
+	shouldBeM, err := paillierSecret.Dec(ciphertext)
+	if err != nil {
+		return false
+	}
+	return m.Cmp(shouldBeM) == 0
+}
 
-		b := new(big.Int).SetBit(new(big.Int), 200, 1)
-		r1, err := rand.Int(rand.Reader, b)
-		require.NoError(t, err)
-		r2, err := rand.Int(rand.Reader, b)
-		require.NoError(t, err)
-		c, err := rand.Int(rand.Reader, b)
-		require.NoError(t, err)
+func TestEncDecRoundTrip(t *testing.T) {
+	if !testing.Short() {
+		reinit()
+	}
+	err := quick.Check(testEncDecRoundTrip, &quick.Config{})
+	if err != nil {
+		t.Error(err)
+	}
+}
 
-		// Test decryption
-		ct1, _ := pk.Enc(r1)
-		ct2, _ := pk.Enc(r2)
+func testEncDecHomomorphic(a int64, b int64) bool {
+	ma := new(big.Int).SetInt64(a)
+	mb := new(big.Int).SetInt64(b)
+	ca, _ := paillierPublic.Enc(ma)
+	cb, _ := paillierPublic.Enc(mb)
+	expected := new(big.Int).Add(ma, mb)
+	actual, err := paillierSecret.Dec(ca.Add(paillierPublic, cb))
+	if err != nil {
+		return false
+	}
+	return actual.Cmp(expected) == 0
+}
 
-		ct1plus2 := ct1.Clone().Add(pk, ct2)
+func TestEncDecHomomorphic(t *testing.T) {
+	if !testing.Short() {
+		reinit()
+	}
+	err := quick.Check(testEncDecHomomorphic, &quick.Config{})
+	if err != nil {
+		t.Error(err)
+	}
+}
 
-		r1plus2, err := sk.Dec(ct1plus2)
-		assert.NoError(t, err, "should be able to decrypt")
+func testEncDecScalingHomomorphic(s int64, x int64) bool {
+	m := new(big.Int).SetInt64(x)
+	sBig := new(big.Int).SetInt64(s)
+	c, _ := paillierPublic.Enc(m)
+	expected := new(big.Int).Mul(m, sBig)
+	actual, err := paillierSecret.Dec(c.Mul(paillierPublic, sBig))
+	if err != nil {
+		return false
+	}
+	return actual.Cmp(expected) == 0
+}
 
-		decCt1, err := sk.Dec(ct1)
-		assert.NoError(t, err, "should be able to decrypt")
-		require.Equal(t, 0, decCt1.Cmp(r1), "r1= ct1")
+func TestEncDecScalingHomomorphic(t *testing.T) {
+	if !testing.Short() {
+		reinit()
+	}
+	err := quick.Check(testEncDecScalingHomomorphic, &quick.Config{})
+	if err != nil {
+		t.Error(err)
+	}
+}
 
-		// Test adding
-		require.Equal(t, 0, new(big.Int).Add(r1, r2).Cmp(r1plus2))
+// Used to avoid benchmark optimization
+var resultCiphertext *Ciphertext
 
-		ct1times2 := ct1.Clone().Mul(pk, c)
+func BenchmarkEncryption(b *testing.B) {
+	b.StopTimer()
+	m := sample.IntervalLEps(rand.Reader)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		resultCiphertext, _ = paillierPublic.Enc(m)
+	}
+}
 
-		// Test multiplication
-		res := new(big.Int).Mul(c, r1)
-		res.Mod(res, pk.n)
-		decCt1Times2, err := sk.Dec(ct1times2)
-		require.Equal(t, 0, res.Cmp(decCt1Times2))
+func BenchmarkAddCiphertext(b *testing.B) {
+	b.StopTimer()
+	m := sample.IntervalLEps(rand.Reader)
+	c, _ := paillierPublic.Enc(m)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		resultCiphertext = c.Add(paillierPublic, c)
+	}
+}
+
+func BenchmarkMulCiphertext(b *testing.B) {
+	b.StopTimer()
+	m := sample.IntervalLEps(rand.Reader)
+	c, _ := paillierPublic.Enc(m)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		resultCiphertext = c.Mul(paillierPublic, m)
 	}
 }

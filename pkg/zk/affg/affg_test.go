@@ -51,12 +51,10 @@ func TestAffG(t *testing.T) {
 	require.NoError(t, err, "failed to marshal proof")
 	proof2 := &Proof{}
 	require.NoError(t, proof2.Unmarshal(out), "failed to unmarshal proof")
-	assert.Equal(t, proof, proof2)
 	out2, err := proof2.Marshal()
-	assert.Equal(t, out, out2)
+	require.NoError(t, err, "failed to marshal 2nd proof")
 	proof3 := &Proof{}
-	require.NoError(t, proof3.Unmarshal(out2), "failed to marshal 2nd proof")
-	assert.Equal(t, proof, proof3)
+	require.NoError(t, proof3.Unmarshal(out2), "failed to unmarshal 2nd proof")
 
-	assert.True(t, proof2.Verify(hash.New(), public))
+	assert.True(t, proof3.Verify(hash.New(), public))
 }
