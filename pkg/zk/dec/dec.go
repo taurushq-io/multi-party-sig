@@ -48,36 +48,45 @@ func (p Proof) IsValid(public Public) bool {
 }
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
-	N0 := public.Prover.N()
+	N0Big := public.Prover.N()
+	N0 := safenum.ModulusFromNat(new(safenum.Nat).SetBig(N0Big, N0Big.BitLen()))
+	ySafe := new(safenum.Int).SetBig(private.Y, private.Y.BitLen())
+	rhoSafe := new(safenum.Nat).SetBig(private.Rho, private.Rho.BitLen())
 
 	alpha := sample.IntervalLEps(rand.Reader)
 	alphaSafe := new(safenum.Int).SetBig(alpha, alpha.BitLen())
 
-	mu := sample.IntervalLN(rand.Reader)
-	muSafe := new(safenum.Int).SetBig(mu, mu.BitLen())
-	nu := sample.IntervalLEpsN(rand.Reader)
-	nuSafe := new(safenum.Int).SetBig(nu, nu.BitLen())
-	r := sample.UnitModN(rand.Reader, N0)
+	mu := sample.IntervalLNSecret(rand.Reader)
+	nu := sample.IntervalLEpsNSecret(rand.Reader)
+	r := sample.UnitModNNat(rand.Reader, N0)
 
 	gamma := curve.NewScalarBigInt(alpha)
 
-	ySafe := new(safenum.Int).SetBig(private.Y, private.Y.BitLen())
-
 	commitment := &Commitment{
-		S:     public.Aux.Commit(ySafe, muSafe),
-		T:     public.Aux.Commit(alphaSafe, nuSafe),
-		A:     public.Prover.EncWithNonce(alpha, r),
+		S:     public.Aux.Commit(ySafe, mu),
+		T:     public.Aux.Commit(alphaSafe, nu),
+		A:     public.Prover.EncWithNonce(alpha, r.Big()),
 		Gamma: gamma,
 	}
 
-	e := challenge(hash, public, commitment)
+	eBig := challenge(hash, public, commitment)
+	e := new(safenum.Int).SetBig(eBig, eBig.BitLen())
 
-	var z1, z2, w big.Int
+	// z₁ = e•y+α
+	z1 := new(safenum.Int).Mul(e, ySafe, -1)
+	z1.Add(z1, alphaSafe, -1)
+	// z₂ = e•μ + ν
+	z2 := new(safenum.Int).Mul(e, mu, -1)
+	z2.Add(z2, nu, -1)
+	// w = ρ^e•r mod N₀
+	w := new(safenum.Nat).ExpI(rhoSafe, e, N0)
+	w.ModMul(w, r, N0)
+
 	return &Proof{
 		Commitment: commitment,
-		Z1:         z1.Mul(e, private.Y).Add(&z1, alpha),             // z₁ = e•y+α
-		Z2:         z2.Mul(e, mu).Add(&z2, nu),                       // z₂ = e•μ + ν
-		W:          w.Exp(private.Rho, e, N0).Mul(&w, r).Mod(&w, N0), // w = ρ^e•r mod N₀
+		Z1:         z1.Big(),
+		Z2:         z2.Big(),
+		W:          w.Big(),
 	}
 }
 
