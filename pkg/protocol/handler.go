@@ -83,7 +83,19 @@ func (h *Handler) Result() (interface{}, error) {
 	return nil, errors.New("protocol: not finished")
 }
 
+// Update performs the following:
+// - Check header information about msg and make sure we can accept it in this protocol execution
+// - If the message is for a later round, store it in a queue for later
+// - Validate the contents of the message for this round
+// - If all messages for this round have been received, proceed to the next round
+// - Retrieve from the queue any message intended for this round.
+//
+// This function may be called concurrently from different threads but may block until all previous calls have finished.
 func (h *Handler) Update(msg *message.Message) error {
+	// return early if we are already finished
+	if h.r == nil || h.err != nil {
+		return h.err
+	}
 	h.mtx.Lock()
 	defer func() {
 		if h.err != nil {
@@ -92,22 +104,10 @@ func (h *Handler) Update(msg *message.Message) error {
 		h.mtx.Unlock()
 	}()
 
-	h.Log.Debug().Stringer("msg", msg).Msg("got new message")
-
-	if h.err != nil {
-		return h.err
-	}
-
-	if h.receivedAll() {
-		if err := h.finishRound(); err != nil {
-			h.Log.Error().Err(err).Msg("finish round")
-			return err
-		}
-	}
-
 	if msg != nil {
+		h.Log.Debug().Stringer("msg", msg).Msg("got new message")
 		if err := h.validate(msg); err != nil {
-			h.Log.Error().Err(err).Stringer("msg", msg).Msg("failed to validate")
+			h.Log.Warn().Err(err).Stringer("msg", msg).Msg("failed to validate")
 			return err
 		}
 		if err := h.handleMessage(msg); err != nil {
@@ -173,11 +173,11 @@ func (h *Handler) validate(msg *message.Message) error {
 
 func (h *Handler) handleMessage(msg *message.Message) error {
 	if msg.RoundNumber != h.roundNumber() {
-		h.Log.Info().Stringer("msg", msg).Msg("storing message")
+		h.Log.Debug().Str("from", string(msg.From)).Int("roundNumber", int(msg.RoundNumber)).Msg("storing message")
 		return h.queue.Store(msg)
 	}
 	if h.received[msg.From] {
-		return ErrMessageDuplicate
+		return message.ErrMessageDuplicate
 	}
 
 	h.received[msg.From] = true
@@ -185,31 +185,20 @@ func (h *Handler) handleMessage(msg *message.Message) error {
 	// unmarshal message
 	content := h.r.MessageContent()
 	if err := msg.UnmarshalContent(content); err != nil {
-		h.err = h.wrapError(err, msg.From)
-		return h.err
+		return h.abort(err, msg.From)
 	}
 
-	// process
+	// process message
 	if err := h.r.ProcessMessage(msg.From, content); err != nil {
-		h.err = h.wrapError(err, msg.From)
-		return h.err
+		return h.abort(err, msg.From)
 	}
 	return nil
 }
 
 func (h *Handler) finishRound() error {
-	defer func() {
-		if h.err != nil || h.result != nil {
-			if h.err != nil {
-				h.Log.Error().Err(h.err).Msg("finished with err")
-			}
-		}
-	}()
 	// get new messages
-	if err := h.r.GenerateMessages(h.outChan); err != nil {
-		h.err = h.wrapError(err, "")
-		h.Log.Error().Err(h.err).Msg("generate messages")
-		return h.err
+	if err := h.r.Finalize(h.outChan); err != nil {
+		return h.abort(err, "")
 	}
 
 	// get new round
@@ -219,10 +208,14 @@ func (h *Handler) finishRound() error {
 	if nextRound == nil {
 		h.result = h.r.(round.Final).Result()
 		h.r = nil
-		if h.result == nil {
-			h.err = ErrProtocolFinalRoundNotReached
+		if h.result == nil && h.err == nil {
+			h.err = Error{
+				RoundNumber: h.roundNumber(),
+				Culprit:     "",
+				Err:         errors.New("failed without error before reaching the final round"),
+			}
 		}
-		h.done = true
+		h.stop()
 		return h.err
 	}
 
@@ -239,18 +232,13 @@ func (h *Handler) finishRound() error {
 	}
 	h.received = newReceived
 
-	queued := h.queue.Get(h.roundNumber())
-	if len(queued) > 0 {
-		h.Log.Info().Int("count", len(queued)).Msg("retrieving from queue")
-	}
-	for _, msg := range queued {
+	for _, msg := range h.queue.Get(h.roundNumber()) {
 		if err := h.handleMessage(msg); err != nil {
 			return err
 		}
 	}
 
 	if h.receivedAll() {
-		h.Log.Info().Msg("recursion")
 		return h.finishRound()
 	}
 
@@ -266,13 +254,18 @@ func (h *Handler) receivedAll() bool {
 	return true
 }
 
-// wrapError wraps a Round error with information about the current round and a possible culprit
-func (h *Handler) wrapError(err error, culprit party.ID) error {
-	return &Error{
+// abort wraps a Round error with information about the current round and a possible culprit
+func (h *Handler) abort(err error, culprit party.ID) error {
+	roundErr := Error{
 		RoundNumber: h.roundNumber(),
 		Culprit:     culprit,
 		Err:         err,
 	}
+	if h.err == nil {
+		h.err = roundErr
+	}
+
+	return roundErr
 }
 
 func (h *Handler) roundNumber() types.RoundNumber {

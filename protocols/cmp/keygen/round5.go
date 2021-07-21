@@ -60,7 +60,7 @@ func (r *round5) ProcessMessage(from party.ID, content message.Content) error {
 	return nil
 }
 
-// GenerateMessages implements round.Round
+// Finalize implements round.Round
 //
 // - sum of all received shares
 // - compute group public key and individual public keys
@@ -68,7 +68,7 @@ func (r *round5) ProcessMessage(from party.ID, content message.Content) error {
 // - validate Session
 // - write new ssid hash to old hash state
 // - create proof of knowledge of secret
-func (r *round5) GenerateMessages(out chan<- *message.Message) error {
+func (r *round5) Finalize(out chan<- *message.Message) error {
 	// add all shares to our secret
 	newSecret := r.Secret.Clone()
 	for _, partyJ := range r.Parties {

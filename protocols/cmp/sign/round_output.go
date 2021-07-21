@@ -31,11 +31,11 @@ func (r *output) ProcessMessage(from party.ID, content message.Content) error {
 	return nil
 }
 
-// GenerateMessages implements round.Round
+// Finalize implements round.Round
 //
 // - compute σ = ∑ⱼ σⱼ
 // - verify signature
-func (r *output) GenerateMessages(out chan<- *message.Message) error {
+func (r *output) Finalize(out chan<- *message.Message) error {
 	// compute σ = ∑ⱼ σⱼ
 	S := curve.NewScalar()
 	for _, partyJ := range r.Parties {

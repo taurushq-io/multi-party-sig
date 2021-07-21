@@ -28,10 +28,10 @@ func (r *round3) ProcessMessage(from party.ID, content message.Content) error {
 	return nil
 }
 
-// GenerateMessages implements round.Round
+// Finalize implements round.Round
 //
 // - send all committed data
-func (r *round3) GenerateMessages(out chan<- *message.Message) error {
+func (r *round3) Finalize(out chan<- *message.Message) error {
 	// Send the message we created in round1 to all
 	msg := r.MarshalMessage(&Keygen4{
 		RID:                r.Self.RID[:],

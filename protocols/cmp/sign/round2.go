@@ -40,10 +40,10 @@ func (r *round2) ProcessMessage(from party.ID, content message.Content) error {
 	return nil
 }
 
-// GenerateMessages implements round.Round
+// Finalize implements round.Round
 //
 // - compute Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
-func (r *round2) GenerateMessages(out chan<- *message.Message) error {
+func (r *round2) Finalize(out chan<- *message.Message) error {
 	// compute Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
 	// The papers says that we need to reliably broadcast this data, however unless we use
 	// a system like white-city, we can't actually do this.

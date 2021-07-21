@@ -3,25 +3,20 @@ package round
 import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
-const First types.RoundNumber = 1
-
 type Round interface {
-	// ProcessMessage handles an incoming Message.
-	// In general, it should not modify the underlying Round, but only the sender's local state.
-	// At the end, the message is stored
+	// ProcessMessage handles an incoming Message and validates it's content with regard to the protocol specification.
 	ProcessMessage(from party.ID, content message.Content) error
 
-	// GenerateMessages returns an array of Message to be sent subsequently.
-	// If an error has been detected, then no messages are returned.
-	GenerateMessages(out chan<- *message.Message) error
+	// Finalize is called after all messages from the parties have been processed in the current round.
+	// Messages for the next round are sent out through the out channel.
+	Finalize(out chan<- *message.Message) error
 
-	// Next returns the next round.
+	// Next returns the next round, or nil to indicate that this is the final round
 	Next() Round
 
-	// MessageContent returns an uninitialized message.Content for this round
+	// MessageContent returns an uninitialized message.Content for this round.
 	MessageContent() message.Content
 }
 

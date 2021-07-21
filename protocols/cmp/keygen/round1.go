@@ -51,7 +51,7 @@ type round1 struct {
 // ProcessMessage implements round.Round
 func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 
-// GenerateMessages implements round.Round
+// Finalize implements round.Round
 //
 // - sample { aₗ }ₗ  <- 𝔽 for l = 0, …, t
 // - set { Aᵢ = aₗ⋅G}ₗ for l = 0, …, t
@@ -65,7 +65,7 @@ func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 //   - if keygen, this is RIDᵢ
 //   - if refresh, this is used to bind the zk proof to a random value
 // - commit to message
-func (r *round1) GenerateMessages(out chan<- *message.Message) error {
+func (r *round1) Finalize(out chan<- *message.Message) error {
 	// generate Paillier and Pedersen
 	paillierSecret := paillier.NewSecretKey()
 	paillierPublic := paillierSecret.PublicKey

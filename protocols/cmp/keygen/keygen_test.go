@@ -33,7 +33,7 @@ func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundTy
 	out := make(chan *message.Message, N*N)
 	for idJ, r := range rounds {
 		require.EqualValues(t, expectedRoundType, reflect.TypeOf(r))
-		err := r.GenerateMessages(out)
+		err := r.Finalize(out)
 		require.NoError(t, err, "failed to generate messages")
 
 		newRound := r.Next()

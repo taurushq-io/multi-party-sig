@@ -51,13 +51,13 @@ func (r *round4) ProcessMessage(from party.ID, content message.Content) error {
 	return nil
 }
 
-// GenerateMessages implements round.Round
+// Finalize implements round.Round
 //
 // - set δ = ∑ⱼ δⱼ
 // - set Δ = ∑ⱼ Δⱼ
 // - verify Δ = [δ]G
 // - compute σᵢ = rχᵢ + kᵢm
-func (r *round4) GenerateMessages(out chan<- *message.Message) error {
+func (r *round4) Finalize(out chan<- *message.Message) error {
 	// δ = ∑ⱼ δⱼ
 	// Δ = ∑ⱼ Δⱼ
 	r.Delta = curve.NewScalar()

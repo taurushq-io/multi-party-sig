@@ -38,7 +38,7 @@ func processRound(t *testing.T, parties map[party.ID]*testParty, expectedRoundTy
 	out := make(chan *message.Message, N*N)
 	for _, partyJ := range parties {
 		assert.EqualValues(t, expectedRoundType, reflect.TypeOf(partyJ.r))
-		err := partyJ.r.GenerateMessages(out)
+		err := partyJ.r.Finalize(out)
 		require.NoError(t, err, "failed to generate messages")
 
 		switch r := partyJ.r.(type) {

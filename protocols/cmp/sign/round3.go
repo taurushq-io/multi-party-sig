@@ -73,13 +73,13 @@ func (r *round3) ProcessMessage(from party.ID, content message.Content) error {
 	return nil
 }
 
-// GenerateMessages implements round.Round
+// Finalize implements round.Round
 //
 // - Γ = ∑ⱼ Γⱼ
 // - Δᵢ = [kᵢ]Γ
 // - δᵢ = γᵢ kᵢ + ∑ⱼ δᵢⱼ
 // - χᵢ = xᵢ kᵢ + ∑ⱼ χᵢⱼ
-func (r *round3) GenerateMessages(out chan<- *message.Message) error {
+func (r *round3) Finalize(out chan<- *message.Message) error {
 	// Γ = ∑ⱼ Γⱼ
 	r.Gamma = curve.NewIdentityPoint()
 	for _, partyJ := range r.Parties {

@@ -45,7 +45,7 @@ type round1 struct {
 // ProcessMessage implements round.Round
 func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 
-// GenerateMessages implements round.Round
+// Finalize implements round.Round
 //
 // - sample kᵢ, γᵢ <- 𝔽,
 // - Γᵢ = [γᵢ]⋅G
@@ -59,7 +59,7 @@ func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 //
 // In the next round, we send a hash of all the {Kⱼ,Gⱼ}ⱼ.
 // In two rounds, we compare the hashes received and if they are different then we abort.
-func (r *round1) GenerateMessages(out chan<- *message.Message) error {
+func (r *round1) Finalize(out chan<- *message.Message) error {
 	// γᵢ <- 𝔽,
 	// Γᵢ = [γᵢ]⋅G
 	r.GammaShare, r.Self.BigGammaShare = sample.ScalarPointPair(rand.Reader)

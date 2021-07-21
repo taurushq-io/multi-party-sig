@@ -73,7 +73,7 @@ func (r *round4) ProcessMessage(from party.ID, content message.Content) error {
 	return nil
 }
 
-// GenerateMessages implements round.Round
+// Finalize implements round.Round
 //
 // - set ρ = ⊕ⱼ ρⱼ and update hash state
 // - prove Nᵢ is Blum
@@ -82,7 +82,7 @@ func (r *round4) ProcessMessage(from party.ID, content message.Content) error {
 //   - if refresh skip constant coefficient
 //
 // - send proofs and encryption of share for Pⱼ
-func (r *round4) GenerateMessages(out chan<- *message.Message) error {
+func (r *round4) Finalize(out chan<- *message.Message) error {
 	// RID = ⊕ⱼ RIDⱼ
 	var rid RID
 	for _, partyJ := range r.Parties {

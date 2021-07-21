@@ -28,13 +28,13 @@ func (r *round2) ProcessMessage(from party.ID, content message.Content) error {
 	return nil
 }
 
-// GenerateMessages implements round.Round
+// Finalize implements round.Round
 //
 // Since we assume a simple P2P network, we use an extra round to "echo"
 // the hash. Everybody sends a hash of all hashes.
 //
 // - send Hash(ssid, V₁, …, Vₙ)
-func (r *round2) GenerateMessages(out chan<- *message.Message) error {
+func (r *round2) Finalize(out chan<- *message.Message) error {
 	// Broadcast the message we created in round1
 	h := r.Hash()
 	for _, partyID := range r.PartyIDs() {
