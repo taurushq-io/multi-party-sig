@@ -205,7 +205,7 @@ var ErrMaxPrimeIterations = fmt.Errorf("sample: failed to generate prime after %
 // This means that q := (p - 1) / 2 is also a prime number.
 //
 // This implies that p = 3 mod 4, otherwise q wouldn't be prime.
-func BlumPrime(rand io.Reader) *big.Int {
+func BlumPrime(rand io.Reader) *safenum.Nat {
 	// TODO be more flexible on the number of bits in P, Q to avoid square root attack
 	one := new(big.Int).SetUint64(1)
 	for i := 0; i < maxPrimeIterations; i++ {
@@ -226,7 +226,7 @@ func BlumPrime(rand io.Reader) *big.Int {
 		if !p.ProbablyPrime(blumPrimalityIterations) {
 			continue
 		}
-		return p
+		return new(safenum.Nat).SetBig(p, params.BitsBlumPrime)
 	}
 	panic(ErrMaxPrimeIterations)
 }
@@ -234,7 +234,7 @@ func BlumPrime(rand io.Reader) *big.Int {
 // Paillier generate the necessary integers for a Paillier key pair.
 // p, q are safe primes ((p - 1) / 2 is also prime), and Blum primes (p = 3 mod 4)
 // n = pq
-func Paillier(rand io.Reader) (p, q *big.Int) {
+func Paillier(rand io.Reader) (p, q *safenum.Nat) {
 	p, q = BlumPrime(rand), BlumPrime(rand)
 	return
 }

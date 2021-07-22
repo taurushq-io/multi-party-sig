@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"math/big"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
@@ -66,25 +65,21 @@ func NewSecretKey() *SecretKey {
 	return NewSecretKeyFromPrimes(sample.Paillier(rand.Reader))
 }
 
-func NewSecretKeyFromPrimes(P, Q *big.Int) *SecretKey {
-	p := new(safenum.Nat).SetBig(P, P.BitLen())
-	q := new(safenum.Nat).SetBig(Q, Q.BitLen())
+func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
 
-	n := new(safenum.Nat).Mul(p, q, -1)
+	n := new(safenum.Nat).Mul(P, Q, -1)
 	nMod := safenum.ModulusFromNat(n)
 
-	p.Sub(p, oneNat, -1)
-	q.Sub(q, oneNat, -1)
-	phi := new(safenum.Nat).Mul(p, q, -1)
+	pMinus1 := new(safenum.Nat).Sub(P, oneNat, -1)
+	qMinus1 := new(safenum.Nat).Sub(Q, oneNat, -1)
+
+	phi := new(safenum.Nat).Mul(pMinus1, qMinus1, -1)
 	// ϕ⁻¹ mod N
 	phiInv := new(safenum.Nat).ModInverse(phi, nMod)
 
-	p.SetBig(P, P.BitLen())
-	q.SetBig(Q, Q.BitLen())
-
 	return &SecretKey{
-		p:         p,
-		q:         q,
+		p:         P,
+		q:         Q,
 		phi:       phi,
 		phiInv:    phiInv,
 		PublicKey: NewPublicKey(n.Big()),

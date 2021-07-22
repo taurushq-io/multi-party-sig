@@ -21,7 +21,7 @@ func TestModN(t *testing.T) {
 const blumPrimeProbabilityIterations = 20
 
 func TestBlumPrime(t *testing.T) {
-	p := BlumPrime(rand.Reader)
+	p := BlumPrime(rand.Reader).Big()
 	if !p.ProbablyPrime(blumPrimeProbabilityIterations) {
 		t.Error("BlumPrime generated a non prime number: ", p)
 	}
@@ -34,11 +34,11 @@ func TestBlumPrime(t *testing.T) {
 
 // This exists to save the results of functions we want to benchmark, to avoid
 // having them optimized away.
-var resultBig *big.Int
+var resultNat *safenum.Nat
 
 func BenchmarkBlumPrime(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		resultBig = BlumPrime(rand.Reader)
+		resultNat = BlumPrime(rand.Reader)
 	}
 }
 
@@ -49,6 +49,6 @@ func BenchmarkModN(b *testing.B) {
 	n := safenum.ModulusFromBytes(nBytes)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		resultBig = ModN(rand.Reader, n).Big()
+		resultNat = ModN(rand.Reader, n)
 	}
 }
