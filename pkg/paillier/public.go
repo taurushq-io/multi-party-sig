@@ -59,7 +59,7 @@ func NewPublicKey(n *big.Int) *PublicKey {
 //
 // ct = (1+N)ᵐρᴺ (mod N²)
 func (pk PublicKey) Enc(m *safenum.Int) (*Ciphertext, *safenum.Nat) {
-	nonce := sample.UnitModNNat(rand.Reader, pk.n)
+	nonce := sample.UnitModN(rand.Reader, pk.n)
 	return pk.EncWithNonce(m, nonce), nonce
 }
 

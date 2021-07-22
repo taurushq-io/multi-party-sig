@@ -46,7 +46,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 
 	for i := 0; i < params.StatParam; i++ {
 		// aᵢ ∈ mod ϕ(N)
-		a[i] = sample.ModNNat(rand.Reader, phi)
+		a[i] = sample.ModN(rand.Reader, phi)
 
 		// Aᵢ = tᵃ mod N
 		A[i] = a[i].Big()

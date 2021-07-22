@@ -5,16 +5,15 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
 func TestModN(t *testing.T) {
-	n := new(big.Int).SetUint64(3 * 11 * 65519)
+	n := safenum.ModulusFromUint64(3 * 11 * 65519)
 	x := ModN(rand.Reader, n)
-	if x.Sign() < 0 {
-		t.Error("ModN generated a negative number: ", x)
-	}
-	if x.Cmp(n) >= 0 {
+	_, _, lt := x.CmpMod(n)
+	if lt != 1 {
 		t.Errorf("ModN generated a number >= %v: %v", x, n)
 	}
 }
@@ -47,9 +46,9 @@ func BenchmarkModN(b *testing.B) {
 	b.StopTimer()
 	nBytes := make([]byte, (params.BitsPaillier+7)/8)
 	_, _ = rand.Read(nBytes)
-	n := new(big.Int).SetBytes(nBytes)
+	n := safenum.ModulusFromBytes(nBytes)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		resultBig = ModN(rand.Reader, n)
+		resultBig = ModN(rand.Reader, n).Big()
 	}
 }

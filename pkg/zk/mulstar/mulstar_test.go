@@ -27,7 +27,7 @@ func TestMulG(t *testing.T) {
 	D := C.Clone().Mul(verifierPaillier, x)
 	nBig := verifierPaillier.N()
 	n := safenum.ModulusFromNat(new(safenum.Nat).SetBig(nBig, nBig.BitLen()))
-	rho := sample.UnitModNNat(rand.Reader, n)
+	rho := sample.UnitModN(rand.Reader, n)
 	D.Randomize(verifierPaillier, rho)
 
 	public := Public{

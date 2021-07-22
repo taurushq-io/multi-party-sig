@@ -24,10 +24,8 @@ func mustReadBits(rand io.Reader, buf []byte) {
 	panic(ErrMaxIterations)
 }
 
-// TODO: Once we don't use big.Int anymore, merge these methods
-
-// ModNNat samples an element of ℤₙ
-func ModNNat(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
+// ModN samples an element of ℤₙ
+func ModN(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
 	out := new(safenum.Nat)
 	buf := make([]byte, (n.BitLen()+7)/8)
 	for {
@@ -41,40 +39,12 @@ func ModNNat(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
 	return out
 }
 
-// UnitModNNat returns a u ∈ ℤₙˣ
-func UnitModNNat(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
-	for i := 0; i < maxIterations; i++ {
-		// PERF: Reuse buffer instead of allocating each time
-		u := ModNNat(rand, n)
-		if u.IsUnit(n) == 1 {
-			return u
-		}
-	}
-	panic(ErrMaxIterations)
-}
-
-// ModN samples an element of ℤₙ
-func ModN(rand io.Reader, n *big.Int) *big.Int {
-	out := new(big.Int)
-	buf := make([]byte, (n.BitLen()+7)/8)
-
-	for found := false; !found; found = out.Cmp(n) < 0 {
-		mustReadBits(rand, buf)
-		out.SetBytes(buf)
-	}
-
-	return out
-}
-
 // UnitModN returns a u ∈ ℤₙˣ
-func UnitModN(rand io.Reader, n *big.Int) *big.Int {
-	gcd := new(big.Int)
-	one := big.NewInt(1)
+func UnitModN(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
 	for i := 0; i < maxIterations; i++ {
 		// PERF: Reuse buffer instead of allocating each time
 		u := ModN(rand, n)
-		gcd.GCD(nil, nil, u, n)
-		if gcd.Cmp(one) == 0 {
+		if u.IsUnit(n) == 1 {
 			return u
 		}
 	}
@@ -273,9 +243,9 @@ func Paillier(rand io.Reader) (p, q *big.Int) {
 func Pedersen(rand io.Reader, phi *safenum.Nat, n *safenum.Modulus) (s, t, lambda *safenum.Nat) {
 	phiMod := safenum.ModulusFromNat(phi)
 
-	lambda = ModNNat(rand, phiMod)
+	lambda = ModN(rand, phiMod)
 
-	tau := UnitModNNat(rand, n)
+	tau := UnitModN(rand, n)
 	// t = τ² mod N
 	t = tau.ModMul(tau, tau, n)
 	// s = tˡ mod N

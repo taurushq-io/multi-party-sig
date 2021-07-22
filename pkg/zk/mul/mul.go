@@ -54,8 +54,8 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	prover := public.Prover
 
 	alpha := sample.IntervalLEpsSecret(rand.Reader)
-	r := sample.UnitModNNat(rand.Reader, N)
-	s := sample.UnitModNNat(rand.Reader, N)
+	r := sample.UnitModN(rand.Reader, N)
+	s := sample.UnitModN(rand.Reader, N)
 
 	A := public.Y.Clone().Mul(prover, alpha)
 	A.Randomize(prover, r)

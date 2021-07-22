@@ -51,7 +51,7 @@ func (ct Ciphertext) Clone() *Ciphertext {
 // The updated receiver is returned, as well as the nonce update
 func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *safenum.Nat) *safenum.Nat {
 	if nonce == nil {
-		nonce = sample.UnitModNNat(rand.Reader, pk.n)
+		nonce = sample.UnitModN(rand.Reader, pk.n)
 	}
 	// c = c*r^N
 	tmp := new(safenum.Nat).Exp(nonce, pk.nNat, pk.nSquared)
