@@ -2,7 +2,6 @@ package zkmulstar
 
 import (
 	"crypto/rand"
-	"math/big"
 	"testing"
 
 	"github.com/cronokirby/safenum"
@@ -18,12 +17,12 @@ func TestMulG(t *testing.T) {
 	verifierPaillier := zk.VerifierPaillierPublic
 	verifierPedersen := zk.Pedersen
 
-	c := big.NewInt(12)
+	c := new(safenum.Int).SetUint64(12)
 	C, _ := verifierPaillier.Enc(c)
 
 	var X curve.Point
-	x := sample.IntervalL(rand.Reader)
-	X.ScalarBaseMult(curve.NewScalarBigInt(x))
+	x := sample.IntervalLSecret(rand.Reader)
+	X.ScalarBaseMult(curve.NewScalarInt(x))
 
 	D := C.Clone().Mul(verifierPaillier, x)
 	nBig := verifierPaillier.N()
@@ -40,7 +39,7 @@ func TestMulG(t *testing.T) {
 	}
 	private := Private{
 		X:   x,
-		Rho: rho.Big(),
+		Rho: rho,
 	}
 	proof := NewProof(hash.New(), public, private)
 	out, err := proof.Marshal()

@@ -30,10 +30,10 @@ type (
 	}
 	Private struct {
 		// X ∈ ± 2ˡ
-		X *big.Int
+		X *safenum.Int
 
 		// Rho = ρ = Nonce D
-		Rho *big.Int
+		Rho *safenum.Nat
 	}
 )
 
@@ -54,13 +54,9 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	N0Big := public.Verifier.N()
 	N0 := safenum.ModulusFromNat(new(safenum.Nat).SetBig(N0Big, N0Big.BitLen()))
 
-	xSafe := new(safenum.Int).SetBig(private.X, private.X.BitLen())
-	rhoSafe := new(safenum.Nat).SetBig(private.Rho, private.Rho.BitLen())
-
 	verifier := public.Verifier
 
-	alpha := sample.IntervalLEps(rand.Reader)
-	alphaSafe := new(safenum.Int).SetBig(alpha, alpha.BitLen())
+	alpha := sample.IntervalLEpsSecret(rand.Reader)
 
 	r := sample.UnitModNNat(rand.Reader, N0)
 
@@ -72,22 +68,22 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 
 	commitment := &Commitment{
 		A:  A,
-		Bx: *curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarBigInt(alpha)),
-		E:  public.Aux.Commit(alphaSafe, gamma),
-		S:  public.Aux.Commit(xSafe, m),
+		Bx: *curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarInt(alpha)),
+		E:  public.Aux.Commit(alpha, gamma),
+		S:  public.Aux.Commit(private.X, m),
 	}
 
 	eBig := challenge(hash, public, commitment)
 	e := new(safenum.Int).SetBig(eBig, eBig.BitLen())
 
 	// z₁ = e•x+α
-	z1 := new(safenum.Int).Mul(e, xSafe, -1)
-	z1.Add(z1, alphaSafe, -1)
+	z1 := new(safenum.Int).Mul(e, private.X, -1)
+	z1.Add(z1, alpha, -1)
 	// z₂ = e•m+γ
 	z2 := new(safenum.Int).Mul(e, m, -1)
 	z2.Add(z2, gamma, -1)
 	// w = ρ^e•r mod N₀
-	w := new(safenum.Nat).ExpI(rhoSafe, e, N0)
+	w := new(safenum.Nat).ExpI(private.Rho, e, N0)
 	w.ModMul(w, r, N0)
 
 	return &Proof{
@@ -115,13 +111,16 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 		return false
 	}
 
+	z1 := new(safenum.Int).SetBig(p.Z1, p.Z1.BitLen())
+	eInt := new(safenum.Int).SetBig(e, e.BitLen())
+
 	{
 		// lhs = z₁ ⊙ C + rand
-		lhs := public.C.Clone().Mul(verifier, p.Z1)
+		lhs := public.C.Clone().Mul(verifier, z1)
 		lhs.Randomize(verifier, new(safenum.Nat).SetBig(p.W, p.W.BitLen()))
 
 		// rhsCt = A ⊕ (e ⊙ D)
-		rhs := public.D.Clone().Mul(verifier, e).Add(verifier, p.A)
+		rhs := public.D.Clone().Mul(verifier, eInt).Add(verifier, p.A)
 
 		if !lhs.Equal(rhs) {
 			return false
