@@ -17,11 +17,7 @@ func FakeSession(N, T int) (map[party.ID]*Session, map[party.ID]*Secret, error) 
 	_, _ = rand.Read(rid[:])
 	sessions := make(map[party.ID]*Session, N)
 	for _, partyID := range partyIDs {
-		sid, err := newSID(partyIDs, T)
-		if err != nil {
-			return nil, nil, err
-		}
-		s, err := newSession(sid, public, rid)
+		s, err := newSession(T, public, rid)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -49,7 +45,6 @@ func FakeData(partyIDs party.IDSlice, threshold int) (map[party.ID]*Public, map[
 		}
 		X := curve.NewIdentityPoint().ScalarBaseMult(shares[i])
 		public[pid] = &Public{
-			ID:       pid,
 			ECDSA:    X,
 			Paillier: pail,
 			Pedersen: ped,

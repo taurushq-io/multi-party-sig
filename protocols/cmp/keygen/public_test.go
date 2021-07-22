@@ -12,7 +12,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 )
 
@@ -27,7 +26,6 @@ func TestPublic_Validate(t *testing.T) {
 	N2.Add(N2, N)
 	p2 := paillier.NewPublicKey(N2)
 	type fields struct {
-		ID       party.ID
 		ECDSA    *curve.Point
 		Paillier *paillier.PublicKey
 		Pedersen *pedersen.Parameters
@@ -39,23 +37,13 @@ func TestPublic_Validate(t *testing.T) {
 	}{
 		{"all ok",
 			fields{
-				"blabla",
 				X,
 				p,
 				ped},
 			false,
 		},
-		{"no ID",
-			fields{
-				"",
-				X,
-				p,
-				ped},
-			true,
-		},
 		{"no ped",
 			fields{
-				"",
 				X,
 				p,
 				nil},
@@ -63,7 +51,6 @@ func TestPublic_Validate(t *testing.T) {
 		},
 		{"no paillier",
 			fields{
-				"",
 				X,
 				nil,
 				ped},
@@ -71,7 +58,6 @@ func TestPublic_Validate(t *testing.T) {
 		},
 		{"missing S",
 			fields{
-				"",
 				X,
 				p,
 				&pedersen.Parameters{
@@ -83,7 +69,6 @@ func TestPublic_Validate(t *testing.T) {
 		},
 		{"missing T",
 			fields{
-				"",
 				X,
 				p,
 				&pedersen.Parameters{
@@ -95,25 +80,8 @@ func TestPublic_Validate(t *testing.T) {
 		},
 		{"different N",
 			fields{
-				"",
 				X,
 				p2,
-				ped},
-			true,
-		},
-		{"small ssid",
-			fields{
-				"",
-				X,
-				p,
-				ped},
-			true,
-		},
-		{"no ssid",
-			fields{
-				"",
-				X,
-				p,
 				ped},
 			true,
 		},
@@ -121,7 +89,6 @@ func TestPublic_Validate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Public{
-				ID:       tt.fields.ID,
 				ECDSA:    tt.fields.ECDSA,
 				Paillier: tt.fields.Paillier,
 				Pedersen: tt.fields.Pedersen,
@@ -140,7 +107,6 @@ func TestPublic_MarshalJSON(t *testing.T) {
 	pk := sk.PublicKey
 	ped, _ := sk.GeneratePedersen()
 	p := Public{
-		ID:       party.RandomIDs(1)[0],
 		ECDSA:    curve.NewIdentityPoint().ScalarBaseMult(sample.Scalar(rand.Reader)),
 		Paillier: pk,
 		Pedersen: ped,
