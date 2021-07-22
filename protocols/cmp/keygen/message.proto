@@ -17,7 +17,7 @@ import "pkg/pedersen/pedersen.proto";
 message Keygen2 {
   option (gogoproto.goproto_getters) = false;
   // Commitment = Vᵢ = H(ρᵢ, Fᵢ(X), Aᵢ, Nᵢ, sᵢ, tᵢ, uᵢ)
-  bytes Commitment = 1;
+  bytes Commitment = 1 [(gogoproto.casttype) = "github.com/taurusgroup/cmp-ecdsa/pkg/hash.Commitment"];
 }
 
 message Keygen3 {
@@ -31,7 +31,7 @@ message Keygen3 {
 message Keygen4 {
   option (gogoproto.goproto_getters) = false;
   // RID = RIDᵢ
-  bytes RID = 1;
+  bytes RID = 1 [(gogoproto.casttype) = "RID"];
   // VSSPolynomial = Fᵢ(X) VSSPolynomial
   polynomial.Exponent VSSPolynomial = 2;
   // SchnorrCommitments = Aᵢ Schnorr commitment for the final confirmation
@@ -39,7 +39,7 @@ message Keygen4 {
   // N Paillier and Pedersen
   pedersen.Parameters Pedersen = 4;
   // Decommitment = uᵢ decommitment bytes
-  bytes Decommitment = 5;
+  bytes Decommitment = 5 [(gogoproto.casttype) = "github.com/taurusgroup/cmp-ecdsa/pkg/hash.Decommitment"];
 }
 
 message Keygen5 {
