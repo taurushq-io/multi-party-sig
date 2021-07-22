@@ -24,10 +24,8 @@ func mustReadBits(rand io.Reader, buf []byte) {
 	panic(ErrMaxIterations)
 }
 
-// TODO: Once we don't use big.Int anymore, merge these methods
-
-// ModNNat samples an element of ℤₙ
-func ModNNat(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
+// ModN samples an element of ℤₙ
+func ModN(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
 	out := new(safenum.Nat)
 	buf := make([]byte, (n.BitLen()+7)/8)
 	for {
@@ -41,40 +39,12 @@ func ModNNat(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
 	return out
 }
 
-// UnitModNNat returns a u ∈ ℤₙˣ
-func UnitModNNat(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
-	for i := 0; i < maxIterations; i++ {
-		// PERF: Reuse buffer instead of allocating each time
-		u := ModNNat(rand, n)
-		if u.IsUnit(n) == 1 {
-			return u
-		}
-	}
-	panic(ErrMaxIterations)
-}
-
-// ModN samples an element of ℤₙ
-func ModN(rand io.Reader, n *big.Int) *big.Int {
-	out := new(big.Int)
-	buf := make([]byte, (n.BitLen()+7)/8)
-
-	for found := false; !found; found = out.Cmp(n) < 0 {
-		mustReadBits(rand, buf)
-		out.SetBytes(buf)
-	}
-
-	return out
-}
-
 // UnitModN returns a u ∈ ℤₙˣ
-func UnitModN(rand io.Reader, n *big.Int) *big.Int {
-	gcd := new(big.Int)
-	one := big.NewInt(1)
+func UnitModN(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
 	for i := 0; i < maxIterations; i++ {
 		// PERF: Reuse buffer instead of allocating each time
 		u := ModN(rand, n)
-		gcd.GCD(nil, nil, u, n)
-		if gcd.Cmp(one) == 0 {
+		if u.IsUnit(n) == 1 {
 			return u
 		}
 	}
@@ -235,7 +205,7 @@ var ErrMaxPrimeIterations = fmt.Errorf("sample: failed to generate prime after %
 // This means that q := (p - 1) / 2 is also a prime number.
 //
 // This implies that p = 3 mod 4, otherwise q wouldn't be prime.
-func BlumPrime(rand io.Reader) *big.Int {
+func BlumPrime(rand io.Reader) *safenum.Nat {
 	// TODO be more flexible on the number of bits in P, Q to avoid square root attack
 	one := new(big.Int).SetUint64(1)
 	for i := 0; i < maxPrimeIterations; i++ {
@@ -256,7 +226,7 @@ func BlumPrime(rand io.Reader) *big.Int {
 		if !p.ProbablyPrime(blumPrimalityIterations) {
 			continue
 		}
-		return p
+		return new(safenum.Nat).SetBig(p, params.BitsBlumPrime)
 	}
 	panic(ErrMaxPrimeIterations)
 }
@@ -264,29 +234,22 @@ func BlumPrime(rand io.Reader) *big.Int {
 // Paillier generate the necessary integers for a Paillier key pair.
 // p, q are safe primes ((p - 1) / 2 is also prime), and Blum primes (p = 3 mod 4)
 // n = pq
-func Paillier(rand io.Reader) (p, q *big.Int) {
+func Paillier(rand io.Reader) (p, q *safenum.Nat) {
 	p, q = BlumPrime(rand), BlumPrime(rand)
 	return
 }
 
 // Pedersen generates the s, t, λ such that s = tˡ
-func Pedersen(rand io.Reader, n, phi *big.Int) (s, t, lambda *big.Int) {
-	two := big.NewInt(2)
-	// sample lambda without statistical bias
-	lambdaBuf := make([]byte, (params.BitsIntModN+params.L)/8)
-	mustReadBits(rand, lambdaBuf)
-	lambda = new(big.Int).SetBytes(lambdaBuf)
-	lambda.Mod(lambda, phi)
+func Pedersen(rand io.Reader, phi *safenum.Nat, n *safenum.Modulus) (s, t, lambda *safenum.Nat) {
+	phiMod := safenum.ModulusFromNat(phi)
+
+	lambda = ModN(rand, phiMod)
 
 	tau := UnitModN(rand, n)
-
 	// t = τ² mod N
-	t = new(big.Int)
-	t.Exp(tau, two, n)
-
+	t = tau.ModMul(tau, tau, n)
 	// s = tˡ mod N
-	s = tau
-	s.Exp(t, lambda, n)
+	s = new(safenum.Nat).Exp(t, lambda, n)
 
 	return
 }

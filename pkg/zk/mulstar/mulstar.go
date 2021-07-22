@@ -2,7 +2,6 @@ package zkmulstar
 
 import (
 	"crypto/rand"
-	"math/big"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -30,10 +29,10 @@ type (
 	}
 	Private struct {
 		// X ∈ ± 2ˡ
-		X *big.Int
+		X *safenum.Int
 
 		// Rho = ρ = Nonce D
-		Rho *big.Int
+		Rho *safenum.Nat
 	}
 )
 
@@ -54,40 +53,35 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	N0Big := public.Verifier.N()
 	N0 := safenum.ModulusFromNat(new(safenum.Nat).SetBig(N0Big, N0Big.BitLen()))
 
-	xSafe := new(safenum.Int).SetBig(private.X, private.X.BitLen())
-	rhoSafe := new(safenum.Nat).SetBig(private.Rho, private.Rho.BitLen())
-
 	verifier := public.Verifier
 
 	alpha := sample.IntervalLEps(rand.Reader)
-	alphaSafe := new(safenum.Int).SetBig(alpha, alpha.BitLen())
 
-	r := sample.UnitModNNat(rand.Reader, N0)
+	r := sample.UnitModN(rand.Reader, N0)
 
-	gamma := sample.IntervalLEpsNSecret(rand.Reader)
-	m := sample.IntervalLEpsNSecret(rand.Reader)
+	gamma := sample.IntervalLEpsN(rand.Reader)
+	m := sample.IntervalLEpsN(rand.Reader)
 
 	A := public.C.Clone().Mul(verifier, alpha)
-	A.Randomize(verifier, r.Big())
+	A.Randomize(verifier, r)
 
 	commitment := &Commitment{
 		A:  A,
-		Bx: *curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarBigInt(alpha)),
-		E:  public.Aux.Commit(alphaSafe, gamma),
-		S:  public.Aux.Commit(xSafe, m),
+		Bx: *curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarInt(alpha)),
+		E:  public.Aux.Commit(alpha, gamma),
+		S:  public.Aux.Commit(private.X, m),
 	}
 
-	eBig := challenge(hash, public, commitment)
-	e := new(safenum.Int).SetBig(eBig, eBig.BitLen())
+	e := challenge(hash, public, commitment)
 
 	// z₁ = e•x+α
-	z1 := new(safenum.Int).Mul(e, xSafe, -1)
-	z1.Add(z1, alphaSafe, -1)
+	z1 := new(safenum.Int).Mul(e, private.X, -1)
+	z1.Add(z1, alpha, -1)
 	// z₂ = e•m+γ
 	z2 := new(safenum.Int).Mul(e, m, -1)
 	z2.Add(z2, gamma, -1)
 	// w = ρ^e•r mod N₀
-	w := new(safenum.Nat).ExpI(rhoSafe, e, N0)
+	w := new(safenum.Nat).ExpI(private.Rho, e, N0)
 	w.ModMul(w, r, N0)
 
 	return &Proof{
@@ -111,14 +105,16 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 
 	e := challenge(hash, public, p.Commitment)
 
-	if !public.Aux.Verify(p.Z1, p.Z2, p.E, p.S, e) {
+	if !public.Aux.Verify(p.Z1, p.Z2, p.E, p.S, e.Big()) {
 		return false
 	}
 
+	z1 := new(safenum.Int).SetBig(p.Z1, p.Z1.BitLen())
+
 	{
 		// lhs = z₁ ⊙ C + rand
-		lhs := public.C.Clone().Mul(verifier, p.Z1)
-		lhs.Randomize(verifier, p.W)
+		lhs := public.C.Clone().Mul(verifier, z1)
+		lhs.Randomize(verifier, new(safenum.Nat).SetBig(p.W, p.W.BitLen()))
 
 		// rhsCt = A ⊕ (e ⊙ D)
 		rhs := public.D.Clone().Mul(verifier, e).Add(verifier, p.A)
@@ -133,7 +129,7 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 		lhs := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarBigInt(p.Z1))
 
 		// rhs = [e]X + Bₓ
-		rhs := curve.NewIdentityPoint().ScalarMult(curve.NewScalarBigInt(e), public.X)
+		rhs := curve.NewIdentityPoint().ScalarMult(curve.NewScalarInt(e), public.X)
 		rhs.Add(rhs, &p.Bx)
 		if !lhs.Equal(rhs) {
 			return false
@@ -143,7 +139,7 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment *Commitment) *big.Int {
+func challenge(hash *hash.Hash, public Public, commitment *Commitment) *safenum.Int {
 	_, _ = hash.WriteAny(public.Aux, public.Verifier,
 		public.C, public.D, public.X,
 		commitment.A, commitment.Bx,

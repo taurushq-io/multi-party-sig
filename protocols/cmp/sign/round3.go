@@ -59,7 +59,7 @@ func (r *round3) ProcessMessage(j party.ID, content message.Content) error {
 	if err != nil {
 		return fmt.Errorf("failed to decrypt delta alpha share: %w", err)
 	}
-	deltaShare := curve.NewScalarBigInt(deltaShareAlpha)
+	deltaShare := curve.NewScalarInt(deltaShareAlpha)
 	deltaShare.Add(deltaShare, partyJ.DeltaMtA.Beta)
 	partyJ.DeltaShareMtA = deltaShare
 	// χᵢⱼ = α̂ᵢⱼ +  ̂βᵢⱼ
@@ -67,7 +67,7 @@ func (r *round3) ProcessMessage(j party.ID, content message.Content) error {
 	if err != nil {
 		return fmt.Errorf("failed to decrypt chi alpha share: %w", err)
 	}
-	chiShare := curve.NewScalarBigInt(chiShareAlpha)
+	chiShare := curve.NewScalarInt(chiShareAlpha)
 	chiShare.Add(chiShare, partyJ.ChiMtA.Beta)
 	partyJ.ChiShareMtA = chiShare
 	return nil
@@ -107,7 +107,7 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 
 	zkPrivate := zklogstar.Private{
-		X:   r.KShare.BigInt(),
+		X:   r.KShare.Int(),
 		Rho: r.KNonce,
 	}
 

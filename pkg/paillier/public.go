@@ -58,15 +58,9 @@ func NewPublicKey(n *big.Int) *PublicKey {
 // The message m must be in the range [-(N-1)/2, …, (N-1)/2] and panics otherwise
 //
 // ct = (1+N)ᵐρᴺ (mod N²)
-func (pk PublicKey) Enc(m *big.Int) (*Ciphertext, *big.Int) {
-	cipher, nonce := pk.encNat(new(safenum.Int).SetBig(m, m.BitLen()))
-	return cipher, nonce.Big()
-}
-
-// Enc, but with Nat arguments
-func (pk PublicKey) encNat(m *safenum.Int) (*Ciphertext, *safenum.Nat) {
-	nonce := sample.UnitModNNat(rand.Reader, pk.n)
-	return pk.encWithNonceNat(m, nonce), nonce
+func (pk PublicKey) Enc(m *safenum.Int) (*Ciphertext, *safenum.Nat) {
+	nonce := sample.UnitModN(rand.Reader, pk.n)
+	return pk.EncWithNonce(m, nonce), nonce
 }
 
 // EncWithNonce returns the encryption of m under the public key pk.
@@ -75,15 +69,7 @@ func (pk PublicKey) encNat(m *safenum.Int) (*Ciphertext, *safenum.Nat) {
 // The message m must be in the range [-(N-1)/2, …, (N-1)/2] and panics otherwise
 //
 // ct = (1+N)ᵐρᴺ (mod N²)
-func (pk PublicKey) EncWithNonce(m, nonce *big.Int) *Ciphertext {
-	mInt := new(safenum.Int).SetBig(m, m.BitLen())
-	nonceNat := new(safenum.Nat).SetBig(nonce, nonce.BitLen())
-
-	return pk.encWithNonceNat(mInt, nonceNat)
-}
-
-// EncWithNonce, but with Nat
-func (pk PublicKey) encWithNonceNat(m *safenum.Int, nonce *safenum.Nat) *Ciphertext {
+func (pk PublicKey) EncWithNonce(m *safenum.Int, nonce *safenum.Nat) *Ciphertext {
 	if m.CheckInRange(pk.n) != 1 {
 		panic("paillier.Encrypt: tried to encrypt message outside of range [-(N-1)/2, …, (N-1)/2]")
 	}

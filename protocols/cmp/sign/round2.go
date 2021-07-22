@@ -57,7 +57,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	r.EchoHash = h.ReadBytes(nil)
 
 	zkPrivate := zklogstar.Private{
-		X:   r.GammaShare.BigInt(),
+		X:   r.GammaShare.Int(),
 		Rho: r.GNonce,
 	}
 

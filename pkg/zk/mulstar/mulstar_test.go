@@ -2,9 +2,9 @@ package zkmulstar
 
 import (
 	"crypto/rand"
-	"math/big"
 	"testing"
 
+	"github.com/cronokirby/safenum"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -17,15 +17,17 @@ func TestMulG(t *testing.T) {
 	verifierPaillier := zk.VerifierPaillierPublic
 	verifierPedersen := zk.Pedersen
 
-	c := big.NewInt(12)
+	c := new(safenum.Int).SetUint64(12)
 	C, _ := verifierPaillier.Enc(c)
 
 	var X curve.Point
 	x := sample.IntervalL(rand.Reader)
-	X.ScalarBaseMult(curve.NewScalarBigInt(x))
+	X.ScalarBaseMult(curve.NewScalarInt(x))
 
 	D := C.Clone().Mul(verifierPaillier, x)
-	rho := sample.UnitModN(rand.Reader, verifierPaillier.N())
+	nBig := verifierPaillier.N()
+	n := safenum.ModulusFromNat(new(safenum.Nat).SetBig(nBig, nBig.BitLen()))
+	rho := sample.UnitModN(rand.Reader, n)
 	D.Randomize(verifierPaillier, rho)
 
 	public := Public{

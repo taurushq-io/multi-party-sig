@@ -2,8 +2,8 @@ package sign
 
 import (
 	"crypto/rand"
-	"math/big"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
@@ -38,13 +38,13 @@ type MtA struct {
 	Beta *curve.Scalar
 
 	// S is the Paillier randomness sᵢⱼ for Dⱼᵢ = (aᵢ ⊙ Kⱼ) ⊕ encⱼ(- βᵢⱼ, sᵢⱼ)
-	S *big.Int
+	S *safenum.Nat
 	// R is the Paillier randomness rᵢⱼ for Fⱼᵢ = encᵢ(-βᵢⱼ, rᵢⱼ)
 	// Note, the paper says to use encᵢ(βᵢⱼ, rᵢⱼ), but it is probably a typo
-	R *big.Int
+	R *safenum.Nat
 
 	// BetaNeg = - βᵢⱼ
-	BetaNeg *big.Int
+	BetaNeg *safenum.Int
 }
 
 // NewMtA creates the MtA struct and returns the corresponding MtA message to be sent to i.
@@ -56,12 +56,12 @@ func NewMtA(ai *curve.Scalar, Ai *curve.Point,
 
 	beta := sample.IntervalLPrime(rand.Reader)
 
-	betaNeg := new(big.Int).Neg(beta)
+	betaNeg := beta.Clone().Neg(1)
 	// Fⱼᵢ = encᵢ(-βᵢⱼ, rᵢⱼ)
 	F, r := sender.Paillier.Enc(betaNeg)
 
 	// tempC = aᵢ ⊙ Kⱼ
-	tempC := Kj.Clone().Mul(receiver.Paillier, ai.BigInt())
+	tempC := Kj.Clone().Mul(receiver.Paillier, ai.Int())
 
 	// Dⱼᵢ = encⱼ(-βᵢⱼ) ⊕ (aᵢ ⊙ Kⱼ) = encⱼ(aᵢ•kⱼ-βᵢⱼ)
 	D, s := receiver.Paillier.Enc(betaNeg)
@@ -75,7 +75,7 @@ func NewMtA(ai *curve.Scalar, Ai *curve.Point,
 		K:        Kj,
 		D:        D,
 		F:        F,
-		Beta:     curve.NewScalarBigInt(beta),
+		Beta:     curve.NewScalarInt(beta),
 		S:        s,
 		R:        r,
 		BetaNeg:  betaNeg,
@@ -101,7 +101,7 @@ func (mta *MtA) ProofAffG(h *hash.Hash, verifier *keygen.Public) *MtAMessage {
 		Aux:      verifier.Pedersen,
 	}
 	zkPrivate := zkaffg.Private{
-		X:    mta.Secret.BigInt(),
+		X:    mta.Secret.Int(),
 		Y:    mta.BetaNeg,
 		Rho:  mta.S,
 		RhoY: mta.R,

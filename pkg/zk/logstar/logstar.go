@@ -2,7 +2,6 @@ package zklogstar
 
 import (
 	"crypto/rand"
-	"math/big"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -32,11 +31,11 @@ type (
 	}
 	Private struct {
 		// X is the plaintext of C and the dlog of X
-		X *big.Int
+		X *safenum.Int
 
 		// Rho = ρ
 		// nonce of C
-		Rho *big.Int
+		Rho *safenum.Nat
 	}
 )
 
@@ -56,34 +55,30 @@ func (p Proof) IsValid(public Public) bool {
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	NBig := public.Prover.N()
 	N := safenum.ModulusFromNat(new(safenum.Nat).SetBig(NBig, NBig.BitLen()))
-	xSafe := new(safenum.Int).SetBig(private.X, private.X.BitLen())
-	rhoSafe := new(safenum.Nat).SetBig(private.Rho, private.Rho.BitLen())
 
 	if public.G == nil {
 		public.G = curve.NewBasePoint()
 	}
 
 	alpha := sample.IntervalLEps(rand.Reader)
-	alphaSafe := new(safenum.Int).SetBig(alpha, alpha.BitLen())
-	r := sample.UnitModNNat(rand.Reader, N)
-	mu := sample.IntervalLNSecret(rand.Reader)
-	gamma := sample.IntervalLEpsNSecret(rand.Reader)
+	r := sample.UnitModN(rand.Reader, N)
+	mu := sample.IntervalLN(rand.Reader)
+	gamma := sample.IntervalLEpsN(rand.Reader)
 
 	commitment := &Commitment{
-		A: public.Prover.EncWithNonce(alpha, r.Big()),
-		Y: *curve.NewIdentityPoint().ScalarMult(curve.NewScalarBigInt(alpha), public.G),
-		S: public.Aux.Commit(xSafe, mu),
-		D: public.Aux.Commit(alphaSafe, gamma),
+		A: public.Prover.EncWithNonce(alpha, r),
+		Y: *curve.NewIdentityPoint().ScalarMult(curve.NewScalarInt(alpha), public.G),
+		S: public.Aux.Commit(private.X, mu),
+		D: public.Aux.Commit(alpha, gamma),
 	}
 
-	eBig := challenge(hash, public, commitment)
-	e := new(safenum.Int).SetBig(eBig, eBig.BitLen())
+	e := challenge(hash, public, commitment)
 
 	// z1 = α + e x,
-	z1 := new(safenum.Int).Mul(e, xSafe, -1)
-	z1.Add(z1, alphaSafe, -1)
+	z1 := new(safenum.Int).Mul(e, private.X, -1)
+	z1.Add(z1, alpha, -1)
 	// z2 = r ρᵉ mod Nₐ,
-	z2 := new(safenum.Nat).ExpI(rhoSafe, e, N)
+	z2 := new(safenum.Nat).ExpI(private.Rho, e, N)
 	z2.ModMul(z2, r, N)
 	// z3 = γ + e μ,
 	z3 := new(safenum.Int).Mul(e, mu, -1)
@@ -114,13 +109,16 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 
 	e := challenge(hash, public, p.Commitment)
 
-	if !public.Aux.Verify(p.Z1, p.Z3, p.D, p.S, e) {
+	if !public.Aux.Verify(p.Z1, p.Z3, p.D, p.S, e.Big()) {
 		return false
 	}
 
+	z1 := new(safenum.Int).SetBig(p.Z1, p.Z1.BitLen())
+	z2 := new(safenum.Nat).SetBig(p.Z2, p.Z2.BitLen())
+
 	{
 		// lhs = Enc(z₁;z₂)
-		lhs := prover.EncWithNonce(p.Z1, p.Z2)
+		lhs := prover.EncWithNonce(z1, z2)
 
 		// rhs = (e ⊙ C) ⊕ A
 		rhs := public.C.Clone().Mul(prover, e).Add(prover, p.A)
@@ -134,7 +132,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 		lhs := curve.NewIdentityPoint().ScalarMult(curve.NewScalarBigInt(p.Z1), public.G)
 
 		// rhs = Y + [e]X
-		eX := curve.NewIdentityPoint().ScalarMult(curve.NewScalarBigInt(e), public.X)
+		eX := curve.NewIdentityPoint().ScalarMult(curve.NewScalarInt(e), public.X)
 		rhs := curve.NewIdentityPoint().Add(&p.Y, eX)
 
 		if !lhs.Equal(rhs) {
@@ -146,7 +144,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment *Commitment) *big.Int {
+func challenge(hash *hash.Hash, public Public, commitment *Commitment) *safenum.Int {
 	_, _ = hash.WriteAny(public.Aux, public.Prover, public.C, public.X, public.G,
 		commitment.S, commitment.A, commitment.Y, commitment.D)
 

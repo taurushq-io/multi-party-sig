@@ -3,7 +3,6 @@ package paillier
 import (
 	"crypto/rand"
 	"io"
-	"math/big"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/internal/proto"
@@ -25,13 +24,12 @@ func (ct *Ciphertext) Add(pk *PublicKey, otherCt *Ciphertext) *Ciphertext {
 
 // Mul sets ct to the homomorphic multiplication of k ⊙ ctₐ
 // ct = ctᵏ (mod N²)
-func (ct *Ciphertext) Mul(pk *PublicKey, k *big.Int) *Ciphertext {
+func (ct *Ciphertext) Mul(pk *PublicKey, k *safenum.Int) *Ciphertext {
 	if k == nil {
 		return ct
 	}
 
-	kInt := new(safenum.Int).SetBig(k, k.BitLen())
-	ct.C.ExpI(ct.C.Nat, kInt, pk.nSquared)
+	ct.C.ExpI(ct.C.Nat, k, pk.nSquared)
 
 	return ct
 }
@@ -51,17 +49,14 @@ func (ct Ciphertext) Clone() *Ciphertext {
 // Randomize multiplies the ciphertext's nonce by a newly generated one.
 // ct *= nonceᴺ for some nonce either given or generated here (if nonce = nil).
 // The updated receiver is returned, as well as the nonce update
-func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *big.Int) *big.Int {
-	nonceNat := new(safenum.Nat)
+func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *safenum.Nat) *safenum.Nat {
 	if nonce == nil {
-		nonceNat = sample.UnitModNNat(rand.Reader, pk.n)
-	} else {
-		nonceNat.SetBig(nonce, nonce.BitLen())
+		nonce = sample.UnitModN(rand.Reader, pk.n)
 	}
 	// c = c*r^N
-	tmp := new(safenum.Nat).Exp(nonceNat, pk.nNat, pk.nSquared)
+	tmp := new(safenum.Nat).Exp(nonce, pk.nNat, pk.nSquared)
 	ct.C.ModMul(ct.C.Nat, tmp, pk.nSquared)
-	return nonceNat.Big()
+	return nonce
 }
 
 func NewCiphertext() *Ciphertext {

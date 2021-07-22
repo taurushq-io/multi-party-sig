@@ -17,7 +17,7 @@ func TestDec(t *testing.T) {
 	prover := zk.ProverPaillierPublic
 
 	y := sample.IntervalL(rand.Reader)
-	x := curve.NewScalarBigInt(y)
+	x := curve.NewScalarInt(y)
 
 	C, rho := prover.Enc(y)
 

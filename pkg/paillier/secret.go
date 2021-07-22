@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"math/big"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
@@ -37,13 +36,13 @@ type SecretKey struct {
 }
 
 // P returns the first of the two factors composing this key.
-func (sk *SecretKey) P() *big.Int {
-	return sk.p.Big()
+func (sk *SecretKey) P() *safenum.Nat {
+	return sk.p
 }
 
 // Q returns the second of the two factors composing this key.
-func (sk *SecretKey) Q() *big.Int {
-	return sk.q.Big()
+func (sk *SecretKey) Q() *safenum.Nat {
+	return sk.q
 }
 
 // Phi returns ϕ = (P-1)(Q-1).
@@ -52,8 +51,8 @@ func (sk *SecretKey) Q() *big.Int {
 // is our public key. This function counts the number of units mod N.
 //
 // This quantity is useful in ZK proofs.
-func (sk *SecretKey) Phi() *big.Int {
-	return sk.phi.Big()
+func (sk *SecretKey) Phi() *safenum.Nat {
+	return sk.phi
 }
 
 func KeyGen() (pk *PublicKey, sk *SecretKey) {
@@ -66,25 +65,21 @@ func NewSecretKey() *SecretKey {
 	return NewSecretKeyFromPrimes(sample.Paillier(rand.Reader))
 }
 
-func NewSecretKeyFromPrimes(P, Q *big.Int) *SecretKey {
-	p := new(safenum.Nat).SetBig(P, P.BitLen())
-	q := new(safenum.Nat).SetBig(Q, Q.BitLen())
+func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
 
-	n := new(safenum.Nat).Mul(p, q, -1)
+	n := new(safenum.Nat).Mul(P, Q, -1)
 	nMod := safenum.ModulusFromNat(n)
 
-	p.Sub(p, oneNat, -1)
-	q.Sub(q, oneNat, -1)
-	phi := new(safenum.Nat).Mul(p, q, -1)
+	pMinus1 := new(safenum.Nat).Sub(P, oneNat, -1)
+	qMinus1 := new(safenum.Nat).Sub(Q, oneNat, -1)
+
+	phi := new(safenum.Nat).Mul(pMinus1, qMinus1, -1)
 	// ϕ⁻¹ mod N
 	phiInv := new(safenum.Nat).ModInverse(phi, nMod)
 
-	p.SetBig(P, P.BitLen())
-	q.SetBig(Q, Q.BitLen())
-
 	return &SecretKey{
-		p:         p,
-		q:         q,
+		p:         P,
+		q:         Q,
 		phi:       phi,
 		phiInv:    phiInv,
 		PublicKey: NewPublicKey(n.Big()),
@@ -93,7 +88,7 @@ func NewSecretKeyFromPrimes(P, Q *big.Int) *SecretKey {
 
 // Dec decrypts c and returns the plaintext m ∈ ± (N-2)/2.
 // It returns an error if gcd(c, N²) != 1 or if c is not in [1, N²-1].
-func (sk *SecretKey) Dec(ct *Ciphertext) (*big.Int, error) {
+func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
 	n := sk.PublicKey.n
 	nSquared := sk.PublicKey.nSquared
 
@@ -115,7 +110,7 @@ func (sk *SecretKey) Dec(ct *Ciphertext) (*big.Int, error) {
 	result.ModMul(result, phiInv, n)
 
 	// see 6.1 https://www.iacr.org/archive/crypto2001/21390136.pdf
-	return new(safenum.Int).SetModSymmetric(result, n).Big(), nil
+	return new(safenum.Int).SetModSymmetric(result, n), nil
 }
 
 func (sk *SecretKey) Clone() *SecretKey {
@@ -128,13 +123,12 @@ func (sk *SecretKey) Clone() *SecretKey {
 	}
 }
 
-func (sk SecretKey) GeneratePedersen() (ped *pedersen.Parameters, lambda *big.Int) {
-	var s, t *big.Int
-	s, t, lambda = sample.Pedersen(rand.Reader, sk.PublicKey.n.Big(), sk.phi.Big())
+func (sk SecretKey) GeneratePedersen() (*pedersen.Parameters, *safenum.Nat) {
+	s, t, lambda := sample.Pedersen(rand.Reader, sk.phi, sk.PublicKey.n)
 	return &pedersen.Parameters{
 		N: sk.PublicKey.n.Big(),
-		S: s,
-		T: t,
+		S: s.Big(),
+		T: t.Big(),
 	}, lambda
 }
 

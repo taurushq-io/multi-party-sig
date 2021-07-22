@@ -33,8 +33,8 @@ func (r *round5) ProcessMessage(j party.ID, content message.Content) error {
 	if err != nil {
 		return err
 	}
-	xJ := curve.NewScalarBigInt(xJdec)
-	if xJdec.Cmp(xJ.BigInt()) != 0 {
+	xJ := curve.NewScalarInt(xJdec)
+	if xJdec.Eq(xJ.Int()) != 1 {
 		return ErrRound5Decrypt
 	}
 

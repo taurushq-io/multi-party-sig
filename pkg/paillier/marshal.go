@@ -3,6 +3,8 @@ package paillier
 import (
 	"encoding/json"
 	"math/big"
+
+	"github.com/cronokirby/safenum"
 )
 
 var _ json.Marshaler = (*PublicKey)(nil)
@@ -15,8 +17,8 @@ type jsonPublicKey struct {
 }
 
 type jsonSecretKey struct {
-	P *big.Int `json:"p"`
-	Q *big.Int `json:"q"`
+	P []byte `json:"p"`
+	Q []byte `json:"q"`
 }
 
 func (pk *PublicKey) UnmarshalJSON(bytes []byte) error {
@@ -39,13 +41,13 @@ func (sk *SecretKey) UnmarshalJSON(bytes []byte) error {
 	if err != nil {
 		return err
 	}
-	*sk = *NewSecretKeyFromPrimes(x.P, x.Q)
+	*sk = *NewSecretKeyFromPrimes(new(safenum.Nat).SetBytes(x.P), new(safenum.Nat).SetBytes(x.Q))
 	return nil
 }
 
 func (sk SecretKey) MarshalJSON() ([]byte, error) {
 	return json.Marshal(jsonSecretKey{
-		P: sk.P(),
-		Q: sk.Q(),
+		P: sk.P().Bytes(),
+		Q: sk.Q().Bytes(),
 	})
 }

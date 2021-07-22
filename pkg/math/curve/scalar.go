@@ -4,6 +4,7 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/cronokirby/safenum"
 	"github.com/decred/dcrd/dcrec/secp256k1/v3"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
@@ -21,6 +22,12 @@ func NewScalar() *Scalar {
 func NewScalarBigInt(n *big.Int) *Scalar {
 	var s Scalar
 	return s.SetBigInt(n)
+}
+
+// NewScalarInt returns a new Scalar from a safenum.Int
+func NewScalarInt(n *safenum.Int) *Scalar {
+	var s Scalar
+	return s.SetInt(n)
 }
 
 // NewScalarUInt32 returns a new Scalar from a big.Int
@@ -94,6 +101,12 @@ func (s *Scalar) SetBigInt(i *big.Int) *Scalar {
 	return s
 }
 
+// SetInt sets s = i mod q, returning s
+func (s *Scalar) SetInt(i *safenum.Int) *Scalar {
+	s.s.SetByteSlice(i.Mod(qMod).Bytes())
+	return s
+}
+
 // SetBytes sets s = x, and returns s.
 func (s *Scalar) SetBytes(in []byte) *Scalar {
 	s.s.SetByteSlice(in)
@@ -147,6 +160,11 @@ func (s *Scalar) BigInt() *big.Int {
 	b := s.s.Bytes()
 	i.SetBytes(b[:])
 	return &i
+}
+
+func (s *Scalar) Int() *safenum.Int {
+	b := s.s.Bytes()
+	return new(safenum.Int).SetBytes(b[:])
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.

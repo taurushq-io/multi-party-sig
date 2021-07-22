@@ -3,8 +3,8 @@ package sign
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
-	"math/big"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
@@ -34,10 +34,10 @@ type round1 struct {
 
 	// KNonce = ρᵢ <- ℤₙ
 	// used to encrypt Kᵢ = Encᵢ(kᵢ)
-	KNonce *big.Int
+	KNonce *safenum.Nat
 	// GNonce = νᵢ <- ℤₙ
 	// used to encrypt Gᵢ = Encᵢ(γᵢ)
-	GNonce *big.Int
+	GNonce *safenum.Nat
 
 	Message []byte
 }
@@ -64,12 +64,12 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Γᵢ = [γᵢ]⋅G
 	r.GammaShare, r.Self.BigGammaShare = sample.ScalarPointPair(rand.Reader)
 	// Gᵢ = Encᵢ(γᵢ;νᵢ)
-	r.Self.G, r.GNonce = r.Self.Paillier.Enc(r.GammaShare.BigInt())
+	r.Self.G, r.GNonce = r.Self.Paillier.Enc(r.GammaShare.Int())
 
 	// kᵢ <- 𝔽,
 	r.KShare = sample.Scalar(rand.Reader)
 	// Kᵢ = Encᵢ(kᵢ;ρᵢ)
-	r.Self.K, r.KNonce = r.Self.Paillier.Enc(r.KShare.BigInt())
+	r.Self.K, r.KNonce = r.Self.Paillier.Enc(r.KShare.Int())
 
 	for j, partyJ := range r.Parties {
 		if j == r.Self.ID {
@@ -81,7 +81,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 			Prover: r.Self.Paillier,
 			Aux:    partyJ.Pedersen,
 		}, zkenc.Private{
-			K:   r.KShare.BigInt(),
+			K:   r.KShare.Int(),
 			Rho: r.KNonce,
 		})
 
