@@ -156,6 +156,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	phiMod := safenum.ModulusFromNat(phiNat)
 	nNat := new(safenum.Nat).SetBig(n, n.BitLen())
 	nMod := safenum.ModulusFromNat(nNat)
+	// W can be leaked so no need to make this sampling return a nat.
 	w := sample.QNR(rand.Reader, n)
 	wNat := new(safenum.Nat).SetBig(w, w.BitLen())
 
