@@ -1,9 +1,11 @@
 package round
 
 import (
+	"crypto/elliptic"
 	"errors"
 	"sync"
 
+	"github.com/decred/dcrd/dcrec/secp256k1/v3"
 	any "github.com/gogo/protobuf/types"
 	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -24,6 +26,10 @@ type Helper struct {
 	// partyIDs is a sorted slice of participating parties in this protocol.
 	// otherPartyIDs is the same as partyIDs without selfID
 	partyIDs, otherPartyIDs party.IDSlice
+
+	// group for signature
+	group elliptic.Curve
+
 	// ssid the unique identifier for this protocol execution
 	ssid []byte
 
@@ -31,47 +37,96 @@ type Helper struct {
 	hash *hash.Hash
 }
 
-func NewHelper(
-	protocolID types.ProtocolID,
-	finalRoundNumber types.RoundNumber,
-	selfID party.ID,
-	partyIDs party.IDSlice,
-	hash *hash.Hash,
-) *Helper {
+func NewHelper(protocolID types.ProtocolID, finalRoundNumber types.RoundNumber,
+	selfID party.ID, partyIDs party.IDSlice,
+	auxInfo ...writer.WriterToWithDomain) (*Helper, error) {
+
+	if !partyIDs.Sorted() {
+		return nil, errors.New("helper: PartyIDs are not sorted")
+	}
+
+	if partyIDs.ContainsDuplicates() {
+		return nil, errors.New("helper: PartyIDs contains duplicate")
+	}
+
+	// verify our ID is present
+	if !partyIDs.Contains(selfID) {
+		return nil, errors.New("helper: selfID not included in partyIDs")
+	}
+
+	// todo change to allow different groups
+	group := secp256k1.S256()
+
+	h := hashFromSID(protocolID, group, partyIDs, auxInfo...)
+
 	return &Helper{
 		protocolID:       protocolID,
 		finalRoundNumber: finalRoundNumber,
 		selfID:           selfID,
 		partyIDs:         partyIDs,
 		otherPartyIDs:    partyIDs.Remove(selfID),
-		ssid:             hash.Clone().ReadBytes(nil),
-		hash:             hash,
-	}
+		group:            group,
+		ssid:             h.Clone().ReadBytes(nil),
+		hash:             h,
+	}, nil
 }
 
-func (r *Helper) Hash() *hash.Hash {
-	r.mtx.Lock()
-	defer r.mtx.Unlock()
-	return r.hash.Clone()
-}
+// hashFromSID returns a new hash.Hash function initialized with the full SSID.
+// It assumes that the state is in a correct, and can panic if it is not.
+// Calling hash.Sum() on the resulting hash function returns the hash of the SSID.
+// It computes
+// - Hash(𝔾, q, Gₓ, n, P₁, …, Pₙ, auxInfo}
+func hashFromSID(protocolID types.ProtocolID, group elliptic.Curve, partyIDs party.IDSlice, auxInfo ...writer.WriterToWithDomain) *hash.Hash {
+	h := hash.New()
 
-// HashForID returns a clone of the hash.Hash for this session, initialized with the given id
-func (r *Helper) HashForID(id party.ID) *hash.Hash {
-	r.mtx.Lock()
-	defer r.mtx.Unlock()
+	// Write SID
+	// protocolID 𝔾, q, Gₓ, n, P₁, …, Pₙ
+	_, _ = h.WriteAny(
+		protocolID,
+		&writer.BytesWithDomain{
+			TheDomain: "Group Name",
+			Bytes:     []byte(group.Params().Name),
+		},
+		&writer.BytesWithDomain{
+			TheDomain: "Group Order",
+			Bytes:     group.Params().N.Bytes(),
+		},
+		&writer.BytesWithDomain{
+			TheDomain: "Generator X Coordinate",
+			Bytes:     group.Params().Gx.Bytes(),
+		},
+		partyIDs,
+	)
 
-	h := r.hash.Clone()
-	if id != "" {
-		_, _ = h.WriteAny(id)
+	for _, v := range auxInfo {
+		_, _ = h.WriteAny(v)
 	}
 	return h
 }
 
+func (h *Helper) Hash() *hash.Hash {
+	h.mtx.Lock()
+	defer h.mtx.Unlock()
+	return h.hash.Clone()
+}
+
+// HashForID returns a clone of the hash.Hash for this session, initialized with the given id
+func (h *Helper) HashForID(id party.ID) *hash.Hash {
+	h.mtx.Lock()
+	defer h.mtx.Unlock()
+
+	cloned := h.hash.Clone()
+	if id != "" {
+		_, _ = cloned.WriteAny(id)
+	}
+	return cloned
+}
+
 // UpdateHashState writes additional data to the hash state.
-func (r *Helper) UpdateHashState(value writer.WriterToWithDomain) {
-	r.mtx.Lock()
-	defer r.mtx.Unlock()
-	_, _ = r.hash.WriteAny(value)
+func (h *Helper) UpdateHashState(value writer.WriterToWithDomain) {
+	h.mtx.Lock()
+	defer h.mtx.Unlock()
+	_, _ = h.hash.WriteAny(value)
 }
 
 // MarshalMessage returns a Message for the given content, and sets the headers appropriately.
@@ -122,3 +177,6 @@ func (h *Helper) N() int { return len(h.partyIDs) }
 
 // OtherPartyIDs returns a sorted list of parties that does not contain SelfID
 func (h *Helper) OtherPartyIDs() party.IDSlice { return h.partyIDs.Remove(h.selfID) }
+
+// Curve returns the curve used for this protocol
+func (h *Helper) Curve() elliptic.Curve { return h.group }
