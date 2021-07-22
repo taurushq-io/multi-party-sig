@@ -41,17 +41,17 @@ type (
 	Private struct {
 		// X ∈ ± 2ˡ
 		// Bob's multiplicative share
-		X *big.Int
+		X *safenum.Int
 
 		// Y ∈ ± 2ˡº
 		// Bob's additive share βᵢⱼ
-		Y *big.Int
+		Y *safenum.Int
 
 		// Rho = Nonce D = sᵢⱼ
-		Rho *big.Int
+		Rho *safenum.Nat
 
 		// RhoY = Nonce Y = rᵢⱼ
-		RhoY *big.Int
+		RhoY *safenum.Nat
 	}
 )
 
@@ -83,10 +83,8 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	verifier := public.Verifier
 	prover := public.Prover
 
-	alpha := sample.IntervalLEps(rand.Reader)
-	alphaSafe := new(safenum.Int).SetBig(alpha, alpha.BitLen())
-	beta := sample.IntervalLPrimeEps(rand.Reader)
-	betaSafe := new(safenum.Int).SetBig(beta, beta.BitLen())
+	alpha := sample.IntervalLEpsSecret(rand.Reader)
+	beta := sample.IntervalLPrimeEpsSecret(rand.Reader)
 
 	r := sample.UnitModNNat(rand.Reader, N0)
 	rY := sample.UnitModNNat(rand.Reader, N1)
@@ -100,34 +98,28 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	mu := sample.IntervalLN(rand.Reader)
 	muSafe := new(safenum.Int).SetBig(mu, mu.BitLen())
 
-	cAlpha := public.C.Clone().Mul(verifier, alpha)                 // = Cᵃ mod N₀ = α ⊙ C
-	A := verifier.EncWithNonce(beta, r.Big()).Add(verifier, cAlpha) // = Enc₀(β,r) ⊕ (α ⊙ C)
-
-	xSafe := new(safenum.Int).SetBig(private.X, private.X.BitLen())
-	ySafe := new(safenum.Int).SetBig(private.Y, private.Y.BitLen())
+	cAlpha := public.C.Clone().Mul(verifier, alpha)           // = Cᵃ mod N₀ = α ⊙ C
+	A := verifier.EncWithNonce(beta, r).Add(verifier, cAlpha) // = Enc₀(β,r) ⊕ (α ⊙ C)
 
 	commitment := &Commitment{
 		A:  A,
-		Bx: *curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarBigInt(alpha)),
-		By: prover.EncWithNonce(beta, rY.Big()),
-		E:  public.Aux.Commit(alphaSafe, gammaSafe),
-		S:  public.Aux.Commit(xSafe, mSafe),
-		F:  public.Aux.Commit(betaSafe, deltaSafe),
-		T:  public.Aux.Commit(ySafe, muSafe),
+		Bx: *curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarInt(alpha)),
+		By: prover.EncWithNonce(beta, rY),
+		E:  public.Aux.Commit(alpha, gammaSafe),
+		S:  public.Aux.Commit(private.X, mSafe),
+		F:  public.Aux.Commit(beta, deltaSafe),
+		T:  public.Aux.Commit(private.Y, muSafe),
 	}
 
 	eBig := challenge(hash, public, commitment)
 	e := new(safenum.Int).SetBig(eBig, eBig.BitLen())
 
-	rhoSafe := new(safenum.Nat).SetBig(private.Rho, private.Rho.BitLen())
-	rhoYSafe := new(safenum.Nat).SetBig(private.RhoY, private.RhoY.BitLen())
-
 	// e•x+α
-	z1 := new(safenum.Int).Mul(e, xSafe, -1)
-	z1.Add(z1, alphaSafe, -1)
+	z1 := new(safenum.Int).Mul(e, private.X, -1)
+	z1.Add(z1, alpha, -1)
 	// e•y+β
-	z2 := new(safenum.Int).Mul(e, ySafe, -1)
-	z2.Add(z2, betaSafe, -1)
+	z2 := new(safenum.Int).Mul(e, private.Y, -1)
+	z2.Add(z2, beta, -1)
 	// e•m+γ
 	z3 := new(safenum.Int).Mul(e, mSafe, -1)
 	z3.Add(z3, gammaSafe, -1)
@@ -135,10 +127,10 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	z4 := new(safenum.Int).Mul(e, muSafe, -1)
 	z4.Add(z4, deltaSafe, -1)
 	// (ρᵉ mod N₀)•r mod N₀
-	w := new(safenum.Nat).ExpI(rhoSafe, e, N0)
+	w := new(safenum.Nat).ExpI(private.Rho, e, N0)
 	w.ModMul(w, r, N0)
 	// ( (ρy)ᵉ mod N₁)•ry mod N₁
-	wY := new(safenum.Nat).ExpI(rhoYSafe, e, N1)
+	wY := new(safenum.Nat).ExpI(private.RhoY, e, N1)
 	wY.ModMul(wY, rY, N1)
 
 	return &Proof{
@@ -177,14 +169,21 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 		return false
 	}
 
+	z1 := new(safenum.Int).SetBig(p.Z1, p.Z1.BitLen())
+	z2 := new(safenum.Int).SetBig(p.Z2, p.Z2.BitLen())
+	w := new(safenum.Nat).SetBig(p.W, p.W.BitLen())
+	wY := new(safenum.Nat).SetBig(p.Wy, p.Wy.BitLen())
+	eInt := new(safenum.Int).SetBig(e, e.BitLen())
+
 	{
+
 		// tmp = z₁ ⊙ C
 		// lhs = Enc₀(z₂;w) ⊕ z₁ ⊙ C
-		tmp := public.C.Clone().Mul(verifier, p.Z1)
-		lhs := verifier.EncWithNonce(p.Z2, p.W).Add(verifier, tmp)
+		tmp := public.C.Clone().Mul(verifier, z1)
+		lhs := verifier.EncWithNonce(z2, w).Add(verifier, tmp)
 
 		// rhs = (e ⊙ D) ⊕ A
-		rhs := public.D.Clone().Mul(verifier, e).Add(verifier, p.A)
+		rhs := public.D.Clone().Mul(verifier, eInt).Add(verifier, p.A)
 
 		if !lhs.Equal(rhs) {
 			return false
@@ -206,10 +205,10 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 
 	{
 		// lhs = Enc₁(z₂; wy)
-		lhs := prover.EncWithNonce(p.Z2, p.Wy)
+		lhs := prover.EncWithNonce(z2, wY)
 
 		// rhs = (e ⊙ Y) ⊕ By
-		rhs := public.Y.Clone().Mul(prover, e).Add(prover, p.By)
+		rhs := public.Y.Clone().Mul(prover, eInt).Add(prover, p.By)
 
 		if !lhs.Equal(rhs) {
 			return false

@@ -2,9 +2,9 @@ package zkaffg
 
 import (
 	"crypto/rand"
-	"math/big"
 	"testing"
 
+	"github.com/cronokirby/safenum"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -18,13 +18,13 @@ func TestAffG(t *testing.T) {
 	verifierPedersen := zk.Pedersen
 	prover := zk.ProverPaillierPublic
 
-	c := big.NewInt(12)
+	c := new(safenum.Int).SetUint64(12)
 	C, _ := verifierPaillier.Enc(c)
 
-	x := sample.IntervalL(rand.Reader)
-	X := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarBigInt(x))
+	x := sample.IntervalLSecret(rand.Reader)
+	X := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarInt(x))
 
-	y := sample.IntervalLPrime(rand.Reader)
+	y := sample.IntervalLPrimeSecret(rand.Reader)
 	Y, rhoY := prover.Enc(y)
 
 	tmp := C.Clone().Mul(verifierPaillier, x)
