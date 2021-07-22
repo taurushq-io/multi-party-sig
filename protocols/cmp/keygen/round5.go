@@ -25,9 +25,9 @@ type round5 struct {
 //
 // - decrypt share
 // - verify VSS
-func (r *round5) ProcessMessage(from party.ID, content message.Content) error {
+func (r *round5) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Keygen5)
-	partyJ := r.Parties[from]
+	partyJ := r.Parties[j]
 	// decrypt share
 	xJdec, err := r.Secret.Paillier.Dec(body.Share)
 	if err != nil {
@@ -47,12 +47,12 @@ func (r *round5) ProcessMessage(from party.ID, content message.Content) error {
 	}
 
 	// verify zkmod
-	if !body.Mod.Verify(r.HashForID(from), zkmod.Public{N: partyJ.Pedersen.N}) {
+	if !body.Mod.Verify(r.HashForID(j), zkmod.Public{N: partyJ.Pedersen.N}) {
 		return ErrRound5ZKMod
 	}
 
 	// verify zkprm
-	if !body.Prm.Verify(r.HashForID(from), zkprm.Public{Pedersen: partyJ.Pedersen}) {
+	if !body.Prm.Verify(r.HashForID(j), zkprm.Public{Pedersen: partyJ.Pedersen}) {
 		return ErrRound5ZKPrm
 	}
 

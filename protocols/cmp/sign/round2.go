@@ -23,11 +23,11 @@ type round2 struct {
 //
 // - store Kⱼ, Gⱼ
 // - verify zkenc(Kⱼ)
-func (r *round2) ProcessMessage(from party.ID, content message.Content) error {
+func (r *round2) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Sign2)
-	partyJ := r.Parties[from]
+	partyJ := r.Parties[j]
 
-	if !body.ProofEnc.Verify(r.HashForID(from), zkenc.Public{
+	if !body.ProofEnc.Verify(r.HashForID(j), zkenc.Public{
 		K:      body.K,
 		Prover: partyJ.Public.Paillier,
 		Aux:    r.Self.Public.Pedersen,

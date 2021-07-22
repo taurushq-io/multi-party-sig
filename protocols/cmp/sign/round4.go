@@ -31,9 +31,9 @@ type round4 struct {
 //
 // - Get Δⱼ, δⱼ, ϕ''ᵢⱼ
 // - Verify Π(log*)(ϕ''ᵢⱼ, Δⱼ, Γ)
-func (r *round4) ProcessMessage(from party.ID, content message.Content) error {
+func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Sign4)
-	partyJ := r.Parties[from]
+	partyJ := r.Parties[j]
 
 	zkLogPublic := zklogstar.Public{
 		C:      partyJ.K,
@@ -42,7 +42,7 @@ func (r *round4) ProcessMessage(from party.ID, content message.Content) error {
 		Prover: partyJ.Paillier,
 		Aux:    r.Self.Pedersen,
 	}
-	if !body.ProofLog.Verify(r.HashForID(from), zkLogPublic) {
+	if !body.ProofLog.Verify(r.HashForID(j), zkLogPublic) {
 		return ErrRound4ZKLog
 	}
 

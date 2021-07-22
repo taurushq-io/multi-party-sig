@@ -28,9 +28,9 @@ type round4 struct {
 // - validate Paillier
 // - validate Pedersen
 // - validate commitments
-func (r *round4) ProcessMessage(from party.ID, content message.Content) error {
+func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Keygen4)
-	partyJ := r.Parties[from]
+	partyJ := r.Parties[j]
 
 	// Save all X, VSSCommitments
 	polyExp := body.VSSPolynomial
@@ -60,7 +60,7 @@ func (r *round4) ProcessMessage(from party.ID, content message.Content) error {
 	var rid RID
 	rid.FromBytes(body.RID)
 
-	if !r.HashForID(from).Decommit(partyJ.Commitment, body.Decommitment,
+	if !r.HashForID(j).Decommit(partyJ.Commitment, body.Decommitment,
 		rid, polyExp, body.SchnorrCommitments, body.Pedersen) {
 		return ErrRound4Decommit
 	}

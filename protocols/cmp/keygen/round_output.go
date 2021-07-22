@@ -17,13 +17,13 @@ type output struct {
 // ProcessMessage implements round.Round
 //
 // - verify all Schnorr proof for the new ecdsa share
-func (r *output) ProcessMessage(from party.ID, content message.Content) error {
+func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*KeygenOutput)
-	partyJ := r.Parties[from]
+	partyJ := r.Parties[j]
 
-	if !zksch.Verify(r.HashForID(from),
+	if !zksch.Verify(r.HashForID(j),
 		partyJ.SchnorrCommitments,
-		r.newSession.Public(from).ECDSA,
+		r.newSession.Public(j).ECDSA,
 		body.Proof) {
 		return ErrRoundOutputZKSch
 	}

@@ -27,18 +27,18 @@ type round3 struct {
 // - verify Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
 // - store MtA data
 // - verify zkproofs affg (2x) zklog*
-func (r *round3) ProcessMessage(from party.ID, content message.Content) error {
+func (r *round3) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Sign3)
-	partyJ := r.Parties[from]
+	partyJ := r.Parties[j]
 
 	if !bytes.Equal(body.EchoHash, r.EchoHash) {
 		return ErrRound3EchoHash
 	}
 
-	if !body.DeltaMtA.VerifyAffG(r.HashForID(from), body.BigGammaShare, r.Self.K, partyJ.Public, r.Self.Public, nil) {
+	if !body.DeltaMtA.VerifyAffG(r.HashForID(j), body.BigGammaShare, r.Self.K, partyJ.Public, r.Self.Public, nil) {
 		return ErrRound3ZKAffGDeltaMtA
 	}
-	if !body.ChiMtA.VerifyAffG(r.HashForID(from), partyJ.ECDSA, r.Self.K, partyJ.Public, r.Self.Public, nil) {
+	if !body.ChiMtA.VerifyAffG(r.HashForID(j), partyJ.ECDSA, r.Self.K, partyJ.Public, r.Self.Public, nil) {
 		return ErrRound3ZKAffGChiMtA
 	}
 
@@ -48,7 +48,7 @@ func (r *round3) ProcessMessage(from party.ID, content message.Content) error {
 		Prover: partyJ.Paillier,
 		Aux:    r.Self.Pedersen,
 	}
-	if !body.ProofLog.Verify(r.HashForID(from), zkLogPublic) {
+	if !body.ProofLog.Verify(r.HashForID(j), zkLogPublic) {
 		return ErrRound3ZKLog
 	}
 

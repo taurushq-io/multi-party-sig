@@ -20,9 +20,9 @@ type output struct {
 // ProcessMessage implements round.Round
 //
 // - σⱼ != 0
-func (r *output) ProcessMessage(from party.ID, content message.Content) error {
+func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*SignOutput)
-	partyJ := r.Parties[from]
+	partyJ := r.Parties[j]
 
 	if body.SigmaShare.IsZero() {
 		return ErrRoundOutputSigmaZero

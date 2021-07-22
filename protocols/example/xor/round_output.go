@@ -22,10 +22,10 @@ type Round2 struct {
 func (r *Round2) Result() interface{} { return Result(r.resultXOR) }
 
 // ProcessMessage casts the content to the appropriate type and stores the content.
-func (r *Round2) ProcessMessage(from party.ID, content message.Content) error {
+func (r *Round2) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Round2Message)
 	// store the received value
-	r.received[from] = body.Value
+	r.received[j] = body.Value
 	return nil
 }
 

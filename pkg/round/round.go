@@ -7,7 +7,7 @@ import (
 
 type Round interface {
 	// ProcessMessage handles an incoming Message and validates it's content with regard to the protocol specification.
-	ProcessMessage(from party.ID, content message.Content) error
+	ProcessMessage(j party.ID, content message.Content) error
 
 	// Finalize is called after all messages from the parties have been processed in the current round.
 	// Messages for the next round are sent out through the out channel.

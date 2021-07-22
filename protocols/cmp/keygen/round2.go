@@ -20,9 +20,9 @@ type round2 struct {
 // ProcessMessage implements round.Round
 //
 // - store commitment Vⱼ
-func (r *round2) ProcessMessage(from party.ID, content message.Content) error {
+func (r *round2) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Keygen2)
-	partyJ := r.Parties[from]
+	partyJ := r.Parties[j]
 
 	partyJ.Commitment = body.Commitment
 	return nil
