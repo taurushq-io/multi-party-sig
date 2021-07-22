@@ -8,7 +8,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -19,8 +18,6 @@ import (
 
 type testParty struct {
 	r round.Round
-
-	k, gamma, x, delta, chi, sigma *curve.Scalar
 }
 
 var roundTypes = []reflect.Type{
@@ -40,18 +37,6 @@ func processRound(t *testing.T, parties map[party.ID]*testParty, expectedRoundTy
 		assert.EqualValues(t, expectedRoundType, reflect.TypeOf(partyJ.r))
 		newRound, err := partyJ.r.Finalize(out)
 		require.NoError(t, err, "failed to generate messages")
-
-		switch r := partyJ.r.(type) {
-		case *round1:
-			partyJ.k = r.KShare
-			partyJ.gamma = r.GammaShare
-			partyJ.x = r.Secret.ECDSA
-		case *round2:
-		case *round3:
-			partyJ.chi = r.ChiShare
-		case *round4:
-		case *output:
-		}
 
 		if newRound != nil {
 			partyJ.r = newRound

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
@@ -29,29 +30,27 @@ func Test_newMtA(t *testing.T) {
 	bi := sample.Scalar(rand.Reader)
 	bj := sample.Scalar(rand.Reader)
 
-	Ki, _ := i.Paillier.Enc(bi.Int())
-	Kj, _ := j.Paillier.Enc(bj.Int())
+	Bi, _ := i.Paillier.Enc(bi.Int())
+	Bj, _ := j.Paillier.Enc(bj.Int())
 
 	aibj := curve.NewScalar().Multiply(ai, bj)
 	ajbi := curve.NewScalar().Multiply(aj, bi)
 	c := curve.NewScalar().Add(aibj, ajbi)
 
-	mta_i_to_j := NewMtA(ai, Ai, Kj, i, j)
-	mta_j_to_i := NewMtA(aj, Aj, Ki, j, i)
+	mta_i_to_j := NewMtA(ai, Ai, Bi, Bj, ski, j.Paillier)
+	mta_j_to_i := NewMtA(aj, Aj, Bj, Bi, skj, i.Paillier)
 
-	msg_i_to_j := mta_i_to_j.ProofAffG(hash.New(), nil)
-	msg_j_to_i := mta_j_to_i.ProofAffG(hash.New(), nil)
+	msg_i_to_j := mta_i_to_j.ProofAffG(hash.New(), j.Pedersen)
+	msg_j_to_i := mta_j_to_i.ProofAffG(hash.New(), i.Pedersen)
 
-	alpha_ij, err := skj.Dec(msg_i_to_j.D)
-	assert.NoError(t, err, "decryption should pass")
-	gamma_ij_int := alpha_ij.Add(alpha_ij, mta_i_to_j.BetaNeg.Clone().Neg(1), -1)
-	alpha_ji, err := ski.Dec(msg_j_to_i.D)
-	assert.NoError(t, err, "decryption should pass")
-	gamma_ji_int := alpha_ji.Add(alpha_ji, mta_j_to_i.BetaNeg.Clone().Neg(1), -1)
-	gamma_ij := curve.NewScalarInt(gamma_ij_int)
-	gamma_ji := curve.NewScalarInt(gamma_ji_int)
+	err := mta_i_to_j.Input(hash.New(), j.Pedersen, msg_j_to_i, Aj)
+	require.NoError(t, err, "decryption should pass")
+	err = mta_j_to_i.Input(hash.New(), i.Pedersen, msg_i_to_j, Ai)
+	require.NoError(t, err, "decryption should pass")
+
+	gamma_ij := mta_i_to_j.Share()
+	gamma_ji := mta_j_to_i.Share()
 	gamma := curve.NewScalar().Add(gamma_ij, gamma_ji)
 	assert.Equal(t, c, gamma, "a•b should be equal to α + β")
-	assert.True(t, msg_i_to_j.VerifyAffG(hash.New(), Ai, Kj, i, j, nil))
-	assert.True(t, msg_j_to_i.VerifyAffG(hash.New(), Aj, Ki, j, i, nil))
+
 }

@@ -14,6 +14,8 @@ import (
 
 type round3 struct {
 	*round2
+	// EchoHash = Hash(SSID, commitment₁, …, commitmentₙ)
+	EchoHash []byte
 }
 
 // ProcessMessage implements round.Round
@@ -34,10 +36,10 @@ func (r *round3) ProcessMessage(j party.ID, content message.Content) error {
 func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Send the message we created in round1 to all
 	msg := r.MarshalMessage(&Keygen4{
-		RID:                r.Self.RID[:],
-		VSSPolynomial:      r.Self.VSSPolynomial,
-		SchnorrCommitments: r.Self.SchnorrCommitments,
-		Pedersen:           r.Self.Pedersen,
+		RID:                r.RIDs[r.SelfID()],
+		VSSPolynomial:      r.VSSPolynomials[r.SelfID()],
+		SchnorrCommitments: r.SchnorrCommitments[r.SelfID()],
+		Pedersen:           r.Pedersen[r.SelfID()],
 		Decommitment:       r.Decommitment,
 	}, r.OtherPartyIDs()...)
 	if err := r.SendMessage(msg, out); err != nil {

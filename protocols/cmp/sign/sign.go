@@ -60,16 +60,14 @@ func StartSign(s *keygen.Session, secret *keygen.Secret, signers []party.ID, mes
 		}
 
 		// Scale public data
-		parties := make(map[party.ID]*LocalParty, T)
+		parties := make(map[party.ID]*keygen.Public, T)
 		for _, partyJ := range signerIDs {
 			publicJ := s.Public(partyJ)
 			lagrange := signerIDs.Lagrange(partyJ)
-			parties[partyJ] = &LocalParty{
-				Public: &keygen.Public{
-					ECDSA:    curve.NewIdentityPoint().ScalarMult(lagrange, publicJ.ECDSA),
-					Paillier: publicJ.Paillier,
-					Pedersen: publicJ.Pedersen,
-				},
+			parties[partyJ] = &keygen.Public{
+				ECDSA:    curve.NewIdentityPoint().ScalarMult(lagrange, publicJ.ECDSA),
+				Paillier: publicJ.Paillier,
+				Pedersen: publicJ.Pedersen,
 			}
 		}
 
@@ -95,10 +93,9 @@ func StartSign(s *keygen.Session, secret *keygen.Secret, signers []party.ID, mes
 		}
 		return &round1{
 			Helper:    helper,
-			Self:      parties[secret.ID],
 			Secret:    newSecret,
 			PublicKey: s.PublicKey(),
-			Parties:   parties,
+			Public:    parties,
 			Message:   message,
 		}, helper, nil
 	}

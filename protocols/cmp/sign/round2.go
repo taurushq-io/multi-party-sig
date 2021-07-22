@@ -3,7 +3,10 @@ package sign
 import (
 	"errors"
 
+	"github.com/cronokirby/safenum"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
@@ -14,9 +17,25 @@ import (
 type round2 struct {
 	*round1
 
-	// EchoHash = Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
-	// part of the echo of the first message
-	EchoHash []byte
+	// K[j] = Kⱼ = encⱼ(kⱼ)
+	K map[party.ID]*paillier.Ciphertext
+	// G[j] = Gⱼ = encⱼ(γⱼ)
+	G map[party.ID]*paillier.Ciphertext
+
+	// BigGammaShare[j] = Γⱼ = [γⱼ]•G
+	BigGammaShare map[party.ID]*curve.Point
+
+	// GammaShare = γᵢ <- 𝔽
+	GammaShare *curve.Scalar
+	// KShare = kᵢ  <- 𝔽
+	KShare *curve.Scalar
+
+	// KNonce = ρᵢ <- ℤₙ
+	// used to encrypt Kᵢ = Encᵢ(kᵢ)
+	KNonce *safenum.Nat
+	// GNonce = νᵢ <- ℤₙ
+	// used to encrypt Gᵢ = Encᵢ(γᵢ)
+	GNonce *safenum.Nat
 }
 
 // ProcessMessage implements round.Round
@@ -25,18 +44,17 @@ type round2 struct {
 // - verify zkenc(Kⱼ)
 func (r *round2) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Sign2)
-	partyJ := r.Parties[j]
 
 	if !body.ProofEnc.Verify(r.HashForID(j), zkenc.Public{
 		K:      body.K,
-		Prover: partyJ.Public.Paillier,
-		Aux:    r.Self.Public.Pedersen,
+		Prover: r.Public[j].Paillier,
+		Aux:    r.Public[r.SelfID()].Pedersen,
 	}) {
 		return ErrRound2ZKEnc
 	}
 
-	partyJ.K = body.K
-	partyJ.G = body.G
+	r.K[j] = body.K
+	r.G[j] = body.G
 	return nil
 }
 
@@ -50,40 +68,44 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// In the next round, if someone has a different hash, then we must abort, but there is no way of knowing who
 	// was the culprit. We could maybe assume that we have an honest majority, but this clashes with the base assumptions.
 	h := r.Hash()
-	for _, id := range r.PartyIDs() {
-		partyJ := r.Parties[id]
-		_, _ = h.WriteAny(partyJ.K, partyJ.G)
+	for _, j := range r.PartyIDs() {
+		_, _ = h.WriteAny(r.K[j], r.G[j])
 	}
-	r.EchoHash = h.ReadBytes(nil)
+	EchoHash := h.ReadBytes(nil)
 
 	zkPrivate := zklogstar.Private{
 		X:   r.GammaShare.Int(),
 		Rho: r.GNonce,
 	}
 
-	// Broadcast the message we created in round1
-	for j, partyJ := range r.Parties {
-		if j == r.SelfID() {
-			continue
-		}
+	DeltaMtA := map[party.ID]*MtA{}
+	ChiMtA := map[party.ID]*MtA{}
 
-		partyJ.DeltaMtA = NewMtA(r.GammaShare, r.Self.BigGammaShare, partyJ.K,
-			r.Self.Public, partyJ.Public)
-		partyJ.ChiMtA = NewMtA(r.Secret.ECDSA, r.Self.ECDSA, partyJ.K,
-			r.Self.Public, partyJ.Public)
+	// Broadcast the message we created in round1
+	for _, j := range r.OtherPartyIDs() {
+		DeltaMtA[j] = NewMtA(
+			r.GammaShare,
+			r.BigGammaShare[r.SelfID()],
+			r.K[r.SelfID()], r.K[j],
+			r.Secret.Paillier, r.Public[j].Paillier)
+		ChiMtA[j] = NewMtA(
+			r.Secret.ECDSA,
+			r.Public[r.SelfID()].ECDSA,
+			r.K[r.SelfID()], r.K[j],
+			r.Secret.Paillier, r.Public[j].Paillier)
 
 		proofLog := zklogstar.NewProof(r.HashForID(r.SelfID()), zklogstar.Public{
-			C:      r.Self.G,
-			X:      r.Self.BigGammaShare,
-			Prover: r.Self.Paillier,
-			Aux:    partyJ.Pedersen,
+			C:      r.G[r.SelfID()],
+			X:      r.BigGammaShare[r.SelfID()],
+			Prover: r.Public[r.SelfID()].Paillier,
+			Aux:    r.Public[j].Pedersen,
 		}, zkPrivate)
 
 		msg := r.MarshalMessage(&Sign3{
-			EchoHash:      r.EchoHash,
-			BigGammaShare: r.Self.BigGammaShare,
-			DeltaMtA:      partyJ.DeltaMtA.ProofAffG(r.HashForID(r.SelfID()), nil),
-			ChiMtA:        partyJ.ChiMtA.ProofAffG(r.HashForID(r.SelfID()), nil),
+			EchoHash:      EchoHash,
+			BigGammaShare: r.BigGammaShare[r.SelfID()],
+			DeltaMtA:      DeltaMtA[j].ProofAffG(r.HashForID(r.SelfID()), r.Public[j].Pedersen),
+			ChiMtA:        ChiMtA[j].ProofAffG(r.HashForID(r.SelfID()), r.Public[j].Pedersen),
 			ProofLog:      proofLog,
 		}, j)
 		if err := r.SendMessage(msg, out); err != nil {
@@ -91,7 +113,12 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 		}
 	}
 
-	return &round3{round2: r}, nil
+	return &round3{
+		round2:   r,
+		DeltaMtA: DeltaMtA,
+		ChiMtA:   ChiMtA,
+		EchoHash: EchoHash,
+	}, nil
 }
 
 // MessageContent implements round.Round

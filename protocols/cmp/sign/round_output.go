@@ -13,8 +13,22 @@ import (
 
 type output struct {
 	*round4
-	// Signature wraps (R,S)
-	Signature *Signature
+
+	// SigmaShares[j] = σⱼ = m⋅kⱼ + χⱼ⋅R|ₓ
+	SigmaShares map[party.ID]*curve.Scalar
+
+	// Delta = δ = ∑ⱼ δⱼ
+	// computed from received shares
+	Delta *curve.Scalar
+
+	// BigDelta = Δ = ∑ⱼ Δⱼ
+	BigDelta *curve.Point
+
+	// R = [δ⁻¹] Γ
+	BigR *curve.Point
+
+	// R = R|ₓ
+	R *curve.Scalar
 }
 
 // ProcessMessage implements round.Round
@@ -22,12 +36,11 @@ type output struct {
 // - σⱼ != 0
 func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*SignOutput)
-	partyJ := r.Parties[j]
 
 	if body.SigmaShare.IsZero() {
 		return ErrRoundOutputSigmaZero
 	}
-	partyJ.SigmaShare = body.SigmaShare
+	r.SigmaShares[j] = body.SigmaShare
 	return nil
 }
 
@@ -35,29 +48,29 @@ func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 //
 // - compute σ = ∑ⱼ σⱼ
 // - verify signature
-func (r *output) Finalize(out chan<- *message.Message) (round.Round, error) {
+func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {
 	// compute σ = ∑ⱼ σⱼ
-	S := curve.NewScalar()
-	for _, partyJ := range r.Parties {
-		S.Add(S, partyJ.SigmaShare)
+	Sigma := curve.NewScalar()
+	for _, j := range r.PartyIDs() {
+		Sigma.Add(Sigma, r.SigmaShares[j])
 	}
 
-	r.Signature = &Signature{
+	signature := &Signature{
 		R: r.BigR,
-		S: S,
+		S: Sigma,
 	}
 
-	RInt, SInt := r.Signature.ToRS()
+	RInt, SInt := signature.ToRS()
 	// Verify signature using Go's ECDSA lib
 	if !ecdsa.Verify(r.PublicKey, r.Message, RInt, SInt) {
 		return nil, ErrRoundOutputValidateSigFailedECDSA
 	}
 	pk := curve.FromPublicKey(r.PublicKey)
-	if !r.Signature.Verify(pk, r.Message) {
+	if !signature.Verify(pk, r.Message) {
 		return nil, ErrRoundOutputValidateSigFailed
 	}
 
-	return &round.Output{Result: &Result{Signature: r.Signature}}, nil
+	return &round.Output{Result: &Result{signature}}, nil
 }
 
 func (r *output) MessageContent() message.Content {

@@ -13,18 +13,17 @@ import (
 
 type round4 struct {
 	*round3
-	// Delta = δ = ∑ⱼ δⱼ
-	// computed from received shares
-	Delta *curve.Scalar
+	// DeltaShares[j] = δⱼ
+	DeltaShares map[party.ID]*curve.Scalar
 
-	// BigDelta = Δ = ∑ⱼ Δⱼ
-	BigDelta *curve.Point
+	// BigDeltaShares[j] = Δⱼ = [kⱼ]•Γⱼ
+	BigDeltaShares map[party.ID]*curve.Point
 
-	// R = [δ⁻¹] Γ
-	BigR *curve.Point
+	// Gamma = ∑ᵢ Γᵢ
+	Gamma *curve.Point
 
-	// r = R|ₓ
-	r *curve.Scalar
+	// ChiShare = χᵢ
+	ChiShare *curve.Scalar
 }
 
 // ProcessMessage implements round.Round
@@ -33,21 +32,20 @@ type round4 struct {
 // - Verify Π(log*)(ϕ''ᵢⱼ, Δⱼ, Γ)
 func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Sign4)
-	partyJ := r.Parties[j]
 
 	zkLogPublic := zklogstar.Public{
-		C:      partyJ.K,
+		C:      r.K[j],
 		X:      body.BigDeltaShare,
 		G:      r.Gamma,
-		Prover: partyJ.Paillier,
-		Aux:    r.Self.Pedersen,
+		Prover: r.Public[j].Paillier,
+		Aux:    r.Public[r.SelfID()].Pedersen,
 	}
 	if !body.ProofLog.Verify(r.HashForID(j), zkLogPublic) {
 		return ErrRound4ZKLog
 	}
 
-	partyJ.BigDeltaShare = body.BigDeltaShare
-	partyJ.DeltaShare = body.DeltaShare
+	r.BigDeltaShares[j] = body.BigDeltaShare
+	r.DeltaShares[j] = body.DeltaShare
 	return nil
 }
 
@@ -60,36 +58,43 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// δ = ∑ⱼ δⱼ
 	// Δ = ∑ⱼ Δⱼ
-	r.Delta = curve.NewScalar()
-	r.BigDelta = curve.NewIdentityPoint()
-	for _, partyJ := range r.Parties {
-		r.Delta.Add(r.Delta, partyJ.DeltaShare)
-		r.BigDelta.Add(r.BigDelta, partyJ.BigDeltaShare)
+	Delta := curve.NewScalar()
+	BigDelta := curve.NewIdentityPoint()
+	for _, j := range r.PartyIDs() {
+		Delta.Add(Delta, r.DeltaShares[j])
+		BigDelta.Add(BigDelta, r.BigDeltaShares[j])
 	}
 
 	// Δ == [δ]G
-	deltaComputed := curve.NewIdentityPoint().ScalarBaseMult(r.Delta)
-	if !deltaComputed.Equal(r.BigDelta) {
+	deltaComputed := curve.NewIdentityPoint().ScalarBaseMult(Delta)
+	if !deltaComputed.Equal(BigDelta) {
 		return nil, ErrRound4BigDelta
 	}
 
-	deltaInv := curve.NewScalar().Invert(r.Delta)                   // δ⁻¹
-	r.BigR = curve.NewIdentityPoint().ScalarMult(deltaInv, r.Gamma) // R = [δ⁻¹] Γ
-	r.r = r.BigR.XScalar()                                          // r = R|ₓ
+	deltaInv := curve.NewScalar().Invert(Delta)                    // δ⁻¹
+	BigR := curve.NewIdentityPoint().ScalarMult(deltaInv, r.Gamma) // R = [δ⁻¹] Γ
+	R := BigR.XScalar()                                            // r = R|ₓ
 
 	// km = Hash(m)⋅kᵢ
 	km := curve.NewScalar().SetHash(r.Message)
 	km.Multiply(km, r.KShare)
 
 	// σᵢ = rχᵢ + kᵢm
-	r.Self.SigmaShare = curve.NewScalar().MultiplyAdd(r.r, r.ChiShare, km)
+	SigmaShare := curve.NewScalar().MultiplyAdd(R, r.ChiShare, km)
 
 	// Send to all
-	msg := r.MarshalMessage(&SignOutput{SigmaShare: r.Self.SigmaShare}, r.OtherPartyIDs()...)
+	msg := r.MarshalMessage(&SignOutput{SigmaShare: SigmaShare}, r.OtherPartyIDs()...)
 	if err := r.SendMessage(msg, out); err != nil {
 		return r, err
 	}
-	return &output{round4: r}, nil
+	return &output{
+		round4:      r,
+		SigmaShares: map[party.ID]*curve.Scalar{r.SelfID(): SigmaShare},
+		Delta:       Delta,
+		BigDelta:    BigDelta,
+		BigR:        BigR,
+		R:           R,
+	}, nil
 }
 
 // MessageContent implements round.Round

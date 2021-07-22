@@ -3,7 +3,6 @@ package keygen
 import (
 	"crypto/rand"
 
-	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
@@ -11,38 +10,38 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
 type round1 struct {
 	*round.Helper
 
-	// Self is the local data of the party executing the round
-	Self    *LocalParty
-	Parties map[party.ID]*LocalParty
-
-	// PublicKey is the public key being refreshed. If keygen is being done, then it is the identity.
-	PublicKey *curve.Point
-
-	// Secret contains the previous secret ECDSA key share which is being refreshed
-	// If a keygen is being performed, then it is 0.
-	Secret *Secret
-
-	// Threshold plus 1 is the minimum number of shares necessary to reconstruct the resulting secret
+	// Threshold is the integer t which defines the maximum number of corruptions tolerated for this session.
 	Threshold int
 
-	// PedersenSecret is λᵢ used to generate the Pedersen parameters
-	PedersenSecret *safenum.Nat
+	// PreviousSecretECDSA = sk'ᵢ
+	// Contains the previous secret ECDSA key share which is being refreshed
+	// Keygen:  sk'ᵢ = 0
+	// Refresh: sk'ᵢ = sk'ᵢ
+	PreviousSecretECDSA *curve.Scalar
 
-	// Decommitment of the 3rd message
-	Decommitment hash.Decommitment // uᵢ
+	// PreviousPublicKey = pk'
+	// Public key being refreshed.
+	// Keygen:  pk' = ∞
+	// Refresh: pk' = pk'
+	PreviousPublicKey *curve.Point
 
-	// VSSSecret is fᵢ(X)
+	// PreviousPublicSharesECDSA[j] = pk'ⱼ
+	// Keygen:  pk'ⱼ = ∞
+	// Refresh: pk'ⱼ = pk'ⱼ
+	PreviousPublicSharesECDSA map[party.ID]*curve.Point
+
+	// VSSSecret = fᵢ(X)
+	// Polynomial from which the new secret shares are computed.
+	// Keygen:  fᵢ(0) = xⁱ
+	// Refresh: fᵢ(0) = 0
 	VSSSecret *polynomial.Polynomial
-
-	// SchnorrRand is an array to t+1 random aₗ ∈ 𝔽 used to compute Schnorr commitments of
-	// the coefficients of the exponent polynomial Fᵢ(X)
-	SchnorrRand *curve.Scalar
 }
 
 // ProcessMessage implements round.Round
@@ -50,68 +49,61 @@ func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 
 // Finalize implements round.Round
 //
-// - sample { aₗ }ₗ  <- 𝔽 for l = 0, …, t
-// - set { Aᵢ = aₗ⋅G}ₗ for l = 0, …, t
-// - sample Paillier pᵢ, qᵢ
-// - sample Pedersen Nᵢ, Sᵢ, Tᵢ
-// - sample fᵢ(X) <- 𝔽[X], deg(fᵢ) = t
-//   - if keygen, fᵢ(0) = xᵢ (additive share of full ECDSA secret key)
-//   - if refresh, fᵢ(0) = 0
+// - sample Paillier (pᵢ, qᵢ)
+// - sample Pedersen Nᵢ, sᵢ, tᵢ
+// - sample aᵢ  <- 𝔽
+// - set Aᵢ = aᵢ⋅G
 // - compute Fᵢ(X) = fᵢ(X)⋅G
-// - sample rhoᵢ <- {0,1}ᵏ
-//   - if keygen, this is RIDᵢ
-//   - if refresh, this is used to bind the zk proof to a random value
+// - sample ridᵢ <- {0,1}ᵏ
 // - commit to message
 func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// generate Paillier and Pedersen
-	paillierSecret := paillier.NewSecretKey()
-	paillierPublic := paillierSecret.PublicKey
-	pedersenPublic, pedersenSecret := paillierSecret.GeneratePedersen()
+	PaillierSecret := paillier.NewSecretKey()
+	SelfPaillierPublic := PaillierSecret.PublicKey
+	SelfPedersenPublic, PedersenSecret := PaillierSecret.GeneratePedersen()
 
 	// save our own share already so we are consistent with what we receive from others
-	ownShare := r.VSSSecret.Evaluate(r.SelfID().Scalar())
+	SelfShare := r.VSSSecret.Evaluate(r.SelfID().Scalar())
 
 	// set Fᵢ(X) = fᵢ(X)•G
-	vssPublic := polynomial.NewPolynomialExponent(r.VSSSecret)
+	SelfVSSPolynomial := polynomial.NewPolynomialExponent(r.VSSSecret)
 
 	// generate Schnorr randomness and commitments
-	schnorrRand, schnorrCommitment := sample.ScalarPointPair(rand.Reader)
+	SchnorrRand, SelfSchnorrCommitment := sample.ScalarPointPair(rand.Reader)
 
 	// Sample RIDᵢ
-	rid := newRID()
-	if _, err := rand.Read(rid[:]); err != nil {
+	SelfRID := newRID()
+	if _, err := rand.Read(SelfRID[:]); err != nil {
 		return r, ErrRound1SampleRho
 	}
 
 	// commit to data in message 2
-	commitment, decommitment, err := r.HashForID(r.SelfID()).Commit(
-		rid, vssPublic, schnorrCommitment, pedersenPublic)
+	SelfCommitment, Decommitment, err := r.HashForID(r.SelfID()).Commit(
+		SelfRID, SelfVSSPolynomial, SelfSchnorrCommitment, SelfPedersenPublic)
 	if err != nil {
 		return r, ErrRound1Commit
 	}
 
 	// should be broadcast but we don't need that here
-	msg := r.MarshalMessage(&Keygen2{Commitment: commitment}, r.OtherPartyIDs()...)
+	msg := r.MarshalMessage(&Keygen2{Commitment: SelfCommitment}, r.OtherPartyIDs()...)
 	if err = r.SendMessage(msg, out); err != nil {
 		return r, err
 	}
 
-	r.Secret.Paillier = paillierSecret
-	r.Self.Paillier = paillierPublic
-	r.Self.Pedersen = pedersenPublic
-	r.PedersenSecret = pedersenSecret
-
-	r.Self.VSSPolynomial = vssPublic
-
-	r.SchnorrRand = schnorrRand
-	r.Self.SchnorrCommitments = schnorrCommitment
-
-	r.Self.ShareReceived = ownShare
-	r.Self.RID = rid
-	r.Self.Commitment = commitment
-	r.Decommitment = decommitment
-
-	return &round2{round1: r}, nil
+	return &round2{
+		round1:             r,
+		VSSPolynomials:     map[party.ID]*polynomial.Exponent{r.SelfID(): SelfVSSPolynomial},
+		SchnorrCommitments: map[party.ID]*curve.Point{r.SelfID(): SelfSchnorrCommitment},
+		Commitments:        map[party.ID]hash.Commitment{r.SelfID(): SelfCommitment},
+		RIDs:               map[party.ID]RID{r.SelfID(): SelfRID},
+		ShareReceived:      map[party.ID]*curve.Scalar{r.SelfID(): SelfShare},
+		PaillierPublic:     map[party.ID]*paillier.PublicKey{r.SelfID(): SelfPaillierPublic},
+		Pedersen:           map[party.ID]*pedersen.Parameters{r.SelfID(): SelfPedersenPublic},
+		PaillierSecret:     PaillierSecret,
+		PedersenSecret:     PedersenSecret,
+		SchnorrRand:        SchnorrRand,
+		Decommitment:       Decommitment,
+	}, nil
 }
 
 // MessageContent implements round.Round

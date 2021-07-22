@@ -2,7 +2,6 @@ package keygen
 
 import (
 	"fmt"
-	"math/rand"
 	"reflect"
 	"sync"
 	"testing"
@@ -11,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
@@ -101,12 +99,8 @@ func TestKeygen(t *testing.T) {
 }
 
 func TestRefresh(t *testing.T) {
-
-	N := 2
+	N := 4
 	T := N - 1
-
-	rid := make([]byte, params.SecBytes)
-	rand.Read(rid)
 
 	sessions, secrets, err := FakeSession(N, T)
 	require.NoError(t, err)
