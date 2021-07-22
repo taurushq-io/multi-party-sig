@@ -37,13 +37,13 @@ type SecretKey struct {
 }
 
 // P returns the first of the two factors composing this key.
-func (sk *SecretKey) P() *big.Int {
-	return sk.p.Big()
+func (sk *SecretKey) P() *safenum.Nat {
+	return sk.p
 }
 
 // Q returns the second of the two factors composing this key.
-func (sk *SecretKey) Q() *big.Int {
-	return sk.q.Big()
+func (sk *SecretKey) Q() *safenum.Nat {
+	return sk.q
 }
 
 // Phi returns ϕ = (P-1)(Q-1).
@@ -52,8 +52,8 @@ func (sk *SecretKey) Q() *big.Int {
 // is our public key. This function counts the number of units mod N.
 //
 // This quantity is useful in ZK proofs.
-func (sk *SecretKey) Phi() *big.Int {
-	return sk.phi.Big()
+func (sk *SecretKey) Phi() *safenum.Nat {
+	return sk.phi
 }
 
 func KeyGen() (pk *PublicKey, sk *SecretKey) {
@@ -128,13 +128,12 @@ func (sk *SecretKey) Clone() *SecretKey {
 	}
 }
 
-func (sk SecretKey) GeneratePedersen() (ped *pedersen.Parameters, lambda *big.Int) {
-	var s, t *big.Int
-	s, t, lambda = sample.Pedersen(rand.Reader, sk.PublicKey.n.Big(), sk.phi.Big())
+func (sk SecretKey) GeneratePedersen() (*pedersen.Parameters, *safenum.Nat) {
+	s, t, lambda := sample.Pedersen(rand.Reader, sk.phi, sk.PublicKey.n)
 	return &pedersen.Parameters{
 		N: sk.PublicKey.n.Big(),
-		S: s,
-		T: t,
+		S: s.Big(),
+		T: t.Big(),
 	}, lambda
 }
 

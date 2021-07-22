@@ -17,7 +17,7 @@ type (
 		Pedersen *pedersen.Parameters
 	}
 	Private struct {
-		Lambda, Phi *big.Int
+		Lambda, Phi *safenum.Nat
 	}
 )
 
@@ -38,8 +38,8 @@ func (p Proof) IsValid(public Public) bool {
 // s = t^lambda (mod N)
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	n := public.Pedersen.N
-	lambda := new(safenum.Nat).SetBig(private.Lambda, private.Lambda.BitLen())
-	phi := safenum.ModulusFromNat(new(safenum.Nat).SetBig(private.Phi, private.Phi.BitLen()))
+	lambda := private.Lambda
+	phi := safenum.ModulusFromNat(private.Phi)
 
 	a := make([]*safenum.Nat, params.StatParam)
 	A := make([]*big.Int, params.StatParam)

@@ -2,8 +2,8 @@ package keygen
 
 import (
 	"crypto/rand"
-	"math/big"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
@@ -35,7 +35,7 @@ type round1 struct {
 	Threshold int
 
 	// PedersenSecret is λᵢ used to generate the Pedersen parameters
-	PedersenSecret *big.Int
+	PedersenSecret *safenum.Nat
 
 	// Decommitment of the 3rd message
 	Decommitment hash.Decommitment // uᵢ

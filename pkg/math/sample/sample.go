@@ -270,23 +270,16 @@ func Paillier(rand io.Reader) (p, q *big.Int) {
 }
 
 // Pedersen generates the s, t, λ such that s = tˡ
-func Pedersen(rand io.Reader, n, phi *big.Int) (s, t, lambda *big.Int) {
-	two := big.NewInt(2)
-	// sample lambda without statistical bias
-	lambdaBuf := make([]byte, (params.BitsIntModN+params.L)/8)
-	mustReadBits(rand, lambdaBuf)
-	lambda = new(big.Int).SetBytes(lambdaBuf)
-	lambda.Mod(lambda, phi)
+func Pedersen(rand io.Reader, phi *safenum.Nat, n *safenum.Modulus) (s, t, lambda *safenum.Nat) {
+	phiMod := safenum.ModulusFromNat(phi)
 
-	tau := UnitModN(rand, n)
+	lambda = ModNNat(rand, phiMod)
 
+	tau := UnitModNNat(rand, n)
 	// t = τ² mod N
-	t = new(big.Int)
-	t.Exp(tau, two, n)
-
+	t = tau.ModMul(tau, tau, n)
 	// s = tˡ mod N
-	s = tau
-	s.Exp(t, lambda, n)
+	s = new(safenum.Nat).Exp(t, lambda, n)
 
 	return
 }

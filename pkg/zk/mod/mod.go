@@ -19,9 +19,9 @@ type (
 	Private struct {
 		// P, Q primes such that
 		// P, Q = 3 mod 4
-		P, Q *big.Int
+		P, Q *safenum.Nat
 		// Phi = ϕ(n) = (p-1)(q-1)
-		Phi *big.Int
+		Phi *safenum.Nat
 	}
 )
 
@@ -144,16 +144,13 @@ func (p *Proof) IsValid(public Public) bool {
 //  - R = [(xᵢ aᵢ, bᵢ), zᵢ] for i = 1, …, m
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	n, p, q, phi := public.N, private.P, private.Q, private.Phi
-	pNat := new(safenum.Nat).SetBig(p, p.BitLen())
-	pHalf := new(safenum.Nat).Sub(pNat, oneNat, -1)
+	pHalf := new(safenum.Nat).Sub(p, oneNat, -1)
 	pHalf.Rsh(pHalf, 1, -1)
-	pMod := safenum.ModulusFromNat(pNat)
-	qNat := new(safenum.Nat).SetBig(q, q.BitLen())
-	qHalf := new(safenum.Nat).Sub(qNat, oneNat, -1)
+	pMod := safenum.ModulusFromNat(p)
+	qHalf := new(safenum.Nat).Sub(q, oneNat, -1)
 	qHalf.Rsh(qHalf, 1, -1)
-	qMod := safenum.ModulusFromNat(qNat)
-	phiNat := new(safenum.Nat).SetBig(phi, phi.BitLen())
-	phiMod := safenum.ModulusFromNat(phiNat)
+	qMod := safenum.ModulusFromNat(q)
+	phiMod := safenum.ModulusFromNat(phi)
 	nNat := new(safenum.Nat).SetBig(n, n.BitLen())
 	nMod := safenum.ModulusFromNat(nNat)
 	// W can be leaked so no need to make this sampling return a nat.
@@ -177,7 +174,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 
 		a, b, yPrime := makeQuadraticResidue(y, wNat, pHalf, qHalf, nMod, pMod, qMod)
 		// X = (y')¹/4
-		x := fourthRoot(yPrime, phiNat, nMod)
+		x := fourthRoot(yPrime, phi, nMod)
 
 		Xs[i], As[i], Bs[i], Zs[i] = x.Big(), a, b, z.Big()
 	}
