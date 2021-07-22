@@ -18,9 +18,9 @@ func TestLogStar(t *testing.T) {
 
 	G := curve.NewIdentityPoint().ScalarBaseMult(sample.Scalar(rand.Reader))
 
-	x := sample.IntervalL(rand.Reader)
+	x := sample.IntervalLSecret(rand.Reader)
 	C, rho := prover.Enc(x)
-	X := curve.NewIdentityPoint().ScalarMult(curve.NewScalarBigInt(x), G)
+	X := curve.NewIdentityPoint().ScalarMult(curve.NewScalarInt(x), G)
 	public := Public{
 		C:      C,
 		X:      X,
