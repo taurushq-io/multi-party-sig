@@ -3,7 +3,6 @@ package keygen
 import (
 	"errors"
 
-	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
@@ -39,7 +38,7 @@ func (r *round5) ProcessMessage(j party.ID, content message.Content) error {
 	}
 
 	// verify share with VSS
-	index := r.Self.ID.Scalar()
+	index := r.SelfID().Scalar()
 	vss := partyJ.VSSPolynomial.Evaluate(index) // Fⱼ(idJ)
 	X := curve.NewIdentityPoint().ScalarBaseMult(xJ)
 	if !X.Equal(vss) {
@@ -96,7 +95,7 @@ func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
 		newPublic[idJ] = newPublicJ
 	}
 
-	updatedSession, err := newSession(r.SID, newPublic, r.rid)
+	updatedSession, err := newSession(r.Threshold, newPublic, r.rid)
 	if err != nil {
 		return nil, err
 	}
@@ -104,14 +103,11 @@ func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// write new ssid to hash, to bind the Schnorr proof to this new session
 	// Write SSID, selfID to temporary hash
 	h := r.Hash()
-	_, _ = h.WriteAny(&writer.BytesWithDomain{
-		TheDomain: "SSID",
-		Bytes:     updatedSession.SSID(),
-	}, r.Self.ID)
+	_, _ = h.WriteAny(updatedSession, r.SelfID())
 
 	proof := zksch.Prove(h,
 		r.Self.SchnorrCommitments,
-		newPublic[r.Self.ID].ECDSA,
+		newPublic[r.SelfID()].ECDSA,
 		r.SchnorrRand,
 		newSecret.ECDSA)
 
@@ -121,10 +117,7 @@ func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
 		return r, err
 	}
 
-	r.UpdateHashState(&writer.BytesWithDomain{
-		TheDomain: "SSID",
-		Bytes:     updatedSession.SSID(),
-	})
+	r.UpdateHashState(updatedSession)
 	r.newSession = updatedSession
 	r.newSecret = newSecret
 

@@ -72,11 +72,11 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	r.Self.K, r.KNonce = r.Self.Paillier.Enc(r.KShare.Int())
 
 	for j, partyJ := range r.Parties {
-		if j == r.Self.ID {
+		if j == r.SelfID() {
 			continue
 		}
 
-		proof := zkenc.NewProof(r.HashForID(r.Self.ID), zkenc.Public{
+		proof := zkenc.NewProof(r.HashForID(r.SelfID()), zkenc.Public{
 			K:      r.Self.K,
 			Prover: r.Self.Paillier,
 			Aux:    partyJ.Pedersen,

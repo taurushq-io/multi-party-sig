@@ -79,8 +79,6 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
 		sJson, _ := s.MarshalJSON()
 		assert.JSONEq(t, string(firstSessionJson), string(sJson), "sessions are different")
 		assert.NoError(t, s.ValidateSecret(newSecrets[i]), "failed to validate new session")
-		assert.Equal(t, firstSession.SSID(), s.SSID(), "ssid mismatch")
-		assert.True(t, newSecrets[i].KeygenDone(), "new session should be in refreshed state")
 	}
 }
 

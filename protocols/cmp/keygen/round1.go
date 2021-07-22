@@ -17,9 +17,6 @@ import (
 type round1 struct {
 	*round.Helper
 
-	// SID = (𝔾, t,n,P₁,…,Pₙ)
-	SID *sid
-
 	// Self is the local data of the party executing the round
 	Self    *LocalParty
 	Parties map[party.ID]*LocalParty
@@ -72,7 +69,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	pedersenPublic, pedersenSecret := paillierSecret.GeneratePedersen()
 
 	// save our own share already so we are consistent with what we receive from others
-	ownShare := r.VSSSecret.Evaluate(r.Self.ID.Scalar())
+	ownShare := r.VSSSecret.Evaluate(r.SelfID().Scalar())
 
 	// set Fᵢ(X) = fᵢ(X)•G
 	vssPublic := polynomial.NewPolynomialExponent(r.VSSSecret)
@@ -81,13 +78,13 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	schnorrRand, schnorrCommitment := sample.ScalarPointPair(rand.Reader)
 
 	// Sample RIDᵢ
-	var rid RID
+	rid := newRID()
 	if _, err := rand.Read(rid[:]); err != nil {
 		return r, ErrRound1SampleRho
 	}
 
 	// commit to data in message 2
-	commitment, decommitment, err := r.HashForID(r.Self.ID).Commit(
+	commitment, decommitment, err := r.HashForID(r.SelfID()).Commit(
 		rid, vssPublic, schnorrCommitment, pedersenPublic)
 	if err != nil {
 		return r, ErrRound1Commit
