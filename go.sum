@@ -1,6 +1,4 @@
 github.com/coreos/go-systemd/v22 v22.3.2/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
-github.com/cronokirby/safenum v0.24.0 h1:w9gU2WKD6GImAsauoT4Jjy/AZy8FICSOBVt5Avd2AN8=
-github.com/cronokirby/safenum v0.24.0/go.mod h1:AWp82xwEqKcnrpJPXPa1m0gF/OY8dzgL17ubUBnVygA=
 github.com/cronokirby/safenum v0.25.0 h1:3owHW181y3Ns+7nMRH0W9JuLi1H63imy6EngBlh9VHQ=
 github.com/cronokirby/safenum v0.25.0/go.mod h1:AWp82xwEqKcnrpJPXPa1m0gF/OY8dzgL17ubUBnVygA=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
