@@ -162,6 +162,11 @@ func (s *Scalar) BigInt() *big.Int {
 	return &i
 }
 
+func (s *Scalar) Int() *safenum.Int {
+	b := s.s.Bytes()
+	return new(safenum.Int).SetBytes(b[:])
+}
+
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
 func (s *Scalar) WriteTo(w io.Writer) (int64, error) {
 	buf := make([]byte, params.BytesScalar)
