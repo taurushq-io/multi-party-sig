@@ -27,10 +27,10 @@ type (
 	}
 	Private struct {
 		// Y = y
-		Y *big.Int
+		Y *safenum.Int
 
 		// Rho = ρ
-		Rho *big.Int
+		Rho *safenum.Nat
 	}
 )
 
@@ -50,22 +50,19 @@ func (p Proof) IsValid(public Public) bool {
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	N0Big := public.Prover.N()
 	N0 := safenum.ModulusFromNat(new(safenum.Nat).SetBig(N0Big, N0Big.BitLen()))
-	ySafe := new(safenum.Int).SetBig(private.Y, private.Y.BitLen())
-	rhoSafe := new(safenum.Nat).SetBig(private.Rho, private.Rho.BitLen())
 
-	alpha := sample.IntervalLEps(rand.Reader)
-	alphaSafe := new(safenum.Int).SetBig(alpha, alpha.BitLen())
+	alpha := sample.IntervalLEpsSecret(rand.Reader)
 
 	mu := sample.IntervalLNSecret(rand.Reader)
 	nu := sample.IntervalLEpsNSecret(rand.Reader)
 	r := sample.UnitModNNat(rand.Reader, N0)
 
-	gamma := curve.NewScalarBigInt(alpha)
+	gamma := curve.NewScalarInt(alpha)
 
 	commitment := &Commitment{
-		S:     public.Aux.Commit(ySafe, mu),
-		T:     public.Aux.Commit(alphaSafe, nu),
-		A:     public.Prover.EncWithNonce(alpha, r.Big()),
+		S:     public.Aux.Commit(private.Y, mu),
+		T:     public.Aux.Commit(alpha, nu),
+		A:     public.Prover.EncWithNonce(alpha, r),
 		Gamma: gamma,
 	}
 
@@ -73,13 +70,13 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	e := new(safenum.Int).SetBig(eBig, eBig.BitLen())
 
 	// z₁ = e•y+α
-	z1 := new(safenum.Int).Mul(e, ySafe, -1)
-	z1.Add(z1, alphaSafe, -1)
+	z1 := new(safenum.Int).Mul(e, private.Y, -1)
+	z1.Add(z1, alpha, -1)
 	// z₂ = e•μ + ν
 	z2 := new(safenum.Int).Mul(e, mu, -1)
 	z2.Add(z2, nu, -1)
 	// w = ρ^e•r mod N₀
-	w := new(safenum.Nat).ExpI(rhoSafe, e, N0)
+	w := new(safenum.Nat).ExpI(private.Rho, e, N0)
 	w.ModMul(w, r, N0)
 
 	return &Proof{
@@ -101,12 +98,16 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 		return false
 	}
 
+	z1 := new(safenum.Int).SetBig(p.Z1, p.Z1.BitLen())
+	w := new(safenum.Nat).SetBig(p.W, p.W.BitLen())
+	eInt := new(safenum.Int).SetBig(e, e.BitLen())
+
 	{
 		// lhs = Enc₀(z₁;w)
-		lhs := public.Prover.EncWithNonce(p.Z1, p.W)
+		lhs := public.Prover.EncWithNonce(z1, w)
 
 		// rhs = (e ⊙ C) ⊕ A
-		rhs := public.C.Clone().Mul(public.Prover, e).Add(public.Prover, p.A)
+		rhs := public.C.Clone().Mul(public.Prover, eInt).Add(public.Prover, p.A)
 		if !lhs.Equal(rhs) {
 			return false
 		}
