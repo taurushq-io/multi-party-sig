@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/cronokirby/safenum"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -41,28 +42,30 @@ func TestMod(t *testing.T) {
 }
 
 func Test_set4thRoot(t *testing.T) {
-	var pInt, qInt int64 = 311, 331
-	p := big.NewInt(311)
-	q := big.NewInt(331)
-	n := big.NewInt(pInt * qInt)
-	phi := big.NewInt((pInt - 1) * (qInt - 1))
-	y := big.NewInt(502)
-	w := sample.QNR(rand.Reader, n)
+	var p, q uint64 = 311, 331
+	pMod := safenum.ModulusFromUint64(p)
+	pHalf := new(safenum.Nat).SetUint64((p - 1) / 2)
+	qMod := safenum.ModulusFromUint64(q)
+	qHalf := new(safenum.Nat).SetUint64((q - 1) / 2)
+	n := safenum.ModulusFromUint64(p * q)
+	nBig := big.NewInt(int64(p * q))
+	phi := new(safenum.Nat).SetUint64((p - 1) * (q - 1))
+	y := new(safenum.Nat).SetUint64(502)
+	wBig := sample.QNR(rand.Reader, nBig)
+	w := new(safenum.Nat).SetBig(wBig, wBig.BitLen())
 
-	a, b, x := makeQuadraticResidue(y, w, n, p, q)
+	a, b, x := makeQuadraticResidue(y, w, pHalf, qHalf, n, pMod, qMod)
 
 	root := fourthRoot(x, phi, n)
 
 	if b {
-		y.Mul(y, w)
-		y.Mod(y, n)
+		y.ModMul(y, w, n)
 	}
 	if a {
-		y.Neg(y)
-		y.Mod(y, n)
+		y.ModNeg(y, n)
 	}
 
 	assert.NotEqual(t, root, big.NewInt(1), "root cannot be 1")
-	root.Exp(root, big.NewInt(4), n)
-	assert.Equal(t, root, y, "root^4 should be equal to y")
+	root.Exp(root, new(safenum.Nat).SetUint64(4), n)
+	assert.True(t, root.Eq(y) == 1, "root^4 should be equal to y")
 }
