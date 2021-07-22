@@ -117,7 +117,7 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 		index := idJ.Scalar()
 		share := r.VSSSecret.Evaluate(index)
 		// Encrypt share
-		C, _ := partyJ.Paillier.Enc(share.BigInt())
+		C, _ := partyJ.Paillier.Enc(share.Int())
 
 		msg := r.MarshalMessage(&Keygen5{
 			Mod:   mod,
