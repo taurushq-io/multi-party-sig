@@ -62,7 +62,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	s := sample.UnitModNNat(rand.Reader, N)
 
 	A := public.Y.Clone().Mul(prover, alpha)
-	A.Randomize(prover, r.Big())
+	A.Randomize(prover, r)
 
 	commitment := &Commitment{
 		A: A,
@@ -101,7 +101,7 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 	{
 		// lhs = (z ⊙ Y)•uᴺ
 		lhs := public.Y.Clone().Mul(prover, p.Z)
-		lhs.Randomize(prover, p.U)
+		lhs.Randomize(prover, new(safenum.Nat).SetBig(p.U, p.U.BitLen()))
 
 		// (e ⊙ C) ⊕ A
 		rhs := public.C.Clone().Mul(prover, e).Add(prover, p.A)

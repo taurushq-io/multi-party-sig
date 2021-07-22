@@ -30,7 +30,7 @@ func TestMul(t *testing.T) {
 	}
 	private := Private{
 		X:    x,
-		Rho:  rho,
+		Rho:  rho.Big(),
 		RhoX: rhoX,
 	}
 

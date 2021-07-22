@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/cronokirby/safenum"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -25,7 +26,9 @@ func TestMulG(t *testing.T) {
 	X.ScalarBaseMult(curve.NewScalarBigInt(x))
 
 	D := C.Clone().Mul(verifierPaillier, x)
-	rho := sample.UnitModN(rand.Reader, verifierPaillier.N())
+	nBig := verifierPaillier.N()
+	n := safenum.ModulusFromNat(new(safenum.Nat).SetBig(nBig, nBig.BitLen()))
+	rho := sample.UnitModNNat(rand.Reader, n)
 	D.Randomize(verifierPaillier, rho)
 
 	public := Public{
@@ -37,7 +40,7 @@ func TestMulG(t *testing.T) {
 	}
 	private := Private{
 		X:   x,
-		Rho: rho,
+		Rho: rho.Big(),
 	}
 	proof := NewProof(hash.New(), public, private)
 	out, err := proof.Marshal()

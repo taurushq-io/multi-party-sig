@@ -68,7 +68,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	m := sample.IntervalLEpsNSecret(rand.Reader)
 
 	A := public.C.Clone().Mul(verifier, alpha)
-	A.Randomize(verifier, r.Big())
+	A.Randomize(verifier, r)
 
 	commitment := &Commitment{
 		A:  A,
@@ -118,7 +118,7 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 	{
 		// lhs = z₁ ⊙ C + rand
 		lhs := public.C.Clone().Mul(verifier, p.Z1)
-		lhs.Randomize(verifier, p.W)
+		lhs.Randomize(verifier, new(safenum.Nat).SetBig(p.W, p.W.BitLen()))
 
 		// rhsCt = A ⊕ (e ⊙ D)
 		rhs := public.D.Clone().Mul(verifier, e).Add(verifier, p.A)
