@@ -26,18 +26,6 @@ func challenge(hash *hash.Hash, A, X *curve.Point) *curve.Scalar {
 	return sample.Scalar(hash)
 }
 
-func challengeMult(hash *hash.Hash, As, Xs []curve.Point) []*curve.Scalar {
-	t := len(Xs)
-	for l := 0; l < t; l++ {
-		_, _ = hash.WriteAny(&As[l], &Xs[l])
-	}
-	es := make([]*curve.Scalar, t)
-	for l := range es {
-		es[l] = sample.Scalar(hash)
-	}
-	return es
-}
-
 func Prove(hash *hash.Hash, A, X *curve.Point, a, x *curve.Scalar) *curve.Scalar {
 	proof := challenge(hash, A, X)
 	proof.MultiplyAdd(proof, x, a)
