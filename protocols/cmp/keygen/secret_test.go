@@ -25,7 +25,6 @@ func TestSecret_Validate(t *testing.T) {
 
 	id := party.ID("blabla")
 	public := &Public{
-		ID:       id,
 		ECDSA:    X,
 		Paillier: pk,
 		Pedersen: ped,
@@ -57,9 +56,7 @@ func TestSecret_Validate(t *testing.T) {
 		}, args{public}, false},
 		{"pre keygen", fields{
 			ID: id,
-		}, args{&Public{
-			ID: id,
-		}}, false},
+		}, args{&Public{}}, true},
 		{"no paillier", fields{
 			ID:       id,
 			ECDSA:    x,
@@ -81,7 +78,6 @@ func TestSecret_Validate(t *testing.T) {
 			ECDSA:    x,
 			Paillier: sk,
 		}, args{&Public{
-			ID:       id,
 			ECDSA:    X,
 			Paillier: pk,
 			Pedersen: nil,
@@ -91,17 +87,14 @@ func TestSecret_Validate(t *testing.T) {
 			ECDSA:    x,
 			Paillier: sk,
 		}, args{&Public{
-			ID:       id,
 			ECDSA:    X,
 			Paillier: nil,
 			Pedersen: ped,
 		}}, true},
 		{"no pub ecdsa", fields{
-			ID:       id,
 			ECDSA:    x,
 			Paillier: sk,
 		}, args{&Public{
-			ID:       id,
 			ECDSA:    nil,
 			Paillier: pk,
 			Pedersen: ped,
