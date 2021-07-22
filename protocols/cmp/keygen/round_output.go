@@ -31,18 +31,11 @@ func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 }
 
 // Finalize implements round.Round
-func (r *output) Finalize(out chan<- *message.Message) (round.Round, error) { return nil, nil }
-
-// Result implements round.Final
-func (r *output) Result() interface{} {
-	// This could be used to handle pre-signatures
-	if r.newSession != nil && r.newSecret != nil {
-		return &Result{
-			Session: r.newSession,
-			Secret:  r.newSecret,
-		}
-	}
-	return nil
+func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {
+	return &round.Output{Result: &Result{
+		Session: r.newSession,
+		Secret:  r.newSecret,
+	}}, nil
 }
 
 // MessageContent implements round.Round

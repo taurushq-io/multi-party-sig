@@ -37,7 +37,7 @@ func (r *Round2) Finalize(chan<- *message.Message) (round.Round, error) {
 			r.resultXOR[i] ^= received[i]
 		}
 	}
-	return nil, nil
+	return &round.Output{Result: Result(r.resultXOR)}, nil
 }
 
 // MessageContent returns an uninitialized Round2Message used to unmarshal contents embedded in message.Message.

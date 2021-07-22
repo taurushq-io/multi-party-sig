@@ -57,15 +57,7 @@ func (r *output) Finalize(out chan<- *message.Message) (round.Round, error) {
 		return nil, ErrRoundOutputValidateSigFailed
 	}
 
-	return nil, nil
-}
-
-func (r *output) Result() interface{} {
-	// This could be used to handle pre-signatures
-	if r.Signature != nil {
-		return &Result{Signature: r.Signature}
-	}
-	return nil
+	return &round.Output{Result: &Result{Signature: r.Signature}}, nil
 }
 
 func (r *output) MessageContent() message.Content {
