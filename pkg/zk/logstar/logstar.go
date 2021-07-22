@@ -2,7 +2,6 @@ package zklogstar
 
 import (
 	"crypto/rand"
-	"math/big"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -61,10 +60,10 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 		public.G = curve.NewBasePoint()
 	}
 
-	alpha := sample.IntervalLEpsSecret(rand.Reader)
+	alpha := sample.IntervalLEps(rand.Reader)
 	r := sample.UnitModN(rand.Reader, N)
-	mu := sample.IntervalLNSecret(rand.Reader)
-	gamma := sample.IntervalLEpsNSecret(rand.Reader)
+	mu := sample.IntervalLN(rand.Reader)
+	gamma := sample.IntervalLEpsN(rand.Reader)
 
 	commitment := &Commitment{
 		A: public.Prover.EncWithNonce(alpha, r),
@@ -73,8 +72,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 		D: public.Aux.Commit(alpha, gamma),
 	}
 
-	eBig := challenge(hash, public, commitment)
-	e := new(safenum.Int).SetBig(eBig, eBig.BitLen())
+	e := challenge(hash, public, commitment)
 
 	// z1 = α + e x,
 	z1 := new(safenum.Int).Mul(e, private.X, -1)
@@ -111,20 +109,19 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 
 	e := challenge(hash, public, p.Commitment)
 
-	if !public.Aux.Verify(p.Z1, p.Z3, p.D, p.S, e) {
+	if !public.Aux.Verify(p.Z1, p.Z3, p.D, p.S, e.Big()) {
 		return false
 	}
 
 	z1 := new(safenum.Int).SetBig(p.Z1, p.Z1.BitLen())
 	z2 := new(safenum.Nat).SetBig(p.Z2, p.Z2.BitLen())
-	eInt := new(safenum.Int).SetBig(e, e.BitLen())
 
 	{
 		// lhs = Enc(z₁;z₂)
 		lhs := prover.EncWithNonce(z1, z2)
 
 		// rhs = (e ⊙ C) ⊕ A
-		rhs := public.C.Clone().Mul(prover, eInt).Add(prover, p.A)
+		rhs := public.C.Clone().Mul(prover, e).Add(prover, p.A)
 		if !lhs.Equal(rhs) {
 			return false
 		}
@@ -135,7 +132,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 		lhs := curve.NewIdentityPoint().ScalarMult(curve.NewScalarBigInt(p.Z1), public.G)
 
 		// rhs = Y + [e]X
-		eX := curve.NewIdentityPoint().ScalarMult(curve.NewScalarBigInt(e), public.X)
+		eX := curve.NewIdentityPoint().ScalarMult(curve.NewScalarInt(e), public.X)
 		rhs := curve.NewIdentityPoint().Add(&p.Y, eX)
 
 		if !lhs.Equal(rhs) {
@@ -147,7 +144,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment *Commitment) *big.Int {
+func challenge(hash *hash.Hash, public Public, commitment *Commitment) *safenum.Int {
 	_, _ = hash.WriteAny(public.Aux, public.Prover, public.C, public.X, public.G,
 		commitment.S, commitment.A, commitment.Y, commitment.D)
 

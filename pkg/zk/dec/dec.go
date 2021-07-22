@@ -2,7 +2,6 @@ package zkdec
 
 import (
 	"crypto/rand"
-	"math/big"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -51,10 +50,10 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	N0Big := public.Prover.N()
 	N0 := safenum.ModulusFromNat(new(safenum.Nat).SetBig(N0Big, N0Big.BitLen()))
 
-	alpha := sample.IntervalLEpsSecret(rand.Reader)
+	alpha := sample.IntervalLEps(rand.Reader)
 
-	mu := sample.IntervalLNSecret(rand.Reader)
-	nu := sample.IntervalLEpsNSecret(rand.Reader)
+	mu := sample.IntervalLN(rand.Reader)
+	nu := sample.IntervalLEpsN(rand.Reader)
 	r := sample.UnitModN(rand.Reader, N0)
 
 	gamma := curve.NewScalarInt(alpha)
@@ -66,8 +65,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 		Gamma: gamma,
 	}
 
-	eBig := challenge(hash, public, commitment)
-	e := new(safenum.Int).SetBig(eBig, eBig.BitLen())
+	e := challenge(hash, public, commitment)
 
 	// z₁ = e•y+α
 	z1 := new(safenum.Int).Mul(e, private.Y, -1)
@@ -94,20 +92,19 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 
 	e := challenge(hash, public, p.Commitment)
 
-	if !public.Aux.Verify(p.Z1, p.Z2, p.T, p.S, e) {
+	if !public.Aux.Verify(p.Z1, p.Z2, p.T, p.S, e.Big()) {
 		return false
 	}
 
 	z1 := new(safenum.Int).SetBig(p.Z1, p.Z1.BitLen())
 	w := new(safenum.Nat).SetBig(p.W, p.W.BitLen())
-	eInt := new(safenum.Int).SetBig(e, e.BitLen())
 
 	{
 		// lhs = Enc₀(z₁;w)
 		lhs := public.Prover.EncWithNonce(z1, w)
 
 		// rhs = (e ⊙ C) ⊕ A
-		rhs := public.C.Clone().Mul(public.Prover, eInt).Add(public.Prover, p.A)
+		rhs := public.C.Clone().Mul(public.Prover, e).Add(public.Prover, p.A)
 		if !lhs.Equal(rhs) {
 			return false
 		}
@@ -118,7 +115,7 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 		lhs := curve.NewScalarBigInt(p.Z1)
 
 		// rhs = e•x + γ
-		rhs := curve.NewScalarBigInt(e)
+		rhs := curve.NewScalarInt(e)
 		rhs.MultiplyAdd(rhs, public.X, p.Gamma)
 		if !lhs.Equal(rhs) {
 			return false
@@ -128,7 +125,7 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment *Commitment) *big.Int {
+func challenge(hash *hash.Hash, public Public, commitment *Commitment) *safenum.Int {
 	_, _ = hash.WriteAny(public.Aux, public.Prover,
 		public.C, public.X,
 		commitment.S, commitment.T, commitment.A, commitment.Gamma)

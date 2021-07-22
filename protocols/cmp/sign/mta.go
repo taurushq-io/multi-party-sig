@@ -54,7 +54,7 @@ func NewMtA(ai *curve.Scalar, Ai *curve.Point,
 	Kj *paillier.Ciphertext,
 	sender, receiver *keygen.Public) *MtA {
 
-	beta := sample.IntervalLPrimeSecret(rand.Reader)
+	beta := sample.IntervalLPrime(rand.Reader)
 
 	betaNeg := beta.Clone().Neg(1)
 	// Fⱼᵢ = encᵢ(-βᵢⱼ, rᵢⱼ)

@@ -2,7 +2,6 @@ package zkmul
 
 import (
 	"crypto/rand"
-	"math/big"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -53,7 +52,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 
 	prover := public.Prover
 
-	alpha := sample.IntervalLEpsSecret(rand.Reader)
+	alpha := sample.IntervalLEps(rand.Reader)
 	r := sample.UnitModN(rand.Reader, N)
 	s := sample.UnitModN(rand.Reader, N)
 
@@ -64,8 +63,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 		A: A,
 		B: prover.EncWithNonce(alpha, s),
 	}
-	eBig := challenge(hash, public, commitment)
-	e := new(safenum.Int).SetBig(eBig, eBig.BitLen())
+	e := challenge(hash, public, commitment)
 
 	// Z = α + ex
 	z := new(safenum.Int).Mul(e, private.X, -1)
@@ -96,7 +94,6 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 
 	z := new(safenum.Int).SetBig(p.Z, p.Z.BitLen())
 	v := new(safenum.Nat).SetBig(p.V, p.V.BitLen())
-	eInt := new(safenum.Int).SetBig(e, e.BitLen())
 
 	{
 		// lhs = (z ⊙ Y)•uᴺ
@@ -104,7 +101,7 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 		lhs.Randomize(prover, new(safenum.Nat).SetBig(p.U, p.U.BitLen()))
 
 		// (e ⊙ C) ⊕ A
-		rhs := public.C.Clone().Mul(prover, eInt).Add(prover, p.A)
+		rhs := public.C.Clone().Mul(prover, e).Add(prover, p.A)
 		if !lhs.Equal(rhs) {
 			return false
 		}
@@ -115,7 +112,7 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 		lhs := prover.EncWithNonce(z, v)
 
 		// rhs = (e ⊙ X) ⊕ B
-		rhs := public.X.Clone().Mul(prover, eInt).Add(prover, p.B)
+		rhs := public.X.Clone().Mul(prover, e).Add(prover, p.B)
 		if !lhs.Equal(rhs) {
 			return false
 		}
@@ -124,7 +121,7 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment *Commitment) *big.Int {
+func challenge(hash *hash.Hash, public Public, commitment *Commitment) *safenum.Int {
 	_, _ = hash.WriteAny(public.Prover,
 		public.X, public.Y, public.C,
 		commitment.A, commitment.B)

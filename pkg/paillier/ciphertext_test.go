@@ -138,7 +138,7 @@ var resultCiphertext *Ciphertext
 
 func BenchmarkEncryption(b *testing.B) {
 	b.StopTimer()
-	m := sample.IntervalLEpsSecret(rand.Reader)
+	m := sample.IntervalLEps(rand.Reader)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		resultCiphertext, _ = paillierPublic.Enc(m)
@@ -147,7 +147,7 @@ func BenchmarkEncryption(b *testing.B) {
 
 func BenchmarkAddCiphertext(b *testing.B) {
 	b.StopTimer()
-	m := sample.IntervalLEpsSecret(rand.Reader)
+	m := sample.IntervalLEps(rand.Reader)
 	c, _ := paillierPublic.Enc(m)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
@@ -157,7 +157,7 @@ func BenchmarkAddCiphertext(b *testing.B) {
 
 func BenchmarkMulCiphertext(b *testing.B) {
 	b.StopTimer()
-	m := sample.IntervalLEpsSecret(rand.Reader)
+	m := sample.IntervalLEps(rand.Reader)
 	c, _ := paillierPublic.Enc(m)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {

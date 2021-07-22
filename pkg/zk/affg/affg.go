@@ -2,7 +2,6 @@ package zkaffg
 
 import (
 	"crypto/rand"
-	"math/big"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -83,16 +82,16 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	verifier := public.Verifier
 	prover := public.Prover
 
-	alpha := sample.IntervalLEpsSecret(rand.Reader)
-	beta := sample.IntervalLPrimeEpsSecret(rand.Reader)
+	alpha := sample.IntervalLEps(rand.Reader)
+	beta := sample.IntervalLPrimeEpse(rand.Reader)
 
 	r := sample.UnitModN(rand.Reader, N0)
 	rY := sample.UnitModN(rand.Reader, N1)
 
-	gamma := sample.IntervalLEpsNSecret(rand.Reader)
-	m := sample.IntervalLEpsNSecret(rand.Reader)
-	delta := sample.IntervalLEpsNSecret(rand.Reader)
-	mu := sample.IntervalLNSecret(rand.Reader)
+	gamma := sample.IntervalLEpsN(rand.Reader)
+	m := sample.IntervalLEpsN(rand.Reader)
+	delta := sample.IntervalLEpsN(rand.Reader)
+	mu := sample.IntervalLN(rand.Reader)
 
 	cAlpha := public.C.Clone().Mul(verifier, alpha)           // = Cᵃ mod N₀ = α ⊙ C
 	A := verifier.EncWithNonce(beta, r).Add(verifier, cAlpha) // = Enc₀(β,r) ⊕ (α ⊙ C)
@@ -107,8 +106,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 		T:  public.Aux.Commit(private.Y, mu),
 	}
 
-	eBig := challenge(hash, public, commitment)
-	e := new(safenum.Int).SetBig(eBig, eBig.BitLen())
+	e := challenge(hash, public, commitment)
 
 	// e•x+α
 	z1 := new(safenum.Int).Mul(e, private.X, -1)
@@ -156,12 +154,13 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	}
 
 	e := challenge(hash, public, p.Commitment)
+	eBig := e.Big()
 
-	if !public.Aux.Verify(p.Z1, p.Z3, p.E, p.S, e) {
+	if !public.Aux.Verify(p.Z1, p.Z3, p.E, p.S, eBig) {
 		return false
 	}
 
-	if !public.Aux.Verify(p.Z2, p.Z4, p.F, p.T, e) {
+	if !public.Aux.Verify(p.Z2, p.Z4, p.F, p.T, eBig) {
 		return false
 	}
 
@@ -169,7 +168,6 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	z2 := new(safenum.Int).SetBig(p.Z2, p.Z2.BitLen())
 	w := new(safenum.Nat).SetBig(p.W, p.W.BitLen())
 	wY := new(safenum.Nat).SetBig(p.Wy, p.Wy.BitLen())
-	eInt := new(safenum.Int).SetBig(e, e.BitLen())
 
 	{
 
@@ -179,7 +177,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 		lhs := verifier.EncWithNonce(z2, w).Add(verifier, tmp)
 
 		// rhs = (e ⊙ D) ⊕ A
-		rhs := public.D.Clone().Mul(verifier, eInt).Add(verifier, p.A)
+		rhs := public.D.Clone().Mul(verifier, e).Add(verifier, p.A)
 
 		if !lhs.Equal(rhs) {
 			return false
@@ -192,7 +190,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 		lhs := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarBigInt(p.Z1))
 
 		// rhsPt = Bₓ + [e]X
-		rhs := curve.NewIdentityPoint().ScalarMult(curve.NewScalarBigInt(e), public.X)
+		rhs := curve.NewIdentityPoint().ScalarMult(curve.NewScalarInt(e), public.X)
 		rhs.Add(&p.Bx, rhs)
 		if !lhs.Equal(rhs) {
 			return false
@@ -204,7 +202,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 		lhs := prover.EncWithNonce(z2, wY)
 
 		// rhs = (e ⊙ Y) ⊕ By
-		rhs := public.Y.Clone().Mul(prover, eInt).Add(prover, p.By)
+		rhs := public.Y.Clone().Mul(prover, e).Add(prover, p.By)
 
 		if !lhs.Equal(rhs) {
 			return false
@@ -214,7 +212,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment *Commitment) *big.Int {
+func challenge(hash *hash.Hash, public Public, commitment *Commitment) *safenum.Int {
 	_, _ = hash.WriteAny(public.Aux, public.Prover, public.Verifier,
 		public.C, public.D, public.Y, public.X,
 		commitment.A, commitment.Bx, commitment.By,

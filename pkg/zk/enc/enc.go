@@ -2,7 +2,6 @@ package zkenc
 
 import (
 	"crypto/rand"
-	"math/big"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -45,10 +44,10 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	NBig := public.Prover.N()
 	N := safenum.ModulusFromNat(new(safenum.Nat).SetBig(NBig, NBig.BitLen()))
 
-	alpha := sample.IntervalLEpsSecret(rand.Reader)
+	alpha := sample.IntervalLEps(rand.Reader)
 	r := sample.UnitModN(rand.Reader, N)
-	mu := sample.IntervalLNSecret(rand.Reader)
-	gamma := sample.IntervalLEpsNSecret(rand.Reader)
+	mu := sample.IntervalLN(rand.Reader)
+	gamma := sample.IntervalLEpsN(rand.Reader)
 
 	A := public.Prover.EncWithNonce(alpha, r)
 
@@ -58,8 +57,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 		C: public.Aux.Commit(alpha, gamma),
 	}
 
-	eBig := challenge(hash, public, commitment)
-	e := new(safenum.Int).SetBig(eBig, eBig.BitLen())
+	e := challenge(hash, public, commitment)
 
 	z1 := new(safenum.Int).Mul(e, private.K, -1)
 	z1.Add(z1, alpha, -1)
@@ -91,20 +89,19 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 
 	e := challenge(hash, public, p.Commitment)
 
-	if !public.Aux.Verify(p.Z1, p.Z3, p.C, p.S, e) {
+	if !public.Aux.Verify(p.Z1, p.Z3, p.C, p.S, e.Big()) {
 		return false
 	}
 
 	z1 := new(safenum.Int).SetBig(p.Z1, p.Z1.BitLen())
 	z2 := new(safenum.Nat).SetBig(p.Z2, p.Z2.BitLen())
-	eInt := new(safenum.Int).SetBig(e, e.BitLen())
 
 	{
 		// lhs = Enc(z₁;z₂)
 		lhs := prover.EncWithNonce(z1, z2)
 
 		// rhs = (e ⊙ K) ⊕ A
-		rhs := public.K.Clone().Mul(prover, eInt).Add(prover, p.A)
+		rhs := public.K.Clone().Mul(prover, e).Add(prover, p.A)
 		if !lhs.Equal(rhs) {
 			return false
 		}
@@ -113,7 +110,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment *Commitment) *big.Int {
+func challenge(hash *hash.Hash, public Public, commitment *Commitment) *safenum.Int {
 	_, _ = hash.WriteAny(public.Aux, public.Prover, public.K,
 		commitment.S, commitment.A, commitment.C)
 

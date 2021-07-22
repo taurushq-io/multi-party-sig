@@ -21,10 +21,10 @@ func TestAffG(t *testing.T) {
 	c := new(safenum.Int).SetUint64(12)
 	C, _ := verifierPaillier.Enc(c)
 
-	x := sample.IntervalLSecret(rand.Reader)
+	x := sample.IntervalL(rand.Reader)
 	X := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarInt(x))
 
-	y := sample.IntervalLPrimeSecret(rand.Reader)
+	y := sample.IntervalLPrime(rand.Reader)
 	Y, rhoY := prover.Enc(y)
 
 	tmp := C.Clone().Mul(verifierPaillier, x)

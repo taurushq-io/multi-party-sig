@@ -16,7 +16,7 @@ func TestDec(t *testing.T) {
 	verifierPedersen := zk.Pedersen
 	prover := zk.ProverPaillierPublic
 
-	y := sample.IntervalLSecret(rand.Reader)
+	y := sample.IntervalL(rand.Reader)
 	x := curve.NewScalarInt(y)
 
 	C, rho := prover.Enc(y)

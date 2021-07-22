@@ -15,7 +15,7 @@ func TestEnc(t *testing.T) {
 	verifier := zk.Pedersen
 	prover := zk.ProverPaillierPublic
 
-	k := sample.IntervalLSecret(rand.Reader)
+	k := sample.IntervalL(rand.Reader)
 	K, rho := prover.Enc(k)
 	public := Public{
 		K:      K,

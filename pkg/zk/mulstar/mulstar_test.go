@@ -21,7 +21,7 @@ func TestMulG(t *testing.T) {
 	C, _ := verifierPaillier.Enc(c)
 
 	var X curve.Point
-	x := sample.IntervalLSecret(rand.Reader)
+	x := sample.IntervalL(rand.Reader)
 	X.ScalarBaseMult(curve.NewScalarInt(x))
 
 	D := C.Clone().Mul(verifierPaillier, x)
