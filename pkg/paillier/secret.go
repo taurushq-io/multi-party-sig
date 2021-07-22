@@ -93,7 +93,7 @@ func NewSecretKeyFromPrimes(P, Q *big.Int) *SecretKey {
 
 // Dec decrypts c and returns the plaintext m ∈ ± (N-2)/2.
 // It returns an error if gcd(c, N²) != 1 or if c is not in [1, N²-1].
-func (sk *SecretKey) Dec(ct *Ciphertext) (*big.Int, error) {
+func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
 	n := sk.PublicKey.n
 	nSquared := sk.PublicKey.nSquared
 
@@ -115,7 +115,7 @@ func (sk *SecretKey) Dec(ct *Ciphertext) (*big.Int, error) {
 	result.ModMul(result, phiInv, n)
 
 	// see 6.1 https://www.iacr.org/archive/crypto2001/21390136.pdf
-	return new(safenum.Int).SetModSymmetric(result, n).Big(), nil
+	return new(safenum.Int).SetModSymmetric(result, n), nil
 }
 
 func (sk *SecretKey) Clone() *SecretKey {

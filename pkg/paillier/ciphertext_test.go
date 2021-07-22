@@ -55,14 +55,17 @@ func TestCiphertextValidate(t *testing.T) {
 	assert.Error(t, err, "decrypting N^2 should fail")
 }
 
-func testEncDecRoundTrip(x int64) bool {
-	m := new(big.Int).SetInt64(x)
+func testEncDecRoundTrip(x uint64, xNeg bool) bool {
+	m := new(safenum.Int).SetUint64(x)
+	if xNeg {
+		m.Neg(1)
+	}
 	ciphertext, _ := paillierPublic.Enc(m)
 	shouldBeM, err := paillierSecret.Dec(ciphertext)
 	if err != nil {
 		return false
 	}
-	return m.Cmp(shouldBeM) == 0
+	return m.Eq(shouldBeM) == 1
 }
 
 func TestEncDecRoundTrip(t *testing.T) {
@@ -75,17 +78,23 @@ func TestEncDecRoundTrip(t *testing.T) {
 	}
 }
 
-func testEncDecHomomorphic(a int64, b int64) bool {
-	ma := new(big.Int).SetInt64(a)
-	mb := new(big.Int).SetInt64(b)
+func testEncDecHomomorphic(a, b uint64, aNeg, bNeg bool) bool {
+	ma := new(safenum.Int).SetUint64(a)
+	if aNeg {
+		ma.Neg(1)
+	}
+	mb := new(safenum.Int).SetUint64(b)
+	if bNeg {
+		mb.Neg(1)
+	}
 	ca, _ := paillierPublic.Enc(ma)
 	cb, _ := paillierPublic.Enc(mb)
-	expected := new(big.Int).Add(ma, mb)
+	expected := new(safenum.Int).Add(ma, mb, -1)
 	actual, err := paillierSecret.Dec(ca.Add(paillierPublic, cb))
 	if err != nil {
 		return false
 	}
-	return actual.Cmp(expected) == 0
+	return actual.Eq(expected) == 1
 }
 
 func TestEncDecHomomorphic(t *testing.T) {
@@ -98,16 +107,22 @@ func TestEncDecHomomorphic(t *testing.T) {
 	}
 }
 
-func testEncDecScalingHomomorphic(s int64, x int64) bool {
-	m := new(big.Int).SetInt64(x)
-	sBig := new(big.Int).SetInt64(s)
+func testEncDecScalingHomomorphic(s, x uint64, sNeg, xNeg bool) bool {
+	m := new(safenum.Int).SetUint64(x)
+	if xNeg {
+		m.Neg(1)
+	}
+	sInt := new(safenum.Int).SetUint64(s)
+	if sNeg {
+		sInt.Neg(1)
+	}
 	c, _ := paillierPublic.Enc(m)
-	expected := new(big.Int).Mul(m, sBig)
-	actual, err := paillierSecret.Dec(c.Mul(paillierPublic, sBig))
+	expected := new(safenum.Int).Mul(m, sInt, -1)
+	actual, err := paillierSecret.Dec(c.Mul(paillierPublic, sInt))
 	if err != nil {
 		return false
 	}
-	return actual.Cmp(expected) == 0
+	return actual.Eq(expected) == 1
 }
 
 func TestEncDecScalingHomomorphic(t *testing.T) {
@@ -125,7 +140,7 @@ var resultCiphertext *Ciphertext
 
 func BenchmarkEncryption(b *testing.B) {
 	b.StopTimer()
-	m := sample.IntervalLEps(rand.Reader)
+	m := sample.IntervalLEpsSecret(rand.Reader)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		resultCiphertext, _ = paillierPublic.Enc(m)
@@ -134,7 +149,7 @@ func BenchmarkEncryption(b *testing.B) {
 
 func BenchmarkAddCiphertext(b *testing.B) {
 	b.StopTimer()
-	m := sample.IntervalLEps(rand.Reader)
+	m := sample.IntervalLEpsSecret(rand.Reader)
 	c, _ := paillierPublic.Enc(m)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
@@ -144,7 +159,7 @@ func BenchmarkAddCiphertext(b *testing.B) {
 
 func BenchmarkMulCiphertext(b *testing.B) {
 	b.StopTimer()
-	m := sample.IntervalLEps(rand.Reader)
+	m := sample.IntervalLEpsSecret(rand.Reader)
 	c, _ := paillierPublic.Enc(m)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {

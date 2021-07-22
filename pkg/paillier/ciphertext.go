@@ -3,7 +3,6 @@ package paillier
 import (
 	"crypto/rand"
 	"io"
-	"math/big"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/internal/proto"
@@ -25,13 +24,12 @@ func (ct *Ciphertext) Add(pk *PublicKey, otherCt *Ciphertext) *Ciphertext {
 
 // Mul sets ct to the homomorphic multiplication of k ⊙ ctₐ
 // ct = ctᵏ (mod N²)
-func (ct *Ciphertext) Mul(pk *PublicKey, k *big.Int) *Ciphertext {
+func (ct *Ciphertext) Mul(pk *PublicKey, k *safenum.Int) *Ciphertext {
 	if k == nil {
 		return ct
 	}
 
-	kInt := new(safenum.Int).SetBig(k, k.BitLen())
-	ct.C.ExpI(ct.C.Nat, kInt, pk.nSquared)
+	ct.C.ExpI(ct.C.Nat, k, pk.nSquared)
 
 	return ct
 }
