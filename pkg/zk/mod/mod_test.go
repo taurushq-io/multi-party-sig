@@ -42,33 +42,30 @@ func TestMod(t *testing.T) {
 }
 
 func Test_set4thRoot(t *testing.T) {
-	var pInt, qInt int64 = 311, 331
-	p := big.NewInt(311)
-	q := big.NewInt(331)
-	n := big.NewInt(pInt * qInt)
-	phi := big.NewInt((pInt - 1) * (qInt - 1))
-	y := big.NewInt(502)
-	w := sample.QNR(rand.Reader, n)
+	var p, q uint64 = 311, 331
+	pMod := safenum.ModulusFromUint64(p)
+	pHalf := new(safenum.Nat).SetUint64((p - 1) / 2)
+	qMod := safenum.ModulusFromUint64(q)
+	qHalf := new(safenum.Nat).SetUint64((q - 1) / 2)
+	n := safenum.ModulusFromUint64(p * q)
+	nBig := big.NewInt(int64(p * q))
+	phi := new(safenum.Nat).SetUint64((p - 1) * (q - 1))
+	y := new(safenum.Nat).SetUint64(502)
+	wBig := sample.QNR(rand.Reader, nBig)
+	w := new(safenum.Nat).SetBig(wBig, wBig.BitLen())
 
-	phiNat := new(safenum.Nat).SetBig(phi, phi.BitLen())
-	nMod := safenum.ModulusFromNat(new(safenum.Nat).SetBig(n, n.BitLen()))
+	a, b, x := makeQuadraticResidue(y, w, pHalf, qHalf, n, pMod, qMod)
 
-	a, b, x := makeQuadraticResidue(y, w, n, p, q)
-
-	xNat := new(safenum.Nat).SetBig(x, x.BitLen())
-
-	root := fourthRoot(xNat, phiNat, nMod)
+	root := fourthRoot(x, phi, n)
 
 	if b {
-		y.Mul(y, w)
-		y.Mod(y, n)
+		y.ModMul(y, w, n)
 	}
 	if a {
-		y.Neg(y)
-		y.Mod(y, n)
+		y.ModNeg(y, n)
 	}
 
 	assert.NotEqual(t, root, big.NewInt(1), "root cannot be 1")
-	root.Exp(root, new(safenum.Nat).SetUint64(4), nMod)
-	assert.Equal(t, root.Big(), y, "root^4 should be equal to y")
+	root.Exp(root, new(safenum.Nat).SetUint64(4), n)
+	assert.True(t, root.Eq(y) == 1, "root^4 should be equal to y")
 }

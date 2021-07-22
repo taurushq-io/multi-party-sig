@@ -25,8 +25,25 @@ type (
 	}
 )
 
-func isQRmodPQ(y, p, q *big.Int) bool {
-	return big.Jacobi(y, p) == 1 && big.Jacobi(y, q) == 1
+var oneNat *safenum.Nat = new(safenum.Nat).SetUint64(1).Resize(1)
+
+// isQRModPQ checks that y is a quadratic residue mod both p and q.
+//
+// p and q should be prime numbers.
+//
+// pHalf should be (p - 1) / 2
+//
+// qHalf should be (q - 1) / 2
+func isQRmodPQ(y, pHalf, qHalf *safenum.Nat, p, q *safenum.Modulus) safenum.Choice {
+	test := new(safenum.Nat)
+
+	test.Exp(y, pHalf, p)
+	pOk := test.Eq(oneNat)
+
+	test.Exp(y, qHalf, q)
+	qOk := test.Eq(oneNat)
+
+	return pOk & qOk
 }
 
 // fourthRoot returns the 4th root modulo n, or a quadratic residue qr, given that:
@@ -57,32 +74,33 @@ func fourthRoot(qr, phi *safenum.Nat, n *safenum.Modulus) *safenum.Nat {
 //   - n=pq is a blum integer
 //   - w is a quadratic non residue in Zn
 //   - y is an element that may or may not be a QR
-func makeQuadraticResidue(y, w *big.Int, n, p, q *big.Int) (a, b bool, yPrime *big.Int) {
-	yPrime = new(big.Int).Mod(y, n)
+//   - pHalf = (p - 1) / 2
+//   - qHalf = (p - 1) / 2
+//
+// Leaking the return values is fine, but not the input values related to the factorization of N.
+func makeQuadraticResidue(y, w, pHalf, qHalf *safenum.Nat, n, p, q *safenum.Modulus) (a, b bool, out *safenum.Nat) {
+	out = new(safenum.Nat).Mod(y, n)
 
-	if isQRmodPQ(y, p, q) {
+	if isQRmodPQ(out, pHalf, qHalf, p, q) == 1 {
 		return
 	}
 
 	// multiply by -1
-	yPrime.Neg(yPrime)
-	yPrime.Mod(yPrime, n)
+	out.ModNeg(out, n)
 	a, b = true, false
-	if isQRmodPQ(yPrime, p, q) {
-		return
-	}
-
-	// multiply by -w
-	yPrime.Mul(yPrime, w)
-	yPrime.Mod(yPrime, n)
-	a, b = true, true
-	if isQRmodPQ(yPrime, p, q) {
+	if isQRmodPQ(out, pHalf, qHalf, p, q) == 1 {
 		return
 	}
 
 	// multiply by w again
-	yPrime.Neg(yPrime)
-	yPrime.Mod(yPrime, n)
+	out.ModMul(out, w, n)
+	a, b = true, true
+	if isQRmodPQ(out, pHalf, qHalf, p, q) == 1 {
+		return
+	}
+
+	// multiply by -1 again
+	out.ModNeg(out, n)
 	a, b = false, true
 	return
 }
@@ -126,11 +144,22 @@ func (p *Proof) IsValid(public Public) bool {
 //  - R = [(xᵢ aᵢ, bᵢ), zᵢ] for i = 1, …, m
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	n, p, q, phi := public.N, private.P, private.Q, private.Phi
+	pNat := new(safenum.Nat).SetBig(p, p.BitLen())
+	pHalf := new(safenum.Nat).Sub(pNat, oneNat, -1)
+	pHalf.Rsh(pHalf, 1, -1)
+	pMod := safenum.ModulusFromNat(pNat)
+	qNat := new(safenum.Nat).SetBig(q, q.BitLen())
+	qHalf := new(safenum.Nat).Sub(qNat, oneNat, -1)
+	qHalf.Rsh(qHalf, 1, -1)
+	qMod := safenum.ModulusFromNat(qNat)
 	phiNat := new(safenum.Nat).SetBig(phi, phi.BitLen())
-	nMod := safenum.ModulusFromNat(new(safenum.Nat).SetBig(n, n.BitLen()))
+	phiMod := safenum.ModulusFromNat(phiNat)
+	nNat := new(safenum.Nat).SetBig(n, n.BitLen())
+	nMod := safenum.ModulusFromNat(nNat)
 	w := sample.QNR(rand.Reader, n)
+	wNat := new(safenum.Nat).SetBig(w, w.BitLen())
 
-	nInverse := new(big.Int).ModInverse(n, phi)
+	nInverse := new(safenum.Nat).ModInverse(nNat, phiMod)
 
 	Xs := make([]*big.Int, params.StatParam)
 	As := make([]bool, params.StatParam)
@@ -140,17 +169,16 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	ys := challenge(hash, n, w)
 
 	for i := 0; i < params.StatParam; i++ {
-		y := ys[i]
+		y := new(safenum.Nat).SetBig(ys[i], ys[i].BitLen())
 
 		// Z = y^{n⁻¹ (mod n)}
-		z := new(big.Int).Exp(y, nInverse, n)
+		z := new(safenum.Nat).Exp(y, nInverse, nMod)
 
-		a, b, yPrime := makeQuadraticResidue(y, w, n, p, q)
-		yPrimeNat := new(safenum.Nat).SetBig(yPrime, yPrime.BitLen())
+		a, b, yPrime := makeQuadraticResidue(y, wNat, pHalf, qHalf, nMod, pMod, qMod)
 		// X = (y')¹/4
-		x := fourthRoot(yPrimeNat, phiNat, nMod)
+		x := fourthRoot(yPrime, phiNat, nMod)
 
-		Xs[i], As[i], Bs[i], Zs[i] = x.Big(), a, b, z
+		Xs[i], As[i], Bs[i], Zs[i] = x.Big(), a, b, z.Big()
 	}
 
 	return &Proof{
@@ -181,7 +209,7 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 	ys := challenge(hash, n, p.W)
 
 	var lhs, rhs big.Int
-	z, x := new(big.Int), new(big.Int)
+	var z, x *big.Int
 	four := big.NewInt(4)
 	for i := 0; i < params.StatParam; i++ {
 		// get yᵢ
