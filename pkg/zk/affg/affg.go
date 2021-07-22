@@ -89,14 +89,10 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	r := sample.UnitModNNat(rand.Reader, N0)
 	rY := sample.UnitModNNat(rand.Reader, N1)
 
-	gamma := sample.IntervalLEpsN(rand.Reader)
-	gammaSafe := new(safenum.Int).SetBig(gamma, gamma.BitLen())
-	m := sample.IntervalLEpsN(rand.Reader)
-	mSafe := new(safenum.Int).SetBig(m, m.BitLen())
-	delta := sample.IntervalLEpsN(rand.Reader)
-	deltaSafe := new(safenum.Int).SetBig(delta, delta.BitLen())
-	mu := sample.IntervalLN(rand.Reader)
-	muSafe := new(safenum.Int).SetBig(mu, mu.BitLen())
+	gamma := sample.IntervalLEpsNSecret(rand.Reader)
+	m := sample.IntervalLEpsNSecret(rand.Reader)
+	delta := sample.IntervalLEpsNSecret(rand.Reader)
+	mu := sample.IntervalLNSecret(rand.Reader)
 
 	cAlpha := public.C.Clone().Mul(verifier, alpha)           // = Cᵃ mod N₀ = α ⊙ C
 	A := verifier.EncWithNonce(beta, r).Add(verifier, cAlpha) // = Enc₀(β,r) ⊕ (α ⊙ C)
@@ -105,10 +101,10 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 		A:  A,
 		Bx: *curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarInt(alpha)),
 		By: prover.EncWithNonce(beta, rY),
-		E:  public.Aux.Commit(alpha, gammaSafe),
-		S:  public.Aux.Commit(private.X, mSafe),
-		F:  public.Aux.Commit(beta, deltaSafe),
-		T:  public.Aux.Commit(private.Y, muSafe),
+		E:  public.Aux.Commit(alpha, gamma),
+		S:  public.Aux.Commit(private.X, m),
+		F:  public.Aux.Commit(beta, delta),
+		T:  public.Aux.Commit(private.Y, mu),
 	}
 
 	eBig := challenge(hash, public, commitment)
@@ -121,11 +117,11 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	z2 := new(safenum.Int).Mul(e, private.Y, -1)
 	z2.Add(z2, beta, -1)
 	// e•m+γ
-	z3 := new(safenum.Int).Mul(e, mSafe, -1)
-	z3.Add(z3, gammaSafe, -1)
+	z3 := new(safenum.Int).Mul(e, m, -1)
+	z3.Add(z3, gamma, -1)
 	// e•μ+δ
-	z4 := new(safenum.Int).Mul(e, muSafe, -1)
-	z4.Add(z4, deltaSafe, -1)
+	z4 := new(safenum.Int).Mul(e, mu, -1)
+	z4.Add(z4, delta, -1)
 	// (ρᵉ mod N₀)•r mod N₀
 	w := new(safenum.Nat).ExpI(private.Rho, e, N0)
 	w.ModMul(w, r, N0)
