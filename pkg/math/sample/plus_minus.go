@@ -26,31 +26,6 @@ func IntervalL(rand io.Reader) *big.Int {
 	return sampleNeg(rand, params.L)
 }
 
-// IntervalLPrime returns an integer in the range ± 2ˡº.
-func IntervalLPrime(rand io.Reader) *big.Int {
-	return sampleNeg(rand, params.LPrime)
-}
-
-// IntervalLEps returns an integer in the range ± 2ˡ⁺ᵉ
-func IntervalLEps(rand io.Reader) *big.Int {
-	return sampleNeg(rand, params.LPlusEpsilon)
-}
-
-// IntervalLPrimeEps returns an integer in the range ± 2ˡº⁺ᵉ
-func IntervalLPrimeEps(rand io.Reader) *big.Int {
-	return sampleNeg(rand, params.LPrimePlusEpsilon)
-}
-
-// IntervalLN returns an integer in the range ± 2ˡ•N, where N is the size of a Paillier modulus.
-func IntervalLN(rand io.Reader) *big.Int {
-	return sampleNeg(rand, params.L+params.BitsIntModN)
-}
-
-// IntervalLEpsN returns an integer in the range ± 2ˡ⁺ᵉ•N, where N is the size of a Paillier modulus.
-func IntervalLEpsN(rand io.Reader) *big.Int {
-	return sampleNeg(rand, params.LPlusEpsilon+params.BitsIntModN)
-}
-
 // IntervalScalar returns an integer in the range ±q, with q the size of a Scalar
 func IntervalScalar(rand io.Reader) *big.Int {
 	return sampleNeg(rand, params.BytesScalar*8)
