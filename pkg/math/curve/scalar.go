@@ -4,6 +4,7 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/cronokirby/safenum"
 	"github.com/decred/dcrd/dcrec/secp256k1/v3"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
@@ -21,6 +22,12 @@ func NewScalar() *Scalar {
 func NewScalarBigInt(n *big.Int) *Scalar {
 	var s Scalar
 	return s.SetBigInt(n)
+}
+
+// NewScalarInt returns a new Scalar from a safenum.Int
+func NewScalarInt(n *safenum.Int) *Scalar {
+	var s Scalar
+	return s.SetInt(n)
 }
 
 // NewScalarUInt32 returns a new Scalar from a big.Int
@@ -91,6 +98,12 @@ func (s *Scalar) SetBigInt(i *big.Int) *Scalar {
 		n.Add(&n, q)
 	}
 	s.s.SetByteSlice(n.Bytes())
+	return s
+}
+
+// SetInt sets s = i mod q, returning s
+func (s *Scalar) SetInt(i *safenum.Int) *Scalar {
+	s.s.SetByteSlice(i.Mod(qMod).Bytes())
 	return s
 }
 
