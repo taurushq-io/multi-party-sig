@@ -23,6 +23,20 @@ func (m *First) RoundNumber() types.RoundNumber {
 	return 1
 }
 
+// Final is an empty message used returned by the final round.Output.
+type Final struct {
+	gogo.Any
+}
+
+func (m *Final) Validate() error {
+	return errors.New("message: Last is not a valid message")
+}
+
+func (m *Final) RoundNumber() types.RoundNumber {
+	return 0
+}
+
+// Content represents a message body for a specific round.
 type Content interface {
 	proto.Message
 	Validate() error

@@ -87,7 +87,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 			ProofLog:      proofLog,
 		}, partyJ.ID)
 		if err := r.SendMessage(msg, out); err != nil {
-			return nil, err
+			return r, err
 		}
 	}
 

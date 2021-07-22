@@ -118,7 +118,7 @@ func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// send to all
 	msg := r.MarshalMessage(&KeygenOutput{Proof: proof}, r.OtherPartyIDs()...)
 	if err = r.SendMessage(msg, out); err != nil {
-		return nil, err
+		return r, err
 	}
 
 	r.UpdateHashState(&writer.BytesWithDomain{

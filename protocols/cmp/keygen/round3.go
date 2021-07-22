@@ -41,7 +41,7 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 		Decommitment:       r.Decommitment,
 	}, r.OtherPartyIDs()...)
 	if err := r.SendMessage(msg, out); err != nil {
-		return nil, err
+		return r, err
 	}
 	return &round4{round3: r}, nil
 }

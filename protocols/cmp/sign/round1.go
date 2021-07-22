@@ -92,7 +92,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 			G:        r.Self.G,
 		}, j)
 		if err := r.SendMessage(msg, out); err != nil {
-			return nil, err
+			return r, err
 		}
 	}
 

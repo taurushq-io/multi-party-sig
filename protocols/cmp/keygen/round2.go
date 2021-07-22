@@ -45,7 +45,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// send to all
 	msg := r.MarshalMessage(&Keygen3{HashEcho: echoHash}, r.OtherPartyIDs()...)
 	if err := r.SendMessage(msg, out); err != nil {
-		return nil, err
+		return r, err
 	}
 
 	r.EchoHash = echoHash

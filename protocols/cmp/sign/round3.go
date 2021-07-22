@@ -130,7 +130,7 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 			ProofLog:      proofLog,
 		}, j)
 		if err := r.SendMessage(msg, out); err != nil {
-			return nil, err
+			return r, err
 		}
 	}
 

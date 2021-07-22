@@ -24,6 +24,7 @@ var roundTypes = []reflect.Type{
 	reflect.TypeOf(&round4{}),
 	reflect.TypeOf(&round5{}),
 	reflect.TypeOf(&output{}),
+	reflect.TypeOf(&round.Output{}),
 }
 
 func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundType reflect.Type) {
@@ -77,8 +78,10 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
 	newSessions := make([]*Session, 0, N)
 	newSecrets := make([]*Secret, 0, N)
 	for _, r := range rounds {
-		newSessions = append(newSessions, r.(*output).newSession)
-		newSecrets = append(newSecrets, r.(*output).newSecret)
+		resultRound := r.(*round.Output)
+		result := resultRound.Result.(*Result)
+		newSessions = append(newSessions, result.Session)
+		newSecrets = append(newSecrets, result.Secret)
 	}
 
 	firstSession := newSessions[0]

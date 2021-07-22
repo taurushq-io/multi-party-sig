@@ -83,20 +83,20 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Sample RIDᵢ
 	var rid RID
 	if _, err := rand.Read(rid[:]); err != nil {
-		return nil, ErrRound1SampleRho
+		return r, ErrRound1SampleRho
 	}
 
 	// commit to data in message 2
 	commitment, decommitment, err := r.HashForID(r.Self.ID).Commit(
 		rid, vssPublic, schnorrCommitment, pedersenPublic)
 	if err != nil {
-		return nil, ErrRound1Commit
+		return r, ErrRound1Commit
 	}
 
 	// should be broadcast but we don't need that here
 	msg := r.MarshalMessage(&Keygen2{Commitment: commitment}, r.OtherPartyIDs()...)
 	if err = r.SendMessage(msg, out); err != nil {
-		return nil, err
+		return r, err
 	}
 
 	r.Secret.Paillier = paillierSecret

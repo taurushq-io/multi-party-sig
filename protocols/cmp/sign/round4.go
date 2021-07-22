@@ -87,7 +87,7 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Send to all
 	msg := r.MarshalMessage(&SignOutput{SigmaShare: r.Self.SigmaShare}, r.OtherPartyIDs()...)
 	if err := r.SendMessage(msg, out); err != nil {
-		return nil, err
+		return r, err
 	}
 	return &output{round4: r}, nil
 }

@@ -125,7 +125,7 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 			Share: C,
 		}, idJ)
 		if err := r.SendMessage(msg, out); err != nil {
-			return nil, err
+			return r, err
 		}
 	}
 
