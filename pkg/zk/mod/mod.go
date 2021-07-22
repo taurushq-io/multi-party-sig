@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"math/big"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
@@ -40,14 +41,12 @@ func isQRmodPQ(y, p, q *big.Int) bool {
 //          8
 //
 // Then, (qrᵉ)⁴ = qr
-func fourthRoot(qr, phi, n *big.Int) *big.Int {
-	var result big.Int
-	e := big.NewInt(4)
-	e.Add(phi, e)
-	e.Mul(e, e)
-	e.Rsh(e, 6)
-	e.Mod(e, phi)
-	return result.Exp(qr, e, n)
+func fourthRoot(qr, phi *safenum.Nat, n *safenum.Modulus) *safenum.Nat {
+	e := new(safenum.Nat).SetUint64(4)
+	e.Add(e, phi, -1)
+	e.Rsh(e, 3, -1)
+	e.ModMul(e, e, safenum.ModulusFromNat(phi))
+	return new(safenum.Nat).Exp(qr, e, n)
 }
 
 // makeQuadraticResidue return a, b and y' such that:
@@ -127,6 +126,8 @@ func (p *Proof) IsValid(public Public) bool {
 //  - R = [(xᵢ aᵢ, bᵢ), zᵢ] for i = 1, …, m
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	n, p, q, phi := public.N, private.P, private.Q, private.Phi
+	phiNat := new(safenum.Nat).SetBig(phi, phi.BitLen())
+	nMod := safenum.ModulusFromNat(new(safenum.Nat).SetBig(n, n.BitLen()))
 	w := sample.QNR(rand.Reader, n)
 
 	nInverse := new(big.Int).ModInverse(n, phi)
@@ -145,10 +146,11 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 		z := new(big.Int).Exp(y, nInverse, n)
 
 		a, b, yPrime := makeQuadraticResidue(y, w, n, p, q)
+		yPrimeNat := new(safenum.Nat).SetBig(yPrime, yPrime.BitLen())
 		// X = (y')¹/4
-		x := fourthRoot(yPrime, phi, n)
+		x := fourthRoot(yPrimeNat, phiNat, nMod)
 
-		Xs[i], As[i], Bs[i], Zs[i] = x, a, b, z
+		Xs[i], As[i], Bs[i], Zs[i] = x.Big(), a, b, z
 	}
 
 	return &Proof{

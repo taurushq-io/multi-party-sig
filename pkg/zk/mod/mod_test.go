@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/cronokirby/safenum"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -49,9 +50,14 @@ func Test_set4thRoot(t *testing.T) {
 	y := big.NewInt(502)
 	w := sample.QNR(rand.Reader, n)
 
+	phiNat := new(safenum.Nat).SetBig(phi, phi.BitLen())
+	nMod := safenum.ModulusFromNat(new(safenum.Nat).SetBig(n, n.BitLen()))
+
 	a, b, x := makeQuadraticResidue(y, w, n, p, q)
 
-	root := fourthRoot(x, phi, n)
+	xNat := new(safenum.Nat).SetBig(x, x.BitLen())
+
+	root := fourthRoot(xNat, phiNat, nMod)
 
 	if b {
 		y.Mul(y, w)
@@ -63,6 +69,6 @@ func Test_set4thRoot(t *testing.T) {
 	}
 
 	assert.NotEqual(t, root, big.NewInt(1), "root cannot be 1")
-	root.Exp(root, big.NewInt(4), n)
-	assert.Equal(t, root, y, "root^4 should be equal to y")
+	root.Exp(root, new(safenum.Nat).SetUint64(4), nMod)
+	assert.Equal(t, root.Big(), y, "root^4 should be equal to y")
 }
