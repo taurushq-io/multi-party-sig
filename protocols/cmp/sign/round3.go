@@ -79,7 +79,7 @@ func (r *round3) ProcessMessage(from party.ID, content message.Content) error {
 // - Δᵢ = [kᵢ]Γ
 // - δᵢ = γᵢ kᵢ + ∑ⱼ δᵢⱼ
 // - χᵢ = xᵢ kᵢ + ∑ⱼ χᵢⱼ
-func (r *round3) Finalize(out chan<- *message.Message) error {
+func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Γ = ∑ⱼ Γⱼ
 	r.Gamma = curve.NewIdentityPoint()
 	for _, partyJ := range r.Parties {
@@ -130,15 +130,12 @@ func (r *round3) Finalize(out chan<- *message.Message) error {
 			ProofLog:      proofLog,
 		}, j)
 		if err := r.SendMessage(msg, out); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return &round4{round3: r}, nil
 }
-
-// Next implements round.Round
-func (r *round3) Next() round.Round { return &round4{round3: r} }
 
 // MessageContent implements round.Round
 func (r *round3) MessageContent() message.Content { return &Sign3{} }

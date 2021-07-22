@@ -30,18 +30,15 @@ func (r *Round2) ProcessMessage(from party.ID, content message.Content) error {
 }
 
 // Finalize does not send any messages, but computes the output resulting from the received messages
-func (r *Round2) Finalize(chan<- *message.Message) error {
+func (r *Round2) Finalize(chan<- *message.Message) (round.Round, error) {
 	r.resultXOR = make([]byte, 32)
 	for _, received := range r.received {
 		for i := range r.resultXOR {
 			r.resultXOR[i] ^= received[i]
 		}
 	}
-	return nil
+	return nil, nil
 }
-
-// Next returns nil to indicate the protocol is done, since this is the final round
-func (r *Round2) Next() round.Round { return nil }
 
 // MessageContent returns an uninitialized Round2Message used to unmarshal contents embedded in message.Message.
 func (r *Round2) MessageContent() message.Content { return &Round2Message{} }

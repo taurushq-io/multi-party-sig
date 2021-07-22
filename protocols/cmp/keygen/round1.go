@@ -65,7 +65,7 @@ func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 //   - if keygen, this is RIDᵢ
 //   - if refresh, this is used to bind the zk proof to a random value
 // - commit to message
-func (r *round1) Finalize(out chan<- *message.Message) error {
+func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// generate Paillier and Pedersen
 	paillierSecret := paillier.NewSecretKey()
 	paillierPublic := paillierSecret.PublicKey
@@ -83,20 +83,20 @@ func (r *round1) Finalize(out chan<- *message.Message) error {
 	// Sample RIDᵢ
 	var rid RID
 	if _, err := rand.Read(rid[:]); err != nil {
-		return ErrRound1SampleRho
+		return nil, ErrRound1SampleRho
 	}
 
 	// commit to data in message 2
 	commitment, decommitment, err := r.HashForID(r.Self.ID).Commit(
 		rid, vssPublic, schnorrCommitment, pedersenPublic)
 	if err != nil {
-		return ErrRound1Commit
+		return nil, ErrRound1Commit
 	}
 
 	// should be broadcast but we don't need that here
 	msg := r.MarshalMessage(&Keygen2{Commitment: commitment}, r.OtherPartyIDs()...)
 	if err = r.SendMessage(msg, out); err != nil {
-		return err
+		return nil, err
 	}
 
 	r.Secret.Paillier = paillierSecret
@@ -114,11 +114,8 @@ func (r *round1) Finalize(out chan<- *message.Message) error {
 	r.Self.Commitment = commitment
 	r.Decommitment = decommitment
 
-	return nil
+	return &round2{round1: r}, nil
 }
-
-// Next implements round.Round
-func (r *round1) Next() round.Round { return &round2{r, nil} }
 
 // MessageContent implements round.Round
 func (r *round1) MessageContent() message.Content { return &message.First{} }

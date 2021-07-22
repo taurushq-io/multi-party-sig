@@ -34,7 +34,7 @@ func (r *round2) ProcessMessage(from party.ID, content message.Content) error {
 // the hash. Everybody sends a hash of all hashes.
 //
 // - send Hash(ssid, V₁, …, Vₙ)
-func (r *round2) Finalize(out chan<- *message.Message) error {
+func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Broadcast the message we created in round1
 	h := r.Hash()
 	for _, partyID := range r.PartyIDs() {
@@ -45,15 +45,12 @@ func (r *round2) Finalize(out chan<- *message.Message) error {
 	// send to all
 	msg := r.MarshalMessage(&Keygen3{HashEcho: echoHash}, r.OtherPartyIDs()...)
 	if err := r.SendMessage(msg, out); err != nil {
-		return err
+		return nil, err
 	}
 
 	r.EchoHash = echoHash
-	return nil
+	return &round3{round2: r}, nil
 }
-
-// Next implements round.Round
-func (r *round2) Next() round.Round { return &round3{round2: r} }
 
 // MessageContent implements round.Round
 func (r *round2) MessageContent() message.Content { return &Keygen2{} }

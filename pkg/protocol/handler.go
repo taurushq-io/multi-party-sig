@@ -197,12 +197,10 @@ func (h *Handler) handleMessage(msg *message.Message) error {
 
 func (h *Handler) finishRound() error {
 	// get new messages
-	if err := h.r.Finalize(h.outChan); err != nil {
+	nextRound, err := h.r.Finalize(h.outChan)
+	if err != nil {
 		return h.abort(err, "")
 	}
-
-	// get new round
-	nextRound := h.r.Next()
 
 	// a nil round indicates we have reached the final round
 	if nextRound == nil {

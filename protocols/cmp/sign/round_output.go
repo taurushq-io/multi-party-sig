@@ -35,7 +35,7 @@ func (r *output) ProcessMessage(from party.ID, content message.Content) error {
 //
 // - compute σ = ∑ⱼ σⱼ
 // - verify signature
-func (r *output) Finalize(out chan<- *message.Message) error {
+func (r *output) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// compute σ = ∑ⱼ σⱼ
 	S := curve.NewScalar()
 	for _, partyJ := range r.Parties {
@@ -50,19 +50,14 @@ func (r *output) Finalize(out chan<- *message.Message) error {
 	RInt, SInt := r.Signature.ToRS()
 	// Verify signature using Go's ECDSA lib
 	if !ecdsa.Verify(r.PublicKey, r.Message, RInt, SInt) {
-		return ErrRoundOutputValidateSigFailedECDSA
+		return nil, ErrRoundOutputValidateSigFailedECDSA
 	}
 	pk := curve.FromPublicKey(r.PublicKey)
 	if !r.Signature.Verify(pk, r.Message) {
-		return ErrRoundOutputValidateSigFailed
+		return nil, ErrRoundOutputValidateSigFailed
 	}
 
-	return nil
-}
-
-// Next implements round.Round
-func (r *output) Next() round.Round {
-	return nil
+	return nil, nil
 }
 
 func (r *output) Result() interface{} {

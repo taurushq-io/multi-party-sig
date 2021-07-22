@@ -31,10 +31,7 @@ func (r *output) ProcessMessage(from party.ID, content message.Content) error {
 }
 
 // Finalize implements round.Round
-func (r *output) Finalize(out chan<- *message.Message) error { return nil }
-
-// Next implements round.Round
-func (r *output) Next() round.Round { return nil }
+func (r *output) Finalize(out chan<- *message.Message) (round.Round, error) { return nil, nil }
 
 // Result implements round.Final
 func (r *output) Result() interface{} {

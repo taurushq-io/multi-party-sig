@@ -11,10 +11,7 @@ type Round interface {
 
 	// Finalize is called after all messages from the parties have been processed in the current round.
 	// Messages for the next round are sent out through the out channel.
-	Finalize(out chan<- *message.Message) error
-
-	// Next returns the next round, or nil to indicate that this is the final round
-	Next() Round
+	Finalize(out chan<- *message.Message) (Round, error)
 
 	// MessageContent returns an uninitialized message.Content for this round.
 	MessageContent() message.Content
