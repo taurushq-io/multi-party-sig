@@ -384,33 +384,3 @@ func (s *Session) UnmarshalJSON(b []byte) error {
 	*s = *s2
 	return nil
 }
-
-// RID is the unique identifier generated during the keygen
-type RID [params.SecBytes]byte
-
-// WriteTo makes ID implement the io.WriterTo interface.
-//
-// This writes out the content of this ID, in a domain separated way.
-func (rid RID) WriteTo(w io.Writer) (int64, error) {
-	n, err := w.Write(rid[:])
-	return int64(n), err
-}
-
-// Domain implements WriterToWithDomain, and separates this type within hash.Hash.
-func (rid RID) Domain() string {
-	return "RID"
-}
-
-func (rid *RID) FromBytes(b []byte) {
-	copy(rid[:], b)
-}
-
-func (rid RID) Copy() RID {
-	var other RID
-	copy(other[:], rid[:])
-	return other
-}
-
-func (rid RID) Equals(other RID) bool {
-	return bytes.Equal(rid[:], other[:])
-}
