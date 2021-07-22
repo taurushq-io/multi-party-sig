@@ -30,14 +30,7 @@ func (partyIDs IDSlice) Swap(i, j int)      { partyIDs[i], partyIDs[j] = partyID
 func (partyIDs IDSlice) Sort() { sort.Sort(partyIDs) }
 
 // Sorted returns true if partyIDs is sorted
-func (partyIDs IDSlice) Sorted() bool {
-	for i := range partyIDs {
-		if i > 0 && partyIDs[i-1] == partyIDs[i] {
-			return false
-		}
-	}
-	return true
-}
+func (partyIDs IDSlice) Sorted() bool { return sort.IsSorted(partyIDs) }
 
 // Contains returns true if partyIDs contains id.
 // Assumes that partyIDs is sorted.
@@ -109,14 +102,9 @@ func (partyIDs IDSlice) Remove(id ID) IDSlice {
 //
 // The following formulas are taken from
 // https://en.wikipedia.org/wiki/Lagrange_polynomial
-//
-//			( x  - x₀) … ( x  - x_k)
-// l_j(x) =	---------------------------
-//			(x_j - x₀) … (x_j - x_k)
-//
-//			        x₀ … x_k
-// l_j(0) =	---------------------------
-//			(x₀ - x_j) … (x_k - x_j)
+//			        x₀ … xₖ
+// lⱼ(0) =	---------------------------
+//			(x₀ - xⱼ) … (xₖ - xⱼ)
 func (partyIDs IDSlice) Lagrange(index ID) *curve.Scalar {
 
 	num := curve.NewScalarUInt32(1)
