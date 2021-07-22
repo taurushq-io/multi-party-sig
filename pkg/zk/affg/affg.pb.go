@@ -7,9 +7,9 @@ import (
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	github_com_taurusgroup_cmp_ecdsa_internal_proto "github.com/taurusgroup/cmp-ecdsa/internal/proto"
 	github_com_taurusgroup_cmp_ecdsa_pkg_math_curve "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	paillier "github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	github_com_taurusgroup_cmp_ecdsa_proto "github.com/taurusgroup/cmp-ecdsa/proto"
 	io "io"
 	math "math"
 	math_big "math/big"
@@ -35,13 +35,13 @@ type Commitment struct {
 	// By = Enc(N1, beta, ry)
 	By *paillier.Ciphertext `protobuf:"bytes,3,opt,name=By,proto3" json:"By,omitempty"`
 	// E = sᵃ tᵍ
-	E *math_big.Int `protobuf:"bytes,4,opt,name=E,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster" json:"E,omitempty"`
+	E *math_big.Int `protobuf:"bytes,4,opt,name=E,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster" json:"E,omitempty"`
 	// S = sˣ tᵐ
-	S *math_big.Int `protobuf:"bytes,5,opt,name=S,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster" json:"S,omitempty"`
+	S *math_big.Int `protobuf:"bytes,5,opt,name=S,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster" json:"S,omitempty"`
 	// F = sᵇ tᵈ
-	F *math_big.Int `protobuf:"bytes,6,opt,name=F,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster" json:"F,omitempty"`
+	F *math_big.Int `protobuf:"bytes,6,opt,name=F,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster" json:"F,omitempty"`
 	// T = sʸ tᵘ
-	T *math_big.Int `protobuf:"bytes,7,opt,name=T,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster" json:"T,omitempty"`
+	T *math_big.Int `protobuf:"bytes,7,opt,name=T,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster" json:"T,omitempty"`
 }
 
 func (m *Commitment) Reset()         { *m = Commitment{} }
@@ -75,12 +75,12 @@ var xxx_messageInfo_Commitment proto.InternalMessageInfo
 
 type Proof struct {
 	*Commitment `protobuf:"bytes,1,opt,name=C,proto3,embedded=C" json:"C,omitempty"`
-	Z1          *math_big.Int `protobuf:"bytes,2,opt,name=Z1,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster" json:"Z1,omitempty"`
-	Z2          *math_big.Int `protobuf:"bytes,3,opt,name=Z2,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster" json:"Z2,omitempty"`
-	Z3          *math_big.Int `protobuf:"bytes,4,opt,name=Z3,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster" json:"Z3,omitempty"`
-	Z4          *math_big.Int `protobuf:"bytes,5,opt,name=Z4,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster" json:"Z4,omitempty"`
-	W           *math_big.Int `protobuf:"bytes,6,opt,name=W,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster" json:"W,omitempty"`
-	Wy          *math_big.Int `protobuf:"bytes,7,opt,name=Wy,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/proto.IntCaster" json:"Wy,omitempty"`
+	Z1          *math_big.Int `protobuf:"bytes,2,opt,name=Z1,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster" json:"Z1,omitempty"`
+	Z2          *math_big.Int `protobuf:"bytes,3,opt,name=Z2,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster" json:"Z2,omitempty"`
+	Z3          *math_big.Int `protobuf:"bytes,4,opt,name=Z3,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster" json:"Z3,omitempty"`
+	Z4          *math_big.Int `protobuf:"bytes,5,opt,name=Z4,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster" json:"Z4,omitempty"`
+	W           *math_big.Int `protobuf:"bytes,6,opt,name=W,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster" json:"W,omitempty"`
+	Wy          *math_big.Int `protobuf:"bytes,7,opt,name=Wy,proto3,casttypewith=math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster" json:"Wy,omitempty"`
 }
 
 func (m *Proof) Reset()         { *m = Proof{} }
@@ -120,35 +120,35 @@ func init() {
 func init() { proto.RegisterFile("pkg/zk/affg/affg.proto", fileDescriptor_8f257a60eebdc440) }
 
 var fileDescriptor_8f257a60eebdc440 = []byte{
-	// 433 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x94, 0x4f, 0x6b, 0xd4, 0x40,
-	0x18, 0xc6, 0x33, 0xd3, 0xed, 0x0a, 0xa3, 0xa7, 0x41, 0x24, 0x14, 0x9c, 0x94, 0x45, 0xa4, 0x97,
-	0xce, 0xd0, 0x4d, 0x3d, 0x95, 0x1e, 0x36, 0xa1, 0x05, 0x0f, 0x62, 0x4d, 0x2b, 0x81, 0xdc, 0x92,
-	0x98, 0x64, 0xc3, 0x36, 0x3b, 0x61, 0x76, 0x22, 0x9b, 0x7e, 0x0a, 0xbf, 0x81, 0x77, 0x3f, 0xc9,
-	0x1e, 0xf7, 0x58, 0x3c, 0xac, 0x9a, 0x3d, 0xf9, 0x2d, 0x64, 0x26, 0xeb, 0x9f, 0x93, 0x7a, 0x98,
-	0x4b, 0xc8, 0xcb, 0xe4, 0xfd, 0x3d, 0x4f, 0x78, 0x9e, 0x04, 0x3d, 0xa9, 0x67, 0x05, 0xbb, 0x9b,
-	0xb1, 0x38, 0xcf, 0x0b, 0x7d, 0xa1, 0xb5, 0xe0, 0x92, 0xe3, 0xe1, 0xdd, 0x4c, 0x4d, 0x07, 0xc7,
-	0x45, 0x29, 0xa7, 0x4d, 0x42, 0x53, 0x5e, 0xb1, 0x82, 0x17, 0x9c, 0xe9, 0xe3, 0xa4, 0xc9, 0xf5,
-	0xa4, 0x07, 0x7d, 0xd7, 0xaf, 0x1d, 0x3c, 0x55, 0xb8, 0x3a, 0x2e, 0x6f, 0x6f, 0xcb, 0x4c, 0xb0,
-	0xb4, 0xac, 0xa7, 0x99, 0x90, 0xd9, 0x52, 0xf6, 0xc7, 0xa3, 0xef, 0x7b, 0x08, 0xf9, 0xbc, 0xaa,
-	0x4a, 0x59, 0x65, 0x73, 0x89, 0x47, 0x08, 0x4c, 0x6c, 0x70, 0x08, 0x8e, 0x1e, 0x8e, 0x1f, 0xd3,
-	0x9f, 0x5b, 0xd4, 0xff, 0xb5, 0x15, 0x80, 0x09, 0x7e, 0x85, 0xa0, 0xb7, 0xb4, 0xe1, 0x21, 0x38,
-	0x7a, 0xe4, 0x9d, 0xaf, 0x36, 0x8e, 0xf5, 0x79, 0xe3, 0xbc, 0xf8, 0xc3, 0x94, 0x8c, 0x1b, 0xd1,
-	0x2c, 0x0a, 0xc1, 0x9b, 0x9a, 0xa5, 0x55, 0x7d, 0x9c, 0xa5, 0xef, 0x16, 0x31, 0x53, 0x36, 0xaa,
-	0x58, 0x4e, 0x59, 0xda, 0x88, 0xf7, 0x19, 0xbd, 0xe2, 0xe5, 0x5c, 0x06, 0xd0, 0x5b, 0xe2, 0x67,
-	0x08, 0x7a, 0xad, 0xbd, 0xf7, 0x17, 0x4d, 0xe8, 0xb5, 0xf8, 0x35, 0x02, 0x17, 0xf6, 0x40, 0x6b,
-	0x4e, 0x3e, 0x7d, 0x71, 0xce, 0x35, 0x2a, 0x29, 0x0b, 0xfa, 0x72, 0x2e, 0xcf, 0xfe, 0x2d, 0xae,
-	0xde, 0x55, 0x3d, 0xea, 0xc7, 0x0b, 0x99, 0x89, 0x00, 0x5c, 0x28, 0xe0, 0xb5, 0xbd, 0x6f, 0x0c,
-	0x78, 0xad, 0x80, 0x97, 0xf6, 0xd0, 0x18, 0xf0, 0x52, 0x01, 0x6f, 0xec, 0x07, 0xc6, 0x80, 0x37,
-	0xa3, 0x8f, 0x03, 0xb4, 0x7f, 0x25, 0x38, 0xcf, 0xf1, 0x73, 0x04, 0xfc, 0x5d, 0xcc, 0x98, 0xf6,
-	0xbd, 0xa2, 0xbf, 0x5b, 0xe0, 0x0d, 0xd6, 0x1b, 0x07, 0x04, 0xc0, 0xc7, 0x6f, 0x10, 0x8c, 0x4e,
-	0x76, 0x51, 0x1b, 0xf0, 0x00, 0xa3, 0x13, 0x8d, 0x1c, 0xeb, 0xb8, 0x0d, 0x21, 0xc7, 0x1a, 0xe9,
-	0x9a, 0x2b, 0x07, 0x8c, 0x5c, 0x8d, 0x3c, 0x35, 0x57, 0x0f, 0x18, 0x9d, 0xaa, 0x38, 0x43, 0x83,
-	0xfd, 0x08, 0x95, 0xc7, 0xb0, 0x35, 0x57, 0x10, 0x18, 0xb6, 0xde, 0xdb, 0xd5, 0x37, 0x62, 0xad,
-	0x3a, 0x02, 0xd6, 0x1d, 0x01, 0xf7, 0x1d, 0x01, 0x5f, 0x3b, 0x02, 0x3e, 0x6c, 0x89, 0xb5, 0xde,
-	0x12, 0xeb, 0x7e, 0x4b, 0xac, 0xc8, 0xfd, 0xaf, 0x0f, 0x7d, 0xf7, 0xfb, 0x3a, 0xeb, 0xab, 0x95,
-	0x0c, 0xb5, 0x96, 0xfb, 0x23, 0x00, 0x00, 0xff, 0xff, 0xa6, 0x00, 0x9b, 0x14, 0xdb, 0x04, 0x00,
-	0x00,
+	// 439 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x94, 0xcf, 0x8a, 0xd3, 0x40,
+	0x1c, 0xc7, 0x33, 0x63, 0xb7, 0xc2, 0xe8, 0x69, 0x10, 0x09, 0x0b, 0x4e, 0x97, 0x22, 0xb2, 0x97,
+	0x9d, 0x61, 0xdb, 0xf5, 0xb4, 0x78, 0xd8, 0x84, 0x2d, 0x28, 0x08, 0x4b, 0x77, 0xa5, 0x92, 0x5b,
+	0x1a, 0x27, 0xe9, 0xd0, 0x26, 0x13, 0xa6, 0x13, 0x69, 0xf6, 0x1d, 0x04, 0x9f, 0xc3, 0x27, 0xe9,
+	0xb1, 0x17, 0x61, 0xf1, 0x50, 0x35, 0x7d, 0x11, 0x99, 0x49, 0xfd, 0x73, 0x52, 0x0f, 0xc9, 0x25,
+	0xe4, 0xc7, 0xf0, 0xfb, 0x7c, 0xbf, 0x24, 0x1f, 0x06, 0x3d, 0xce, 0xe7, 0x09, 0xbb, 0x9d, 0xb3,
+	0x30, 0x8e, 0x13, 0xfb, 0xa0, 0xb9, 0x92, 0x5a, 0xe2, 0xee, 0xed, 0xdc, 0x4c, 0x87, 0x27, 0x89,
+	0xd0, 0xb3, 0x62, 0x4a, 0x23, 0x99, 0xb2, 0x44, 0x26, 0x92, 0xd9, 0xe3, 0x69, 0x11, 0xdb, 0xc9,
+	0x0e, 0xf6, 0xad, 0x5e, 0x3b, 0x7c, 0x62, 0x70, 0x79, 0x28, 0x16, 0x0b, 0xc1, 0x15, 0x8b, 0x44,
+	0x3e, 0xe3, 0x4a, 0xf3, 0x95, 0xae, 0x8f, 0xfb, 0x1f, 0x3a, 0x08, 0xf9, 0x32, 0x4d, 0x85, 0x4e,
+	0x79, 0xa6, 0x71, 0x1f, 0x81, 0x0b, 0x17, 0x1c, 0x81, 0xe3, 0x07, 0x83, 0x47, 0xf4, 0xe7, 0x16,
+	0xf5, 0x7f, 0x6d, 0x8d, 0xc1, 0x05, 0x7e, 0x8d, 0xa0, 0xb7, 0x72, 0xe1, 0x11, 0x38, 0x7e, 0xe8,
+	0xbd, 0x58, 0x6f, 0x7b, 0xce, 0x97, 0x6d, 0xef, 0xf9, 0x1f, 0xa5, 0x74, 0x58, 0xa8, 0x62, 0x99,
+	0x28, 0x59, 0xe4, 0x2c, 0x4a, 0xf3, 0x13, 0x1e, 0xbd, 0x5b, 0x86, 0xcc, 0xd4, 0x48, 0x43, 0x3d,
+	0x63, 0x51, 0xa1, 0xde, 0x73, 0x7a, 0x25, 0x45, 0xa6, 0xc7, 0xd0, 0x5b, 0xe1, 0xa7, 0x08, 0x7a,
+	0xa5, 0x7b, 0xef, 0x2f, 0x99, 0xd0, 0x2b, 0xf1, 0x5b, 0x04, 0x2e, 0xdd, 0x8e, 0xcd, 0x7c, 0xf5,
+	0xe9, 0x6b, 0x6f, 0x64, 0x51, 0x53, 0x91, 0xd0, 0x97, 0x99, 0x3e, 0xff, 0x67, 0xb8, 0xc8, 0x34,
+	0x57, 0x59, 0xb8, 0xa8, 0xbf, 0x95, 0xd9, 0xf1, 0xc3, 0xa5, 0xe6, 0x6a, 0x0c, 0x2e, 0x0d, 0xf9,
+	0xda, 0x3d, 0x68, 0x9e, 0x7c, 0x6d, 0xc8, 0x23, 0xb7, 0xdb, 0x3c, 0x79, 0x64, 0xc8, 0x37, 0xee,
+	0xfd, 0xe6, 0xc9, 0x37, 0xfd, 0xcf, 0x1d, 0x74, 0x70, 0xa5, 0xa4, 0x8c, 0xf1, 0x33, 0x04, 0xfc,
+	0xbd, 0x0a, 0x98, 0xd6, 0xee, 0xd1, 0xdf, 0xa6, 0x78, 0x9d, 0xcd, 0xb6, 0x07, 0xc6, 0xc0, 0xc7,
+	0x01, 0x82, 0xc1, 0xe9, 0x5e, 0x87, 0x26, 0xcb, 0xc0, 0xe0, 0xd4, 0xb2, 0x07, 0xd6, 0x8d, 0xa6,
+	0xd9, 0x03, 0xcb, 0x1e, 0xb6, 0xa0, 0x14, 0x0c, 0x86, 0x96, 0x7d, 0xd6, 0x82, 0x54, 0x30, 0x38,
+	0x33, 0xff, 0x7e, 0xd2, 0x86, 0x55, 0x13, 0xd3, 0x7a, 0x52, 0xb6, 0xa0, 0x15, 0x9c, 0x94, 0xde,
+	0x9b, 0xf5, 0x77, 0xe2, 0xac, 0x2b, 0x02, 0x36, 0x15, 0x01, 0x77, 0x15, 0x01, 0xdf, 0x2a, 0x02,
+	0x3e, 0xee, 0x88, 0xb3, 0xd9, 0x11, 0xe7, 0x6e, 0x47, 0x9c, 0x60, 0xf8, 0x5f, 0x57, 0xc8, 0xfe,
+	0x62, 0x3c, 0xaf, 0x85, 0x9c, 0x76, 0x6d, 0xd6, 0xf0, 0x47, 0x00, 0x00, 0x00, 0xff, 0xff, 0x45,
+	0x15, 0x24, 0x2f, 0x35, 0x05, 0x00, 0x00,
 }
 
 func (m *Commitment) Marshal() (dAtA []byte, err error) {
@@ -172,7 +172,7 @@ func (m *Commitment) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	var l int
 	_ = l
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		size := __caster.Size(m.T)
 		i -= size
 		if _, err := __caster.MarshalTo(m.T, dAtA[i:]); err != nil {
@@ -183,7 +183,7 @@ func (m *Commitment) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i--
 	dAtA[i] = 0x3a
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		size := __caster.Size(m.F)
 		i -= size
 		if _, err := __caster.MarshalTo(m.F, dAtA[i:]); err != nil {
@@ -194,7 +194,7 @@ func (m *Commitment) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i--
 	dAtA[i] = 0x32
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		size := __caster.Size(m.S)
 		i -= size
 		if _, err := __caster.MarshalTo(m.S, dAtA[i:]); err != nil {
@@ -205,7 +205,7 @@ func (m *Commitment) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i--
 	dAtA[i] = 0x2a
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		size := __caster.Size(m.E)
 		i -= size
 		if _, err := __caster.MarshalTo(m.E, dAtA[i:]); err != nil {
@@ -273,7 +273,7 @@ func (m *Proof) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	var l int
 	_ = l
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		size := __caster.Size(m.Wy)
 		i -= size
 		if _, err := __caster.MarshalTo(m.Wy, dAtA[i:]); err != nil {
@@ -284,7 +284,7 @@ func (m *Proof) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i--
 	dAtA[i] = 0x3a
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		size := __caster.Size(m.W)
 		i -= size
 		if _, err := __caster.MarshalTo(m.W, dAtA[i:]); err != nil {
@@ -295,7 +295,7 @@ func (m *Proof) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i--
 	dAtA[i] = 0x32
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		size := __caster.Size(m.Z4)
 		i -= size
 		if _, err := __caster.MarshalTo(m.Z4, dAtA[i:]); err != nil {
@@ -306,7 +306,7 @@ func (m *Proof) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i--
 	dAtA[i] = 0x2a
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		size := __caster.Size(m.Z3)
 		i -= size
 		if _, err := __caster.MarshalTo(m.Z3, dAtA[i:]); err != nil {
@@ -317,7 +317,7 @@ func (m *Proof) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i--
 	dAtA[i] = 0x22
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		size := __caster.Size(m.Z2)
 		i -= size
 		if _, err := __caster.MarshalTo(m.Z2, dAtA[i:]); err != nil {
@@ -328,7 +328,7 @@ func (m *Proof) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i--
 	dAtA[i] = 0x1a
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		size := __caster.Size(m.Z1)
 		i -= size
 		if _, err := __caster.MarshalTo(m.Z1, dAtA[i:]); err != nil {
@@ -381,22 +381,22 @@ func (m *Commitment) Size() (n int) {
 		n += 1 + l + sovAffg(uint64(l))
 	}
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		l = __caster.Size(m.E)
 		n += 1 + l + sovAffg(uint64(l))
 	}
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		l = __caster.Size(m.S)
 		n += 1 + l + sovAffg(uint64(l))
 	}
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		l = __caster.Size(m.F)
 		n += 1 + l + sovAffg(uint64(l))
 	}
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		l = __caster.Size(m.T)
 		n += 1 + l + sovAffg(uint64(l))
 	}
@@ -414,32 +414,32 @@ func (m *Proof) Size() (n int) {
 		n += 1 + l + sovAffg(uint64(l))
 	}
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		l = __caster.Size(m.Z1)
 		n += 1 + l + sovAffg(uint64(l))
 	}
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		l = __caster.Size(m.Z2)
 		n += 1 + l + sovAffg(uint64(l))
 	}
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		l = __caster.Size(m.Z3)
 		n += 1 + l + sovAffg(uint64(l))
 	}
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		l = __caster.Size(m.Z4)
 		n += 1 + l + sovAffg(uint64(l))
 	}
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		l = __caster.Size(m.W)
 		n += 1 + l + sovAffg(uint64(l))
 	}
 	{
-		__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+		__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 		l = __caster.Size(m.Wy)
 		n += 1 + l + sovAffg(uint64(l))
 	}
@@ -616,7 +616,7 @@ func (m *Commitment) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			{
-				__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+				__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 				if tmp, err := __caster.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				} else {
@@ -654,7 +654,7 @@ func (m *Commitment) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			{
-				__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+				__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 				if tmp, err := __caster.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				} else {
@@ -692,7 +692,7 @@ func (m *Commitment) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			{
-				__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+				__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 				if tmp, err := __caster.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				} else {
@@ -730,7 +730,7 @@ func (m *Commitment) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			{
-				__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+				__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 				if tmp, err := __caster.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				} else {
@@ -854,7 +854,7 @@ func (m *Proof) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			{
-				__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+				__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 				if tmp, err := __caster.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				} else {
@@ -892,7 +892,7 @@ func (m *Proof) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			{
-				__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+				__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 				if tmp, err := __caster.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				} else {
@@ -930,7 +930,7 @@ func (m *Proof) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			{
-				__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+				__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 				if tmp, err := __caster.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				} else {
@@ -968,7 +968,7 @@ func (m *Proof) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			{
-				__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+				__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 				if tmp, err := __caster.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				} else {
@@ -1006,7 +1006,7 @@ func (m *Proof) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			{
-				__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+				__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 				if tmp, err := __caster.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				} else {
@@ -1044,7 +1044,7 @@ func (m *Proof) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			{
-				__caster := &github_com_taurusgroup_cmp_ecdsa_proto.IntCaster{}
+				__caster := &github_com_taurusgroup_cmp_ecdsa_internal_proto.IntCaster{}
 				if tmp, err := __caster.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				} else {

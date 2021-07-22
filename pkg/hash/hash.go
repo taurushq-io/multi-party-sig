@@ -6,7 +6,6 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -113,11 +112,4 @@ func (hash *Hash) WriteAny(data ...interface{}) (int64, error) {
 // Clone returns a copy of the Hash in its current state.
 func (hash *Hash) Clone() *Hash {
 	return &Hash{h: hash.h.Clone()}
-}
-
-// CloneWithID returns a copy of the Hash in its current state, but also writes the ID to the new state.
-func (hash *Hash) CloneWithID(id party.ID) *Hash {
-	cloned := hash.Clone()
-	_, _ = cloned.WriteAny(id)
-	return cloned
 }

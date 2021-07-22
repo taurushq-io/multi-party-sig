@@ -1,37 +1,26 @@
 package round
 
 import (
-	"github.com/taurusgroup/cmp-ecdsa/pkg/session"
-	"github.com/taurusgroup/cmp-ecdsa/protocols/sign/signature"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 )
 
 type Round interface {
-	// ProcessMessage handles an incoming Message.
-	// In general, it should not modify the underlying Round, but only the sender's local state.
-	// At the end, the message is stored
-	ProcessMessage(msg Message) error
+	// ProcessMessage handles an incoming Message and validates it's content with regard to the protocol specification.
+	ProcessMessage(from party.ID, content message.Content) error
 
-	// GenerateMessages returns an array of Message to be sent subsequently.
-	// If an error has been detected, then no messages are returned.
-	GenerateMessages() ([]Message, error)
+	// Finalize is called after all messages from the parties have been processed in the current round.
+	// Messages for the next round are sent out through the out channel.
+	Finalize(out chan<- *message.Message) error
 
-	// Finalize performs
-	Finalize() (Round, error)
+	// Next returns the next round, or nil to indicate that this is the final round
+	Next() Round
 
-	// ExpectedMessageID returns the expected MessageID for the current round.
-	ExpectedMessageID() MessageID
-
-	// Number returns the round's number in the protocol
-	Number() int
-
-	// ProtocolName returns a string representing the protocol
-	ProtocolName() string
-
-	ProtocolID() ProtocolID
+	// MessageContent returns an uninitialized message.Content for this round.
+	MessageContent() message.Content
 }
 
-type FinalRound interface {
+type Final interface {
 	Round
-	GetSignature() (*signature.Signature, error)
-	GetSession() (session.Session, error)
+	Result() interface{}
 }
