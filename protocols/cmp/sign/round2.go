@@ -23,11 +23,11 @@ type round2 struct {
 //
 // - store Kⱼ, Gⱼ
 // - verify zkenc(Kⱼ)
-func (r *round2) ProcessMessage(from party.ID, content message.Content) error {
+func (r *round2) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Sign2)
-	partyJ := r.Parties[from]
+	partyJ := r.Parties[j]
 
-	if !body.ProofEnc.Verify(r.HashForID(from), zkenc.Public{
+	if !body.ProofEnc.Verify(r.HashForID(j), zkenc.Public{
 		K:      body.K,
 		Prover: partyJ.Public.Paillier,
 		Aux:    r.Self.Public.Pedersen,
@@ -43,7 +43,7 @@ func (r *round2) ProcessMessage(from party.ID, content message.Content) error {
 // Finalize implements round.Round
 //
 // - compute Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
-func (r *round2) Finalize(out chan<- *message.Message) error {
+func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// compute Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
 	// The papers says that we need to reliably broadcast this data, however unless we use
 	// a system like white-city, we can't actually do this.
@@ -87,15 +87,12 @@ func (r *round2) Finalize(out chan<- *message.Message) error {
 			ProofLog:      proofLog,
 		}, partyJ.ID)
 		if err := r.SendMessage(msg, out); err != nil {
-			return err
+			return r, err
 		}
 	}
 
-	return nil
+	return &round3{round2: r}, nil
 }
-
-// Next implements round.Round
-func (r *round2) Next() round.Round { return &round3{round2: r} }
 
 // MessageContent implements round.Round
 func (r *round2) MessageContent() message.Content { return &Sign2{} }

@@ -20,9 +20,9 @@ type output struct {
 // ProcessMessage implements round.Round
 //
 // - σⱼ != 0
-func (r *output) ProcessMessage(from party.ID, content message.Content) error {
+func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*SignOutput)
-	partyJ := r.Parties[from]
+	partyJ := r.Parties[j]
 
 	if body.SigmaShare.IsZero() {
 		return ErrRoundOutputSigmaZero
@@ -35,7 +35,7 @@ func (r *output) ProcessMessage(from party.ID, content message.Content) error {
 //
 // - compute σ = ∑ⱼ σⱼ
 // - verify signature
-func (r *output) Finalize(out chan<- *message.Message) error {
+func (r *output) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// compute σ = ∑ⱼ σⱼ
 	S := curve.NewScalar()
 	for _, partyJ := range r.Parties {
@@ -50,27 +50,14 @@ func (r *output) Finalize(out chan<- *message.Message) error {
 	RInt, SInt := r.Signature.ToRS()
 	// Verify signature using Go's ECDSA lib
 	if !ecdsa.Verify(r.PublicKey, r.Message, RInt, SInt) {
-		return ErrRoundOutputValidateSigFailedECDSA
+		return nil, ErrRoundOutputValidateSigFailedECDSA
 	}
 	pk := curve.FromPublicKey(r.PublicKey)
 	if !r.Signature.Verify(pk, r.Message) {
-		return ErrRoundOutputValidateSigFailed
+		return nil, ErrRoundOutputValidateSigFailed
 	}
 
-	return nil
-}
-
-// Next implements round.Round
-func (r *output) Next() round.Round {
-	return nil
-}
-
-func (r *output) Result() interface{} {
-	// This could be used to handle pre-signatures
-	if r.Signature != nil {
-		return &Result{Signature: r.Signature}
-	}
-	return nil
+	return &round.Output{Result: &Result{Signature: r.Signature}}, nil
 }
 
 func (r *output) MessageContent() message.Content {

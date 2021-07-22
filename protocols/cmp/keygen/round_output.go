@@ -17,13 +17,13 @@ type output struct {
 // ProcessMessage implements round.Round
 //
 // - verify all Schnorr proof for the new ecdsa share
-func (r *output) ProcessMessage(from party.ID, content message.Content) error {
+func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*KeygenOutput)
-	partyJ := r.Parties[from]
+	partyJ := r.Parties[j]
 
-	if !zksch.Verify(r.HashForID(from),
+	if !zksch.Verify(r.HashForID(j),
 		partyJ.SchnorrCommitments,
-		r.newSession.Public(from).ECDSA,
+		r.newSession.Public(j).ECDSA,
 		body.Proof) {
 		return ErrRoundOutputZKSch
 	}
@@ -31,21 +31,11 @@ func (r *output) ProcessMessage(from party.ID, content message.Content) error {
 }
 
 // Finalize implements round.Round
-func (r *output) Finalize(out chan<- *message.Message) error { return nil }
-
-// Next implements round.Round
-func (r *output) Next() round.Round { return nil }
-
-// Result implements round.Final
-func (r *output) Result() interface{} {
-	// This could be used to handle pre-signatures
-	if r.newSession != nil && r.newSecret != nil {
-		return &Result{
-			Session: r.newSession,
-			Secret:  r.newSecret,
-		}
-	}
-	return nil
+func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {
+	return &round.Output{Result: &Result{
+		Session: r.newSession,
+		Secret:  r.newSecret,
+	}}, nil
 }
 
 // MessageContent implements round.Round

@@ -28,9 +28,9 @@ type round4 struct {
 // - validate Paillier
 // - validate Pedersen
 // - validate commitments
-func (r *round4) ProcessMessage(from party.ID, content message.Content) error {
+func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Keygen4)
-	partyJ := r.Parties[from]
+	partyJ := r.Parties[j]
 
 	// Save all X, VSSCommitments
 	polyExp := body.VSSPolynomial
@@ -60,7 +60,7 @@ func (r *round4) ProcessMessage(from party.ID, content message.Content) error {
 	var rid RID
 	rid.FromBytes(body.RID)
 
-	if !r.HashForID(from).Decommit(partyJ.Commitment, body.Decommitment,
+	if !r.HashForID(j).Decommit(partyJ.Commitment, body.Decommitment,
 		rid, polyExp, body.SchnorrCommitments, body.Pedersen) {
 		return ErrRound4Decommit
 	}
@@ -82,7 +82,7 @@ func (r *round4) ProcessMessage(from party.ID, content message.Content) error {
 //   - if refresh skip constant coefficient
 //
 // - send proofs and encryption of share for Pⱼ
-func (r *round4) Finalize(out chan<- *message.Message) error {
+func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// RID = ⊕ⱼ RIDⱼ
 	var rid RID
 	for _, partyJ := range r.Parties {
@@ -125,18 +125,15 @@ func (r *round4) Finalize(out chan<- *message.Message) error {
 			Share: C,
 		}, idJ)
 		if err := r.SendMessage(msg, out); err != nil {
-			return err
+			return r, err
 		}
 	}
 
 	// Write Rho to the hash state
 	r.rid = rid
 	r.UpdateHashState(rid)
-	return nil
+	return &round5{round4: r}, nil
 }
-
-// Next implements round.Round
-func (r *round4) Next() round.Round { return &round5{round4: r} }
 
 // MessageContent implements round.Round
 func (r *round4) MessageContent() message.Content { return &Keygen4{} }

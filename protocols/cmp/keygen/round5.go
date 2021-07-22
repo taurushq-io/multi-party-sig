@@ -25,9 +25,9 @@ type round5 struct {
 //
 // - decrypt share
 // - verify VSS
-func (r *round5) ProcessMessage(from party.ID, content message.Content) error {
+func (r *round5) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Keygen5)
-	partyJ := r.Parties[from]
+	partyJ := r.Parties[j]
 	// decrypt share
 	xJdec, err := r.Secret.Paillier.Dec(body.Share)
 	if err != nil {
@@ -47,12 +47,12 @@ func (r *round5) ProcessMessage(from party.ID, content message.Content) error {
 	}
 
 	// verify zkmod
-	if !body.Mod.Verify(r.HashForID(from), zkmod.Public{N: partyJ.Pedersen.N}) {
+	if !body.Mod.Verify(r.HashForID(j), zkmod.Public{N: partyJ.Pedersen.N}) {
 		return ErrRound5ZKMod
 	}
 
 	// verify zkprm
-	if !body.Prm.Verify(r.HashForID(from), zkprm.Public{Pedersen: partyJ.Pedersen}) {
+	if !body.Prm.Verify(r.HashForID(j), zkprm.Public{Pedersen: partyJ.Pedersen}) {
 		return ErrRound5ZKPrm
 	}
 
@@ -68,7 +68,7 @@ func (r *round5) ProcessMessage(from party.ID, content message.Content) error {
 // - validate Session
 // - write new ssid hash to old hash state
 // - create proof of knowledge of secret
-func (r *round5) Finalize(out chan<- *message.Message) error {
+func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// add all shares to our secret
 	newSecret := r.Secret.Clone()
 	for _, partyJ := range r.Parties {
@@ -84,7 +84,7 @@ func (r *round5) Finalize(out chan<- *message.Message) error {
 	// summedPoly = F(X) = ∑Fⱼ(X)
 	summedPoly, err := polynomial.Sum(allPolyExps)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// compute the new public key share Xⱼ = F(j) (+X'ⱼ if doing a refresh)
@@ -98,7 +98,7 @@ func (r *round5) Finalize(out chan<- *message.Message) error {
 
 	updatedSession, err := newSession(r.SID, newPublic, r.rid)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// write new ssid to hash, to bind the Schnorr proof to this new session
@@ -118,7 +118,7 @@ func (r *round5) Finalize(out chan<- *message.Message) error {
 	// send to all
 	msg := r.MarshalMessage(&KeygenOutput{Proof: proof}, r.OtherPartyIDs()...)
 	if err = r.SendMessage(msg, out); err != nil {
-		return err
+		return r, err
 	}
 
 	r.UpdateHashState(&writer.BytesWithDomain{
@@ -128,11 +128,8 @@ func (r *round5) Finalize(out chan<- *message.Message) error {
 	r.newSession = updatedSession
 	r.newSecret = newSecret
 
-	return nil
+	return &output{r}, nil
 }
-
-// Next implements round.Round
-func (r *round5) Next() round.Round { return &output{r} }
 
 // MessageContent implements round.Round
 func (r *round5) MessageContent() message.Content { return &Keygen5{} }

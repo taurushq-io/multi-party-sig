@@ -93,7 +93,7 @@ func (h *Handler) Result() (interface{}, error) {
 // This function may be called concurrently from different threads but may block until all previous calls have finished.
 func (h *Handler) Update(msg *message.Message) error {
 	// return early if we are already finished
-	if h.r == nil || h.err != nil {
+	if h.result != nil || h.err != nil {
 		return h.err
 	}
 	h.mtx.Lock()
@@ -197,16 +197,14 @@ func (h *Handler) handleMessage(msg *message.Message) error {
 
 func (h *Handler) finishRound() error {
 	// get new messages
-	if err := h.r.Finalize(h.outChan); err != nil {
+	nextRound, err := h.r.Finalize(h.outChan)
+	if err != nil {
 		return h.abort(err, "")
 	}
 
-	// get new round
-	nextRound := h.r.Next()
-
 	// a nil round indicates we have reached the final round
-	if nextRound == nil {
-		h.result = h.r.(round.Final).Result()
+	if finalRound, ok := nextRound.(*round.Output); ok {
+		h.result = finalRound.Result
 		h.r = nil
 		if h.result == nil && h.err == nil {
 			h.err = Error{

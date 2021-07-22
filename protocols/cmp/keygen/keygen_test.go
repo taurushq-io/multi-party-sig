@@ -33,10 +33,7 @@ func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundTy
 	out := make(chan *message.Message, N*N)
 	for idJ, r := range rounds {
 		require.EqualValues(t, expectedRoundType, reflect.TypeOf(r))
-		err := r.Finalize(out)
-		require.NoError(t, err, "failed to generate messages")
-
-		newRound := r.Next()
+		newRound, err := r.Finalize(out)
 		require.NoError(t, err, "failed to generate messages")
 		if newRound != nil {
 			rounds[idJ] = newRound
@@ -67,25 +64,20 @@ func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundTy
 
 func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
 	N := len(rounds)
-	// check rid is the same for all
-	var rid []byte
-	for _, r := range rounds {
-		if rid == nil {
-			rid = r.(*output).rid[:]
-		} else {
-			require.EqualValues(t, rid, r.(*output).rid[:], "rhos should be the same")
-		}
-	}
-
 	newSessions := make([]*Session, 0, N)
 	newSecrets := make([]*Secret, 0, N)
 	for _, r := range rounds {
-		newSessions = append(newSessions, r.(*output).newSession)
-		newSecrets = append(newSecrets, r.(*output).newSecret)
+		resultRound := r.(*round.Output)
+		result := resultRound.Result.(*Result)
+		newSessions = append(newSessions, result.Session)
+		newSecrets = append(newSecrets, result.Secret)
 	}
 
 	firstSession := newSessions[0]
+	firstSessionJson, _ := firstSession.MarshalJSON()
 	for i, s := range newSessions {
+		sJson, _ := s.MarshalJSON()
+		assert.JSONEq(t, string(firstSessionJson), string(sJson), "sessions are different")
 		assert.NoError(t, s.ValidateSecret(newSecrets[i]), "failed to validate new session")
 		assert.Equal(t, firstSession.SSID(), s.SSID(), "ssid mismatch")
 		assert.True(t, newSecrets[i].KeygenDone(), "new session should be in refreshed state")

@@ -333,8 +333,8 @@ type jsonSession struct {
 
 func (s Session) MarshalJSON() ([]byte, error) {
 	public := make([]*Public, 0, len(s.public))
-	for _, publicJ := range s.public {
-		public = append(public, publicJ)
+	for _, j := range s.partyIDs {
+		public = append(public, s.public[j])
 	}
 	x := jsonSession{
 		Threshold: s.threshold,

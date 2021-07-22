@@ -31,9 +31,9 @@ type round4 struct {
 //
 // - Get Δⱼ, δⱼ, ϕ''ᵢⱼ
 // - Verify Π(log*)(ϕ''ᵢⱼ, Δⱼ, Γ)
-func (r *round4) ProcessMessage(from party.ID, content message.Content) error {
+func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Sign4)
-	partyJ := r.Parties[from]
+	partyJ := r.Parties[j]
 
 	zkLogPublic := zklogstar.Public{
 		C:      partyJ.K,
@@ -42,7 +42,7 @@ func (r *round4) ProcessMessage(from party.ID, content message.Content) error {
 		Prover: partyJ.Paillier,
 		Aux:    r.Self.Pedersen,
 	}
-	if !body.ProofLog.Verify(r.HashForID(from), zkLogPublic) {
+	if !body.ProofLog.Verify(r.HashForID(j), zkLogPublic) {
 		return ErrRound4ZKLog
 	}
 
@@ -57,7 +57,7 @@ func (r *round4) ProcessMessage(from party.ID, content message.Content) error {
 // - set Δ = ∑ⱼ Δⱼ
 // - verify Δ = [δ]G
 // - compute σᵢ = rχᵢ + kᵢm
-func (r *round4) Finalize(out chan<- *message.Message) error {
+func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// δ = ∑ⱼ δⱼ
 	// Δ = ∑ⱼ Δⱼ
 	r.Delta = curve.NewScalar()
@@ -70,7 +70,7 @@ func (r *round4) Finalize(out chan<- *message.Message) error {
 	// Δ == [δ]G
 	deltaComputed := curve.NewIdentityPoint().ScalarBaseMult(r.Delta)
 	if !deltaComputed.Equal(r.BigDelta) {
-		return ErrRound4BigDelta
+		return nil, ErrRound4BigDelta
 	}
 
 	deltaInv := curve.NewScalar().Invert(r.Delta)                   // δ⁻¹
@@ -87,13 +87,10 @@ func (r *round4) Finalize(out chan<- *message.Message) error {
 	// Send to all
 	msg := r.MarshalMessage(&SignOutput{SigmaShare: r.Self.SigmaShare}, r.OtherPartyIDs()...)
 	if err := r.SendMessage(msg, out); err != nil {
-		return err
+		return r, err
 	}
-	return nil
+	return &output{round4: r}, nil
 }
-
-// Next implements round.Round
-func (r *round4) Next() round.Round { return &output{round4: r} }
 
 // MessageContent implements round.Round
 func (r *round4) MessageContent() message.Content { return &Sign4{} }
