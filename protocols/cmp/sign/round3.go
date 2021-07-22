@@ -96,7 +96,7 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	r.ChiShare = curve.NewScalar().Multiply(r.Secret.ECDSA, r.KShare)
 
 	for j, partyJ := range r.Parties {
-		if j == r.Self.ID {
+		if j == r.SelfID() {
 			continue
 		}
 		// δᵢ += αᵢⱼ + βᵢⱼ
@@ -112,11 +112,11 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 
 	for j, partyJ := range r.Parties {
-		if j == r.Self.ID {
+		if j == r.SelfID() {
 			continue
 		}
 
-		proofLog := zklogstar.NewProof(r.HashForID(r.Self.ID), zklogstar.Public{
+		proofLog := zklogstar.NewProof(r.HashForID(r.SelfID()), zklogstar.Public{
 			C:      r.Self.K,
 			X:      r.Self.BigDeltaShare,
 			G:      r.Gamma,

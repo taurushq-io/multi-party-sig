@@ -40,7 +40,7 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 		return ErrRound4VSSConstant
 	}
 	// check deg(Fⱼ) = t
-	if polyExp.Degree() != r.SID.threshold {
+	if polyExp.Degree() != r.Threshold {
 		return ErrRound4VSSDegree
 	}
 
@@ -57,15 +57,12 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 	}
 
 	// Verify decommit
-	var rid RID
-	rid.FromBytes(body.RID)
-
 	if !r.HashForID(j).Decommit(partyJ.Commitment, body.Decommitment,
-		rid, polyExp, body.SchnorrCommitments, body.Pedersen) {
+		body.RID, polyExp, body.SchnorrCommitments, body.Pedersen) {
 		return ErrRound4Decommit
 	}
 
-	partyJ.RID = rid
+	partyJ.RID = body.RID
 	partyJ.Pedersen = body.Pedersen
 	partyJ.Paillier = paillierPublicKey
 	partyJ.VSSPolynomial = polyExp
@@ -84,15 +81,13 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 // - send proofs and encryption of share for Pⱼ
 func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// RID = ⊕ⱼ RIDⱼ
-	var rid RID
+	rid := newRID()
 	for _, partyJ := range r.Parties {
-		for i := 0; i < params.SecBytes; i++ {
-			rid[i] ^= partyJ.RID[i]
-		}
+		rid.XOR(partyJ.RID)
 	}
 
 	h := r.Hash()
-	_, _ = h.WriteAny(rid, r.Self.ID)
+	_, _ = h.WriteAny(rid, r.SelfID())
 
 	// Prove N is a blum prime with zkmod
 	mod := zkmod.NewProof(h.Clone(), zkmod.Public{N: r.Self.Pedersen.N}, zkmod.Private{
@@ -109,7 +104,7 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 	// create messages with encrypted shares
 	for idJ, partyJ := range r.Parties {
-		if idJ == r.Self.ID {
+		if idJ == r.SelfID() {
 			continue
 		}
 

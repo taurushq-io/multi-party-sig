@@ -63,7 +63,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 	// Broadcast the message we created in round1
 	for j, partyJ := range r.Parties {
-		if j == r.Self.ID {
+		if j == r.SelfID() {
 			continue
 		}
 
@@ -72,7 +72,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 		partyJ.ChiMtA = NewMtA(r.Secret.ECDSA, r.Self.ECDSA, partyJ.K,
 			r.Self.Public, partyJ.Public)
 
-		proofLog := zklogstar.NewProof(r.HashForID(r.Self.ID), zklogstar.Public{
+		proofLog := zklogstar.NewProof(r.HashForID(r.SelfID()), zklogstar.Public{
 			C:      r.Self.G,
 			X:      r.Self.BigGammaShare,
 			Prover: r.Self.Paillier,
@@ -82,10 +82,10 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 		msg := r.MarshalMessage(&Sign3{
 			EchoHash:      r.EchoHash,
 			BigGammaShare: r.Self.BigGammaShare,
-			DeltaMtA:      partyJ.DeltaMtA.ProofAffG(r.HashForID(r.Self.ID), nil),
-			ChiMtA:        partyJ.ChiMtA.ProofAffG(r.HashForID(r.Self.ID), nil),
+			DeltaMtA:      partyJ.DeltaMtA.ProofAffG(r.HashForID(r.SelfID()), nil),
+			ChiMtA:        partyJ.ChiMtA.ProofAffG(r.HashForID(r.SelfID()), nil),
 			ProofLog:      proofLog,
-		}, partyJ.ID)
+		}, j)
 		if err := r.SendMessage(msg, out); err != nil {
 			return r, err
 		}

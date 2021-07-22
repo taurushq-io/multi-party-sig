@@ -56,23 +56,22 @@ type LocalParty struct {
 
 func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
-		SID, err := newSID(partyIDs, threshold)
-		if err != nil {
-			return nil, nil, fmt.Errorf("keygen.StartKeygen: %w", err)
-		}
-		helper := round.NewHelper(
+
+		helper, err := round.NewHelper(
 			protocolKeygenID,
 			protocolRounds,
 			selfID,
-			SID.partyIDs,
-			SID.Hash(),
+			partyIDs,
+			Threshold(threshold),
 		)
+		if err != nil {
+			return nil, nil, fmt.Errorf("keygen.StartKeygen: %w", err)
+		}
 		parties := make(map[party.ID]*LocalParty, len(partyIDs))
 		for _, idJ := range partyIDs {
 			// Set the public data to a clone of the current data
 			parties[idJ] = &LocalParty{
 				Public: &Public{
-					ID:    idJ,
 					ECDSA: curve.NewIdentityPoint(),
 				},
 			}
@@ -81,10 +80,10 @@ func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.S
 		secret := sample.Scalar(rand.Reader)
 
 		return &round1{
-			Helper:  helper,
-			SID:     SID,
-			Self:    parties[selfID],
-			Parties: parties,
+			Helper:    helper,
+			Threshold: threshold,
+			Self:      parties[selfID],
+			Parties:   parties,
 			Secret: &Secret{
 				ID:    selfID,
 				ECDSA: curve.NewScalar(),
@@ -105,25 +104,27 @@ func StartRefresh(s *Session, secret *Secret) protocol.StartFunc {
 			// Set the public data to a clone of the current data
 			parties[idJ] = &LocalParty{
 				Public: &Public{
-					ID:    idJ,
 					ECDSA: curve.NewIdentityPoint().Set(publicJ.ECDSA),
 				},
 			}
 		}
 
-		helper := round.NewHelper(
+		helper, err := round.NewHelper(
 			protocolRefreshID,
 			protocolRounds,
 			selfID,
-			s.partyIDs,
-			s.Hash(),
+			s.PartyIDs(),
+			s,
 		)
+		if err != nil {
+			return nil, nil, fmt.Errorf("refresh.StartKeygen: %w", err)
+		}
 
 		return &round1{
-			Helper:  helper,
-			SID:     s.sid,
-			Self:    parties[selfID],
-			Parties: parties,
+			Helper:    helper,
+			Threshold: s.Threshold(),
+			Self:      parties[selfID],
+			Parties:   parties,
 			Secret: &Secret{
 				ID:    selfID,
 				ECDSA: curve.NewScalar().Set(secret.ECDSA),
