@@ -13,10 +13,10 @@ import (
 
 func TestMul(t *testing.T) {
 	prover := zk.ProverPaillierPublic
-	x := sample.IntervalL(rand.Reader)
+	x := sample.IntervalLSecret(rand.Reader)
 	X, rhoX := prover.Enc(x)
 
-	y := sample.IntervalL(rand.Reader)
+	y := sample.IntervalLSecret(rand.Reader)
 	Y, _ := prover.Enc(y)
 
 	C := Y.Clone().Mul(prover, x)
@@ -30,7 +30,7 @@ func TestMul(t *testing.T) {
 	}
 	private := Private{
 		X:    x,
-		Rho:  rho.Big(),
+		Rho:  rho,
 		RhoX: rhoX,
 	}
 
