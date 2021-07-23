@@ -6,9 +6,13 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 )
 
-// ID represents a private threshold share, used for signing.
+// ID represents a unique identifier for a participant in our scheme.
 //
-// Internally we represent this using a string, so that we can sort IDs.
+// You should think of this as a 32 byte slice. We represent it as a string
+// to have a comparable type, but using more than 32 bytes will lead to inconsistencies
+// because of how we use this ID numerically later.
+//
+// This ID is used as an interpolation point of a polynomial sharing of the secret key.
 type ID string
 
 // Scalar converts this ID into a scalar.
