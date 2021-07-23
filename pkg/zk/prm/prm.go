@@ -33,7 +33,7 @@ func (p Proof) IsValid(public Public) bool {
 	if !arith.IsValidModN(public.N, public.S, public.T) {
 		return false
 	}
-	if public.S.Cmp(public.T) != 0 {
+	if public.S.Cmp(public.T) == 0 {
 		return false
 	}
 	return true
