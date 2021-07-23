@@ -2,6 +2,7 @@ package keygen
 
 import (
 	"fmt"
+	mrand "math/rand"
 	"reflect"
 	"sync"
 	"testing"
@@ -72,11 +73,11 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
 	}
 
 	firstSession := newSessions[0]
-	firstSessionJSON, _ := firstSession.MarshalJSON()
+	pk := firstSession.PublicKey()
 	for i, s := range newSessions {
-		sJSON, _ := s.MarshalJSON()
-		assert.JSONEq(t, string(firstSessionJSON), string(sJSON), "sessions are different")
-		assert.NoError(t, s.ValidateSecret(newSecrets[i]), "failed to validate new session")
+		assert.Equal(t, pk, s.PublicKey(), "RID is different")
+		assert.Equal(t, firstSession.RID, s.RID, "RID is different")
+		assert.NoError(t, s.Validate(newSecrets[i]), "failed to validate new session")
 	}
 }
 
@@ -102,8 +103,7 @@ func TestRefresh(t *testing.T) {
 	N := 4
 	T := N - 1
 
-	sessions, secrets, err := FakeSession(N, T)
-	require.NoError(t, err)
+	sessions, secrets := FakeData(N, T, mrand.New(mrand.NewSource(1)))
 
 	parties := make(map[party.ID]round.Round, N)
 	for partyID, s := range sessions {
@@ -165,10 +165,7 @@ func TestProtocol(t *testing.T) {
 		assert.NoError(t, err)
 		assert.IsType(t, &Result{}, r)
 		res := r.(*Result)
-		err = res.Session.Validate()
-		assert.NoError(t, err)
-		err = res.Session.ValidateSecret(res.Secret)
-		assert.NoError(t, err)
+		assert.NoError(t, res.Session.Validate(res.Secret))
 	}
 
 	newPs := map[party.ID]*protocol.Handler{}
@@ -191,9 +188,6 @@ func TestProtocol(t *testing.T) {
 		assert.NoError(t, err)
 		assert.IsType(t, &Result{}, r)
 		res := r.(*Result)
-		err = res.Session.Validate()
-		assert.NoError(t, err)
-		err = res.Session.ValidateSecret(res.Secret)
-		assert.NoError(t, err)
+		assert.NoError(t, res.Session.Validate(res.Secret))
 	}
 }
