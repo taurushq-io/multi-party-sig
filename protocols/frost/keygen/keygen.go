@@ -20,6 +20,9 @@ import (
 // to cooperate to produce signatures.
 //
 // selfID is the identifier for the local party calling this function.
+//
+// This protocol corresponds to Figure 1 of the Frost paper:
+//   https://eprint.iacr.org/2020/852.pdf
 func StartKeygen(participants []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
 		panic("unimplemented")
