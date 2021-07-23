@@ -1,9 +1,21 @@
 package keygen
 
 import (
+	"encoding/binary"
+	"fmt"
+	"io"
+
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
+)
+
+const (
+	// Frost KeyGen with Threshold.
+	protocolID types.ProtocolID = "frost/keygen-threshold"
+	// This protocol has 3 concrete rounds.
+	protocolRounds types.RoundNumber = 3
 )
 
 // StartKeygen initiates the Frost key generation protocol.
@@ -25,6 +37,43 @@ import (
 //   https://eprint.iacr.org/2020/852.pdf
 func StartKeygen(participants []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
-		panic("unimplemented")
+		// Negative thresholds obviously make no sense.
+		// We need threshold + 1 participants to sign, so if this number is larger
+		// then the set of all participants, we can't ever generate signatures,
+		// so the threshold makes no sense either.
+		if threshold < 0 || threshold >= len(participants) {
+			return nil, nil, fmt.Errorf("keygen.StartKeygen: invalid threshold: %d", threshold)
+		}
+
+		sortedIDs := party.NewIDSlice(participants)
+		helper, err := round.NewHelper(
+			protocolID,
+			protocolRounds,
+			selfID,
+			sortedIDs,
+			_Threshold(threshold),
+		)
+		if err != nil {
+			return nil, nil, fmt.Errorf("keygen.StartKeygen: %w", err)
+		}
+
+		return &round1{
+			Helper:    helper,
+			threshold: threshold,
+		}, helper, nil
 	}
 }
+
+// Threshold
+type _Threshold int64
+
+// WriteTo implements io.WriterTo interface.
+func (t _Threshold) WriteTo(w io.Writer) (int64, error) {
+	intBuffer := make([]byte, 8)
+	binary.BigEndian.PutUint64(intBuffer, uint64(t))
+	n, err := w.Write(intBuffer)
+	return int64(n), err
+}
+
+// Domain implements writer.WriterToWithDomain
+func (_Threshold) Domain() string { return "Threshold" }
