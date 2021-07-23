@@ -1,7 +1,6 @@
 package sign
 
 import (
-	"crypto/ecdsa"
 	"crypto/rand"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -9,9 +8,9 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	zkenc "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
-	"github.com/taurusgroup/cmp-ecdsa/protocols/cmp/keygen"
 )
 
 var _ round.Round = (*round1)(nil)
@@ -19,11 +18,13 @@ var _ round.Round = (*round1)(nil)
 type round1 struct {
 	*round.Helper
 
-	Secret *keygen.Secret
+	PublicKey *curve.Point
 
-	PublicKey *ecdsa.PublicKey
-
-	Public map[party.ID]*keygen.Public
+	SecretECDSA    *curve.Scalar
+	SecretPaillier *paillier.SecretKey
+	Paillier       map[party.ID]*paillier.PublicKey
+	Pedersen       map[party.ID]*pedersen.Parameters
+	ECDSA          map[party.ID]*curve.Point
 
 	Message []byte
 }
@@ -50,18 +51,18 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Γᵢ = [γᵢ]⋅G
 	GammaShare, BigGammaShare := sample.ScalarPointPair(rand.Reader)
 	// Gᵢ = Encᵢ(γᵢ;νᵢ)
-	G, GNonce := r.Public[r.SelfID()].Paillier.Enc(GammaShare.Int())
+	G, GNonce := r.Paillier[r.SelfID()].Enc(GammaShare.Int())
 
 	// kᵢ <- 𝔽,
 	KShare := sample.Scalar(rand.Reader)
 	// Kᵢ = Encᵢ(kᵢ;ρᵢ)
-	K, KNonce := r.Public[r.SelfID()].Paillier.Enc(KShare.Int())
+	K, KNonce := r.Paillier[r.SelfID()].Enc(KShare.Int())
 
 	for _, j := range r.OtherPartyIDs() {
 		proof := zkenc.NewProof(r.HashForID(r.SelfID()), zkenc.Public{
 			K:      K,
-			Prover: r.Public[r.SelfID()].Paillier,
-			Aux:    r.Public[j].Pedersen,
+			Prover: r.Paillier[r.SelfID()],
+			Aux:    r.Pedersen[j],
 		}, zkenc.Private{
 			K:   KShare.Int(),
 			Rho: KNonce,

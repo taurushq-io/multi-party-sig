@@ -64,11 +64,10 @@ func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {
 
 	RInt, SInt := signature.ToRS()
 	// Verify signature using Go's ECDSA lib
-	if !ecdsa.Verify(r.PublicKey, r.Message, RInt, SInt) {
+	if !ecdsa.Verify(r.PublicKey.ToPublicKey(), r.Message, RInt, SInt) {
 		return nil, ErrRoundOutputValidateSigFailedECDSA
 	}
-	pk := curve.FromPublicKey(r.PublicKey)
-	if !signature.Verify(pk, r.Message) {
+	if !signature.Verify(r.PublicKey, r.Message) {
 		return nil, ErrRoundOutputValidateSigFailed
 	}
 

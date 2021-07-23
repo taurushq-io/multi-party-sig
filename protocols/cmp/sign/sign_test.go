@@ -2,6 +2,7 @@ package sign
 
 import (
 	"crypto/rand"
+	mrand "math/rand"
 	"reflect"
 	"testing"
 
@@ -70,8 +71,7 @@ func TestRound(t *testing.T) {
 	_, _ = rand.Read(rid)
 
 	t.Log("generating sessions")
-	sessions, secrets, err := keygen.FakeSession(N, T)
-	require.NoError(t, err)
+	sessions, secrets := keygen.FakeData(N, T, mrand.New(mrand.NewSource(1)))
 	partyIDs := make([]party.ID, 0, T+1)
 	for id := range sessions {
 		partyIDs = append(partyIDs, id)
