@@ -31,15 +31,15 @@ func Test_newMtA(t *testing.T) {
 	ajbi := curve.NewScalar().Multiply(aj, bi)
 	c := curve.NewScalar().Add(aibj, ajbi)
 
-	mtaI := NewMtA(ai, Ai, Bi, Bj, ski, j.Paillier)
-	mtaJ := NewMtA(aj, Aj, Bj, Bi, skj, i.Paillier)
+	mtaI := NewMtA(ai, Ai, Bi, Bj, ski, paillierJ)
+	mtaJ := NewMtA(aj, Aj, Bj, Bi, skj, paillierI)
 
-	msgJ := mtaI.ProofAffG(hash.New(), j.Pedersen)
-	msgI := mtaJ.ProofAffG(hash.New(), i.Pedersen)
+	msgJ := mtaI.ProofAffG(hash.New(), zk.Pedersen)
+	msgI := mtaJ.ProofAffG(hash.New(), zk.Pedersen)
 
-	err := mtaI.Input(hash.New(), j.Pedersen, msgI, Aj)
+	err := mtaI.Input(hash.New(), zk.Pedersen, msgI, Aj)
 	require.NoError(t, err, "decryption should pass")
-	err = mtaJ.Input(hash.New(), i.Pedersen, msgJ, Ai)
+	err = mtaJ.Input(hash.New(), zk.Pedersen, msgJ, Ai)
 	require.NoError(t, err, "decryption should pass")
 
 	gammaI := mtaI.Share()
