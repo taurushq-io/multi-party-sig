@@ -10,18 +10,12 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk"
-	"github.com/taurusgroup/cmp-ecdsa/protocols/cmp/keygen"
 )
 
 func Test_newMtA(t *testing.T) {
-	i := &keygen.Public{
-		Paillier: zk.ProverPaillierPublic,
-		Pedersen: zk.Pedersen,
-	}
-	j := &keygen.Public{
-		Paillier: zk.VerifierPaillierPublic,
-		Pedersen: zk.Pedersen,
-	}
+	paillierI := zk.ProverPaillierPublic
+	paillierJ := zk.VerifierPaillierPublic
+
 	ski := zk.ProverPaillierSecret
 	skj := zk.VerifierPaillierSecret
 	ai, Ai := sample.ScalarPointPair(rand.Reader)
@@ -30,8 +24,8 @@ func Test_newMtA(t *testing.T) {
 	bi := sample.Scalar(rand.Reader)
 	bj := sample.Scalar(rand.Reader)
 
-	Bi, _ := i.Paillier.Enc(bi.Int())
-	Bj, _ := j.Paillier.Enc(bj.Int())
+	Bi, _ := paillierI.Enc(bi.Int())
+	Bj, _ := paillierJ.Enc(bj.Int())
 
 	aibj := curve.NewScalar().Multiply(ai, bj)
 	ajbi := curve.NewScalar().Multiply(aj, bi)
