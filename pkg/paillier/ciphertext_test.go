@@ -21,7 +21,10 @@ func init() {
 	q, _ := new(safenum.Nat).SetHex("DB531C32024A262A0DF9603E48C79E863F9539A82B8619480289EC38C3664CC63E3AC2C04888827559FFDBCB735A8D2F1D24BAF910643CE819452D95CAFFB686E6110057985E93605DE89E33B99C34140EF362117F975A5056BFF14A51C9CD16A4961BE1F02C081C7AD8B2A5450858023A157AFA3C3441E8E00941F8D33ED6B7")
 	paillierSecret = NewSecretKeyFromPrimes(p, q)
 	paillierPublic = paillierSecret.PublicKey
-	if err := paillierSecret.Validate(); err != nil {
+	if err := ValidatePrime(p); err != nil {
+		panic(err)
+	}
+	if err := ValidatePrime(q); err != nil {
 		panic(err)
 	}
 }
