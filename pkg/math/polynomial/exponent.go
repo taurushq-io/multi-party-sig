@@ -82,9 +82,8 @@ func (p *Exponent) evaluateHorner(index *curve.Scalar) *curve.Point {
 func (p *Exponent) Degree() int {
 	if p.IsConstant {
 		return len(p.Coefficients)
-	} else {
-		return len(p.Coefficients) - 1
 	}
+	return len(p.Coefficients) - 1
 }
 
 func (p *Exponent) add(q *Exponent) error {
@@ -146,9 +145,8 @@ func (p *Exponent) Equal(other Exponent) bool {
 func (p *Exponent) Constant() *curve.Point {
 	if p.IsConstant {
 		return curve.NewIdentityPoint()
-	} else {
-		return &p.Coefficients[0]
 	}
+	return &p.Coefficients[0]
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.

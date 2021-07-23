@@ -20,7 +20,7 @@ func (m NatMarshaller) Marshal() ([]byte, error) {
 	return m.Bytes(), nil
 }
 
-// Marshal writes out the data to an existing slice, returning an error if the slice is small.
+// MarshalTo writes out the data to an existing slice, returning an error if the slice is small.
 func (m *NatMarshaller) MarshalTo(data []byte) (n int, err error) {
 	required := m.Size()
 	if len(data) < required {

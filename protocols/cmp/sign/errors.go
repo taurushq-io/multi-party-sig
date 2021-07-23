@@ -13,5 +13,4 @@ var (
 	ErrRoundOutputSigmaZero              = errors.New("sigma is 0")
 	ErrRoundOutputValidateSigFailedECDSA = errors.New("failed to validate signature with Go stdlib")
 	ErrRoundOutputValidateSigFailed      = errors.New("failed to validate signature")
-	ErrRoundOutputNilSig                 = errors.New("signature is nil")
 )

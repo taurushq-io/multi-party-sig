@@ -83,7 +83,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	prover := public.Prover
 
 	alpha := sample.IntervalLEps(rand.Reader)
-	beta := sample.IntervalLPrimeEpse(rand.Reader)
+	beta := sample.IntervalLPrimeEps(rand.Reader)
 
 	r := sample.UnitModN(rand.Reader, N0)
 	rY := sample.UnitModN(rand.Reader, N1)

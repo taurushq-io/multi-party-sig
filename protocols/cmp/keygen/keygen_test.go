@@ -72,10 +72,10 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
 	}
 
 	firstSession := newSessions[0]
-	firstSessionJson, _ := firstSession.MarshalJSON()
+	firstSessionJSON, _ := firstSession.MarshalJSON()
 	for i, s := range newSessions {
-		sJson, _ := s.MarshalJSON()
-		assert.JSONEq(t, string(firstSessionJson), string(sJson), "sessions are different")
+		sJSON, _ := s.MarshalJSON()
+		assert.JSONEq(t, string(firstSessionJSON), string(sJSON), "sessions are different")
 		assert.NoError(t, s.ValidateSecret(newSecrets[i]), "failed to validate new session")
 	}
 }

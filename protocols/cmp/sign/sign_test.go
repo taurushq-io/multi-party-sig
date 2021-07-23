@@ -100,6 +100,4 @@ func TestRound(t *testing.T) {
 	for _, roundType := range roundTypes {
 		processRound(t, parties, roundType)
 	}
-
-	return
 }

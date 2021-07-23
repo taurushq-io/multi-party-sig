@@ -6,7 +6,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
-// IsValidModN checks that ints are all in the range [1,…,N-1] and co-prime to N
+// IsValidModN checks that ints are all in the range [1,…,N-1] and co-prime to N.
 func IsValidModN(N *big.Int, ints ...*big.Int) bool {
 	var gcd big.Int
 	one := big.NewInt(1)

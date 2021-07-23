@@ -33,8 +33,9 @@ type Helper struct {
 	// ssid the unique identifier for this protocol execution
 	ssid []byte
 
-	mtx  sync.Mutex
 	hash *hash.Hash
+
+	mtx sync.Mutex
 }
 
 func NewHelper(protocolID types.ProtocolID, finalRoundNumber types.RoundNumber,

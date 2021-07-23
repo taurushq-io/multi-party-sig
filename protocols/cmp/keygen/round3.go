@@ -21,7 +21,7 @@ type round3 struct {
 // ProcessMessage implements round.Round
 //
 // - verify Hash(SSID, V₁, …, Vₙ) against received hash
-func (r *round3) ProcessMessage(j party.ID, content message.Content) error {
+func (r *round3) ProcessMessage(_ party.ID, content message.Content) error {
 	body := content.(*Keygen3)
 
 	if !bytes.Equal(body.HashEcho, r.EchoHash) {

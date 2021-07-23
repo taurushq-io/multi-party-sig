@@ -33,7 +33,7 @@ func IntervalLEps(rand io.Reader) *safenum.Int {
 }
 
 // IntervalLPrimeEps returns an integer in the range ± 2ˡº⁺ᵉ, but with constant-time properties
-func IntervalLPrimeEpse(rand io.Reader) *safenum.Int {
+func IntervalLPrimeEps(rand io.Reader) *safenum.Int {
 	return sampleNeg(rand, params.LPrimePlusEpsilon)
 }
 

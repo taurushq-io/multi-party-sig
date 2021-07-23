@@ -34,6 +34,4 @@ const (
 
 	BytesPoint  = secp256k1.PubKeyBytesLenCompressed
 	BytesScalar = 32
-
-	SizeSSID = HashBytes
 )
