@@ -23,10 +23,11 @@ type Public struct {
 }
 
 func (p *Public) Clone() *Public {
+	ped, _ := pedersen.New(p.Pedersen.N(), p.Pedersen.S(), p.Pedersen.T())
 	return &Public{
 		ECDSA:    curve.NewIdentityPoint().Set(p.ECDSA),
 		Paillier: paillier.NewPublicKey(p.Paillier.N()),
-		Pedersen: p.Pedersen.Clone(),
+		Pedersen: ped,
 	}
 }
 
@@ -85,13 +86,13 @@ func (p *Public) UnmarshalJSON(bytes []byte) error {
 	if err != nil {
 		return err
 	}
+
 	var n, s, t big.Int
 	n.SetBytes(x.N)
 	s.SetBytes(x.S)
 	t.SetBytes(x.T)
 	p.ECDSA = x.ECDSA
 	p.Paillier = paillier.NewPublicKey(&n)
-	}
 	Pedersen, err := pedersen.New(&n, &s, &t)
 	if err != nil {
 		return err

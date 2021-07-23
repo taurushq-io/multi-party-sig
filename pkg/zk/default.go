@@ -30,8 +30,8 @@ func generate() {
 	fmt.Println("ProverPaillierPublic = ProverPaillierSecret.publicKey()")
 	fmt.Println("VerifierPaillierPublic = VerifierPaillierSecret.publicKey()")
 	ped, _ := sk2.GeneratePedersen()
-	fmt.Printf("s, _ := new(big.Int).SetString(\"%s\", 10)\n", ped.S)
-	fmt.Printf("t, _ := new(big.Int).SetString(\"%s\", 10)\n", ped.T)
+	fmt.Printf("s, _ := new(big.Int).SetString(\"%s\", 10)\n", ped.S())
+	fmt.Printf("t, _ := new(big.Int).SetString(\"%s\", 10)\n", ped.T())
 	fmt.Println("Pedersen = &pedersen.Parameters{N: VerifierPaillierPublic.N, S: s, T: t}")
 }
 
