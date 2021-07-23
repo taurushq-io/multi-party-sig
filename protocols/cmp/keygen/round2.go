@@ -3,6 +3,7 @@ package keygen
 import (
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
@@ -11,7 +12,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
@@ -41,8 +41,8 @@ type round2 struct {
 	// PaillierPublic[j] = Nⱼ
 	PaillierPublic map[party.ID]*paillier.PublicKey
 
-	// Pedersen[j] = (Nⱼ,sⱼ,tⱼ)
-	Pedersen map[party.ID]*pedersen.Parameters
+	// N[j], S[j], T[j]  = Nⱼ, sⱼ, tⱼ
+	N, S, T map[party.ID]*big.Int
 
 	// PaillierSecret = (pᵢ, qᵢ)
 	PaillierSecret *paillier.SecretKey

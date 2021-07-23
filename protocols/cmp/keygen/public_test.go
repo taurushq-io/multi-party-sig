@@ -56,28 +56,6 @@ func TestPublic_Validate(t *testing.T) {
 				ped},
 			true,
 		},
-		{"missing S",
-			fields{
-				X,
-				p,
-				&pedersen.Parameters{
-					N: N,
-					S: nil,
-					T: ped.T,
-				}},
-			true,
-		},
-		{"missing T",
-			fields{
-				X,
-				p,
-				&pedersen.Parameters{
-					N: N,
-					S: ped.S,
-					T: nil,
-				}},
-			true,
-		},
 		{"different N",
 			fields{
 				X,

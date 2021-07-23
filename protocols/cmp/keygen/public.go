@@ -47,12 +47,12 @@ func (p *Public) Validate() error {
 	}
 
 	// Pedersen check
-	if err := p.Pedersen.Validate(); err != nil {
+	if _, err := pedersen.New(p.Pedersen.N(), p.Pedersen.S(), p.Pedersen.T()); err != nil {
 		return fmt.Errorf("public: %w", err)
 	}
 
 	// Both N's are the same
-	if p.Paillier.N().Cmp(p.Pedersen.N) != 0 {
+	if p.Paillier.N().Cmp(p.Pedersen.N()) != 0 {
 		return errors.New("public: Pedersen and Paillier should share the same N")
 	}
 
@@ -72,9 +72,9 @@ type jsonParty struct {
 func (p Public) MarshalJSON() ([]byte, error) {
 	x := jsonParty{
 		ECDSA: p.ECDSA,
-		N:     p.Pedersen.N.Bytes(),
-		S:     p.Pedersen.S.Bytes(),
-		T:     p.Pedersen.T.Bytes(),
+		N:     p.Pedersen.N().Bytes(),
+		S:     p.Pedersen.S().Bytes(),
+		T:     p.Pedersen.T().Bytes(),
 	}
 	return json.Marshal(x)
 }
@@ -91,10 +91,11 @@ func (p *Public) UnmarshalJSON(bytes []byte) error {
 	t.SetBytes(x.T)
 	p.ECDSA = x.ECDSA
 	p.Paillier = paillier.NewPublicKey(&n)
-	p.Pedersen = &pedersen.Parameters{
-		N: &n,
-		S: &s,
-		T: &t,
 	}
+	Pedersen, err := pedersen.New(&n, &s, &t)
+	if err != nil {
+		return err
+	}
+	p.Pedersen = Pedersen
 	return p.Validate()
 }

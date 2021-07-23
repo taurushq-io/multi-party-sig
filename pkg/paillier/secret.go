@@ -125,11 +125,9 @@ func (sk *SecretKey) Clone() *SecretKey {
 
 func (sk SecretKey) GeneratePedersen() (*pedersen.Parameters, *safenum.Nat) {
 	s, t, lambda := sample.Pedersen(rand.Reader, sk.phi, sk.PublicKey.n)
-	return &pedersen.Parameters{
-		N: sk.PublicKey.n.Big(),
-		S: s.Big(),
-		T: t.Big(),
-	}, lambda
+	ped, _ := pedersen.New(sk.PublicKey.n.Big(), s.Big(), t.Big())
+	// TODO handle error ?
+	return ped, lambda
 }
 
 func is3mod4(n *safenum.Nat) bool {

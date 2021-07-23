@@ -9,12 +9,11 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 )
 
 type (
 	Public struct {
-		Pedersen *pedersen.Parameters
+		N, S, T *big.Int
 	}
 	Private struct {
 		Lambda, Phi *safenum.Nat
@@ -25,10 +24,16 @@ func (p Proof) IsValid(public Public) bool {
 	if len(*p.A) != params.StatParam || len(*p.Z) != params.StatParam {
 		return false
 	}
-	if !arith.IsValidModN(public.Pedersen.N, *p.A...) {
+	if !arith.IsValidModN(public.N, *p.A...) {
 		return false
 	}
-	if !arith.IsValidModN(public.Pedersen.N, *p.Z...) {
+	if !arith.IsValidModN(public.N, *p.Z...) {
+		return false
+	}
+	if !arith.IsValidModN(public.N, public.S, public.T) {
+		return false
+	}
+	if public.S.Cmp(public.T) != 0 {
 		return false
 	}
 	return true
@@ -37,7 +42,7 @@ func (p Proof) IsValid(public Public) bool {
 // NewProof generates a proof that:
 // s = t^lambda (mod N).
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
-	n := public.Pedersen.N
+	n := public.N
 	lambda := private.Lambda
 	phi := safenum.ModulusFromNat(private.Phi)
 
@@ -50,7 +55,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 
 		// Aᵢ = tᵃ mod N
 		A[i] = a[i].Big()
-		A[i] = A[i].Exp(public.Pedersen.T, A[i], n)
+		A[i] = A[i].Exp(public.T, A[i], n)
 	}
 
 	es := challenge(hash, public, A)
@@ -76,11 +81,7 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 		return false
 	}
 
-	if err := public.Pedersen.Validate(); err != nil {
-		return false
-	}
-
-	n, s, t := public.Pedersen.N, public.Pedersen.S, public.Pedersen.T
+	n, s, t := public.N, public.S, public.T
 
 	es := challenge(hash, public, *p.A)
 
@@ -110,7 +111,7 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 }
 
 func challenge(hash *hash.Hash, public Public, A []*big.Int) []bool {
-	_, _ = hash.WriteAny(public.Pedersen.N, public.Pedersen.S, public.Pedersen.T)
+	_, _ = hash.WriteAny(public.N, public.S, public.T)
 	for _, a := range A {
 		_, _ = hash.WriteAny(a)
 	}

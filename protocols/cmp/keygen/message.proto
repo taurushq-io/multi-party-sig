@@ -12,7 +12,6 @@ import "pkg/paillier/ciphertext.proto";
 import "pkg/math/polynomial/exponent.proto";
 import "pkg/zk/mod/mod.proto";
 import "pkg/zk/prm/prm.proto";
-import "pkg/pedersen/pedersen.proto";
 
 message Keygen2 {
   option (gogoproto.goproto_getters) = false;
@@ -36,10 +35,14 @@ message Keygen4 {
   polynomial.Exponent VSSPolynomial = 2;
   // SchnorrCommitments = Aᵢ Schnorr commitment for the final confirmation
   bytes SchnorrCommitments = 3 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point"];
-  // N Paillier and Pedersen
-  pedersen.Parameters Pedersen = 4;
+  // N Paillier and Pedersen N = p•q, p ≡ q ≡ 3 mod 4
+  bytes N = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  // S = r² mod N
+  bytes S = 5 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  // T = Sˡ mod N
+  bytes T = 6 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // Decommitment = uᵢ decommitment bytes
-  bytes Decommitment = 5 [(gogoproto.casttype) = "github.com/taurusgroup/cmp-ecdsa/pkg/hash.Decommitment"];
+  bytes Decommitment = 7 [(gogoproto.casttype) = "github.com/taurusgroup/cmp-ecdsa/pkg/hash.Decommitment"];
 }
 
 message Keygen5 {
