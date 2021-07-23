@@ -6,8 +6,6 @@ import (
 	"math/rand"
 	"sort"
 	"strings"
-
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 )
 
 type IDSlice []ID
@@ -92,47 +90,6 @@ func (partyIDs IDSlice) Remove(id ID) IDSlice {
 		}
 	}
 	return newPartyIDs
-}
-
-// Lagrange returns the Lagrange coefficient
-//
-// When a subset participants multiply their polynomial shares with the corresponding lagrange
-// coefficients, they get an additive sharing of the secret key.
-//
-// We iterate over all points in the set.
-// To get the coefficients over a smaller set,
-// you should first get a smaller subset.
-//
-// The following formulas are taken from
-// https://en.wikipedia.org/wiki/Lagrange_polynomial
-//			        x₀ … xₖ
-// lⱼ(0) =	---------------------------
-//			(x₀ - xⱼ) … (xₖ - xⱼ)
-func (partyIDs IDSlice) Lagrange(index ID) *curve.Scalar {
-
-	num := curve.NewScalarUInt32(1)
-	denum := curve.NewScalarUInt32(1)
-
-	xJ := index.Scalar()
-
-	for _, id := range partyIDs {
-		if id == index {
-			continue
-		}
-
-		xM := id.Scalar()
-
-		// num = x₀ * … * x_k
-		num.Multiply(num, xM) // num * xM
-
-		// denum = (x₀ - x_j) … (x_k - x_j)
-		xM.Subtract(xM, xJ)       // = xM - xJ
-		denum.Multiply(denum, xM) // denum * (xm - xj)
-	}
-
-	denum.Invert(denum)
-	num.Multiply(num, denum)
-	return num
 }
 
 // RandomIDs returns a slice of random IDs with 20 alphanumeric characters.
