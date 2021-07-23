@@ -96,6 +96,9 @@ func (partyIDs IDSlice) Remove(id ID) IDSlice {
 
 // Lagrange returns the Lagrange coefficient
 //
+// When a subset participants multiply their polynomial shares with the corresponding lagrange
+// coefficients, they get an additive sharing of the secret key.
+//
 // We iterate over all points in the set.
 // To get the coefficients over a smaller set,
 // you should first get a smaller subset.
