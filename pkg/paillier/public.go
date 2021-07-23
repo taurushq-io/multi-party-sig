@@ -40,12 +40,8 @@ func (pk *PublicKey) N() *big.Int {
 // Validation is performed on n and an error is returned if it is not a valid modulus.
 // The input n is copied.
 func NewPublicKey(n *big.Int) (*PublicKey, error) {
-	// log₂(N) = BitsPaillier
-	if bits := n.BitLen(); bits != params.BitsPaillier {
-		return nil, fmt.Errorf("paillier.publicKey: have: %d, need %d: %w", bits, params.BitsPaillier, ErrPaillierLength)
-	}
-	if n.Bit(0) != 1 {
-		return nil, ErrPaillierEven
+	if err := ValidateN(n); err != nil {
+		return nil, err
 	}
 
 	nNat := new(safenum.Nat).SetBig(n, n.BitLen())
@@ -60,6 +56,17 @@ func NewPublicKey(n *big.Int) (*PublicKey, error) {
 		nSquared: safenum.ModulusFromNat(nSquared),
 		nPlusOne: nPlusOne,
 	}, nil
+}
+
+func ValidateN(n *big.Int) error {
+	// log₂(N) = BitsPaillier
+	if bits := n.BitLen(); bits != params.BitsPaillier {
+		return fmt.Errorf("paillier.publicKey: have: %d, need %d: %w", bits, params.BitsPaillier, ErrPaillierLength)
+	}
+	if n.Bit(0) != 1 {
+		return ErrPaillierEven
+	}
+	return nil
 }
 
 // Enc returns the encryption of m under the public key pk.
