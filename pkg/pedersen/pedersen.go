@@ -22,6 +22,10 @@ func (e Error) Error() string {
 	return fmt.Sprintf("pedersen: %s", string(e))
 }
 
+type Parameters struct {
+	n, s, t *big.Int
+}
+
 // New returns a new set of Pedersen parameters,
 // It returns an error if any of the following is true:
 // - n, s, or t is nil.
@@ -29,16 +33,8 @@ func (e Error) Error() string {
 // - s, t are not coprime to N.
 // - s = t.
 func New(n, s, t *big.Int) (*Parameters, error) {
-	if n == nil || s == nil || t == nil {
-		return nil, ErrNilFields
-	}
-	// s, t ∈ ℤₙˣ
-	if !arith.IsValidModN(n, s, t) {
-		return nil, ErrNotValidModN
-	}
-	// s ≡ t
-	if s.Cmp(t) == 0 {
-		return nil, ErrSEqualT
+	if err := ValidateParameters(n, s, t); err != nil {
+		return nil, err
 	}
 	return &Parameters{
 		n: n,
@@ -47,8 +43,19 @@ func New(n, s, t *big.Int) (*Parameters, error) {
 	}, nil
 }
 
-type Parameters struct {
-	n, s, t *big.Int
+func ValidateParameters(n, s, t *big.Int) error {
+	if n == nil || s == nil || t == nil {
+		return ErrNilFields
+	}
+	// s, t ∈ ℤₙˣ
+	if !arith.IsValidModN(n, s, t) {
+		return ErrNotValidModN
+	}
+	// s ≡ t
+	if s.Cmp(t) == 0 {
+		return ErrSEqualT
+	}
+	return nil
 }
 
 // N = p•q, p ≡ q ≡ 3 mod 4.
