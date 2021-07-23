@@ -2,6 +2,7 @@ package xor
 
 import (
 	"crypto/rand"
+	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -23,7 +24,10 @@ func StartXOR(selfID party.ID, partyIDs party.IDSlice) protocol.StartFunc {
 		_, _ = rand.Read(xor)
 
 		// create the helper with a description of the protocol
-		helper := round.NewHelper("example/xor", 2, selfID, partyIDs, h)
+		helper, err := round.NewHelper("example/xor", 2, selfID, partyIDs)
+		if err != nil {
+			return nil, nil, fmt.Errorf("xor: %w", err)
+		}
 		r := &Round1{
 			Helper:   helper,
 			received: map[party.ID][]byte{selfID: xor},

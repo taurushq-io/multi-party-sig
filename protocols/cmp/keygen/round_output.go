@@ -12,6 +12,8 @@ import (
 
 type output struct {
 	*round5
+	Session *Session
+	Secret  *Secret
 }
 
 // ProcessMessage implements round.Round
@@ -19,11 +21,9 @@ type output struct {
 // - verify all Schnorr proof for the new ecdsa share
 func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*KeygenOutput)
-	partyJ := r.Parties[j]
-
 	if !zksch.Verify(r.HashForID(j),
-		partyJ.SchnorrCommitments,
-		r.newSession.Public(j).ECDSA,
+		r.SchnorrCommitments[j],
+		r.Session.Public(j).ECDSA,
 		body.Proof) {
 		return ErrRoundOutputZKSch
 	}
@@ -33,8 +33,8 @@ func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 // Finalize implements round.Round
 func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {
 	return &round.Output{Result: &Result{
-		Session: r.newSession,
-		Secret:  r.newSecret,
+		Session: r.Session,
+		Secret:  r.Secret,
 	}}, nil
 }
 

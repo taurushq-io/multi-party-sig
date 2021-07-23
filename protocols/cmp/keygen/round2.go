@@ -4,17 +4,57 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/cronokirby/safenum"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
 type round2 struct {
 	*round1
-	// EchoHash = Hash(SSID, commitment₁, …, commitmentₙ)
-	EchoHash []byte
+
+	// VSSPolynomials[j] = Fⱼ(X) = fⱼ(X)•G
+	VSSPolynomials map[party.ID]*polynomial.Exponent
+
+	// SchnorrCommitments[j] = Aⱼ
+	// Commitment for proof of knowledge in the last round
+	SchnorrCommitments map[party.ID]*curve.Point // Aⱼ
+
+	// Commitments[j] = H(Keygen3ⱼ ∥ Decommitments[j])
+	Commitments map[party.ID]hash.Commitment
+
+	// RIDs[j] = ridⱼ
+	RIDs map[party.ID]RID
+
+	// ShareReceived[j] = xʲᵢ
+	// share received from party j
+	ShareReceived map[party.ID]*curve.Scalar
+
+	// PaillierPublic[j] = Nⱼ
+	PaillierPublic map[party.ID]*paillier.PublicKey
+
+	// Pedersen[j] = (Nⱼ,sⱼ,tⱼ)
+	Pedersen map[party.ID]*pedersen.Parameters
+
+	// PaillierSecret = (pᵢ, qᵢ)
+	PaillierSecret *paillier.SecretKey
+
+	// PedersenSecret = λᵢ
+	// Used to generate the Pedersen parameters
+	PedersenSecret *safenum.Nat
+
+	// SchnorrRand = aᵢ
+	// Randomness used to compute Schnorr commitment of proof of knowledge of secret share
+	SchnorrRand *curve.Scalar
+
+	// Decommitment for Keygen3ᵢ
+	Decommitment hash.Decommitment // uᵢ
 }
 
 // ProcessMessage implements round.Round
@@ -22,9 +62,7 @@ type round2 struct {
 // - store commitment Vⱼ
 func (r *round2) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Keygen2)
-	partyJ := r.Parties[j]
-
-	partyJ.Commitment = body.Commitment
+	r.Commitments[j] = body.Commitment
 	return nil
 }
 
@@ -37,19 +75,21 @@ func (r *round2) ProcessMessage(j party.ID, content message.Content) error {
 func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Broadcast the message we created in round1
 	h := r.Hash()
-	for _, partyID := range r.PartyIDs() {
-		_, _ = h.WriteAny(r.Parties[partyID].Commitment)
+	for _, j := range r.PartyIDs() {
+		_, _ = h.WriteAny(r.Commitments[j])
 	}
-	echoHash := h.ReadBytes(nil)
+	EchoHash := h.ReadBytes(nil)
 
 	// send to all
-	msg := r.MarshalMessage(&Keygen3{HashEcho: echoHash}, r.OtherPartyIDs()...)
+	msg := r.MarshalMessage(&Keygen3{HashEcho: EchoHash}, r.OtherPartyIDs()...)
 	if err := r.SendMessage(msg, out); err != nil {
 		return r, err
 	}
 
-	r.EchoHash = echoHash
-	return &round3{round2: r}, nil
+	return &round3{
+		round2:   r,
+		EchoHash: EchoHash,
+	}, nil
 }
 
 // MessageContent implements round.Round
@@ -60,8 +100,8 @@ func (m *Keygen2) Validate() error {
 	if m == nil {
 		return errors.New("keygen.round1: message is nil")
 	}
-	if l := len(m.Commitment); l != params.HashBytes {
-		return fmt.Errorf("keygen.round1: invalid commitment length (got %d, expected %d)", l, params.HashBytes)
+	if err := m.Commitment.Validate(); err != nil {
+		return fmt.Errorf("keygen.round1: %w", err)
 	}
 	return nil
 }

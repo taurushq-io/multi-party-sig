@@ -6,7 +6,6 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
@@ -16,7 +15,6 @@ import (
 
 type round4 struct {
 	*round3
-	rid RID
 }
 
 // ProcessMessage implements round.Round
@@ -30,24 +28,23 @@ type round4 struct {
 // - validate commitments
 func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Keygen4)
-	partyJ := r.Parties[j]
 
 	// Save all X, VSSCommitments
-	polyExp := body.VSSPolynomial
+	VSSPolynomial := body.VSSPolynomial
 	// check that the constant coefficient is 0
 	// if refresh then the polynomial is constant
-	if !(r.VSSSecret.Constant().IsZero() == polyExp.IsConstant) {
+	if !(r.VSSSecret.Constant().IsZero() == VSSPolynomial.IsConstant) {
 		return ErrRound4VSSConstant
 	}
 	// check deg(Fⱼ) = t
-	if polyExp.Degree() != r.SID.threshold {
+	if VSSPolynomial.Degree() != r.Threshold {
 		return ErrRound4VSSDegree
 	}
 
 	// Set Paillier
 	Nj := body.Pedersen.N
-	paillierPublicKey := paillier.NewPublicKey(Nj)
-	if err := paillierPublicKey.Validate(); err != nil {
+	PaillierPublic := paillier.NewPublicKey(Nj)
+	if err := PaillierPublic.Validate(); err != nil {
 		return err
 	}
 
@@ -57,25 +54,22 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 	}
 
 	// Verify decommit
-	var rid RID
-	rid.FromBytes(body.RID)
-
-	if !r.HashForID(j).Decommit(partyJ.Commitment, body.Decommitment,
-		rid, polyExp, body.SchnorrCommitments, body.Pedersen) {
+	if !r.HashForID(j).Decommit(r.Commitments[j], body.Decommitment,
+		body.RID, VSSPolynomial, body.SchnorrCommitments, body.Pedersen) {
 		return ErrRound4Decommit
 	}
 
-	partyJ.RID = rid
-	partyJ.Pedersen = body.Pedersen
-	partyJ.Paillier = paillierPublicKey
-	partyJ.VSSPolynomial = polyExp
-	partyJ.SchnorrCommitments = body.SchnorrCommitments
+	r.RIDs[j] = body.RID
+	r.Pedersen[j] = body.Pedersen
+	r.PaillierPublic[j] = PaillierPublic
+	r.VSSPolynomials[j] = VSSPolynomial
+	r.SchnorrCommitments[j] = body.SchnorrCommitments
 	return nil
 }
 
 // Finalize implements round.Round
 //
-// - set ρ = ⊕ⱼ ρⱼ and update hash state
+// - set rid = ⊕ⱼ ridⱼ and update hash state
 // - prove Nᵢ is Blum
 // - prove Pedersen parameters
 // - prove Schnorr for all coefficients of fᵢ(X)
@@ -84,55 +78,51 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 // - send proofs and encryption of share for Pⱼ
 func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// RID = ⊕ⱼ RIDⱼ
-	var rid RID
-	for _, partyJ := range r.Parties {
-		for i := 0; i < params.SecBytes; i++ {
-			rid[i] ^= partyJ.RID[i]
-		}
+	rid := newRID()
+	for _, j := range r.PartyIDs() {
+		rid.XOR(r.RIDs[j])
 	}
 
+	// temporary hash which does not modify the state
 	h := r.Hash()
-	_, _ = h.WriteAny(rid, r.Self.ID)
+	_, _ = h.WriteAny(rid, r.SelfID())
 
 	// Prove N is a blum prime with zkmod
-	mod := zkmod.NewProof(h.Clone(), zkmod.Public{N: r.Self.Pedersen.N}, zkmod.Private{
-		P:   r.Secret.Paillier.P(),
-		Q:   r.Secret.Paillier.Q(),
-		Phi: r.Secret.Paillier.Phi(),
+	mod := zkmod.NewProof(h.Clone(), zkmod.Public{N: r.Pedersen[r.SelfID()].N}, zkmod.Private{
+		P:   r.PaillierSecret.P(),
+		Q:   r.PaillierSecret.Q(),
+		Phi: r.PaillierSecret.Phi(),
 	})
 
 	// prove s, t are correct as aux parameters with zkprm
-	prm := zkprm.NewProof(h.Clone(), zkprm.Public{Pedersen: r.Self.Pedersen}, zkprm.Private{
+	prm := zkprm.NewProof(h.Clone(), zkprm.Public{Pedersen: r.Pedersen[r.SelfID()]}, zkprm.Private{
 		Lambda: r.PedersenSecret,
-		Phi:    r.Secret.Paillier.Phi(),
+		Phi:    r.PaillierSecret.Phi(),
 	})
 
 	// create messages with encrypted shares
-	for idJ, partyJ := range r.Parties {
-		if idJ == r.Self.ID {
-			continue
-		}
-
-		// compute fᵢ(idJ)
-		index := idJ.Scalar()
-		share := r.VSSSecret.Evaluate(index)
+	for _, j := range r.OtherPartyIDs() {
+		// compute fᵢ(j)
+		share := r.VSSSecret.Evaluate(j.Scalar())
 		// Encrypt share
-		C, _ := partyJ.Paillier.Enc(share.Int())
+		C, _ := r.PaillierPublic[j].Enc(share.Int())
 
 		msg := r.MarshalMessage(&Keygen5{
 			Mod:   mod,
 			Prm:   prm,
 			Share: C,
-		}, idJ)
+		}, j)
 		if err := r.SendMessage(msg, out); err != nil {
 			return r, err
 		}
 	}
 
-	// Write Rho to the hash state
-	r.rid = rid
+	// Write rid to the hash state
 	r.UpdateHashState(rid)
-	return &round5{round4: r}, nil
+	return &round5{
+		round4: r,
+		RID:    rid,
+	}, nil
 }
 
 // MessageContent implements round.Round
@@ -143,12 +133,12 @@ func (m *Keygen4) Validate() error {
 	if m == nil {
 		return errors.New("keygen.round3: message is nil")
 	}
-	if lRho := len(m.RID); lRho != params.SecBytes {
-		return fmt.Errorf("keygen.round3: invalid Rho length (got %d, expected %d)", lRho, params.SecBytes)
+	if err := m.RID.Validate(); err != nil {
+		return fmt.Errorf("keygen.round3: %w", err)
 	}
 
-	if lU := len(m.Decommitment); lU != params.SecBytes {
-		return fmt.Errorf("keygen.round3: invalid Decommitment length (got %d, expected %d)", lU, params.SecBytes)
+	if err := m.Decommitment.Validate(); err != nil {
+		return fmt.Errorf("keygen.round3: %w", err)
 	}
 
 	if err := m.Pedersen.Validate(); err != nil {

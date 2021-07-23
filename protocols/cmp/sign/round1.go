@@ -4,10 +4,10 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 
-	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	zkenc "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
@@ -17,27 +17,11 @@ import (
 type round1 struct {
 	*round.Helper
 
-	Self *LocalParty
-
 	Secret *keygen.Secret
 
 	PublicKey *ecdsa.PublicKey
 
-	Parties map[party.ID]*LocalParty
-
-	SignerIDs party.IDSlice
-
-	// GammaShare = γᵢ <- 𝔽
-	GammaShare *curve.Scalar
-	// KShare = kᵢ  <- 𝔽
-	KShare *curve.Scalar
-
-	// KNonce = ρᵢ <- ℤₙ
-	// used to encrypt Kᵢ = Encᵢ(kᵢ)
-	KNonce *safenum.Nat
-	// GNonce = νᵢ <- ℤₙ
-	// used to encrypt Gᵢ = Encᵢ(γᵢ)
-	GNonce *safenum.Nat
+	Public map[party.ID]*keygen.Public
 
 	Message []byte
 }
@@ -62,41 +46,46 @@ func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// γᵢ <- 𝔽,
 	// Γᵢ = [γᵢ]⋅G
-	r.GammaShare, r.Self.BigGammaShare = sample.ScalarPointPair(rand.Reader)
+	GammaShare, BigGammaShare := sample.ScalarPointPair(rand.Reader)
 	// Gᵢ = Encᵢ(γᵢ;νᵢ)
-	r.Self.G, r.GNonce = r.Self.Paillier.Enc(r.GammaShare.Int())
+	G, GNonce := r.Public[r.SelfID()].Paillier.Enc(GammaShare.Int())
 
 	// kᵢ <- 𝔽,
-	r.KShare = sample.Scalar(rand.Reader)
+	KShare := sample.Scalar(rand.Reader)
 	// Kᵢ = Encᵢ(kᵢ;ρᵢ)
-	r.Self.K, r.KNonce = r.Self.Paillier.Enc(r.KShare.Int())
+	K, KNonce := r.Public[r.SelfID()].Paillier.Enc(KShare.Int())
 
-	for j, partyJ := range r.Parties {
-		if j == r.Self.ID {
-			continue
-		}
-
-		proof := zkenc.NewProof(r.HashForID(r.Self.ID), zkenc.Public{
-			K:      r.Self.K,
-			Prover: r.Self.Paillier,
-			Aux:    partyJ.Pedersen,
+	for _, j := range r.OtherPartyIDs() {
+		proof := zkenc.NewProof(r.HashForID(r.SelfID()), zkenc.Public{
+			K:      K,
+			Prover: r.Public[r.SelfID()].Paillier,
+			Aux:    r.Public[j].Pedersen,
 		}, zkenc.Private{
-			K:   r.KShare.Int(),
-			Rho: r.KNonce,
+			K:   KShare.Int(),
+			Rho: KNonce,
 		})
 
 		// ignore error
 		msg := r.MarshalMessage(&Sign2{
 			ProofEnc: proof,
-			K:        r.Self.K,
-			G:        r.Self.G,
+			K:        K,
+			G:        G,
 		}, j)
 		if err := r.SendMessage(msg, out); err != nil {
 			return r, err
 		}
 	}
 
-	return &round2{round1: r}, nil
+	return &round2{
+		round1:        r,
+		K:             map[party.ID]*paillier.Ciphertext{r.SelfID(): K},
+		G:             map[party.ID]*paillier.Ciphertext{r.SelfID(): G},
+		BigGammaShare: map[party.ID]*curve.Point{r.SelfID(): BigGammaShare},
+		GammaShare:    GammaShare,
+		KShare:        KShare,
+		KNonce:        KNonce,
+		GNonce:        GNonce,
+	}, nil
 }
 
 // MessageContent implements round.Round

@@ -60,17 +60,14 @@ func StartSign(s *keygen.Session, secret *keygen.Secret, signers []party.ID, mes
 		}
 
 		// Scale public data
-		parties := make(map[party.ID]*LocalParty, T)
+		parties := make(map[party.ID]*keygen.Public, T)
 		for _, partyJ := range signerIDs {
 			publicJ := s.Public(partyJ)
 			lagrange := signerIDs.Lagrange(partyJ)
-			parties[partyJ] = &LocalParty{
-				Public: &keygen.Public{
-					ID:       partyJ,
-					ECDSA:    curve.NewIdentityPoint().ScalarMult(lagrange, publicJ.ECDSA),
-					Paillier: publicJ.Paillier,
-					Pedersen: publicJ.Pedersen,
-				},
+			parties[partyJ] = &keygen.Public{
+				ECDSA:    curve.NewIdentityPoint().ScalarMult(lagrange, publicJ.ECDSA),
+				Paillier: publicJ.Paillier,
+				Pedersen: publicJ.Pedersen,
 			}
 		}
 
@@ -79,34 +76,26 @@ func StartSign(s *keygen.Session, secret *keygen.Secret, signers []party.ID, mes
 		newSecret := secret.Clone()
 		newSecret.ECDSA.Multiply(lagrange, newSecret.ECDSA)
 
-		// update hash with signing parties and message hash
-		h := s.Hash()
-		// write SignerIDs
-		if _, err := h.WriteAny(signerIDs); err != nil {
-			return nil, nil, fmt.Errorf("sign.Create: write signerIDs: %w", err)
-		}
-
-		// write Message
-		if _, err := h.WriteAny(writer.BytesWithDomain{
-			TheDomain: "Signature Message",
-			Bytes:     message,
-		}); err != nil {
-			return nil, nil, fmt.Errorf("sign.Create: write message: %w", err)
-		}
-
-		helper := round.NewHelper(
+		helper, err := round.NewHelper(
 			protocolSignID,
 			protocolSignRounds,
 			secret.ID,
 			signerIDs,
-			h,
+			s,
+			signerIDs,
+			writer.BytesWithDomain{
+				TheDomain: "Signature Message",
+				Bytes:     message,
+			},
 		)
+		if err != nil {
+			return nil, nil, fmt.Errorf("sign.Create: %w", err)
+		}
 		return &round1{
 			Helper:    helper,
-			Self:      parties[secret.ID],
 			Secret:    newSecret,
 			PublicKey: s.PublicKey(),
-			Parties:   parties,
+			Public:    parties,
 			Message:   message,
 		}, helper, nil
 	}

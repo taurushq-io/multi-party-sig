@@ -25,6 +25,13 @@ func (Commitment) Domain() string {
 	return "Commitment"
 }
 
+func (c Commitment) Validate() error {
+	if l := len(c); l != params.HashBytes {
+		return fmt.Errorf("commitment: incorrect length (got %d, expected %d)", l, params.HashBytes)
+	}
+	return nil
+}
+
 // WriteTo implements the io.WriterTo interface for Decommitment.
 func (d Decommitment) WriteTo(w io.Writer) (int64, error) {
 	n, err := w.Write(d)
@@ -34,6 +41,13 @@ func (d Decommitment) WriteTo(w io.Writer) (int64, error) {
 // Domain implements WriterToWithDomain, and separates this type within hash.Hash.
 func (Decommitment) Domain() string {
 	return "Decommitment"
+}
+
+func (d Decommitment) Validate() error {
+	if l := len(d); l != params.SecBytes {
+		return fmt.Errorf("decommitment: incorrect length (got %d, expected %d)", l, params.SecBytes)
+	}
+	return nil
 }
 
 // Commit creates a commitment to data, and returns a commitment hash, and a decommitment string such that
@@ -65,7 +79,10 @@ func (hash *Hash) Commit(data ...interface{}) (Commitment, Decommitment, error) 
 // commitment = h(data, decommitment)
 func (hash *Hash) Decommit(c Commitment, d Decommitment, data ...interface{}) bool {
 	var err error
-	if len(c) != params.HashBytes || len(d) != params.SecBytes {
+	if err = c.Validate(); err != nil {
+		return false
+	}
+	if err = d.Validate(); err != nil {
 		return false
 	}
 
