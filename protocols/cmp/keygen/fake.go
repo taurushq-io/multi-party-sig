@@ -1,67 +1,60 @@
 package keygen
 
 import (
-	"crypto/rand"
+	"io"
 
+	"github.com/cronokirby/safenum"
+	"github.com/taurusgroup/cmp-ecdsa/internal/proto"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 )
 
-func FakeSession(N, T int) (map[party.ID]*Session, map[party.ID]*Secret, error) {
+func FakeData(N, T int, source io.Reader) (map[party.ID]*Session, map[party.ID]*Secret) {
 	partyIDs := party.RandomIDs(N)
-	public, secrets := FakeData(partyIDs, T)
-	var rid RID
-	_, _ = rand.Read(rid[:])
+	secrets := make(map[party.ID]*Secret, N)
+	public := make(map[party.ID]*Public, N)
+
+	f := polynomial.NewPolynomial(T, sample.Scalar(source))
+	one := new(safenum.Nat).SetUint64(1)
+	for _, pid := range partyIDs {
+		p, q := sample.Paillier(source)
+		pq := new(safenum.Nat).Mul(p, q, -1)
+		n := safenum.ModulusFromNat(pq)
+		pMinus1 := new(safenum.Nat).Sub(p, one, -1)
+		qMinus1 := new(safenum.Nat).Sub(q, one, -1)
+		phi := new(safenum.Nat).Mul(pMinus1, qMinus1, -1)
+		s, t, _ := sample.Pedersen(source, phi, n)
+
+		ecdsaSecret := f.Evaluate(pid.Scalar())
+		secrets[pid] = &Secret{
+			ID:    pid,
+			ECDSA: ecdsaSecret,
+			P:     &proto.NatMarshaller{Nat: p},
+			Q:     &proto.NatMarshaller{Nat: q},
+		}
+		X := curve.NewIdentityPoint().ScalarBaseMult(ecdsaSecret)
+		public[pid] = &Public{
+			ECDSA: X,
+			N:     n.Big(),
+			S:     s.Big(),
+			T:     t.Big(),
+		}
+	}
+
+	rid := newRID()
+	_, _ = io.ReadFull(source, rid)
+
 	sessions := make(map[party.ID]*Session, N)
 	for _, partyID := range partyIDs {
-		s, err := newSession(T, public, rid)
-		if err != nil {
-			return nil, nil, err
-		}
-		sessions[partyID] = s
-	}
-	return sessions, secrets, nil
-}
 
-func FakeData(partyIDs party.IDSlice, threshold int) (map[party.ID]*Public, map[party.ID]*Secret) {
-	n := len(partyIDs)
-	secrets := make(map[party.ID]*Secret, n)
-	public := make(map[party.ID]*Public, n)
-
-	shares, _ := generateShares(partyIDs, threshold)
-
-	for i, pid := range partyIDs {
-		sk := paillier.NewSecretKey()
-		pail := sk.PublicKey
-		ped, _ := sk.GeneratePedersen()
-
-		secrets[pid] = &Secret{
-			ID:       pid,
-			ECDSA:    shares[i],
-			Paillier: sk,
-		}
-		X := curve.NewIdentityPoint().ScalarBaseMult(shares[i])
-		public[pid] = &Public{
-			ECDSA:    X,
-			Paillier: pail,
-			Pedersen: ped,
+		sessions[partyID] = &Session{
+			Threshold: int32(T),
+			Public:    public,
+			RID:       rid.Copy(),
 		}
 	}
-	return public, secrets
-}
 
-func generateShares(parties party.IDSlice, t int) (shares []*curve.Scalar, sum *curve.Scalar) {
-	sum = sample.Scalar(rand.Reader)
-	f := polynomial.NewPolynomial(t, sum)
-
-	n := len(parties)
-	shares = make([]*curve.Scalar, n)
-	for i, pid := range parties {
-		x := pid.Scalar()
-		shares[i] = f.Evaluate(x)
-	}
-	return
+	return sessions, secrets
 }
