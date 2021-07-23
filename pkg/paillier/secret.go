@@ -77,12 +77,17 @@ func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
 	// ϕ⁻¹ mod N
 	phiInv := new(safenum.Nat).ModInverse(phi, nMod)
 
+	pk, err := NewPublicKey(n.Big())
+	if err != nil {
+		//todo handle error
+	}
+
 	return &SecretKey{
 		p:         P,
 		q:         Q,
 		phi:       phi,
 		phiInv:    phiInv,
-		PublicKey: NewPublicKey(n.Big()),
+		PublicKey: pk,
 	}
 }
 
@@ -184,12 +189,6 @@ func (sk SecretKey) Validate() error {
 	phi.ModMul(phi, sk.phiInv, n)
 	if phi.Eq(oneNat) != 1 {
 		return ErrWrongPhiInv
-	}
-
-	// check public key too
-	err := sk.PublicKey.Validate()
-	if err != nil {
-		return fmt.Errorf("paillier.SecretKey: invalid public key: %w", err)
 	}
 	return nil
 }

@@ -45,9 +45,8 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 	}
 
 	// Set Paillier
-	Nj := body.Pedersen.N
-	PaillierPublic := paillier.NewPublicKey(Nj)
-	if err := PaillierPublic.Validate(); err != nil {
+	PaillierPublic, err := paillier.NewPublicKey(body.N)
+	if err != nil {
 		return err
 	}
 

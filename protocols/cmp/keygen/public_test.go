@@ -24,7 +24,7 @@ func TestPublic_Validate(t *testing.T) {
 	_, X := sample.ScalarPointPair(rand.Reader)
 	N2 := big.NewInt(1)
 	N2.Add(N2, N)
-	p2 := paillier.NewPublicKey(N2)
+	p2, _ := paillier.NewPublicKey(N2)
 	type fields struct {
 		ECDSA    *curve.Point
 		Paillier *paillier.PublicKey

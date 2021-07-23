@@ -37,19 +37,29 @@ func (pk *PublicKey) N() *big.Int {
 }
 
 // NewPublicKey returns an initialized paillier.PublicKey and computes N, N² and (N-1)/2.
+// Validation is performed on n and an error is returned if it is not a valid modulus.
 // The input n is copied.
-func NewPublicKey(n *big.Int) *PublicKey {
+func NewPublicKey(n *big.Int) (*PublicKey, error) {
+	// log₂(N) = BitsPaillier
+	if bits := n.BitLen(); bits != params.BitsPaillier {
+		return nil, fmt.Errorf("paillier.publicKey: have: %d, need %d: %w", bits, params.BitsPaillier, ErrPaillierLength)
+	}
+	if n.Bit(0) != 1 {
+		return nil, ErrPaillierEven
+	}
+
 	nNat := new(safenum.Nat).SetBig(n, n.BitLen())
 	nSquared := new(safenum.Nat).Mul(nNat, nNat, -1)
 	nPlusOne := new(safenum.Nat).Add(nNat, oneNat, -1)
 	// Tightening is fine, since n is public
 	nPlusOne.Resize(nPlusOne.TrueLen())
+
 	return &PublicKey{
 		n:        safenum.ModulusFromNat(nNat),
 		nNat:     nNat,
 		nSquared: safenum.ModulusFromNat(nSquared),
 		nPlusOne: nPlusOne,
-	}
+	}, nil
 }
 
 // Enc returns the encryption of m under the public key pk.
@@ -93,20 +103,7 @@ func (pk PublicKey) Equal(other *PublicKey) bool {
 	return eq == 1
 }
 
-// Validate returns an error if the bit length of N is wrong or if it is even.
-func (pk PublicKey) Validate() error {
-	// log₂(N) = BitsPaillier
-	if bits := pk.n.BitLen(); bits != params.BitsPaillier {
-		return fmt.Errorf("paillier.publicKey: have: %d, need %d: %w", bits, params.BitsPaillier, ErrPaillierLength)
-	}
-	if pk.nNat.Byte(0)&1 != 1 {
-		return ErrPaillierEven
-	}
-
-	return nil
-}
-
-// ValidateCiphertexts checks if all ciphertexts are in the correct range and coprime to N².
+// ValidateCiphertexts checks if all ciphertexts are in the correct range and coprime to N²
 // ct ∈ [1, …, N²-1] AND GCD(ct,N²) = 1.
 func (pk PublicKey) ValidateCiphertexts(cts ...*Ciphertext) bool {
 	for _, ct := range cts {
