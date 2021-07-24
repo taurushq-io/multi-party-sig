@@ -3,6 +3,7 @@ package keygen
 import (
 	"errors"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/proto"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
@@ -106,7 +107,12 @@ func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
 		Threshold: int32(r.Threshold),
 		Public:    PublicData,
 		RID:       r.RID.Copy(),
-		Secret:    newSecret(r.SelfID(), UpdatedSecretECDSA, r.PaillierSecret),
+		Secret: &Secret{
+			ID:    r.SelfID(),
+			ECDSA: UpdatedSecretECDSA,
+			P:     &proto.NatMarshaller{Nat: r.PaillierSecret.P()},
+			Q:     &proto.NatMarshaller{Nat: r.PaillierSecret.Q()},
+		},
 	}
 
 	// write new ssid to hash, to bind the Schnorr proof to this new config

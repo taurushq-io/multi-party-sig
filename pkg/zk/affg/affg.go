@@ -170,7 +170,6 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	wY := new(safenum.Nat).SetBig(p.Wy, p.Wy.BitLen())
 
 	{
-
 		// tmp = z₁ ⊙ C
 		// lhs = Enc₀(z₂;w) ⊕ z₁ ⊙ C
 		tmp := public.C.Clone().Mul(verifier, z1)

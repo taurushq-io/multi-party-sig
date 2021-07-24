@@ -1,7 +1,7 @@
 package sign
 
 import (
-	"crypto/rand"
+	mrand "math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,16 +13,17 @@ import (
 )
 
 func Test_newMtA(t *testing.T) {
+	source := mrand.New(mrand.NewSource(1))
 	paillierI := zk.ProverPaillierPublic
 	paillierJ := zk.VerifierPaillierPublic
 
 	ski := zk.ProverPaillierSecret
 	skj := zk.VerifierPaillierSecret
-	ai, Ai := sample.ScalarPointPair(rand.Reader)
-	aj, Aj := sample.ScalarPointPair(rand.Reader)
+	ai, Ai := sample.ScalarPointPair(source)
+	aj, Aj := sample.ScalarPointPair(source)
 
-	bi := sample.Scalar(rand.Reader)
-	bj := sample.Scalar(rand.Reader)
+	bi := sample.Scalar(source)
+	bj := sample.Scalar(source)
 
 	Bi, _ := paillierI.Enc(bi.Int())
 	Bj, _ := paillierJ.Enc(bj.Int())
@@ -34,12 +35,12 @@ func Test_newMtA(t *testing.T) {
 	mtaI := NewMtA(ai, Ai, Bi, Bj, ski, paillierJ)
 	mtaJ := NewMtA(aj, Aj, Bj, Bi, skj, paillierI)
 
-	msgJ := mtaI.ProofAffG(hash.New(), zk.Pedersen)
-	msgI := mtaJ.ProofAffG(hash.New(), zk.Pedersen)
+	msgForJ := mtaI.ProofAffG(hash.New(), zk.Pedersen)
+	msgForI := mtaJ.ProofAffG(hash.New(), zk.Pedersen)
 
-	err := mtaI.Input(hash.New(), zk.Pedersen, msgI, Aj)
+	err := mtaI.Input(hash.New(), zk.Pedersen, msgForI, Aj)
 	require.NoError(t, err, "decryption should pass")
-	err = mtaJ.Input(hash.New(), zk.Pedersen, msgJ, Ai)
+	err = mtaJ.Input(hash.New(), zk.Pedersen, msgForJ, Ai)
 	require.NoError(t, err, "decryption should pass")
 
 	gammaI := mtaI.Share()
