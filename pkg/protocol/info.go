@@ -5,6 +5,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
+// Info represents static information about a specific protocol execution.
 type Info interface {
 	// ProtocolID is string identifier for this protocol
 	ProtocolID() types.ProtocolID

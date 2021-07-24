@@ -22,18 +22,18 @@ func IntervalL(rand io.Reader) *safenum.Int {
 	return sampleNeg(rand, params.L)
 }
 
-// IntervalLPrime returns an integer in the range ± 2ˡº, but with constant-time properties.
+// IntervalLPrime returns an integer in the range ± 2ˡ', but with constant-time properties.
 func IntervalLPrime(rand io.Reader) *safenum.Int {
 	return sampleNeg(rand, params.LPrime)
 }
 
-// IntervalLEps returns an integer in the range ± 2ˡ⁺ᵉ, but with constant-time properties
+// IntervalLEps returns an integer in the range ± 2ˡ⁺ᵉ, but with constant-time properties.
 func IntervalLEps(rand io.Reader) *safenum.Int {
 	return sampleNeg(rand, params.LPlusEpsilon)
 }
 
-// IntervalLPrimeEps returns an integer in the range ± 2ˡº⁺ᵉ, but with constant-time properties
-func IntervalLPrimeEpse(rand io.Reader) *safenum.Int {
+// IntervalLPrimeEps returns an integer in the range ± 2ˡ'⁺ᵉ, but with constant-time properties.
+func IntervalLPrimeEps(rand io.Reader) *safenum.Int {
 	return sampleNeg(rand, params.LPrimePlusEpsilon)
 }
 
@@ -47,7 +47,7 @@ func IntervalLEpsN(rand io.Reader) *safenum.Int {
 	return sampleNeg(rand, params.LPlusEpsilon+params.BitsIntModN)
 }
 
-// IntervalScalar returns an integer in the range ±q, with q the size of a Scalar
+// IntervalScalar returns an integer in the range ±q, with q the size of a Scalar.
 func IntervalScalar(rand io.Reader) *safenum.Int {
 	return sampleNeg(rand, params.BytesScalar*8)
 }

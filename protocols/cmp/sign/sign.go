@@ -13,7 +13,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/protocols/cmp/keygen"
 )
 
-// protocolSignID for the "3 round" variant using echo broadcast
+// protocolSignID for the "3 round" variant using echo broadcast.
 const (
 	protocolSignID     types.ProtocolID  = "cmp/sign-3-round-echo"
 	protocolSignRounds types.RoundNumber = 5

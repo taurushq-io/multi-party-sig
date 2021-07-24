@@ -37,20 +37,20 @@ func Test_newMtA(t *testing.T) {
 	ajbi := curve.NewScalar().Multiply(aj, bi)
 	c := curve.NewScalar().Add(aibj, ajbi)
 
-	mta_i_to_j := NewMtA(ai, Ai, Bi, Bj, ski, j.Paillier)
-	mta_j_to_i := NewMtA(aj, Aj, Bj, Bi, skj, i.Paillier)
+	mtaI := NewMtA(ai, Ai, Bi, Bj, ski, j.Paillier)
+	mtaJ := NewMtA(aj, Aj, Bj, Bi, skj, i.Paillier)
 
-	msg_i_to_j := mta_i_to_j.ProofAffG(hash.New(), j.Pedersen)
-	msg_j_to_i := mta_j_to_i.ProofAffG(hash.New(), i.Pedersen)
+	msgJ := mtaI.ProofAffG(hash.New(), j.Pedersen)
+	msgI := mtaJ.ProofAffG(hash.New(), i.Pedersen)
 
-	err := mta_i_to_j.Input(hash.New(), j.Pedersen, msg_j_to_i, Aj)
+	err := mtaI.Input(hash.New(), j.Pedersen, msgI, Aj)
 	require.NoError(t, err, "decryption should pass")
-	err = mta_j_to_i.Input(hash.New(), i.Pedersen, msg_i_to_j, Ai)
+	err = mtaJ.Input(hash.New(), i.Pedersen, msgJ, Ai)
 	require.NoError(t, err, "decryption should pass")
 
-	gamma_ij := mta_i_to_j.Share()
-	gamma_ji := mta_j_to_i.Share()
-	gamma := curve.NewScalar().Add(gamma_ij, gamma_ji)
+	gammaI := mtaI.Share()
+	gammaJ := mtaJ.Share()
+	gamma := curve.NewScalar().Add(gammaI, gammaJ)
 	assert.Equal(t, c, gamma, "a•b should be equal to α + β")
 
 }

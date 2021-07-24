@@ -24,6 +24,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
+// Ciphertext represents an integer of the for (1+N)ᵐρᴺ (mod N²), representing the encryption of m ∈ ℤₙˣ.
 type Ciphertext struct {
 	C *github_com_taurusgroup_cmp_ecdsa_internal_proto.NatMarshaller `protobuf:"bytes,1,opt,name=c,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/internal/proto.NatMarshaller" json:"c,omitempty"`
 }

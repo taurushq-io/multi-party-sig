@@ -24,6 +24,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
+// Exponent represent a polynomial F(X) whose coefficients belong to a group 𝔾.
 type Exponent struct {
 	// IsConstant indicates that the constant coefficient is the identity.
 	// We do this so that we never need to send an encoded Identity point, and thus consider it invalid

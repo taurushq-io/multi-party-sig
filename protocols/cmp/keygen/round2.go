@@ -16,6 +16,8 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
+var _ round.Round = (*round2)(nil)
+
 type round2 struct {
 	*round1
 
@@ -57,9 +59,9 @@ type round2 struct {
 	Decommitment hash.Decommitment // uᵢ
 }
 
-// ProcessMessage implements round.Round
+// ProcessMessage implements round.Round.
 //
-// - store commitment Vⱼ
+// - store commitment Vⱼ.
 func (r *round2) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Keygen2)
 	r.Commitments[j] = body.Commitment
@@ -71,7 +73,7 @@ func (r *round2) ProcessMessage(j party.ID, content message.Content) error {
 // Since we assume a simple P2P network, we use an extra round to "echo"
 // the hash. Everybody sends a hash of all hashes.
 //
-// - send Hash(ssid, V₁, …, Vₙ)
+// - send Hash(ssid, V₁, …, Vₙ).
 func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Broadcast the message we created in round1
 	h := r.Hash()
@@ -92,10 +94,10 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}, nil
 }
 
-// MessageContent implements round.Round
+// MessageContent implements round.Round.
 func (r *round2) MessageContent() message.Content { return &Keygen2{} }
 
-// Validate implements message.Content
+// Validate implements message.Content.
 func (m *Keygen2) Validate() error {
 	if m == nil {
 		return errors.New("keygen.round1: message is nil")
@@ -106,5 +108,5 @@ func (m *Keygen2) Validate() error {
 	return nil
 }
 
-// RoundNumber implements message.Content
+// RoundNumber implements message.Content.
 func (m *Keygen2) RoundNumber() types.RoundNumber { return 2 }

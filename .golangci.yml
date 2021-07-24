@@ -1,8 +1,21 @@
 linters:
-  disable-all: true
   enable:
     - goimports
-    - golint
-#    - govet
-issues:
-  exclude-use-default: false
+    - revive
+    - govet
+    - deadcode
+    - gosimple
+    - errcheck
+    - ineffassign
+    - staticcheck
+    - goconst
+    - dupl
+    - exhaustive
+    - gocognit
+    - godot
+    - goconst
+    - godox
+    - goerr113
+    - importas
+    - nilerr
+    - prealloc

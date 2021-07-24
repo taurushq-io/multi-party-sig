@@ -8,6 +8,7 @@ option (gogoproto.stable_marshaler_all) = true;
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
+// Exponent represent a polynomial F(X) whose coefficients belong to a group 𝔾.
 message Exponent {
   option (gogoproto.equal) = false;
   option (gogoproto.goproto_getters) = false;

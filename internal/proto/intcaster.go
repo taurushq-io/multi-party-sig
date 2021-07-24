@@ -6,10 +6,10 @@ import (
 	"math/big"
 )
 
-// IntCaster handles big int operations
+// IntCaster handles big int operations.
 type IntCaster struct{}
 
-// Equal returns true if the provided big ints are equal
+// Equal returns true if the provided big ints are equal.
 func (c *IntCaster) Equal(a, b *big.Int) bool {
 	if a == nil {
 		return b == nil
@@ -17,7 +17,7 @@ func (c *IntCaster) Equal(a, b *big.Int) bool {
 	return a.Cmp(b) == 0
 }
 
-// Size returns the size of a big int
+// Size returns the size of a big int.
 func (c *IntCaster) Size(a *big.Int) int {
 	if a == nil {
 		return 0
@@ -25,7 +25,7 @@ func (c *IntCaster) Size(a *big.Int) int {
 	return 1 + (a.BitLen()+7)/8
 }
 
-// MarshalTo marshals the first parameter to the second one
+// MarshalTo marshals the first parameter to the second one.
 func (c *IntCaster) MarshalTo(a *big.Int, buf []byte) (int, error) {
 	bytes, err := a.GobEncode()
 	if err != nil {
@@ -39,7 +39,7 @@ func (c *IntCaster) MarshalTo(a *big.Int, buf []byte) (int, error) {
 	return len(bytes), nil
 }
 
-// Unmarshal unmarshalls the parameter to a big int
+// Unmarshal unmarshalls the parameter to a big int.
 func (c *IntCaster) Unmarshal(buf []byte) (*big.Int, error) {
 	if len(buf) == 0 {
 		return nil, fmt.Errorf("bad input")
@@ -52,7 +52,7 @@ func (c *IntCaster) Unmarshal(buf []byte) (*big.Int, error) {
 	return &i, nil
 }
 
-// NewPopulated returns a new instance of a big int, pre-populated with a zero
+// NewPopulated returns a new instance of a big int, pre-populated with a zero.
 func (c *IntCaster) NewPopulated() *big.Int {
 	return big.NewInt(0)
 }

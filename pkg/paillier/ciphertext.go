@@ -10,20 +10,20 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
-// Add sets ct to the homomorphic sum ct ct₁ ⊕ ct₂.
-// ct = ct₁•ct₂ (mod N²)
-func (ct *Ciphertext) Add(pk *PublicKey, otherCt *Ciphertext) *Ciphertext {
-	if otherCt == nil {
+// Add sets ct to the homomorphic sum ct ⊕ ct₂.
+// ct ← ct•ct₂ (mod N²).
+func (ct *Ciphertext) Add(pk *PublicKey, ct2 *Ciphertext) *Ciphertext {
+	if ct2 == nil {
 		return ct
 	}
 
-	ct.C.ModMul(ct.C.Nat, otherCt.C.Nat, pk.nSquared)
+	ct.C.ModMul(ct.C.Nat, ct2.C.Nat, pk.nSquared)
 
 	return ct
 }
 
-// Mul sets ct to the homomorphic multiplication of k ⊙ ctₐ
-// ct = ctᵏ (mod N²)
+// Mul sets ct to the homomorphic multiplication of k ⊙ ct.
+// ct ← ctᵏ (mod N²).
 func (ct *Ciphertext) Mul(pk *PublicKey, k *safenum.Int) *Ciphertext {
 	if k == nil {
 		return ct
@@ -34,21 +34,22 @@ func (ct *Ciphertext) Mul(pk *PublicKey, k *safenum.Int) *Ciphertext {
 	return ct
 }
 
-// Equal check whether ct ≡ ctₐ (mod N²)
+// Equal check whether ct ≡ ctₐ (mod N²).
 func (ct *Ciphertext) Equal(ctA *Ciphertext) bool {
 	return ct.C.Eq(ctA.C.Nat) == 1
 }
 
-// Clone returns a deep copy of ct
+// Clone returns a deep copy of ct.
 func (ct Ciphertext) Clone() *Ciphertext {
-	c := NewCiphertext()
+	c := newCiphertext()
 	c.C.SetNat(ct.C.Nat)
 	return c
 }
 
 // Randomize multiplies the ciphertext's nonce by a newly generated one.
-// ct *= nonceᴺ for some nonce either given or generated here (if nonce = nil).
-// The updated receiver is returned, as well as the nonce update
+// ct ← ct ⋅ nonceᴺ (mod N²).
+// If nonce is nil, a random one is generated.
+// The receiver is updated, and the nonce update is returned.
 func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *safenum.Nat) *safenum.Nat {
 	if nonce == nil {
 		nonce = sample.UnitModN(rand.Reader, pk.n)
@@ -59,7 +60,7 @@ func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *safenum.Nat) *safenum.Nat 
 	return nonce
 }
 
-func NewCiphertext() *Ciphertext {
+func newCiphertext() *Ciphertext {
 	return &Ciphertext{C: &proto.NatMarshaller{Nat: new(safenum.Nat)}}
 }
 

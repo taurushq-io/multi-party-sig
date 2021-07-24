@@ -9,6 +9,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
+// MarshalJSON implements json.Marshaler.
 func (v *Point) MarshalJSON() ([]byte, error) {
 	data, err := v.Marshal()
 	if err != nil {
@@ -17,6 +18,7 @@ func (v *Point) MarshalJSON() ([]byte, error) {
 	return json.Marshal(data)
 }
 
+// UnmarshalJSON implements json.Unmarshaler.
 func (v *Point) UnmarshalJSON(bytes []byte) error {
 	var data []byte
 	if err := json.Unmarshal(bytes, &data); err != nil {
@@ -25,11 +27,13 @@ func (v *Point) UnmarshalJSON(bytes []byte) error {
 	return v.Unmarshal(data)
 }
 
+// MarshalJSON implements json.Marshaler.
 func (s Scalar) MarshalJSON() ([]byte, error) {
 	data, _ := s.Marshal()
 	return json.Marshal(data)
 }
 
+// UnmarshalJSON implements json.Unmarshaler.
 func (s *Scalar) UnmarshalJSON(bytes []byte) error {
 	var data []byte
 	if err := json.Unmarshal(bytes, &data); err != nil {
@@ -38,6 +42,7 @@ func (s *Scalar) UnmarshalJSON(bytes []byte) error {
 	return s.Unmarshal(data)
 }
 
+// Marshal implements proto.Marshaler.
 func (v *Point) Marshal() (data []byte, err error) {
 	const size = params.BytesPoint
 	data = make([]byte, size)
@@ -48,6 +53,7 @@ func (v *Point) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
+// MarshalTo implements proto.Marshaler.
 func (v *Point) MarshalTo(data []byte) (int, error) {
 	return v.MarshalToSizedBuffer(data[:params.BytesPoint])
 }
@@ -72,25 +78,30 @@ func (v *Point) MarshalToSizedBuffer(data []byte) (int, error) {
 	return params.BytesPoint, nil
 }
 
+// Marshal implements proto.Marshaler.
 func (s *Scalar) Marshal() ([]byte, error) {
 	data := make([]byte, params.BytesScalar)
 	n, err := s.MarshalTo(data)
 	return data[:n], err
 }
 
+// MarshalTo implements proto.Marshaler.
 func (s *Scalar) MarshalTo(data []byte) (int, error) {
 	s.s.PutBytesUnchecked(data)
 	return params.BytesScalar, nil
 }
 
+// Size implements proto.Sizer.
 func (v *Point) Size() (n int) {
 	return params.BytesPoint
 }
 
+// Size implements proto.Sizer.
 func (s *Scalar) Size() (n int) {
 	return params.BytesScalar
 }
 
+// String implements fmt.Stringer.
 func (v *Point) String() string {
 	if v == nil {
 		return "nil"
@@ -102,6 +113,7 @@ func (v *Point) String() string {
 	return s
 }
 
+// String implements fmt.Stringer.
 func (s *Scalar) String() string {
 	if s == nil {
 		return "nil"
@@ -109,6 +121,7 @@ func (s *Scalar) String() string {
 	return s.s.String()
 }
 
+// Unmarshal implements proto.Unmarshaler.
 func (v *Point) Unmarshal(data []byte) error {
 	if len(data) < params.BytesPoint {
 		return errors.New("curve.Point.Unmarshal: data is too small")
@@ -139,6 +152,7 @@ func (v *Point) Unmarshal(data []byte) error {
 	return nil
 }
 
+// Unmarshal implements proto.Unmarshaler.
 func (s *Scalar) Unmarshal(data []byte) error {
 	var scalar secp256k1.ModNScalar
 	if len(data) < params.BytesScalar {

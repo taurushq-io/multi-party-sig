@@ -9,14 +9,14 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
-// NewPolynomialExponent generates a Exponent polynomial F(X) = [secret + a₁•X + … + aₜ•Xᵗ]•G,
-// with Coefficient in G, and degree t.
+// NewPolynomialExponent generates an Exponent polynomial F(X) = [secret + a₁•X + … + aₜ•Xᵗ]•G,
+// with coefficients in 𝔾, and degree t.
 func NewPolynomialExponent(polynomial *Polynomial) *Exponent {
 	var p Exponent
 
-	p.Coefficients = make([]curve.Point, len(polynomial.Coefficients))
-	for i := range polynomial.Coefficients {
-		p.Coefficients[i].ScalarBaseMult(&polynomial.Coefficients[i])
+	p.Coefficients = make([]curve.Point, len(polynomial.coefficients))
+	for i := range polynomial.coefficients {
+		p.Coefficients[i].ScalarBaseMult(&polynomial.coefficients[i])
 	}
 
 	// This hack is needed so that we never send an encoded Identity point
@@ -29,13 +29,27 @@ func NewPolynomialExponent(polynomial *Polynomial) *Exponent {
 	return &p
 }
 
-// Evaluate uses any one of the defined evaluation algorithms
+// Evaluate returns F(x) = [secret + a₁•x + … + aₜ•xᵗ]•G.
 func (p *Exponent) Evaluate(x *curve.Scalar) *curve.Point {
-	return p.evaluateHorner(x)
+	result := curve.NewIdentityPoint()
+
+	for i := len(p.Coefficients) - 1; i >= 0; i-- {
+		// Bₙ₋₁ = [x]Bₙ  + Aₙ₋₁
+		result.ScalarMult(x, result)
+		result.Add(result, &p.Coefficients[i])
+	}
+
+	if p.IsConstant {
+		// result is B₁
+		// we want B₀ = [x]B₁ + A₀ = [x]B₁
+		result.ScalarMult(x, result)
+	}
+
+	return result
 }
 
 // evaluateClassic evaluates a polynomial in a given variable index
-// We do the classic method, where we compute all powers of x
+// We do the classic method, where we compute all powers of x.
 func (p *Exponent) evaluateClassic(x *curve.Scalar) *curve.Point {
 	var tmp curve.Point
 
@@ -59,32 +73,12 @@ func (p *Exponent) evaluateClassic(x *curve.Scalar) *curve.Point {
 	return result
 }
 
-// evaluateHorner evaluates a polynomial in a given variable index
-func (p *Exponent) evaluateHorner(index *curve.Scalar) *curve.Point {
-	result := curve.NewIdentityPoint()
-
-	for i := len(p.Coefficients) - 1; i >= 0; i-- {
-		// Bₙ₋₁ = [x]Bₙ  + Aₙ₋₁
-		result.ScalarMult(index, result)
-		result.Add(result, &p.Coefficients[i])
-	}
-
-	if p.IsConstant {
-		// result is B₁
-		// we want B₀ = [x]B₁ + A₀ = [x]B₁
-		result.ScalarMult(index, result)
-	}
-
-	return result
-}
-
-// Degree returns the degree t of the polynomial
+// Degree returns the degree t of the polynomial.
 func (p *Exponent) Degree() int {
 	if p.IsConstant {
 		return len(p.Coefficients)
-	} else {
-		return len(p.Coefficients) - 1
 	}
+	return len(p.Coefficients) - 1
 }
 
 func (p *Exponent) add(q *Exponent) error {
@@ -108,7 +102,7 @@ func Sum(polynomials []*Exponent) (*Exponent, error) {
 	var err error
 
 	// Create the new polynomial by copying the first one given
-	summed := polynomials[0].Copy()
+	summed := polynomials[0].copy()
 
 	// we assume all polynomials have the same degree as the first
 	for j := 1; j < len(polynomials); j++ {
@@ -120,7 +114,7 @@ func Sum(polynomials []*Exponent) (*Exponent, error) {
 	return summed, nil
 }
 
-func (p *Exponent) Copy() *Exponent {
+func (p *Exponent) copy() *Exponent {
 	var q Exponent
 	q.Coefficients = make([]curve.Point, len(p.Coefficients))
 	for i := 0; i < len(p.Coefficients); i++ {
@@ -130,7 +124,11 @@ func (p *Exponent) Copy() *Exponent {
 	return &q
 }
 
+// Equal returns true if p ≡ other.
 func (p *Exponent) Equal(other Exponent) bool {
+	if p.IsConstant != other.IsConstant {
+		return false
+	}
 	if len(p.Coefficients) != len(other.Coefficients) {
 		return false
 	}
@@ -142,20 +140,19 @@ func (p *Exponent) Equal(other Exponent) bool {
 	return true
 }
 
-// Constant returns the constant coefficient of the polynomial 'in the exponent'
+// Constant returns the constant coefficient of the polynomial 'in the exponent'.
 func (p *Exponent) Constant() *curve.Point {
 	if p.IsConstant {
 		return curve.NewIdentityPoint()
-	} else {
-		return &p.Coefficients[0]
 	}
+	return &p.Coefficients[0]
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
 func (p *Exponent) WriteTo(w io.Writer) (int64, error) {
 	total := int64(0)
 
-	// write the number of Coefficients
+	// write the number of coefficients
 	_ = binary.Write(w, binary.BigEndian, uint32(p.Degree()))
 
 	if p.IsConstant {
@@ -167,7 +164,7 @@ func (p *Exponent) WriteTo(w io.Writer) (int64, error) {
 		}
 	}
 
-	// write all Coefficients
+	// write all coefficients
 	for _, c := range p.Coefficients {
 		n, err := c.WriteTo(w)
 		total += n

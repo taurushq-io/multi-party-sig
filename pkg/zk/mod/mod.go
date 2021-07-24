@@ -33,7 +33,7 @@ var oneNat *safenum.Nat = new(safenum.Nat).SetUint64(1).Resize(1)
 //
 // pHalf should be (p - 1) / 2
 //
-// qHalf should be (q - 1) / 2
+// qHalf should be (q - 1) / 2.
 func isQRmodPQ(y, pHalf, qHalf *safenum.Nat, p, q *safenum.Modulus) safenum.Choice {
 	test := new(safenum.Nat)
 
@@ -57,7 +57,7 @@ func isQRmodPQ(y, pHalf, qHalf *safenum.Nat, p, q *safenum.Modulus) safenum.Choi
 //   e' = ------,   e = (e')²
 //          8
 //
-// Then, (qrᵉ)⁴ = qr
+// Then, (qrᵉ)⁴ = qr.
 func fourthRoot(qr, phi *safenum.Nat, n *safenum.Modulus) *safenum.Nat {
 	e := new(safenum.Nat).SetUint64(4)
 	e.Add(e, phi, -1)

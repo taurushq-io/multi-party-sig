@@ -9,6 +9,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
+// Scalar represents an element in ℤₚ where p is the order of the secp256k1 base point.
 type Scalar struct {
 	s secp256k1.ModNScalar
 }
@@ -18,19 +19,19 @@ func NewScalar() *Scalar {
 	return new(Scalar)
 }
 
-// NewScalarBigInt returns a new Scalar from a big.Int
+// NewScalarBigInt returns a new Scalar from a big.Int.
 func NewScalarBigInt(n *big.Int) *Scalar {
 	var s Scalar
 	return s.SetBigInt(n)
 }
 
-// NewScalarInt returns a new Scalar from a safenum.Int
+// NewScalarInt returns a new Scalar from a safenum.Int.
 func NewScalarInt(n *safenum.Int) *Scalar {
 	var s Scalar
 	return s.SetInt(n)
 }
 
-// NewScalarUInt32 returns a new Scalar from a big.Int
+// NewScalarUInt32 returns a new Scalar from a big.Int.
 func NewScalarUInt32(n uint32) *Scalar {
 	var s Scalar
 	return s.SetUInt32(n)
@@ -101,7 +102,7 @@ func (s *Scalar) SetBigInt(i *big.Int) *Scalar {
 	return s
 }
 
-// SetInt sets s = i mod q, returning s
+// SetInt sets s = i mod q, returning s.
 func (s *Scalar) SetInt(i *safenum.Int) *Scalar {
 	s.s.SetByteSlice(i.Mod(qMod).Bytes())
 	return s
@@ -120,7 +121,7 @@ func (s *Scalar) SetBytes(in []byte) *Scalar {
 // OpenSSL right shifts excess bits from the number if the hash is too large
 // and we mirror that too.
 //
-// Taken from crypto/ecdsa
+// Taken from crypto/ecdsa.
 func (s *Scalar) SetHash(hash []byte) *Scalar {
 	i := new(big.Int)
 	orderBits := q.BitLen()
@@ -151,10 +152,12 @@ func (s *Scalar) Invert(t *Scalar) *Scalar {
 	return s
 }
 
+// IsZero returns true if s ≡ 0.
 func (s *Scalar) IsZero() bool {
 	return s.s.IsZero()
 }
 
+// BigInt returns s as a *big.Int.
 func (s *Scalar) BigInt() *big.Int {
 	var i big.Int
 	b := s.s.Bytes()
@@ -162,6 +165,7 @@ func (s *Scalar) BigInt() *big.Int {
 	return &i
 }
 
+// Int returns s as a *safenum.Int.
 func (s *Scalar) Int() *safenum.Int {
 	b := s.s.Bytes()
 	return new(safenum.Int).SetBytes(b[:])

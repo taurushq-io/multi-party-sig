@@ -156,7 +156,7 @@ func handlerLoop(id party.ID, h *protocol.Handler, network Network) error {
 func main() {
 	ids := party.IDSlice{"a", "b", "c", "d", "e"}
 	threshold := 4
-	message_to_sign := []byte("hello")
+	messageToSign := []byte("hello")
 
 	net := NewNetwork(ids)
 
@@ -164,7 +164,7 @@ func main() {
 	for _, id := range ids {
 		wg.Add(1)
 		go func(id party.ID) {
-			if err := All(id, ids, threshold, message_to_sign, net, &wg); err != nil {
+			if err := All(id, ids, threshold, messageToSign, net, &wg); err != nil {
 				fmt.Println(err)
 			}
 		}(id)

@@ -9,73 +9,16 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
+// Point represents a secp256k1 elliptic curve point.
 type Point struct {
 	p secp256k1.JacobianPoint
 }
-
-var (
-	baseX secp256k1.FieldVal
-	baseY secp256k1.FieldVal
-)
 
 // Set sets v = u, and returns v.
 func (v *Point) Set(u *Point) *Point {
 	v.p.Set(&u.p)
 	return v
 }
-
-//func (v *Point) LiftX(b []byte) (*Point, error) {
-//	x := new(big.Int).SetBytes(b)
-//
-//	// p is field size.
-//	p := Curve.P
-//
-//	if x.Cmp(p) ⩾ 0 {
-//		return nil, errors.New("infinity point")
-//	}
-//
-//	// c = x³ + 7 mod P.
-//	c := new(big.Int)
-//	c.Exp(x, big.NewInt(3), p)
-//	c.Add(c, big.NewInt(7))
-//	c.Mod(c, p)
-//
-//	// y = c^((p+1)/4) mod P.
-//	y := new(big.Int)
-//	y.Add(p, big.NewInt(1))
-//	y.Div(y, big.NewInt(4))
-//	y.Exp(c, y, p)
-//
-//	if y.Bit(0) == 1 {
-//		y.Sub(p, y)
-//	}
-//
-//	return v.setCoords(x, y), nil
-//}
-
-//// SetBytes deserializes a point in uncompressed form.
-//func (v *Point) SetBytes(x []byte) (*Point, error) {
-//	if len(x) == 0 {
-//		v.X.SetInt64(0)
-//		v.Y.SetInt64(0)
-//		return v, nil
-//	}
-//	if len(x) != 1+2*ByteSize {
-//		return nil, errors.New("point: wrong input length")
-//	}
-//	if x[0] != 4 { // uncompressed form
-//		return nil, errors.New("point: uncompressed bit not set")
-//	}
-//	v.X.SetBytes(x[1 : 1+ByteSize])
-//	v.Y.SetBytes(x[1+ByteSize:])
-//	if v.X.Cmp(P) ⩾ 0 ∥ v.Y.Cmp(P) ⩾ 0 {
-//		return nil, errors.New("point: coordinate was not reduced")
-//	}
-//	if !Curve.IsOnCurve(v.X, v.Y) {
-//		return nil, errors.New("point: not on curve")
-//	}
-//	return v, nil
-//}
 
 // Add sets v = p + q, and returns v.
 func (v *Point) Add(p, q *Point) *Point {
@@ -100,7 +43,7 @@ func (v *Point) Negate(p *Point) *Point {
 	return v
 }
 
-// Equal returns true if v is equivalent to u
+// Equal returns true if v is equivalent to other.
 func (v *Point) Equal(other interface{}) bool {
 	var u *Point
 	switch uO := other.(type) {
@@ -116,8 +59,7 @@ func (v *Point) Equal(other interface{}) bool {
 	return v.p.X.Equals(&u.p.X) && v.p.Y.Equals(&u.p.Y) && v.p.Z.Equals(&u.p.Z)
 }
 
-// ScalarBaseMult sets v = x * B, where B is the canonical generator, and
-// returns v.
+// ScalarBaseMult sets v = x * B, where B is the canonical generator, and returns v.
 //
 // The scalar multiplication is done in constant time.
 func (v *Point) ScalarBaseMult(x *Scalar) *Point {
@@ -149,12 +91,12 @@ func NewIdentityPoint() *Point {
 	return &v
 }
 
-// IsIdentity returns true if the point is ∞
+// IsIdentity returns true if the point is ∞.
 func (v Point) IsIdentity() bool {
 	return (v.p.X.IsZero() && v.p.Y.IsZero()) || v.p.Z.IsZero()
 }
 
-// ToPublicKey returns an "official" ECDSA public key
+// ToPublicKey returns an "official" ECDSA public key.
 func (v *Point) ToPublicKey() *ecdsa.PublicKey {
 	v.toAffine()
 
@@ -163,7 +105,7 @@ func (v *Point) ToPublicKey() *ecdsa.PublicKey {
 	return pk.ToECDSA()
 }
 
-// XScalar returns the x coordinate of v as a scalar mod q
+// XScalar returns the x coordinate of v as a scalar mod q.
 func (v *Point) XScalar() *Scalar {
 	var s Scalar
 	v.toAffine()
@@ -172,7 +114,7 @@ func (v *Point) XScalar() *Scalar {
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
-// It writes the full uncompressed point to w, ie 64 bytes
+// It writes the full uncompressed point to w, ie 64 bytes.
 func (v Point) WriteTo(w io.Writer) (int64, error) {
 	buf := make([]byte, params.BytesPoint)
 	if _, err := v.MarshalTo(buf); err != nil {
@@ -188,7 +130,7 @@ func (Point) Domain() string {
 }
 
 // FromPublicKey returns a new Point from an ECDSA public key.
-// It assumes the point is correct, and if not the result is undefined
+// It assumes the point is correct, and if not the result is undefined.
 func FromPublicKey(pk *ecdsa.PublicKey) *Point {
 	var v Point
 	v.p.X.SetByteSlice(pk.X.Bytes())
@@ -204,6 +146,8 @@ func (v *Point) toAffine() *Point {
 	v.p.ToAffine()
 	return v
 }
+
+var baseX, baseY secp256k1.FieldVal
 
 func init() {
 	Gx, _ := hex.DecodeString("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")

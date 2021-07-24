@@ -18,6 +18,7 @@ type Error struct {
 	Err error
 }
 
+// Error implement error.
 func (e Error) Error() string {
 	if e.Culprit == "" {
 		return fmt.Sprintf("round %d: %s", e.RoundNumber, e.Err)
@@ -25,6 +26,7 @@ func (e Error) Error() string {
 	return fmt.Sprintf("round %d: party: %s: %s", e.RoundNumber, e.Culprit, e.Err)
 }
 
+// Unwrap implement errors.Wrapper.
 func (e Error) Unwrap() error {
 	return e.Err
 }

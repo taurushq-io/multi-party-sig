@@ -17,7 +17,7 @@ type Hash struct {
 	h sha3.ShakeHash
 }
 
-// New creates a Hash struct with initial data.
+// New creates a Hash struct where the internal hash function is initialized with "CMP".
 func New() *Hash {
 	hash := &Hash{sha3.NewCShake128(nil, []byte("CMP"))}
 	return hash

@@ -13,11 +13,13 @@ import (
 	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm"
 )
 
+var _ round.Round = (*round4)(nil)
+
 type round4 struct {
 	*round3
 }
 
-// ProcessMessage implements round.Round
+// ProcessMessage implements round.Round.
 //
 // - store Fⱼ(X)
 //   - if keygen, verify Fⱼ(0) != ∞
@@ -25,7 +27,7 @@ type round4 struct {
 // - verify length of Schnorr commitments
 // - validate Paillier
 // - validate Pedersen
-// - validate commitments
+// - validate commitments.
 func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Keygen4)
 
@@ -75,7 +77,7 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 // - prove Schnorr for all coefficients of fᵢ(X)
 //   - if refresh skip constant coefficient
 //
-// - send proofs and encryption of share for Pⱼ
+// - send proofs and encryption of share for Pⱼ.
 func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// RID = ⊕ⱼ RIDⱼ
 	rid := newRID()
@@ -125,10 +127,10 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}, nil
 }
 
-// MessageContent implements round.Round
+// MessageContent implements round.Round.
 func (r *round4) MessageContent() message.Content { return &Keygen4{} }
 
-// Validate implements message.Content
+// Validate implements message.Content.
 func (m *Keygen4) Validate() error {
 	if m == nil {
 		return errors.New("keygen.round3: message is nil")
@@ -152,5 +154,5 @@ func (m *Keygen4) Validate() error {
 	return nil
 }
 
-// RoundNumber implements message.Content
+// RoundNumber implements message.Content.
 func (m *Keygen4) RoundNumber() types.RoundNumber { return 4 }

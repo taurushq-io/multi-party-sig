@@ -47,7 +47,7 @@ type BytesWithDomain struct {
 	Bytes     []byte
 }
 
-// WriteTo implements io.WriterTo
+// WriteTo implements io.WriterTo.
 func (b BytesWithDomain) WriteTo(w io.Writer) (int64, error) {
 	n, err := w.Write(b.Bytes)
 	return int64(n), err

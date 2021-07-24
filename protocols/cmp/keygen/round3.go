@@ -12,16 +12,18 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
+var _ round.Round = (*round3)(nil)
+
 type round3 struct {
 	*round2
 	// EchoHash = Hash(SSID, commitment₁, …, commitmentₙ)
 	EchoHash []byte
 }
 
-// ProcessMessage implements round.Round
+// ProcessMessage implements round.Round.
 //
-// - verify Hash(SSID, V₁, …, Vₙ) against received hash
-func (r *round3) ProcessMessage(j party.ID, content message.Content) error {
+// - verify Hash(SSID, V₁, …, Vₙ) against received hash.
+func (r *round3) ProcessMessage(_ party.ID, content message.Content) error {
 	body := content.(*Keygen3)
 
 	if !bytes.Equal(body.HashEcho, r.EchoHash) {
@@ -32,7 +34,7 @@ func (r *round3) ProcessMessage(j party.ID, content message.Content) error {
 
 // Finalize implements round.Round
 //
-// - send all committed data
+// - send all committed data.
 func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Send the message we created in round1 to all
 	msg := r.MarshalMessage(&Keygen4{
@@ -48,10 +50,10 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	return &round4{round3: r}, nil
 }
 
-// MessageContent implements round.Round
+// MessageContent implements round.Round.
 func (r *round3) MessageContent() message.Content { return &Keygen3{} }
 
-// Validate implements message.Content
+// Validate implements message.Content.
 func (m *Keygen3) Validate() error {
 	if m == nil {
 		return errors.New("keygen.round2: message is nil")
@@ -62,5 +64,5 @@ func (m *Keygen3) Validate() error {
 	return nil
 }
 
-// RoundNumber implements message.Content
+// RoundNumber implements message.Content.
 func (m *Keygen3) RoundNumber() types.RoundNumber { return 3 }

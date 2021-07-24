@@ -11,6 +11,8 @@ import (
 	zklogstar "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
 )
 
+var _ round.Round = (*round4)(nil)
+
 type round4 struct {
 	*round3
 	// DeltaShares[j] = δⱼ
@@ -26,10 +28,10 @@ type round4 struct {
 	ChiShare *curve.Scalar
 }
 
-// ProcessMessage implements round.Round
+// ProcessMessage implements round.Round.
 //
 // - Get Δⱼ, δⱼ, ϕ''ᵢⱼ
-// - Verify Π(log*)(ϕ''ᵢⱼ, Δⱼ, Γ)
+// - Verify Π(log*)(ϕ''ᵢⱼ, Δⱼ, Γ).
 func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Sign4)
 
@@ -54,7 +56,7 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 // - set δ = ∑ⱼ δⱼ
 // - set Δ = ∑ⱼ Δⱼ
 // - verify Δ = [δ]G
-// - compute σᵢ = rχᵢ + kᵢm
+// - compute σᵢ = rχᵢ + kᵢm.
 func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// δ = ∑ⱼ δⱼ
 	// Δ = ∑ⱼ Δⱼ
@@ -97,20 +99,20 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}, nil
 }
 
-// MessageContent implements round.Round
+// MessageContent implements round.Round.
 func (r *round4) MessageContent() message.Content { return &Sign4{} }
 
-// Validate implements message.Content
+// Validate implements message.Content.
 func (m *Sign4) Validate() error {
 	if m == nil {
-		return errors.New("sign.round3: message is nil")
+		return errors.New("sign.round4: message is nil")
 	}
 	if m.DeltaShare == nil || m.BigDeltaShare == nil || m.ProofLog == nil {
-		return errors.New("sign.round3: message contains nil fields")
+		return errors.New("sign.round4: message contains nil fields")
 	}
 
 	return nil
 }
 
-// RoundNumber implements message.Content
+// RoundNumber implements message.Content.
 func (m *Sign4) RoundNumber() types.RoundNumber { return 4 }

@@ -25,6 +25,6 @@ type Round interface {
 	// MessageContent returns an uninitialized message.Content for this round.
 	// It can be used to get the current round number by calling MessageContent().RoundNumber().
 	//
-	// The first round of a protocol should return &message.First{}
+	// The first round of a protocol should return &message.First{}.
 	MessageContent() message.Content
 }

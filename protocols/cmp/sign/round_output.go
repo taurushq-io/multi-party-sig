@@ -11,6 +11,8 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
+var _ round.Round = (*output)(nil)
+
 type output struct {
 	*round4
 
@@ -31,9 +33,9 @@ type output struct {
 	R *curve.Scalar
 }
 
-// ProcessMessage implements round.Round
+// ProcessMessage implements round.Round.
 //
-// - σⱼ != 0
+// - σⱼ != 0.
 func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*SignOutput)
 
@@ -47,7 +49,7 @@ func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 // Finalize implements round.Round
 //
 // - compute σ = ∑ⱼ σⱼ
-// - verify signature
+// - verify signature.
 func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {
 	// compute σ = ∑ⱼ σⱼ
 	Sigma := curve.NewScalar()
@@ -79,10 +81,10 @@ func (r *output) MessageContent() message.Content {
 
 func (m *SignOutput) Validate() error {
 	if m == nil {
-		return errors.New("sign.round4: message is nil")
+		return errors.New("sign.output: message is nil")
 	}
 	if m.SigmaShare == nil {
-		return errors.New("sign.round4: message contains nil fields")
+		return errors.New("sign.output: message contains nil fields")
 	}
 	return nil
 }

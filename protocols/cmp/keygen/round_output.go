@@ -10,15 +10,17 @@ import (
 	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
 
+var _ round.Round = (*output)(nil)
+
 type output struct {
 	*round5
 	Session *Session
 	Secret  *Secret
 }
 
-// ProcessMessage implements round.Round
+// ProcessMessage implements round.Round.
 //
-// - verify all Schnorr proof for the new ecdsa share
+// - verify all Schnorr proof for the new ecdsa share.
 func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*KeygenOutput)
 	if !zksch.Verify(r.HashForID(j),
@@ -30,7 +32,7 @@ func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 	return nil
 }
 
-// Finalize implements round.Round
+// Finalize implements round.Round.
 func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {
 	return &round.Output{Result: &Result{
 		Session: r.Session,
@@ -38,10 +40,10 @@ func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {
 	}}, nil
 }
 
-// MessageContent implements round.Round
+// MessageContent implements round.Round.
 func (r *output) MessageContent() message.Content { return &KeygenOutput{} }
 
-// Validate implements message.Content
+// Validate implements message.Content.
 func (m *KeygenOutput) Validate() error {
 	if m == nil {
 		return errors.New("keygen.round5: message is nil")
@@ -52,5 +54,5 @@ func (m *KeygenOutput) Validate() error {
 	return nil
 }
 
-// RoundNumber implements message.Content
+// RoundNumber implements message.Content.
 func (m *KeygenOutput) RoundNumber() types.RoundNumber { return 6 }

@@ -14,6 +14,8 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
+var _ round.Round = (*round1)(nil)
+
 type round1 struct {
 	*round.Helper
 
@@ -44,7 +46,7 @@ type round1 struct {
 	VSSSecret *polynomial.Polynomial
 }
 
-// ProcessMessage implements round.Round
+// ProcessMessage implements round.Round.
 func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 
 // Finalize implements round.Round
@@ -55,7 +57,7 @@ func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 // - set Aᵢ = aᵢ⋅G
 // - compute Fᵢ(X) = fᵢ(X)⋅G
 // - sample ridᵢ <- {0,1}ᵏ
-// - commit to message
+// - commit to message.
 func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// generate Paillier and Pedersen
 	PaillierSecret := paillier.NewSecretKey()
@@ -106,5 +108,5 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}, nil
 }
 
-// MessageContent implements round.Round
+// MessageContent implements round.Round..
 func (r *round1) MessageContent() message.Content { return &message.First{} }

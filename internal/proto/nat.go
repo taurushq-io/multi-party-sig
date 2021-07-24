@@ -20,7 +20,7 @@ func (m NatMarshaller) Marshal() ([]byte, error) {
 	return m.Bytes(), nil
 }
 
-// Marshal writes out the data to an existing slice, returning an error if the slice is small.
+// MarshalTo writes out the data to an existing slice, returning an error if the slice is small.
 func (m *NatMarshaller) MarshalTo(data []byte) (n int, err error) {
 	required := m.Size()
 	if len(data) < required {
@@ -44,12 +44,12 @@ func (m *NatMarshaller) Size() int {
 	return (m.AnnouncedLen() + 7) / 8
 }
 
-// MarshalJSON produces JSON from this struct
+// MarshalJSON produces JSON from this struct.
 func (m NatMarshaller) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m.Bytes())
 }
 
-// UnmarshalJSON reads this struct from JSON
+// UnmarshalJSON reads this struct from JSON.
 func (m *NatMarshaller) UnmarshalJSON(data []byte) error {
 	if m.Nat == nil {
 		m.Nat = new(safenum.Nat)

@@ -6,7 +6,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
-// IsValidModN checks that ints are all in the range [1,…,N-1] and co-prime to N
+// IsValidModN checks that ints are all in the range [1,…,N-1] and co-prime to N.
 func IsValidModN(N *big.Int, ints ...*big.Int) bool {
 	var gcd big.Int
 	one := big.NewInt(1)
@@ -27,6 +27,7 @@ func IsValidModN(N *big.Int, ints ...*big.Int) bool {
 	return true
 }
 
+// IsInIntervalLEps returns true if n ∈ [-2ˡ⁺ᵉ,…,2ˡ⁺ᵉ].
 func IsInIntervalLEps(n *big.Int) bool {
 	if n == nil {
 		return false
@@ -34,6 +35,7 @@ func IsInIntervalLEps(n *big.Int) bool {
 	return n.BitLen() <= params.LPlusEpsilon
 }
 
+// IsInIntervalLPrimeEps returns true if n ∈ [-2ˡ'⁺ᵉ,…,2ˡ'⁺ᵉ].
 func IsInIntervalLPrimeEps(n *big.Int) bool {
 	if n == nil {
 		return false

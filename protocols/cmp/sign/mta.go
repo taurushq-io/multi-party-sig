@@ -16,8 +16,6 @@ import (
 // MtA holds the local data for the multiplicative-to-additive share conversion protocol.
 // The sender and receiver are denoted by index i and j respectively, and we take the perspective of party i.
 // i has share aᵢ and j has share bⱼ.
-//
-// We hold data
 type MtA struct {
 	i *paillier.SecretKey
 	j *paillier.PublicKey
@@ -58,7 +56,7 @@ type MtA struct {
 
 // NewMtA creates the MtA struct and returns the corresponding MtA message to be sent to i.
 // - aᵢ, Aᵢ is i's secret share and corresponding group element
-// - Bⱼ is the encryption of bⱼ sent by j in the previous round
+// - Bⱼ is the encryption of bⱼ sent by j in the previous round.
 func NewMtA(ai *curve.Scalar,
 	Ai *curve.Point,
 	Bi, Bj *paillier.Ciphertext,
@@ -93,7 +91,7 @@ func NewMtA(ai *curve.Scalar,
 
 // ProofAffG generates a proof for the a specified verifier.
 // This function is specified as to make clear which parameters must be input to zkaffg.
-// h is a hash function initialized with i's ID
+// h is a hash function initialized with i's ID.
 func (mta *MtA) ProofAffG(h *hash.Hash, verifier *pedersen.Parameters) *MtAMessage {
 	zkPublic := zkaffg.Public{
 		C:        mta.Bj,

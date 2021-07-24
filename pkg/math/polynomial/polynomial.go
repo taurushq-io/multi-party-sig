@@ -7,24 +7,25 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 )
 
+// Polynomial represents f(X) = a₀ + a₁⋅X + … + aₜ⋅Xᵗ.
 type Polynomial struct {
-	Coefficients []curve.Scalar
+	coefficients []curve.Scalar
 }
 
-// NewPolynomial generates a Polynomial f(X) = secret + a1*X + … + at*X^t,
-// with Coefficient in Z_q, and degree t.
+// NewPolynomial generates a Polynomial f(X) = secret + a₁⋅X + … + aₜ⋅Xᵗ,
+// with coefficients in ℤₚ, and degree t.
 func NewPolynomial(degree int, constant *curve.Scalar) *Polynomial {
 	var polynomial Polynomial
-	polynomial.Coefficients = make([]curve.Scalar, degree+1)
+	polynomial.coefficients = make([]curve.Scalar, degree+1)
 
-	// SetWithoutSelf the constant term to the secret
+	// if the constant is nil, we interpret it as 0.
 	if constant == nil {
 		constant = curve.NewScalar()
 	}
-	polynomial.Coefficients[0] = *constant
+	polynomial.coefficients[0] = *constant
 
 	for i := 1; i <= degree; i++ {
-		polynomial.Coefficients[i] = *sample.Scalar(rand.Reader)
+		polynomial.coefficients[i] = *sample.Scalar(rand.Reader)
 	}
 
 	return &polynomial
@@ -39,18 +40,19 @@ func (p *Polynomial) Evaluate(index *curve.Scalar) *curve.Scalar {
 
 	result := curve.NewScalar()
 	// reverse order
-	for i := len(p.Coefficients) - 1; i >= 0; i-- {
+	for i := len(p.coefficients) - 1; i >= 0; i-- {
 		// bₙ₋₁ = bₙ * x + aₙ₋₁
-		result.MultiplyAdd(result, index, &p.Coefficients[i])
+		result.MultiplyAdd(result, index, &p.coefficients[i])
 	}
 	return result
 }
 
+// Constant returns a reference to the constant coefficient of the polynomial.
 func (p *Polynomial) Constant() *curve.Scalar {
-	return &p.Coefficients[0]
+	return &p.coefficients[0]
 }
 
-// Degree is the highest power of the Polynomial
+// Degree is the highest power of the Polynomial.
 func (p *Polynomial) Degree() uint32 {
-	return uint32(len(p.Coefficients)) - 1
+	return uint32(len(p.coefficients)) - 1
 }

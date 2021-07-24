@@ -13,9 +13,13 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
-// StartFunc is function that creates the first round of a protocol. It returns
+// StartFunc is function that creates the first round of a protocol.
+// It returns the first round, as well as Info containing static information about the protocol.
+// If the creation fails (likely due to misconfiguration), and error is returned.
 type StartFunc func() (round.Round, Info, error)
 
+// Handler represents an execution of a given protocol.
+// It provides a simple interface for the user to receive/deliver protocol messages.
 type Handler struct {
 	queue *queue
 	info  Info
@@ -32,6 +36,7 @@ type Handler struct {
 	received map[party.ID]bool
 }
 
+// NewHandler expects a StartFunc for the desired protocol. It returns a handler that the user can interact with.
 func NewHandler(create StartFunc) (*Handler, error) {
 	r, info, err := create()
 	if err != nil {
@@ -63,14 +68,15 @@ func NewHandler(create StartFunc) (*Handler, error) {
 }
 
 // Listen returns a channel with outgoing messages that must be sent to other parties.
-// If Message.To is nil, then it should be reliably broadcast to all parties.
-// The channel is closed
+// The message received should be _reliably_ broadcast if msg.Broadcast() is true.
+// The channel is closed when either an error occurs or the protocol detects an error.
 func (h *Handler) Listen() <-chan *message.Message {
 	h.mtx.Lock()
 	defer h.mtx.Unlock()
 	return h.outChan
 }
 
+// Result returns the protocol result if the protocol completed successfully. Otherwise an error is returned.
 func (h *Handler) Result() (interface{}, error) {
 	h.mtx.Lock()
 	defer h.mtx.Unlock()
@@ -252,7 +258,7 @@ func (h *Handler) receivedAll() bool {
 	return true
 }
 
-// abort wraps a Round error with information about the current round and a possible culprit
+// abort wraps a Round error with information about the current round and a possible culprit.
 func (h *Handler) abort(err error, culprit party.ID) error {
 	roundErr := Error{
 		RoundNumber: h.roundNumber(),

@@ -15,7 +15,7 @@ import (
 // - Any parameter is nil
 // - S,T are not in [1, …,N-1]
 // - S,T is not coprime to N
-// - S == T
+// - S == T.
 func (p *Parameters) Validate() error {
 	if p == nil || p.N == nil || p.S == nil || p.T == nil {
 		return errors.New("pedersen.Parameters: contains nil field")
@@ -71,7 +71,7 @@ func (p Parameters) Commit(x, y *safenum.Int) *big.Int {
 	return result.Big()
 }
 
-// Verify returns true if sᵃ tᵇ ≡ S Tᵉ (mod N)
+// Verify returns true if sᵃ tᵇ ≡ S Tᵉ (mod N).
 func (p Parameters) Verify(a, b, S, T, e *big.Int) bool {
 	if a == nil || b == nil || S == nil || T == nil || e == nil {
 		return false
@@ -100,7 +100,7 @@ func bigint() *big.Int {
 	return &x
 }
 
-// Clone creates a deep copy of the parameters
+// Clone creates a deep copy of the parameters.
 func (p Parameters) Clone() *Parameters {
 	var n, s, t big.Int
 	return &Parameters{
@@ -110,7 +110,7 @@ func (p Parameters) Clone() *Parameters {
 	}
 }
 
-// Equal returns true if both parameters are equal
+// Equal returns true if both parameters are equal.
 func (p Parameters) Equal(o *Parameters) bool {
 	return p.N.Cmp(o.N) == 0 && p.S.Cmp(o.S) == 0 && p.T.Cmp(o.T) == 0
 }
