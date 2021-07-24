@@ -10,6 +10,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
+	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
 
 var _ round.Round = (*round3)(nil)
@@ -40,7 +41,7 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	msg := r.MarshalMessage(&Keygen4{
 		RID:                r.RIDs[r.SelfID()],
 		VSSPolynomial:      r.VSSPolynomials[r.SelfID()],
-		SchnorrCommitments: r.SchnorrCommitments[r.SelfID()],
+		SchnorrCommitments: r.SchnorrRand.Commitment(),
 		N:                  r.N[r.SelfID()],
 		S:                  r.S[r.SelfID()],
 		T:                  r.T[r.SelfID()],
@@ -49,7 +50,7 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	if err := r.SendMessage(msg, out); err != nil {
 		return r, err
 	}
-	return &round4{round3: r}, nil
+	return &round4{round3: r, SchnorrCommitments: map[party.ID]*zksch.Commitment{}}, nil
 }
 
 // MessageContent implements round.Round.

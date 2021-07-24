@@ -7,11 +7,11 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
+	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
 
 var _ round.Round = (*round1)(nil)
@@ -70,8 +70,8 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// set Fᵢ(X) = fᵢ(X)•G
 	SelfVSSPolynomial := polynomial.NewPolynomialExponent(r.VSSSecret)
 
-	// generate Schnorr randomness and commitments
-	SchnorrRand, SelfSchnorrCommitment := sample.ScalarPointPair(rand.Reader)
+	// generate Schnorr randomness
+	SchnorrRand := zksch.NewRandomness(rand.Reader)
 
 	// Sample RIDᵢ
 	SelfRID := newRID()
@@ -81,7 +81,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 	// commit to data in message 2
 	SelfCommitment, Decommitment, err := r.HashForID(r.SelfID()).Commit(
-		SelfRID, SelfVSSPolynomial, SelfSchnorrCommitment, SelfPedersenPublic)
+		SelfRID, SelfVSSPolynomial, SchnorrRand.Commitment(), SelfPedersenPublic)
 	if err != nil {
 		return r, ErrRound1Commit
 	}
@@ -93,20 +93,19 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 
 	return &round2{
-		round1:             r,
-		VSSPolynomials:     map[party.ID]*polynomial.Exponent{r.SelfID(): SelfVSSPolynomial},
-		SchnorrCommitments: map[party.ID]*curve.Point{r.SelfID(): SelfSchnorrCommitment},
-		Commitments:        map[party.ID]hash.Commitment{r.SelfID(): SelfCommitment},
-		RIDs:               map[party.ID]RID{r.SelfID(): SelfRID},
-		ShareReceived:      map[party.ID]*curve.Scalar{r.SelfID(): SelfShare},
-		PaillierPublic:     map[party.ID]*paillier.PublicKey{r.SelfID(): SelfPaillierPublic},
-		N:                  map[party.ID]*big.Int{r.SelfID(): SelfPedersenPublic.N()},
-		S:                  map[party.ID]*big.Int{r.SelfID(): SelfPedersenPublic.S()},
-		T:                  map[party.ID]*big.Int{r.SelfID(): SelfPedersenPublic.T()},
-		PaillierSecret:     PaillierSecret,
-		PedersenSecret:     PedersenSecret,
-		SchnorrRand:        SchnorrRand,
-		Decommitment:       Decommitment,
+		round1:         r,
+		VSSPolynomials: map[party.ID]*polynomial.Exponent{r.SelfID(): SelfVSSPolynomial},
+		Commitments:    map[party.ID]hash.Commitment{r.SelfID(): SelfCommitment},
+		RIDs:           map[party.ID]RID{r.SelfID(): SelfRID},
+		ShareReceived:  map[party.ID]*curve.Scalar{r.SelfID(): SelfShare},
+		PaillierPublic: map[party.ID]*paillier.PublicKey{r.SelfID(): SelfPaillierPublic},
+		N:              map[party.ID]*big.Int{r.SelfID(): SelfPedersenPublic.N()},
+		S:              map[party.ID]*big.Int{r.SelfID(): SelfPedersenPublic.S()},
+		T:              map[party.ID]*big.Int{r.SelfID(): SelfPedersenPublic.T()},
+		PaillierSecret: PaillierSecret,
+		PedersenSecret: PedersenSecret,
+		SchnorrRand:    SchnorrRand,
+		Decommitment:   Decommitment,
 	}, nil
 }
 

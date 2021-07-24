@@ -12,12 +12,17 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 	zkmod "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mod"
 	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm"
+	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
 
 var _ round.Round = (*round4)(nil)
 
 type round4 struct {
 	*round3
+
+	// SchnorrCommitments[j] = Aⱼ
+	// Commitment for proof of knowledge in the last round
+	SchnorrCommitments map[party.ID]*zksch.Commitment // Aⱼ
 }
 
 // ProcessMessage implements round.Round.

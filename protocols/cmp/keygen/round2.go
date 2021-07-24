@@ -14,6 +14,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
+	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
 
 var _ round.Round = (*round2)(nil)
@@ -23,10 +24,6 @@ type round2 struct {
 
 	// VSSPolynomials[j] = Fⱼ(X) = fⱼ(X)•G
 	VSSPolynomials map[party.ID]*polynomial.Exponent
-
-	// SchnorrCommitments[j] = Aⱼ
-	// Commitment for proof of knowledge in the last round
-	SchnorrCommitments map[party.ID]*curve.Point // Aⱼ
 
 	// Commitments[j] = H(Keygen3ⱼ ∥ Decommitments[j])
 	Commitments map[party.ID]hash.Commitment
@@ -53,7 +50,7 @@ type round2 struct {
 
 	// SchnorrRand = aᵢ
 	// Randomness used to compute Schnorr commitment of proof of knowledge of secret share
-	SchnorrRand *curve.Scalar
+	SchnorrRand *zksch.Randomness
 
 	// Decommitment for Keygen3ᵢ
 	Decommitment hash.Decommitment // uᵢ
