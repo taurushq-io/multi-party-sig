@@ -11,13 +11,17 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 )
 
-func FakeData(N, T int, source io.Reader) (map[party.ID]*Session, map[party.ID]*Secret) {
+func FakeData(N, T int, source io.Reader) map[party.ID]*Config {
 	partyIDs := party.RandomIDs(N)
-	secrets := make(map[party.ID]*Secret, N)
+	configs := make(map[party.ID]*Config, N)
 	public := make(map[party.ID]*Public, N)
 
 	f := polynomial.NewPolynomial(T, sample.Scalar(source))
 	one := new(safenum.Nat).SetUint64(1)
+
+	rid := newRID()
+	_, _ = io.ReadFull(source, rid)
+
 	for _, pid := range partyIDs {
 		p, q := sample.Paillier(source)
 		pq := new(safenum.Nat).Mul(p, q, -1)
@@ -28,11 +32,16 @@ func FakeData(N, T int, source io.Reader) (map[party.ID]*Session, map[party.ID]*
 		s, t, _ := sample.Pedersen(source, phi, n)
 
 		ecdsaSecret := f.Evaluate(pid.Scalar())
-		secrets[pid] = &Secret{
-			ID:    pid,
-			ECDSA: ecdsaSecret,
-			P:     &proto.NatMarshaller{Nat: p},
-			Q:     &proto.NatMarshaller{Nat: q},
+		configs[pid] = &Config{
+			Threshold: int32(T),
+			Public:    public,
+			RID:       rid.Copy(),
+			Secret: &Secret{
+				ID:    pid,
+				ECDSA: ecdsaSecret,
+				P:     &proto.NatMarshaller{Nat: p},
+				Q:     &proto.NatMarshaller{Nat: q},
+			},
 		}
 		X := curve.NewIdentityPoint().ScalarBaseMult(ecdsaSecret)
 		public[pid] = &Public{
@@ -42,19 +51,5 @@ func FakeData(N, T int, source io.Reader) (map[party.ID]*Session, map[party.ID]*
 			T:     t.Big(),
 		}
 	}
-
-	rid := newRID()
-	_, _ = io.ReadFull(source, rid)
-
-	sessions := make(map[party.ID]*Session, N)
-	for _, partyID := range partyIDs {
-
-		sessions[partyID] = &Session{
-			Threshold: int32(T),
-			Public:    public,
-			RID:       rid.Copy(),
-		}
-	}
-
-	return sessions, secrets
+	return configs
 }

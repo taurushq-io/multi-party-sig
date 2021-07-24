@@ -70,25 +70,26 @@ func TestRound(t *testing.T) {
 	rid := make([]byte, params.SecBytes)
 	_, _ = rand.Read(rid)
 
-	t.Log("generating sessions")
-	sessions, secrets := keygen.FakeData(N, T, mrand.New(mrand.NewSource(1)))
+	t.Log("generating configs")
+	configs := keygen.FakeData(N, T, mrand.New(mrand.NewSource(1)))
 	partyIDs := make([]party.ID, 0, T+1)
-	for id := range sessions {
+	for id := range configs {
 		partyIDs = append(partyIDs, id)
 		if len(partyIDs) == T+1 {
 			break
 		}
 	}
-	t.Log("done generating sessions")
+	t.Log("done generating configs")
 
 	messageToSign := []byte("hello")
 	messageHash := make([]byte, 64)
 	sha3.ShakeSum128(messageHash, messageToSign)
 
 	rounds := make(map[party.ID]round.Round, N)
+	var err error
 	for _, partyID := range partyIDs {
-		s := sessions[partyID]
-		rounds[partyID], _, err = StartSign(s, secrets[partyID], partyIDs, messageHash)()
+		c := configs[partyID]
+		rounds[partyID], _, err = StartSign(c, partyIDs, messageHash)()
 		require.NoError(t, err, "round creation should not result in an error")
 	}
 

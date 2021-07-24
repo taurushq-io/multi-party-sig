@@ -57,15 +57,15 @@ func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.S
 	}
 }
 
-func StartRefresh(s *Session, secret *Secret) protocol.StartFunc {
+func StartRefresh(c *Config) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
-		partyIDs := s.PartyIDs()
+		partyIDs := c.PartyIDs()
 		helper, err := round.NewHelper(
 			protocolRefreshID,
 			protocolRounds,
-			secret.ID,
+			c.ID,
 			partyIDs,
-			s,
+			c,
 		)
 		if err != nil {
 			return nil, nil, fmt.Errorf("refresh.StartKeygen: %w", err)
@@ -74,16 +74,16 @@ func StartRefresh(s *Session, secret *Secret) protocol.StartFunc {
 		PreviousPublicSharesECDSA := make(map[party.ID]*curve.Point, len(partyIDs))
 		for _, j := range partyIDs {
 			// Set the public data to a clone of the current data
-			PreviousPublicSharesECDSA[j] = curve.NewIdentityPoint().Set(s.Public[j].ECDSA)
+			PreviousPublicSharesECDSA[j] = curve.NewIdentityPoint().Set(c.Public[j].ECDSA)
 		}
-		PreviousSecretECDSA := curve.NewScalar().Set(secret.ECDSA)
-		PreviousPublicKey := s.publicKey(partyIDs)
+		PreviousSecretECDSA := curve.NewScalar().Set(c.ECDSA)
+		PreviousPublicKey := c.publicKey(partyIDs)
 		// sample fᵢ(X) deg(fᵢ) = t, fᵢ(0) = 0
-		VSSSecret := polynomial.NewPolynomial(int(s.Threshold), nil)
+		VSSSecret := polynomial.NewPolynomial(int(c.Threshold), nil)
 
 		return &round1{
 			Helper:                    helper,
-			Threshold:                 int(s.Threshold),
+			Threshold:                 int(c.Threshold),
 			PreviousSecretECDSA:       PreviousSecretECDSA,
 			PreviousPublicKey:         PreviousPublicKey,
 			PreviousPublicSharesECDSA: PreviousPublicSharesECDSA,

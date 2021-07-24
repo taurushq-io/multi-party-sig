@@ -9,6 +9,7 @@ option (gogoproto.goproto_getters_all) = false;
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
+// Secret holds secret information for a party
 message Secret {
   string ID = 1 [(gogoproto.casttype) = "github.com/taurusgroup/cmp-ecdsa/pkg/party.ID"];
   // ECDSA is a party's share xᵢ of the secret ECDSA x
@@ -18,6 +19,7 @@ message Secret {
   bytes Q = 4 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/internal/proto.NatMarshaller"];
 }
 
+// Public holds public information for a party
 message Public {
   // ECDSA public key share
   bytes ECDSA = 1 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point"];
@@ -29,17 +31,19 @@ message Public {
   bytes T = 5 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
 }
 
-// Session represents the SSID after having performed a keygen/refresh operation.
+// Config represents the SSID after having performed a keygen/refresh operation.
 // It represents ssid = (sid, (N₁, s₁, t₁), …, (Nₙ, sₙ, tₙ))
 // where sid = (𝔾, t, n, P₁, …, Pₙ).
-message Session {
-  // Threshold is the integer t which defines the maximum number of corruptions tolerated for this session.
+message Config {
+  // Threshold is the integer t which defines the maximum number of corruptions tolerated for this config.
   // Threshold + 1 is the minimum number of parties' shares required to reconstruct the secret/sign a message.
   int32 threshold = 1;
 
   // Public maps party.ID to party. It contains all public information associated to a party.
   map<string, Public> public = 2 [(gogoproto.castkey) = "github.com/taurusgroup/cmp-ecdsa/pkg/party.ID"];
 
-  // RID is a 32 byte random identifier generated for this session
+  // RID is a 32 byte random identifier generated for this config
   bytes RID = 3 [(gogoproto.casttype) = "RID"];
+
+  Secret Secret = 4 [(gogoproto.embed) = true];
 }

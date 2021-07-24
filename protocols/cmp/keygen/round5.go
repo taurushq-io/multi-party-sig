@@ -66,8 +66,8 @@ func (r *round5) ProcessMessage(j party.ID, content message.Content) error {
 //
 // - sum of all received shares
 // - compute group public key and individual public keys
-// - recompute session SSID
-// - validate Session
+// - recompute config SSID
+// - validate Config
 // - write new ssid hash to old hash state
 // - create proof of knowledge of secret.
 func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
@@ -102,17 +102,17 @@ func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
 		}
 	}
 
-	UpdatedSecret := newSecret(r.SelfID(), UpdatedSecretECDSA, r.PaillierSecret)
-	UpdatedSession := &Session{
+	UpdatedConfig := &Config{
 		Threshold: int32(r.Threshold),
 		Public:    PublicData,
 		RID:       r.RID.Copy(),
+		Secret:    newSecret(r.SelfID(), UpdatedSecretECDSA, r.PaillierSecret),
 	}
 
-	// write new ssid to hash, to bind the Schnorr proof to this new session
+	// write new ssid to hash, to bind the Schnorr proof to this new config
 	// Write SSID, selfID to temporary hash
 	h := r.Hash()
-	_, _ = h.WriteAny(UpdatedSession, r.SelfID())
+	_, _ = h.WriteAny(UpdatedConfig, r.SelfID())
 
 	proof := zksch.Prove(h,
 		r.SchnorrCommitments[r.SelfID()],
@@ -126,11 +126,10 @@ func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
 		return r, err
 	}
 
-	r.UpdateHashState(UpdatedSession)
+	r.UpdateHashState(UpdatedConfig)
 	return &output{
-		round5:         r,
-		UpdatedSession: UpdatedSession,
-		UpdatedSecret:  UpdatedSecret,
+		round5:        r,
+		UpdatedConfig: UpdatedConfig,
 	}, nil
 }
 

@@ -29,20 +29,30 @@ Messages for other parties can be obtained by querying the channel returned by `
 If the channel is closed, then the user can assume the protocol has finished.
 
 ```go
-// Message handling loop
-for {
-    select {
-    case msgOut, ok := <-handler.Listen():  // Message to be sent to other parties
-        if !ok { // a closed channel indicates that the protocol has finished executing
-            return 	
-        }   
-        Send(msgOut)
-    case msgIn := <- Receive():             // Incoming message
-        err := handler.Update(msgIn)
-        if messageError := new(message.Error); errors.As(err, &messageError) {
-            // the message failed validation and was not processed
+func runProtocolHandler(handler *protocol.Handler) (interface{}, error) {
+    // Message handling loop
+    for {
+        select {
+        // Message to be sent to other parties
+        case msgOut, ok := <-handler.Listen():  
+            // a closed channel indicates that the protocol has finished executing
+            if !ok { 
+                return 	
+            }   
+            Send(msgOut)
+        // Incoming message
+        case msgIn := <- Receive():             
+            err := handler.Update(msgIn)
+            messageError := new(message.Error)
+            if errors.As(err, &messageError) {
+                // the message failed validation and was not processed
+                // the protocol may continue
+            }
         }
     }
+    
+    // The protocol has stopped running, either because it is finished or it failed due to an error.
+    return handler.Result()
 }
 ```
 
@@ -51,21 +61,10 @@ The outcome is described by `handler.Result()`.
 
 If an error has occurred, it will be returned here.
 A malicious error will be described by a [`protocol.Error`](pkg/protocol/error.go), which may contain information on the responsible party.
+- [`protcol.Error`](/pkg/protocol/error.go):
+- [`message.Error`](/pkg/message/error.go):
 
 When the protocol successfully completes, the result must be cast to the appropriate type.
-```go
-// The protocol has stopped running, either because it is finished or it failed due to an error.
-r, err := handler.Result()
-
-// An error has occurred and the result is nil
-// We can get more information by unwrapping the error
-if protocolError := new(protocol.Error); errors.As(err, &protocolError) {
-
-}
-
-// cast r as the appropriate result
-result := r.(*Result)
-```
 
 ### Network
 
@@ -78,23 +77,18 @@ we adapted the protocols to use a broadcast channel where each party simply send
 In the future, we may implement protocols that rely on this assumption.
 A `Send()` function in this case would look like the following: 
 ```go
-// Send sends a message to the parties defined in msg.To
 func Send(msg *protocol.Message) {
     // A message where Broadcast() is true must be _reliably_ broadcast to all parties. 
     // This is a requirement for identifiable aborts.
     if msg.Broadcast() {
         // Send msg reliably to all parties
         return
-    }  
-    
+    }
     // Otherwise, we send the same message to each party individually
     for _, id := range msg.To {
         // Send message to each party using point-to-point communication	
     }
 }
-
-// Next returns a channel with new messages sent by other parties
-func Next(id party.ID) <-chan *protocol.Message { }
 ```
 ### Keygen
 
@@ -112,32 +106,31 @@ selfID := party.ID("a")
 threshold := 3
 
 keygenHandler, err := protocol.NewHandler(keygen.StartKeygen(partyIDs, threshold, selfID))
-
-// use the handler as described above
-
-keygenResult := r.(*keygen.Result)
+result, err := runProtocolHandler(keygenHandler)
+if err != nil { 
+	// investigate error
+}
+config := r.(*keygen.Result).Config
 ```
 
-The `keygenResult` has two fields: [`Session`](/protocols/cmp/keygen/session.go) and [`Secret`](/protocols/cmp/keygen/secret.go).
-
-- [`keygen.Session`](/protocols/cmp/keygen/session.go) contains all public information required to sign a message with the set of parties, as well as the resulting ECDSA public key.
-All parties receive this same information,
-- [`keygen.Secret`](/protocols/cmp/keygen/secret.go) contains the party's share of the ECDSA secret key, as well as the auxiliary Paillier secret key.
+The [`config`](/protocols/cmp/keygen/config.proto) object containing all necessary data to create a signature. 
+`Config.PublicKey()` returns the public key for which the parties can generate signatures.
+It also contains 
 
 ### Refresh
 
 Participant's shares of the ECDSA private key can be refreshed after the initial key generation was successfully performed.
-It requires all share holders to be present, and the result is a new [`keygen.Session`](/protocols/cmp/keygen/session.go)/[`keygen.Secret`](/protocols/cmp/keygen/secret.go) pair.
+It requires all share holders to be present, and the result is a new [`keygen.Config`](/protocols/cmp/keygen/config.go).
 
 The original ECDSA public key remains the same, but the secret is not.
 
 ```go
-refreshHandler, err := protocol.NewHandler(keygen.StartRefresh(keygenResult.Session, keygenResult.Secret))
-
-// use the handler as described above
-
-refreshResult := r.(*keygen.Result)
-
+refreshHandler, err := protocol.NewHandler(keygen.StartRefresh(config))
+result, err := runProtocolHandler(keygenHandler)
+if err != nil {
+    // investigate error
+}
+refreshedConfig := r.(*keygen.Result).Config
 ```
 ### Sign
 
@@ -151,16 +144,15 @@ message := []byte("hello, world")
 // since threshold is 3, we need for or more parties to 
 signers := []party.ID{"a", "b", "c", "d"}
 
-signHandler, err := protocol.NewHandler(sign.StartSign(refreshResult.Session, refreshResult.Secret, signers, message))
-
-// use the handler as described above
-
-// get the signature from the result
+signHandler, err := protocol.NewHandler(sign.StartSign(refreshedConfig, signers, message))
+result, err := runProtocolHandler(signHandler)
+if err != nil {
+    // investigate error
+}
 signature := r.(*sign.Result).Signature
-
 // verify using standard ecdsa.
 r, s := signature.ToRS()
-ecdsa.Verify(refreshResult.Session.PublicKey(), message, r, s)
+ecdsa.Verify(refreshedConfig.PublicKey(), message, r, s)
 ```
 
 

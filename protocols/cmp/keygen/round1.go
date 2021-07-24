@@ -19,7 +19,7 @@ var _ round.Round = (*round1)(nil)
 type round1 struct {
 	*round.Helper
 
-	// Threshold is the integer t which defines the maximum number of corruptions tolerated for this session.
+	// Threshold is the integer t which defines the maximum number of corruptions tolerated for this config.
 	Threshold int
 
 	// PreviousSecretECDSA = sk'ᵢ

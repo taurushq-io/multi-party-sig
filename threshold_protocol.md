@@ -138,7 +138,7 @@ If all checks pass, save:
 Interpret $\textsf{s\textsf{sid}} = (\textsf{sid}, \rho, \{\textsf{pk}^{(j)}\}_{j=1}^n, \{N^{(j)}\}_{j=1}^n, \{s_1^{(j)}\}_{j=1}^n, \{s_2^{(j)}\}_{j=1}^n, \{P^{(j)}\}_{j \in S}, m)$,
 where $S$ is a subset of $\{ 1, \ldots, n \}$ of size at least $t+1$, and $m$ is the message to be signed.
 
-The protocol goes exactly as before, except that the `Session` will use $S$ to determine Lagrange coefficients and apply them to the set of public keys, as well as the signer's secret share.
+The protocol goes exactly as before, except that the `Config` will use $S$ to determine Lagrange coefficients and apply them to the set of public keys, as well as the signer's secret share.
 Therefore, the resulting shares represent an additive sharing of the secret, and the original protocol can be used.
 
 ## Paillier Multiplication proof $\Pi^{\text{mod}}$

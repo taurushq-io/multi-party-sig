@@ -10,6 +10,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/internal/proto"
 	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -26,15 +27,15 @@ func newSecret(id party.ID, secretShareECDSA *curve.Scalar, secretPaillier *pail
 }
 
 // PublicKey returns the group's public ECDSA key.
-func (s Session) PublicKey() *ecdsa.PublicKey {
-	return s.publicKey(s.PartyIDs()).ToPublicKey()
+func (c Config) PublicKey() *ecdsa.PublicKey {
+	return c.publicKey(c.PartyIDs()).ToPublicKey()
 }
 
-func (s Session) publicKey(partyIDs []party.ID) *curve.Point {
+func (c Config) publicKey(partyIDs []party.ID) *curve.Point {
 	sum := curve.NewIdentityPoint()
 	tmp := curve.NewIdentityPoint()
-	l := Lagrange(partyIDs)
-	for j, partyJ := range s.Public {
+	l := polynomial.Lagrange(partyIDs)
+	for j, partyJ := range c.Public {
 		tmp.ScalarMult(l[j], partyJ.ECDSA)
 		sum.Add(sum, tmp)
 	}
@@ -42,53 +43,55 @@ func (s Session) publicKey(partyIDs []party.ID) *curve.Point {
 }
 
 // Validate ensures that the data
-func (s Session) Validate(secret *Secret) error {
+func (c Config) Validate() error {
 	// verify number of parties w.r.t. threshold
 	// want 0 ⩽ threshold ⩽ n-1
-	if n := len(s.Public); n == 0 || s.Threshold < 0 || int(s.Threshold) > n-1 {
-		return fmt.Errorf("session: threshold %d is invalid", s.Threshold)
+	if n := len(c.Public); n == 0 || c.Threshold < 0 || int(c.Threshold) > n-1 {
+		return fmt.Errorf("config: threshold %d is invalid", c.Threshold)
 	}
 
-	for j, publicJ := range s.Public {
+	// check secret key is present
+	if c.Secret == nil {
+		return errors.New("config: no secret data present")
+	}
+
+	for j, publicJ := range c.Public {
 		// validate public
 		if err := publicJ.validate(); err != nil {
-			return fmt.Errorf("session: party %s: %w", j, err)
+			return fmt.Errorf("config: party %s: %w", j, err)
 		}
 	}
 
-	if secret == nil {
-		return nil
-	}
-
 	// verify our ID is present
-	public := s.Public[secret.ID]
+	public := c.Public[c.ID]
 	if public == nil {
-		return errors.New("session: no public data for secret")
+		return errors.New("config: no public data for secret")
 	}
 
 	// check secret
-	if err := secret.validate(); err != nil {
-		return fmt.Errorf("session: %w", err)
+	if err := c.Secret.validate(); err != nil {
+		return fmt.Errorf("config: %w", err)
 	}
 
 	// is the public ECDSA key equal
-	pk := curve.NewIdentityPoint().ScalarBaseMult(secret.ECDSA)
+	pk := curve.NewIdentityPoint().ScalarBaseMult(c.Secret.ECDSA)
 	if !pk.Equal(public.ECDSA) {
-		return errors.New("session: ECDSA secret key share does not correspond to public share")
+		return errors.New("config: ECDSA secret key share does not correspond to public share")
 	}
 
-	n := new(safenum.Nat).Mul(secret.P.Nat, secret.Q.Nat, -1).Big()
+	n := new(safenum.Nat).Mul(c.Secret.P.Nat, c.Secret.Q.Nat, -1).Big()
 	// is our public key for paillier the same?
 	if n.Cmp(public.N) != 0 {
-		return errors.New("session: P•Q ≠ N")
+		return errors.New("config: P•Q ≠ N")
 	}
 
 	return nil
 }
 
-func (s Session) PartyIDs() party.IDSlice {
-	ids := make([]party.ID, 0, len(s.Public))
-	for j := range s.Public {
+// PartyIDs returns a sorted slice of party IDs
+func (c Config) PartyIDs() party.IDSlice {
+	ids := make([]party.ID, 0, len(c.Public))
+	for j := range c.Public {
 		ids = append(ids, j)
 	}
 	return party.NewIDSlice(ids)
@@ -102,7 +105,7 @@ func (p *Public) validate() error {
 
 	// ECDSA is not identity
 	if p.ECDSA.IsIdentity() {
-		return errors.New("public: ECDSA secret key share is zero")
+		return errors.New("public: ECDSA public key share is identity")
 	}
 
 	// Paillier check
@@ -126,7 +129,7 @@ func (s *Secret) validate() error {
 
 	// ECDSA is not identity
 	if s.ECDSA.IsZero() {
-		return errors.New("public: ECDSA public key share is identity")
+		return errors.New("public: ECDSA secret key share is zero")
 	}
 
 	// Paillier check
@@ -140,77 +143,32 @@ func (s *Secret) validate() error {
 	return nil
 }
 
+// Paillier returns the secret Paillier key associated to this party.
 func (s *Secret) Paillier() *paillier.SecretKey {
 	return paillier.NewSecretKeyFromPrimes(s.P.Nat, s.Q.Nat)
 }
 
-// Lagrange returns the Lagrange coefficient
-//
-// We iterate over all points in the set.
-// To get the coefficients over a smaller set,
-// you should first get a smaller subset.
-//
-// The following formulas are taken from
-// https://en.wikipedia.org/wiki/Lagrange_polynomial
-//			        x₀ … xₖ
-// lⱼ(0) =	---------------------------
-//			xⱼ⋅(x₀ - xⱼ) … (xₖ - xⱼ)
-func Lagrange(partyIDs []party.ID) map[party.ID]*curve.Scalar {
-	// product = x₀ * … * x_k
-	product := curve.NewScalarUInt32(1)
-	scalars := make(map[party.ID]*curve.Scalar, len(partyIDs))
-	for _, id := range partyIDs {
-		xi := id.Scalar()
-		scalars[id] = xi
-		product.Multiply(product, xi)
-	}
-
-	coefficients := make(map[party.ID]*curve.Scalar, len(partyIDs))
-	tmp := curve.NewScalar()
-	for _, j := range partyIDs {
-		xJ := scalars[j]
-		// lⱼ = -xⱼ
-		lJ := curve.NewScalar().Negate(xJ)
-
-		for _, i := range partyIDs {
-			if i == j {
-				continue
-			}
-			// tmp = xⱼ - xᵢ
-			xI := scalars[i]
-			tmp.Subtract(xJ, xI)
-			// lⱼ *= xⱼ - xᵢ
-			lJ.Multiply(lJ, tmp)
-		}
-
-		lJ.Invert(lJ)
-		lJ.Multiply(lJ, product)
-		coefficients[j] = lJ
-	}
-	return coefficients
-}
-
 // WriteTo implements io.WriterTo interface.
-func (s Session) WriteTo(w io.Writer) (total int64, err error) {
+func (c Config) WriteTo(w io.Writer) (total int64, err error) {
 	var n int64
 
 	// write t
-	n, err = writer.WriteWithDomain(w, Threshold(s.Threshold))
+	n, err = writer.WriteWithDomain(w, Threshold(c.Threshold))
 	total += n
 	if err != nil {
 		return
 	}
 
 	// write rid
-	n, err = writer.WriteWithDomain(w, s.RID)
+	n, err = writer.WriteWithDomain(w, c.RID)
 	total += n
 	if err != nil {
 		return
 	}
 
-	for _, j := range s.PartyIDs() {
+	for _, j := range c.PartyIDs() {
 		// write Xⱼ
-		n, err = writer.WriteWithDomain(w, s.Public[j])
+		n, err = writer.WriteWithDomain(w, c.Public[j])
 		total += n
 		if err != nil {
 			return
@@ -221,8 +179,8 @@ func (s Session) WriteTo(w io.Writer) (total int64, err error) {
 }
 
 // Domain implements writer.WriterToWithDomain.
-func (s Session) Domain() string {
-	return "CMP Session"
+func (c Config) Domain() string {
+	return "CMP Config"
 }
 
 // Domain implements writer.WriterToWithDomain.

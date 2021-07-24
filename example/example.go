@@ -50,11 +50,12 @@ func Keygen(id party.ID, ids party.IDSlice, threshold int, n Network) (*keygen.R
 }
 
 func Refresh(keygenResult *keygen.Result, n Network) (*keygen.Result, error) {
-	hRefresh, err := protocol.NewHandler(keygen.StartRefresh(keygenResult.Session, keygenResult.Secret))
+	c := keygenResult.Config
+	hRefresh, err := protocol.NewHandler(keygen.StartRefresh(c))
 	if err != nil {
 		return nil, err
 	}
-	err = handlerLoop(keygenResult.Secret.ID, hRefresh, n)
+	err = handlerLoop(c.ID, hRefresh, n)
 	if err != nil {
 		return nil, err
 	}
@@ -68,11 +69,12 @@ func Refresh(keygenResult *keygen.Result, n Network) (*keygen.Result, error) {
 }
 
 func Sign(refreshResult *keygen.Result, m []byte, signers party.IDSlice, n Network) error {
-	h, err := protocol.NewHandler(sign.StartSign(refreshResult.Session, refreshResult.Secret, signers, m))
+	c := refreshResult.Config
+	h, err := protocol.NewHandler(sign.StartSign(c, signers, m))
 	if err != nil {
 		return err
 	}
-	err = handlerLoop(refreshResult.Secret.ID, h, n)
+	err = handlerLoop(c.ID, h, n)
 	if err != nil {
 		return err
 	}
@@ -83,7 +85,7 @@ func Sign(refreshResult *keygen.Result, m []byte, signers party.IDSlice, n Netwo
 	}
 	signature := signResult.(*sign.Result).Signature
 	r, s := signature.ToRS()
-	if !ecdsa.Verify(refreshResult.Session.PublicKey(), m, r, s) {
+	if !ecdsa.Verify(refreshResult.Config.PublicKey(), m, r, s) {
 		return errors.New("signature failed to verify")
 	}
 	return nil

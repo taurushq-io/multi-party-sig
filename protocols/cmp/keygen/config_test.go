@@ -1,5 +1,19 @@
 package keygen
 
+//
+//import (
+//	"crypto/rand"
+//	"math/big"
+//	"testing"
+//
+//	"github.com/stretchr/testify/assert"
+//	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+//	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
+//	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+//	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+//	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
+//)
+//
 //func TestSecret_Validate(t *testing.T) {
 //	x, X := sample.ScalarPointPair(rand.Reader)
 //

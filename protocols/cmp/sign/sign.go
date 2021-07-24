@@ -6,6 +6,7 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
@@ -29,11 +30,11 @@ var (
 	_ round.Round = (*output)(nil)
 )
 
-func StartSign(s *keygen.Session, secret *keygen.Secret, signers []party.ID, message []byte) protocol.StartFunc {
+func StartSign(c *keygen.Config, signers []party.ID, message []byte) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
 		var err error
-		// validate session
-		if err = s.Validate(secret); err != nil {
+		// validate config
+		if err = c.Validate(); err != nil {
 			return nil, nil, err
 		}
 
@@ -47,16 +48,16 @@ func StartSign(s *keygen.Session, secret *keygen.Secret, signers []party.ID, mes
 		if signerIDs.ContainsDuplicates() {
 			return nil, nil, fmt.Errorf("sign.Create: signers contains duplicates")
 		}
-		if !s.PartyIDs().Contains(signerIDs...) {
+		if !c.PartyIDs().Contains(signerIDs...) {
 			return nil, nil, fmt.Errorf("sign.Create: signers is not a subset of s.PartyIDs")
 		}
 
 		T := len(signerIDs)
-		if T <= int(s.Threshold) {
-			return nil, nil, fmt.Errorf("sign.Create: not enough signers: len(signers) = %d < threshold = %d", T, s.Threshold)
+		if T <= int(c.Threshold) {
+			return nil, nil, fmt.Errorf("sign.Create: not enough signers: len(signers) = %d < threshold = %d", T, c.Threshold)
 		}
 
-		lagrange := keygen.Lagrange(signers)
+		lagrange := polynomial.Lagrange(signers)
 
 		// Scale public data
 		ECDSA := make(map[party.ID]*curve.Point, T)
@@ -64,7 +65,7 @@ func StartSign(s *keygen.Session, secret *keygen.Secret, signers []party.ID, mes
 		Pedersen := make(map[party.ID]*pedersen.Parameters, T)
 		PublicKey := curve.NewIdentityPoint()
 		for _, j := range signerIDs {
-			public := s.Public[j]
+			public := c.Public[j]
 			ECDSA[j] = curve.NewIdentityPoint().ScalarMult(lagrange[j], public.ECDSA)
 			if Paillier[j], err = paillier.NewPublicKey(public.N); err != nil {
 				return nil, nil, err
@@ -76,15 +77,14 @@ func StartSign(s *keygen.Session, secret *keygen.Secret, signers []party.ID, mes
 		}
 
 		// Scale own secret
-		selfID := secret.ID
-		SecretECDSA := curve.NewScalar().Multiply(lagrange[selfID], secret.ECDSA)
+		SecretECDSA := curve.NewScalar().Multiply(lagrange[c.ID], c.ECDSA)
 
 		helper, err := round.NewHelper(
 			protocolSignID,
 			protocolSignRounds,
-			secret.ID,
+			c.ID,
 			signerIDs,
-			s,
+			c,
 			signerIDs,
 			writer.BytesWithDomain{
 				TheDomain: "Signature Message",
@@ -98,7 +98,7 @@ func StartSign(s *keygen.Session, secret *keygen.Secret, signers []party.ID, mes
 			Helper:         helper,
 			PublicKey:      PublicKey,
 			SecretECDSA:    SecretECDSA,
-			SecretPaillier: secret.Paillier(),
+			SecretPaillier: c.Paillier(),
 			Paillier:       Paillier,
 			Pedersen:       Pedersen,
 			ECDSA:          ECDSA,

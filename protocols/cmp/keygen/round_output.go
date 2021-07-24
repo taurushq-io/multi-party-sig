@@ -14,8 +14,7 @@ var _ round.Round = (*output)(nil)
 
 type output struct {
 	*round5
-	UpdatedSession *Session
-	UpdatedSecret  *Secret
+	UpdatedConfig *Config
 }
 
 // ProcessMessage implements round.Round.
@@ -25,7 +24,7 @@ func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*KeygenOutput)
 	if !zksch.Verify(r.HashForID(j),
 		r.SchnorrCommitments[j],
-		r.UpdatedSession.Public[j].ECDSA,
+		r.UpdatedConfig.Public[j].ECDSA,
 		body.Proof) {
 		return ErrRoundOutputZKSch
 	}
@@ -35,8 +34,7 @@ func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 // Finalize implements round.Round.
 func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {
 	return &round.Output{Result: &Result{
-		Session: r.UpdatedSession,
-		Secret:  r.UpdatedSecret,
+		Config: r.UpdatedConfig,
 	}}, nil
 }
 

@@ -1,23 +1,21 @@
 package party
 
-import (
-	"testing"
+import "testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-)
-
-func TestIDSlice_Lagrange(t *testing.T) {
-	N := 10
-	//T := 8
-	allIDs := RandomIDs(N)
-	coefs := make([]*curve.Scalar, N)
-	for i, id := range allIDs {
-		coefs[i] = allIDs.Lagrange(id)
+func TestIDSlice_GetIndex(t *testing.T) {
+	tests := []struct {
+		name     string
+		partyIDs IDSlice
+		requestedID ID
+		want     int
+	}{
+		{"empty", IDSlice{}, "a", -1},
+	},
+		for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.partyIDs.GetIndex(tt.requestedID); got != tt.want {
+				t.Errorf("GetIndex() = %v, want %v", got, tt.want)
+			}
+		})
 	}
-	sum := curve.NewScalar()
-	for _, c := range coefs {
-		sum.Add(sum, c)
-	}
-	assert.True(t, sum.Equal(curve.NewScalar().SetUInt32(1)))
 }
