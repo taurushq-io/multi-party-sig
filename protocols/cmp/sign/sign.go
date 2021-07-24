@@ -30,61 +30,30 @@ var (
 	_ round.Round = (*output)(nil)
 )
 
-func StartSign(c *keygen.Config, signers []party.ID, message []byte) protocol.StartFunc {
+func StartSign(config *keygen.Config, signers []party.ID, message []byte) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
-		var err error
-		// validate config
-		if err = c.Validate(); err != nil {
-			return nil, nil, err
-		}
-
+		// this could be used to indicate a pre-signature later on
 		if len(message) == 0 {
 			return nil, nil, errors.New("sign.Create: message is nil")
 		}
 
-		// check set of signers
 		signerIDs := party.NewIDSlice(signers)
-
-		if signerIDs.ContainsDuplicates() {
-			return nil, nil, fmt.Errorf("sign.Create: signers contains duplicates")
-		}
-		if !c.PartyIDs().Contains(signerIDs...) {
-			return nil, nil, fmt.Errorf("sign.Create: signers is not a subset of s.PartyIDs")
+		if !config.CanSign(signerIDs) {
+			return nil, nil, errors.New("sign.Create: signers is not a valid signing subset")
 		}
 
-		T := len(signerIDs)
-		if T <= int(c.Threshold) {
-			return nil, nil, fmt.Errorf("sign.Create: not enough signers: len(signers) = %d < threshold = %d", T, c.Threshold)
+		// validate config
+		if err := config.Validate(); err != nil {
+			return nil, nil, err
 		}
-
-		lagrange := polynomial.Lagrange(signers)
-
-		// Scale public data
-		ECDSA := make(map[party.ID]*curve.Point, T)
-		Paillier := make(map[party.ID]*paillier.PublicKey, T)
-		Pedersen := make(map[party.ID]*pedersen.Parameters, T)
-		PublicKey := curve.NewIdentityPoint()
-		for _, j := range signerIDs {
-			public := c.Public[j]
-			ECDSA[j] = curve.NewIdentityPoint().ScalarMult(lagrange[j], public.ECDSA)
-			if Paillier[j], err = paillier.NewPublicKey(public.N); err != nil {
-				return nil, nil, err
-			}
-			if Pedersen[j], err = pedersen.New(public.N, public.S, public.T); err != nil {
-				return nil, nil, err
-			}
-			PublicKey.Add(PublicKey, ECDSA[j])
-		}
-
-		// Scale own secret
-		SecretECDSA := curve.NewScalar().Multiply(lagrange[c.ID], c.ECDSA)
 
 		helper, err := round.NewHelper(
 			protocolSignID,
 			protocolSignRounds,
-			c.ID,
+			config.ID,
 			signerIDs,
-			c,
+			// write the config, the signers and the message to this session.
+			config,
 			signerIDs,
 			writer.BytesWithDomain{
 				TheDomain: "Signature Message",
@@ -94,11 +63,37 @@ func StartSign(c *keygen.Config, signers []party.ID, message []byte) protocol.St
 		if err != nil {
 			return nil, nil, fmt.Errorf("sign.Create: %w", err)
 		}
+
+		// Scale public data
+		T := len(signerIDs)
+		ECDSA := make(map[party.ID]*curve.Point, T)
+		Paillier := make(map[party.ID]*paillier.PublicKey, T)
+		Pedersen := make(map[party.ID]*pedersen.Parameters, T)
+		PublicKey := curve.NewIdentityPoint()
+		lagrange := polynomial.Lagrange(signers)
+		for _, j := range signerIDs {
+			public := config.Public[j]
+			// scale public key share
+			ECDSA[j] = curve.NewIdentityPoint().ScalarMult(lagrange[j], public.ECDSA)
+			// create Paillier key
+			if Paillier[j], err = paillier.NewPublicKey(public.N); err != nil {
+				return nil, nil, err
+			}
+			// create Pedersen params
+			if Pedersen[j], err = pedersen.New(public.N, public.S, public.T); err != nil {
+				return nil, nil, err
+			}
+			PublicKey.Add(PublicKey, ECDSA[j])
+		}
+
+		// Scale own secret
+		SecretECDSA := curve.NewScalar().Multiply(lagrange[config.ID], config.ECDSA)
+
 		return &round1{
 			Helper:         helper,
 			PublicKey:      PublicKey,
 			SecretECDSA:    SecretECDSA,
-			SecretPaillier: c.Paillier(),
+			SecretPaillier: config.Paillier(),
 			Paillier:       Paillier,
 			Pedersen:       Pedersen,
 			ECDSA:          ECDSA,

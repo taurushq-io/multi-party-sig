@@ -47,10 +47,7 @@ func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundTy
 		for idJ, r := range rounds {
 			var m message.Message
 			require.NoError(t, proto.Unmarshal(msgBytes, &m), "failed to unmarshal message")
-			if m.From == idJ {
-				continue
-			}
-			if len(m.To) == 0 || party.IDSlice(m.To).Contains(idJ) {
+			if m.IsFor(idJ) {
 				content := r.MessageContent()
 				err = msg.UnmarshalContent(content)
 				require.NoError(t, err)

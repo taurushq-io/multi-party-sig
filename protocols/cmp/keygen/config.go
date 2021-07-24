@@ -2,12 +2,12 @@ package keygen
 
 import (
 	"crypto/ecdsa"
+	"encoding/binary"
 	"errors"
 	"fmt"
-	io "io"
+	"io"
 
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/cmp-ecdsa/internal/proto"
 	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
@@ -17,32 +17,26 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 )
 
-func newSecret(id party.ID, secretShareECDSA *curve.Scalar, secretPaillier *paillier.SecretKey) *Secret {
-	return &Secret{
-		ID:    id,
-		ECDSA: secretShareECDSA,
-		P:     &proto.NatMarshaller{Nat: secretPaillier.P()},
-		Q:     &proto.NatMarshaller{Nat: secretPaillier.Q()},
-	}
-}
-
 // PublicKey returns the group's public ECDSA key.
 func (c Config) PublicKey() *ecdsa.PublicKey {
-	return c.publicKey(c.PartyIDs()).ToPublicKey()
-}
-
-func (c Config) publicKey(partyIDs []party.ID) *curve.Point {
 	sum := curve.NewIdentityPoint()
 	tmp := curve.NewIdentityPoint()
+	partyIDs := make([]party.ID, 0, len(c.Public))
+	for j := range c.Public {
+		partyIDs = append(partyIDs, j)
+	}
 	l := polynomial.Lagrange(partyIDs)
 	for j, partyJ := range c.Public {
 		tmp.ScalarMult(l[j], partyJ.ECDSA)
 		sum.Add(sum, tmp)
 	}
-	return sum
+	return sum.ToPublicKey()
 }
 
-// Validate ensures that the data
+// Validate ensures that the data is consistent. In particular it verifies:
+// - 0 ⩽ threshold ⩽ n-1
+// - all public data is present and valid
+// - the secret corresponds to the data from an included party.
 func (c Config) Validate() error {
 	// verify number of parties w.r.t. threshold
 	// want 0 ⩽ threshold ⩽ n-1
@@ -88,7 +82,7 @@ func (c Config) Validate() error {
 	return nil
 }
 
-// PartyIDs returns a sorted slice of party IDs
+// PartyIDs returns a sorted slice of party IDs.
 func (c Config) PartyIDs() party.IDSlice {
 	ids := make([]party.ID, 0, len(c.Public))
 	for j := range c.Public {
@@ -232,3 +226,40 @@ func (p Public) WriteTo(w io.Writer) (total int64, err error) {
 	}
 	return
 }
+
+// CanSign returns true if the given _sorted_ list of signers is
+// a valid subset of the original parties of size > t,
+// and includes self.
+func (c *Config) CanSign(signers party.IDSlice) bool {
+	if !signers.Valid() {
+		return false
+	}
+	// check that the signers are a subset of the original parties,
+	// that it includes self, and that the size is > t.
+	for _, j := range signers {
+		if _, ok := c.Public[j]; !ok {
+			return false
+		}
+	}
+	if !signers.Contains(c.ID) {
+		return false
+	}
+	if len(signers) <= int(c.Threshold) {
+		return false
+	}
+	return true
+}
+
+// Threshold wraps a int64 and allows.
+type Threshold int64
+
+// WriteTo implements io.WriterTo interface.
+func (t Threshold) WriteTo(w io.Writer) (int64, error) {
+	intBuffer := make([]byte, 8)
+	binary.BigEndian.PutUint64(intBuffer, uint64(t))
+	n, err := w.Write(intBuffer)
+	return int64(n), err
+}
+
+// Domain implements writer.WriterToWithDomain.
+func (Threshold) Domain() string { return "Threshold" }

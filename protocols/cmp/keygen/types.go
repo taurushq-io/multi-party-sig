@@ -1,7 +1,6 @@
 package keygen
 
 import (
-	"encoding/binary"
 	"fmt"
 	"io"
 
@@ -42,16 +41,3 @@ func (rid RID) Copy() RID {
 	copy(other, rid)
 	return other
 }
-
-type Threshold int64
-
-// WriteTo implements io.WriterTo interface.
-func (t Threshold) WriteTo(w io.Writer) (int64, error) {
-	intBuffer := make([]byte, 8)
-	binary.BigEndian.PutUint64(intBuffer, uint64(t))
-	n, err := w.Write(intBuffer)
-	return int64(n), err
-}
-
-// Domain implements writer.WriterToWithDomain.
-func (Threshold) Domain() string { return "Threshold" }

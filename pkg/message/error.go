@@ -17,6 +17,7 @@ const (
 	ErrMessageFirstRound         Error = "no message expected in first round"
 	ErrMessageLastRound          Error = "no message expected in output round"
 	ErrMessageInconsistentRound  Error = "given RoundNumber is inconsistent with content"
+	ErrMessageInvalidTo          Error = "msg.To is not valid"
 )
 
 // Error implements error.

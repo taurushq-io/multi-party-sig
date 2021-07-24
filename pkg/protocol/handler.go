@@ -161,13 +161,6 @@ func (h *Handler) validate(msg *message.Message) error {
 		return message.ErrMessageUnknownSender
 	}
 
-	destination := party.IDSlice(msg.To)
-
-	// if not broadcast, make sure we are the intended recipient
-	if len(destination) != 0 && !destination.Contains(h.info.SelfID()) {
-		return message.ErrMessageWrongDestination
-	}
-
 	// previous round
 	currentRound := h.roundNumber()
 	if msg.RoundNumber < currentRound {

@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package keygen;
+package config;
 
-option go_package = "github.com/taurusgroup/cmp-ecdsa/protocol/keygen";
+option go_package = "github.com/taurusgroup/cmp-ecdsa/protocol/cmp/keygen";
 
 option (gogoproto.stable_marshaler_all) = true;
 option (gogoproto.goproto_getters_all) = false;
