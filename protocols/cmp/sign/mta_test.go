@@ -43,9 +43,9 @@ func Test_newMtA(t *testing.T) {
 	msgJ := mtaI.ProofAffG(hash.New(), j.Pedersen)
 	msgI := mtaJ.ProofAffG(hash.New(), i.Pedersen)
 
-	err := mtaI.Input(hash.New(), j.Pedersen, msgJ, Aj)
+	err := mtaI.Input(hash.New(), j.Pedersen, msgI, Aj)
 	require.NoError(t, err, "decryption should pass")
-	err = mtaJ.Input(hash.New(), i.Pedersen, msgI, Ai)
+	err = mtaJ.Input(hash.New(), i.Pedersen, msgJ, Ai)
 	require.NoError(t, err, "decryption should pass")
 
 	gammaI := mtaI.Share()
