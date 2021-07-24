@@ -24,7 +24,7 @@ func TestExponent_Evaluate(t *testing.T) {
 		randomIndex := sample.Scalar(rand.Reader)
 
 		lhs.ScalarBaseMult(poly.Evaluate(randomIndex))
-		rhs1 := polyExp.evaluateHorner(randomIndex)
+		rhs1 := polyExp.Evaluate(randomIndex)
 		rhs2 := polyExp.evaluateClassic(randomIndex)
 
 		assert.Truef(t, lhs.Equal(rhs1), fmt.Sprint("base eval differs from horner", x))

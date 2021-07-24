@@ -40,10 +40,10 @@ type round2 struct {
 	GNonce *safenum.Nat
 }
 
-// ProcessMessage implements round.Round
+// ProcessMessage implements round.Round.
 //
 // - store Kⱼ, Gⱼ
-// - verify zkenc(Kⱼ)
+// - verify zkenc(Kⱼ).
 func (r *round2) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Sign2)
 
@@ -62,7 +62,7 @@ func (r *round2) ProcessMessage(j party.ID, content message.Content) error {
 
 // Finalize implements round.Round
 //
-// - compute Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
+// - compute Hash(ssid, K₁, G₁, …, Kₙ, Gₙ).
 func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// compute Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
 	// The papers says that we need to reliably broadcast this data, however unless we use
@@ -123,19 +123,19 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}, nil
 }
 
-// MessageContent implements round.Round
+// MessageContent implements round.Round.
 func (r *round2) MessageContent() message.Content { return &Sign2{} }
 
-// Validate implements message.Content
+// Validate implements message.Content.
 func (m *Sign2) Validate() error {
 	if m == nil {
-		return errors.New("sign.round1: message is nil")
+		return errors.New("sign.round2: message is nil")
 	}
 	if m.G == nil || m.K == nil {
-		return errors.New("sign.round1: K or G is nil")
+		return errors.New("sign.round2: K or G is nil")
 	}
 	return nil
 }
 
-// RoundNumber implements message.Content
+// RoundNumber implements message.Content.
 func (m *Sign2) RoundNumber() types.RoundNumber { return 2 }

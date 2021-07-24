@@ -16,10 +16,6 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-type testParty struct {
-	r round.Round
-}
-
 var roundTypes = []reflect.Type{
 	reflect.TypeOf(&round1{}),
 	reflect.TypeOf(&round2{}),
@@ -28,18 +24,18 @@ var roundTypes = []reflect.Type{
 	reflect.TypeOf(&output{}),
 }
 
-func processRound(t *testing.T, parties map[party.ID]*testParty, expectedRoundType reflect.Type) {
-	N := len(parties)
+func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundType reflect.Type) {
+	N := len(rounds)
 	t.Logf("starting round %v", expectedRoundType)
 	// get the second set of  messages
 	out := make(chan *message.Message, N*N)
-	for _, partyJ := range parties {
-		assert.EqualValues(t, expectedRoundType, reflect.TypeOf(partyJ.r))
-		newRound, err := partyJ.r.Finalize(out)
+	for id, r := range rounds {
+		assert.EqualValues(t, expectedRoundType, reflect.TypeOf(r))
+		newRound, err := r.Finalize(out)
 		require.NoError(t, err, "failed to generate messages")
 
 		if newRound != nil {
-			partyJ.r = newRound
+			rounds[id] = newRound
 		}
 	}
 	close(out)
@@ -47,17 +43,17 @@ func processRound(t *testing.T, parties map[party.ID]*testParty, expectedRoundTy
 	for msg := range out {
 		msgBytes, err := proto.Marshal(msg)
 		require.NoError(t, err, "failed to marshal message")
-		for idJ, partyJ := range parties {
+		for idJ, r := range rounds {
 			var m message.Message
 			require.NoError(t, proto.Unmarshal(msgBytes, &m), "failed to unmarshal message")
 			if m.From == idJ {
 				continue
 			}
 			if len(m.To) == 0 || party.IDSlice(m.To).Contains(idJ) {
-				content := partyJ.r.MessageContent()
+				content := r.MessageContent()
 				err = msg.UnmarshalContent(content)
 				require.NoError(t, err)
-				require.NoError(t, partyJ.r.ProcessMessage(msg.From, content))
+				require.NoError(t, r.ProcessMessage(msg.From, content))
 			}
 
 		}
@@ -85,19 +81,18 @@ func TestRound(t *testing.T) {
 	}
 	t.Log("done generating sessions")
 
-	message := []byte("hello")
+	messageToSign := []byte("hello")
 	messageHash := make([]byte, 64)
-	sha3.ShakeSum128(messageHash, message)
+	sha3.ShakeSum128(messageHash, messageToSign)
 
-	parties := make(map[party.ID]*testParty, N)
+	rounds := make(map[party.ID]round.Round, N)
 	for _, partyID := range partyIDs {
 		s := sessions[partyID]
-		r, _, err := StartSign(s, secrets[partyID], partyIDs, messageHash)()
+		rounds[partyID], _, err = StartSign(s, secrets[partyID], partyIDs, messageHash)()
 		require.NoError(t, err, "round creation should not result in an error")
-		parties[partyID] = &testParty{r: r}
 	}
 
 	for _, roundType := range roundTypes {
-		processRound(t, parties, roundType)
+		processRound(t, rounds, roundType)
 	}
 }

@@ -51,7 +51,7 @@ func (d Decommitment) Validate() error {
 }
 
 // Commit creates a commitment to data, and returns a commitment hash, and a decommitment string such that
-// commitment = h(data, decommitment)
+// commitment = h(data, decommitment).
 func (hash *Hash) Commit(data ...interface{}) (Commitment, Decommitment, error) {
 	var err error
 	decommitment := Decommitment(make([]byte, params.SecBytes))
@@ -76,7 +76,7 @@ func (hash *Hash) Commit(data ...interface{}) (Commitment, Decommitment, error) 
 }
 
 // Decommit verifies that the commitment corresponds to the data and decommitment such that
-// commitment = h(data, decommitment)
+// commitment = h(data, decommitment).
 func (hash *Hash) Decommit(c Commitment, d Decommitment, data ...interface{}) bool {
 	var err error
 	if err = c.Validate(); err != nil {

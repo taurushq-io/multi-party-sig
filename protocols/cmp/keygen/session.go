@@ -16,7 +16,7 @@ import (
 
 // Session represents the SSID after having performed a keygen/refresh operation.
 // It represents ssid = (sid, (N₁, s₁, t₁), …, (Nₙ, sₙ, tₙ))
-// where sid = (𝔾, t, n, P₁, …, Pₙ)
+// where sid = (𝔾, t, n, P₁, …, Pₙ).
 type Session struct {
 	// group for signature
 	group elliptic.Curve
@@ -37,7 +37,7 @@ type Session struct {
 
 // newSession creates a session from given keygen material, and performs full verification.
 // If SSID is given, then it checked against the recomputed one.
-// No copy of the given data is performed
+// No copy of the given data is performed.
 func newSession(threshold int, publicInfo map[party.ID]*Public, rid RID) (*Session, error) {
 	n := len(publicInfo)
 	if n == 0 {
@@ -71,7 +71,7 @@ func (s Session) Threshold() int { return s.threshold }
 // Public returns the public key material we have stored for the party with the given id.
 func (s Session) Public(id party.ID) *Public { return s.public[id] }
 
-// PublicKey returns the group's public ECDSA key
+// PublicKey returns the group's public ECDSA key.
 func (s Session) PublicKey() *ecdsa.PublicKey { return s.publicKey }
 
 func (s Session) Validate() error {
@@ -156,7 +156,7 @@ func (s Session) WriteTo(w io.Writer) (total int64, err error) {
 	return
 }
 
-// Domain implements writer.WriterToWithDomain
+// Domain implements writer.WriterToWithDomain.
 func (s Session) Domain() string {
 	return "CMP Session"
 }

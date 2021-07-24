@@ -28,7 +28,7 @@ type round1 struct {
 	Message []byte
 }
 
-// ProcessMessage implements round.Round
+// ProcessMessage implements round.Round.
 func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 
 // Finalize implements round.Round
@@ -90,5 +90,5 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}, nil
 }
 
-// MessageContent implements round.Round
+// MessageContent implements round.Round.
 func (r *round1) MessageContent() message.Content { return &message.First{} }

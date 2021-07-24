@@ -21,7 +21,7 @@ func init() {
 	benchN = safenum.ModulusFromNat(new(safenum.Nat).SetBig(benchParams.N, benchParams.N.BitLen()))
 }
 
-// These exist to avoid optimization
+// These exist to avoid optimization.
 var resultBig *big.Int
 var resultBool bool
 

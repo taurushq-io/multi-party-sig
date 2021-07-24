@@ -21,9 +21,9 @@ func TestPolynomial_Constant(t *testing.T) {
 
 func TestPolynomial_Evaluate(t *testing.T) {
 	polynomial := &Polynomial{make([]curve.Scalar, 3)}
-	polynomial.Coefficients[0].SetUInt32(1)
-	polynomial.Coefficients[1].SetUInt32(0)
-	polynomial.Coefficients[2].SetUInt32(1)
+	polynomial.coefficients[0].SetUInt32(1)
+	polynomial.coefficients[1].SetUInt32(0)
+	polynomial.coefficients[2].SetUInt32(1)
 
 	for index := 0; index < 100; index++ {
 		x := mrand.Uint32()

@@ -76,7 +76,7 @@ func NewHelper(protocolID types.ProtocolID, finalRoundNumber types.RoundNumber,
 // It assumes that the state is in a correct, and can panic if it is not.
 // Calling hash.Sum() on the resulting hash function returns the hash of the SSID.
 // It computes
-// - Hash(𝔾, q, Gₓ, n, P₁, …, Pₙ, auxInfo}
+// - Hash(𝔾, q, Gₓ, n, P₁, …, Pₙ, auxInfo}.
 func hashFromSID(protocolID types.ProtocolID, group elliptic.Curve, partyIDs party.IDSlice, auxInfo ...writer.WriterToWithDomain) *hash.Hash {
 	h := hash.New()
 
@@ -105,13 +105,14 @@ func hashFromSID(protocolID types.ProtocolID, group elliptic.Curve, partyIDs par
 	return h
 }
 
+// Hash returns copy of the hash function of this protocol execution.
 func (h *Helper) Hash() *hash.Hash {
 	h.mtx.Lock()
 	defer h.mtx.Unlock()
 	return h.hash.Clone()
 }
 
-// HashForID returns a clone of the hash.Hash for this session, initialized with the given id
+// HashForID returns a clone of the hash.Hash for this session, initialized with the given id.
 func (h *Helper) HashForID(id party.ID) *hash.Hash {
 	h.mtx.Lock()
 	defer h.mtx.Unlock()
@@ -130,7 +131,7 @@ func (h *Helper) UpdateHashState(value writer.WriterToWithDomain) {
 	_, _ = h.hash.WriteAny(value)
 }
 
-// MarshalMessage returns a Message for the given content, and sets the headers appropriately.
+// MarshalMessage returns a message.Message for the given content with the appropriate headers.
 // If to is empty, then the message will be interpreted as "Broadcast".
 // For "Send to all" behavior, the full list of parties can be given.
 // It panics if the content is not able to be marshalled.
@@ -149,6 +150,8 @@ func (h *Helper) MarshalMessage(content message.Content, to ...party.ID) *messag
 	panic("protocol: unable to marshal message content")
 }
 
+// SendMessage is a convenience function for all rounds that attempts to send the message to the channel.
+// If the channel is full or closed, an error is returned.
 func (h *Helper) SendMessage(msg *message.Message, out chan<- *message.Message) error {
 	select {
 	case out <- msg:
@@ -158,7 +161,7 @@ func (h *Helper) SendMessage(msg *message.Message, out chan<- *message.Message) 
 	}
 }
 
-// ProtocolID is string identifier for this protocol
+// ProtocolID is string identifier for this protocol.
 func (h *Helper) ProtocolID() types.ProtocolID { return h.protocolID }
 
 // FinalRoundNumber is the number of rounds before the output round.
@@ -170,14 +173,14 @@ func (h *Helper) SelfID() party.ID { return h.selfID }
 // PartyIDs is a sorted slice of participating parties in this protocol.
 func (h *Helper) PartyIDs() party.IDSlice { return h.partyIDs }
 
-// SSID the unique identifier for this protocol execution
+// SSID the unique identifier for this protocol execution.
 func (h *Helper) SSID() []byte { return h.ssid }
 
 // N returns the number of participants.
 func (h *Helper) N() int { return len(h.partyIDs) }
 
-// OtherPartyIDs returns a sorted list of parties that does not contain SelfID
+// OtherPartyIDs returns a sorted list of parties that does not contain SelfID.
 func (h *Helper) OtherPartyIDs() party.IDSlice { return h.partyIDs.Remove(h.selfID) }
 
-// Curve returns the curve used for this protocol
+// Curve returns the curve used for this protocol.
 func (h *Helper) Curve() elliptic.Curve { return h.group }

@@ -35,7 +35,7 @@ func (p Proof) IsValid(public Public) bool {
 }
 
 // NewProof generates a proof that:
-// s = t^lambda (mod N)
+// s = t^lambda (mod N).
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	n := public.Pedersen.N
 	lambda := private.Lambda

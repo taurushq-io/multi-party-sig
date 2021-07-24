@@ -19,7 +19,7 @@ type Secret struct {
 	Paillier *paillier.SecretKey `json:"paillier"`
 }
 
-// ValidatePublic checks whether Secret is compatible with the given Public data
+// ValidatePublic checks whether Secret is compatible with the given Public data.
 func (s *Secret) ValidatePublic(p *Public) error {
 	if p == nil || p.Pedersen == nil || p.Paillier == nil || p.ECDSA == nil {
 		return errors.New("secret: p is nil")

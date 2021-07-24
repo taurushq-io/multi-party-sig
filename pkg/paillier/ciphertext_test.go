@@ -133,7 +133,7 @@ func TestEncDecScalingHomomorphic(t *testing.T) {
 	}
 }
 
-// Used to avoid benchmark optimization
+// Used to avoid benchmark optimization.
 var resultCiphertext *Ciphertext
 
 func BenchmarkEncryption(b *testing.B) {

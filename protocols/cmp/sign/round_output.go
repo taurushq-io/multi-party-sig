@@ -33,9 +33,9 @@ type output struct {
 	R *curve.Scalar
 }
 
-// ProcessMessage implements round.Round
+// ProcessMessage implements round.Round.
 //
-// - σⱼ != 0
+// - σⱼ != 0.
 func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*SignOutput)
 
@@ -49,7 +49,7 @@ func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 // Finalize implements round.Round
 //
 // - compute σ = ∑ⱼ σⱼ
-// - verify signature
+// - verify signature.
 func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {
 	// compute σ = ∑ⱼ σⱼ
 	Sigma := curve.NewScalar()

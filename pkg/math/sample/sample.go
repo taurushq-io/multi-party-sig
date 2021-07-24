@@ -24,7 +24,7 @@ func mustReadBits(rand io.Reader, buf []byte) {
 	panic(ErrMaxIterations)
 }
 
-// ModN samples an element of ℤₙ
+// ModN samples an element of ℤₙ.
 func ModN(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
 	out := new(safenum.Nat)
 	buf := make([]byte, (n.BitLen()+7)/8)
@@ -39,7 +39,7 @@ func ModN(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
 	return out
 }
 
-// UnitModN returns a u ∈ ℤₙˣ
+// UnitModN returns a u ∈ ℤₙˣ.
 func UnitModN(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
 	for i := 0; i < maxIterations; i++ {
 		// PERF: Reuse buffer instead of allocating each time
@@ -131,7 +131,7 @@ func potentialSafePrime(rand io.Reader, bits int) (p *big.Int, err error) {
 			return nil, err
 		}
 
-		// Clear bits in the first byte to make sure the candidate has a size <= bits.
+		// Clear bits in the first byte to make sure the candidate has a size ⩽ bits.
 		bytes[0] &= uint8(int(1<<lastBits) - 1)
 		// Don't let the value be too small, i.e, set the most significant two bits.
 		//
@@ -233,13 +233,13 @@ func BlumPrime(rand io.Reader) *safenum.Nat {
 
 // Paillier generate the necessary integers for a Paillier key pair.
 // p, q are safe primes ((p - 1) / 2 is also prime), and Blum primes (p = 3 mod 4)
-// n = pq
+// n = pq.
 func Paillier(rand io.Reader) (p, q *safenum.Nat) {
 	p, q = BlumPrime(rand), BlumPrime(rand)
 	return
 }
 
-// Pedersen generates the s, t, λ such that s = tˡ
+// Pedersen generates the s, t, λ such that s = tˡ.
 func Pedersen(rand io.Reader, phi *safenum.Nat, n *safenum.Modulus) (s, t, lambda *safenum.Nat) {
 	phiMod := safenum.ModulusFromNat(phi)
 
@@ -254,6 +254,7 @@ func Pedersen(rand io.Reader, phi *safenum.Nat, n *safenum.Modulus) (s, t, lambd
 	return
 }
 
+// Scalar returns a new *curve.Scalar by reading bytes from rand.
 func Scalar(rand io.Reader) *curve.Scalar {
 	var s curve.Scalar
 	buffer := make([]byte, params.BytesScalar)
@@ -262,6 +263,8 @@ func Scalar(rand io.Reader) *curve.Scalar {
 	return &s
 }
 
+// ScalarPointPair returns a new *curve.Scalar/*curve.Point tuple (x,X) by reading bytes from rand.
+// The tuple satisfies X = x⋅G where G is the base point of the curve.
 func ScalarPointPair(rand io.Reader) (*curve.Scalar, *curve.Point) {
 	var p curve.Point
 	s := Scalar(rand)

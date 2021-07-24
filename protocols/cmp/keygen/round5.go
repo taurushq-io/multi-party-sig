@@ -24,10 +24,10 @@ type round5 struct {
 	RID RID
 }
 
-// ProcessMessage implements round.Round
+// ProcessMessage implements round.Round.
 //
 // - decrypt share
-// - verify VSS
+// - verify VSS.
 func (r *round5) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*Keygen5)
 	// decrypt share
@@ -69,7 +69,7 @@ func (r *round5) ProcessMessage(j party.ID, content message.Content) error {
 // - recompute session SSID
 // - validate Session
 // - write new ssid hash to old hash state
-// - create proof of knowledge of secret
+// - create proof of knowledge of secret.
 func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// add all shares to our secret
 	SecretECDSA := curve.NewScalar().Set(r.PreviousSecretECDSA)
@@ -135,10 +135,10 @@ func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}, nil
 }
 
-// MessageContent implements round.Round
+// MessageContent implements round.Round.
 func (r *round5) MessageContent() message.Content { return &Keygen5{} }
 
-// Validate implements message.Content
+// Validate implements message.Content.
 func (m *Keygen5) Validate() error {
 	if m == nil {
 		return errors.New("keygen.round3: message is nil")
@@ -155,5 +155,5 @@ func (m *Keygen5) Validate() error {
 	return nil
 }
 
-// RoundNumber implements message.Content
+// RoundNumber implements message.Content.
 func (m *Keygen5) RoundNumber() types.RoundNumber { return 5 }

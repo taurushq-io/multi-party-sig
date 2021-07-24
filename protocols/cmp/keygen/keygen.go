@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	// threshold keygen with echo broadcast
+	// threshold keygen with echo broadcast.
 	protocolKeygenID types.ProtocolID = "cmp/keygen-threshold-echo"
-	// threshold refresh with echo broadcast
+	// threshold refresh with echo broadcast.
 	protocolRefreshID types.ProtocolID = "cmp/refresh-threshold-echo"
 
 	protocolRounds types.RoundNumber = 6

@@ -1,7 +1,6 @@
 package message
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"
@@ -10,28 +9,32 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
-// First is an empty message used for completeness for the first round
+// First represents an empty message to be returned by Round.MessageContent() for the first round of a protocol.
 type First struct {
 	gogo.Any
 }
 
+// Validate always returns an error since the first round does not expect a message.
 func (m *First) Validate() error {
-	return errors.New("message: First is not a valid message")
+	return ErrMessageFirstRound
 }
 
+// RoundNumber returns 1 since it is the first round.
 func (m *First) RoundNumber() types.RoundNumber {
 	return 1
 }
 
-// Final is an empty message used returned by the final round.Output.
+// Final represents an empty message, and can be returned by the first round of a protocol.
 type Final struct {
 	gogo.Any
 }
 
+// Validate always returns an error since the first round does not expect a message.
 func (m *Final) Validate() error {
-	return errors.New("message: Last is not a valid message")
+	return ErrMessageLastRound
 }
 
+// RoundNumber returns 0 to indicate that it is the final round.
 func (m *Final) RoundNumber() types.RoundNumber {
 	return 0
 }
@@ -43,25 +46,32 @@ type Content interface {
 	RoundNumber() types.RoundNumber
 }
 
+// UnmarshalContent expects a pointer to an uninitialized object implementing Content.
+// Returns an error if the round number is inconsistent with the content.
 func (m *Message) UnmarshalContent(content Content) error {
+	if m.RoundNumber != content.RoundNumber() {
+		return ErrMessageInconsistentRound
+	}
 	if err := gogo.UnmarshalAny(m.Content, content); err != nil {
 		return err
-	}
-	if m.RoundNumber != content.RoundNumber() {
-		return errors.New("message: given RoundNumber is inconsistent with content")
 	}
 	return content.Validate()
 }
 
+// String implements fmt.Stringer.
 func (m Message) String() string {
 	return fmt.Sprintf("message: round %d, from: %s, to %v, protocol: %s", m.RoundNumber, m.From, m.To, m.Protocol)
 }
 
-// Broadcast returns true if the message should be reliably broadcast to all participants in the protocol
+// Broadcast returns true if the message should be reliably broadcast to all participants in the protocol.
 func (m Message) Broadcast() bool {
 	return len(m.To) == 0
 }
 
+// Validate checks that:
+// - Content is not empty.
+// - RoundNumber is valid.
+// - To is sorted and does not contain duplicates.
 func (m Message) Validate() error {
 	if m.Content == nil {
 		return ErrMessageNilContent
@@ -83,7 +93,7 @@ func (m Message) Validate() error {
 	return nil
 }
 
-// IsFor returns true if the message is intended for the designated party
+// IsFor returns true if the message is intended for the designated party.
 func (m Message) IsFor(id party.ID) bool {
 	if m.From == id {
 		return false

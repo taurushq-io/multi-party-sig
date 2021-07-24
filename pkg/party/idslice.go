@@ -29,7 +29,7 @@ func (partyIDs IDSlice) Swap(i, j int)      { partyIDs[i], partyIDs[j] = partyID
 // Sort is a convenience method: x.Sort() calls Sort(x).
 func (partyIDs IDSlice) Sort() { sort.Sort(partyIDs) }
 
-// Sorted returns true if partyIDs is sorted
+// Sorted returns true if partyIDs is sorted.
 func (partyIDs IDSlice) Sorted() bool { return sort.IsSorted(partyIDs) }
 
 // Contains returns true if partyIDs contains id.
@@ -76,7 +76,7 @@ func (partyIDs IDSlice) Search(x ID) (int, bool) {
 	return 0, false
 }
 
-// Copy returns an identical copy of the received
+// Copy returns an identical copy of the received.
 func (partyIDs IDSlice) Copy() IDSlice {
 	a := make(IDSlice, len(partyIDs))
 	copy(a, partyIDs)
@@ -135,7 +135,7 @@ func (partyIDs IDSlice) Lagrange(index ID) *curve.Scalar {
 	return num
 }
 
-// RandomIDs returns a slice of random IDs with 20 alphanumeric characters
+// RandomIDs returns a slice of random IDs with 20 alphanumeric characters.
 func RandomIDs(n int) IDSlice {
 	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -165,7 +165,7 @@ func (partyIDs IDSlice) Equal(otherPartyIDs IDSlice) bool {
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
-// It writes the full uncompressed point to w, ie 64 bytes
+// It writes the full uncompressed point to w, ie 64 bytes.
 func (partyIDs IDSlice) WriteTo(w io.Writer) (int64, error) {
 	var (
 		n   int
@@ -193,7 +193,7 @@ func (IDSlice) Domain() string {
 	return "IDSlice"
 }
 
-// String implements fmt.Stringer
+// String implements fmt.Stringer.
 func (partyIDs IDSlice) String() string {
 	ss := make([]string, len(partyIDs))
 	for i, id := range partyIDs {

@@ -8,7 +8,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
-// RID is the unique identifier generated during the keygen
+// RID is the unique identifier generated during the keygen.
 type RID []byte
 
 func newRID() RID {
@@ -27,7 +27,7 @@ func (rid RID) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
-// Domain implements writer.WriterToWithDomain
+// Domain implements writer.WriterToWithDomain.
 func (RID) Domain() string { return "RID" }
 
 func (rid RID) Validate() error {
@@ -53,5 +53,5 @@ func (t Threshold) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
-// Domain implements writer.WriterToWithDomain
+// Domain implements writer.WriterToWithDomain.
 func (Threshold) Domain() string { return "Threshold" }

@@ -10,7 +10,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
-// StartXOR is a function that creates the first round with all necessary information to create a protocol.Handler
+// StartXOR is a function that creates the first round with all necessary information to create a protocol.Handler.
 func StartXOR(selfID party.ID, partyIDs party.IDSlice) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
 		// create a hash function initialized with common information

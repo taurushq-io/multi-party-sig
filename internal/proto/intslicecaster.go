@@ -9,14 +9,14 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
-// IntSliceCaster handles big int operations
+// IntSliceCaster handles big int operations.
 type IntSliceCaster struct{}
 
 const prefixSize = 4
 
 type IntSlice = []*big.Int
 
-// Equal returns true if the provided big ints are equal
+// Equal returns true if the provided big ints are equal.
 func (c *IntSliceCaster) Equal(a, b *IntSlice) bool {
 	if a == nil {
 		return b == nil
@@ -39,7 +39,7 @@ func (c *IntSliceCaster) Equal(a, b *IntSlice) bool {
 	return true
 }
 
-// Size returns the size of a big int
+// Size returns the size of a big int.
 func (c *IntSliceCaster) Size(a *IntSlice) int {
 	if a == nil {
 		return 1
@@ -48,7 +48,7 @@ func (c *IntSliceCaster) Size(a *IntSlice) int {
 	return prefixSize + len(*a)*params.BytesPaillier
 }
 
-// MarshalTo marshals the first parameter to the second one
+// MarshalTo marshals the first parameter to the second one.
 func (c *IntSliceCaster) MarshalTo(a *IntSlice, buf []byte) (int, error) {
 	for _, ai := range *a {
 		if ai == nil {
@@ -72,7 +72,7 @@ func (c *IntSliceCaster) MarshalTo(a *IntSlice, buf []byte) (int, error) {
 	return written, nil
 }
 
-// Unmarshal unmarshalls the parameter to a big int
+// Unmarshal unmarshalls the parameter to a big int.
 func (c *IntSliceCaster) Unmarshal(buf []byte) (*IntSlice, error) {
 	if len(buf) == 0 {
 		return nil, fmt.Errorf("bad input")
@@ -97,7 +97,7 @@ func (c *IntSliceCaster) Unmarshal(buf []byte) (*IntSlice, error) {
 	return &ret, nil
 }
 
-// NewPopulated returns a new instance of a big int, pre-populated with a zero
+// NewPopulated returns a new instance of a big int, pre-populated with a zero.
 func (c *IntSliceCaster) NewPopulated() *IntSlice {
 	return &IntSlice{big.NewInt(0)}
 }

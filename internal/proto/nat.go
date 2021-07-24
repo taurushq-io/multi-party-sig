@@ -44,12 +44,12 @@ func (m *NatMarshaller) Size() int {
 	return (m.AnnouncedLen() + 7) / 8
 }
 
-// MarshalJSON produces JSON from this struct
+// MarshalJSON produces JSON from this struct.
 func (m NatMarshaller) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m.Bytes())
 }
 
-// UnmarshalJSON reads this struct from JSON
+// UnmarshalJSON reads this struct from JSON.
 func (m *NatMarshaller) UnmarshalJSON(data []byte) error {
 	if m.Nat == nil {
 		m.Nat = new(safenum.Nat)

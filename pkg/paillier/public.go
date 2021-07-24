@@ -31,7 +31,7 @@ type PublicKey struct {
 	nPlusOne *safenum.Nat
 }
 
-// N is the public modulus making up this key
+// N is the public modulus making up this key.
 func (pk *PublicKey) N() *big.Int {
 	return pk.n.Big()
 }
@@ -55,9 +55,9 @@ func NewPublicKey(n *big.Int) *PublicKey {
 // Enc returns the encryption of m under the public key pk.
 // The nonce used to encrypt is returned.
 //
-// The message m must be in the range [-(N-1)/2, …, (N-1)/2] and panics otherwise
+// The message m must be in the range [-(N-1)/2, …, (N-1)/2] and panics otherwise.
 //
-// ct = (1+N)ᵐρᴺ (mod N²)
+// ct = (1+N)ᵐρᴺ (mod N²).
 func (pk PublicKey) Enc(m *safenum.Int) (*Ciphertext, *safenum.Nat) {
 	nonce := sample.UnitModN(rand.Reader, pk.n)
 	return pk.EncWithNonce(m, nonce), nonce
@@ -68,12 +68,12 @@ func (pk PublicKey) Enc(m *safenum.Int) (*Ciphertext, *safenum.Nat) {
 //
 // The message m must be in the range [-(N-1)/2, …, (N-1)/2] and panics otherwise
 //
-// ct = (1+N)ᵐρᴺ (mod N²)
+// ct = (1+N)ᵐρᴺ (mod N²).
 func (pk PublicKey) EncWithNonce(m *safenum.Int, nonce *safenum.Nat) *Ciphertext {
 	if m.CheckInRange(pk.n) != 1 {
 		panic("paillier.Encrypt: tried to encrypt message outside of range [-(N-1)/2, …, (N-1)/2]")
 	}
-	out := NewCiphertext()
+	out := newCiphertext()
 
 	// N + 1
 	out.C.SetNat(pk.nPlusOne)
@@ -87,7 +87,7 @@ func (pk PublicKey) EncWithNonce(m *safenum.Int, nonce *safenum.Nat) *Ciphertext
 	return out
 }
 
-// Equal returns true if pk = other.
+// Equal returns true if pk ≡ other.
 func (pk PublicKey) Equal(other *PublicKey) bool {
 	_, eq, _ := pk.n.Cmp(other.n)
 	return eq == 1
@@ -106,8 +106,8 @@ func (pk PublicKey) Validate() error {
 	return nil
 }
 
-// ValidateCiphertexts checks if all ciphertexts are in the correct range and coprime to N²
-// ct ∈ [1, …, N²-1] AND GCD(ct,N²) = 1
+// ValidateCiphertexts checks if all ciphertexts are in the correct range and coprime to N².
+// ct ∈ [1, …, N²-1] AND GCD(ct,N²) = 1.
 func (pk PublicKey) ValidateCiphertexts(cts ...*Ciphertext) bool {
 	for _, ct := range cts {
 		_, _, lt := ct.C.CmpMod(pk.nSquared)
@@ -121,7 +121,7 @@ func (pk PublicKey) ValidateCiphertexts(cts ...*Ciphertext) bool {
 	return true
 }
 
-// Clone performs a deep copy of the public key
+// Clone performs a deep copy of the public key.
 func (pk PublicKey) Clone() *PublicKey {
 	return &PublicKey{
 		n:        pk.n,
