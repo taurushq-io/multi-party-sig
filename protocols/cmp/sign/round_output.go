@@ -11,6 +11,8 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
+var _ round.Round = (*output)(nil)
+
 type output struct {
 	*round4
 
@@ -79,10 +81,10 @@ func (r *output) MessageContent() message.Content {
 
 func (m *SignOutput) Validate() error {
 	if m == nil {
-		return errors.New("sign.round4: message is nil")
+		return errors.New("sign.output: message is nil")
 	}
 	if m.SigmaShare == nil {
-		return errors.New("sign.round4: message contains nil fields")
+		return errors.New("sign.output: message contains nil fields")
 	}
 	return nil
 }

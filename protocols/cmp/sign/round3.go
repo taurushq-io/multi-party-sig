@@ -13,6 +13,8 @@ import (
 	zklogstar "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
 )
 
+var _ round.Round = (*round3)(nil)
+
 type round3 struct {
 	*round2
 

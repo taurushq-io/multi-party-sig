@@ -13,6 +13,8 @@ import (
 	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm"
 )
 
+var _ round.Round = (*round4)(nil)
+
 type round4 struct {
 	*round3
 }

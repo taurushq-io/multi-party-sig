@@ -16,6 +16,8 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
+var _ round.Round = (*round2)(nil)
+
 type round2 struct {
 	*round1
 

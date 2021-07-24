@@ -10,6 +10,8 @@ import (
 	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
 
+var _ round.Round = (*output)(nil)
+
 type output struct {
 	*round5
 	Session *Session

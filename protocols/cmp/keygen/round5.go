@@ -14,6 +14,8 @@ import (
 	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
 
+var _ round.Round = (*round5)(nil)
+
 type round5 struct {
 	*round4
 
@@ -139,16 +141,16 @@ func (r *round5) MessageContent() message.Content { return &Keygen5{} }
 // Validate implements message.Content
 func (m *Keygen5) Validate() error {
 	if m == nil {
-		return errors.New("keygen.round4: message is nil")
+		return errors.New("keygen.round3: message is nil")
 	}
 	if m.Mod == nil {
-		return errors.New("keygen.round4: zkmod proof is nil")
+		return errors.New("keygen.round3: zkmod proof is nil")
 	}
 	if m.Prm == nil {
-		return errors.New("keygen.round4: zkprm proof is nil")
+		return errors.New("keygen.round3: zkprm proof is nil")
 	}
 	if m.Share == nil {
-		return errors.New("keygen.round4: Share proof is nil")
+		return errors.New("keygen.round3: Share proof is nil")
 	}
 	return nil
 }

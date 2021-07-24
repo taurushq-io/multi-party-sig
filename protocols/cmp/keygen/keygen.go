@@ -22,14 +22,6 @@ const (
 	protocolRounds types.RoundNumber = 6
 )
 
-var (
-	_ round.Round = (*round1)(nil)
-	_ round.Round = (*round2)(nil)
-	_ round.Round = (*round3)(nil)
-	_ round.Round = (*round4)(nil)
-	_ round.Round = (*output)(nil)
-)
-
 func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
 		sortedIDs := party.NewIDSlice(partyIDs)

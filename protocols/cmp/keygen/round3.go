@@ -12,6 +12,8 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
+var _ round.Round = (*round3)(nil)
+
 type round3 struct {
 	*round2
 	// EchoHash = Hash(SSID, commitment₁, …, commitmentₙ)

@@ -14,6 +14,8 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/protocols/cmp/keygen"
 )
 
+var _ round.Round = (*round1)(nil)
+
 type round1 struct {
 	*round.Helper
 

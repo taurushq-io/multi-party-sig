@@ -11,6 +11,8 @@ import (
 	zklogstar "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
 )
 
+var _ round.Round = (*round4)(nil)
+
 type round4 struct {
 	*round3
 	// DeltaShares[j] = δⱼ
@@ -103,10 +105,10 @@ func (r *round4) MessageContent() message.Content { return &Sign4{} }
 // Validate implements message.Content
 func (m *Sign4) Validate() error {
 	if m == nil {
-		return errors.New("sign.round3: message is nil")
+		return errors.New("sign.round4: message is nil")
 	}
 	if m.DeltaShare == nil || m.BigDeltaShare == nil || m.ProofLog == nil {
-		return errors.New("sign.round3: message contains nil fields")
+		return errors.New("sign.round4: message contains nil fields")
 	}
 
 	return nil
