@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
@@ -147,22 +147,31 @@ func (c Config) WriteTo(w io.Writer) (total int64, err error) {
 	var n int64
 
 	// write t
-	n, err = writer.WriteWithDomain(w, Threshold(c.Threshold))
+	n, err = Threshold(c.Threshold).WriteTo(w)
+	total += n
+	if err != nil {
+		return
+	}
+
+	// write partyIDs
+	partyIDs := c.PartyIDs()
+	n, err = partyIDs.WriteTo(w)
 	total += n
 	if err != nil {
 		return
 	}
 
 	// write rid
-	n, err = writer.WriteWithDomain(w, c.RID)
+	n, err = c.RID.WriteTo(w)
 	total += n
 	if err != nil {
 		return
 	}
 
-	for _, j := range c.PartyIDs() {
+	// write all party data
+	for _, j := range partyIDs {
 		// write Xⱼ
-		n, err = writer.WriteWithDomain(w, c.Public[j])
+		n, err = c.Public[j].WriteTo(w)
 		total += n
 		if err != nil {
 			return
@@ -184,45 +193,22 @@ func (Public) Domain() string {
 
 // WriteTo implements io.WriterTo interface.
 func (p Public) WriteTo(w io.Writer) (total int64, err error) {
-	var n int64
-	buf := make([]byte, params.BytesIntModN)
-
 	// write ECDSA
-	n, err = writer.WriteWithDomain(w, p.ECDSA)
-	total += n
+	total, err = p.ECDSA.WriteTo(w)
 	if err != nil {
 		return
 	}
 
-	// write N
-	p.N.FillBytes(buf)
-	n, err = writer.WriteWithDomain(w, &writer.BytesWithDomain{
-		TheDomain: "N",
-		Bytes:     buf,
-	})
-	total += n
-	if err != nil {
-		return
-	}
-	// write S
-	p.S.FillBytes(buf)
-	n, err = writer.WriteWithDomain(w, &writer.BytesWithDomain{
-		TheDomain: "S",
-		Bytes:     buf,
-	})
-	total += n
-	if err != nil {
-		return
-	}
-	// write T
-	p.T.FillBytes(buf)
-	n, err = writer.WriteWithDomain(w, &writer.BytesWithDomain{
-		TheDomain: "T",
-		Bytes:     buf,
-	})
-	total += n
-	if err != nil {
-		return
+	buf := make([]byte, params.BytesIntModN)
+	var n int
+	// write N, S, T
+	for _, i := range []*big.Int{p.N, p.S, p.T} {
+		i.FillBytes(buf)
+		n, err = w.Write(buf)
+		total += int64(n)
+		if err != nil {
+			return
+		}
 	}
 	return
 }
