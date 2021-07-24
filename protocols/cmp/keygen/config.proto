@@ -37,7 +37,7 @@ message Public {
 message Config {
   // Threshold is the integer t which defines the maximum number of corruptions tolerated for this config.
   // Threshold + 1 is the minimum number of parties' shares required to reconstruct the secret/sign a message.
-  int32 threshold = 1;
+  uint32 threshold = 1;
 
   // Public maps party.ID to party. It contains all public information associated to a party.
   map<string, Public> public = 2 [(gogoproto.castkey) = "github.com/taurusgroup/cmp-ecdsa/pkg/party.ID"];

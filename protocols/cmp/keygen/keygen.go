@@ -26,18 +26,22 @@ func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.S
 	return func() (round.Round, protocol.Info, error) {
 		sortedIDs := party.NewIDSlice(partyIDs)
 
+		n := len(sortedIDs)
+		if !validThreshold(threshold, n) {
+			return nil, nil, fmt.Errorf("keygen.StartKeygen: threshold %d is not valid for number of parties %d", threshold, n)
+		}
 		helper, err := round.NewHelper(
 			protocolKeygenID,
 			protocolRounds,
 			selfID,
 			sortedIDs,
-			Threshold(threshold),
+			thresholdWrapper(threshold),
 		)
 		if err != nil {
 			return nil, nil, fmt.Errorf("keygen.StartKeygen: %w", err)
 		}
 
-		PreviousPublicSharesECDSA := make(map[party.ID]*curve.Point, len(partyIDs))
+		PreviousPublicSharesECDSA := make(map[party.ID]*curve.Point, n)
 		for _, idJ := range helper.PartyIDs() {
 			PreviousPublicSharesECDSA[idJ] = curve.NewIdentityPoint()
 		}

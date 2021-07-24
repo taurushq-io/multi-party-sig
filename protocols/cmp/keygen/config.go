@@ -2,10 +2,10 @@ package keygen
 
 import (
 	"crypto/ecdsa"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 
 	"github.com/cronokirby/safenum"
@@ -40,7 +40,7 @@ func (c Config) PublicKey() *ecdsa.PublicKey {
 func (c Config) Validate() error {
 	// verify number of parties w.r.t. threshold
 	// want 0 ⩽ threshold ⩽ n-1
-	if n := len(c.Public); n == 0 || c.Threshold < 0 || int(c.Threshold) > n-1 {
+	if !validThreshold(int(c.Threshold), len(c.Public)) {
 		return fmt.Errorf("config: threshold %d is invalid", c.Threshold)
 	}
 
@@ -147,7 +147,7 @@ func (c Config) WriteTo(w io.Writer) (total int64, err error) {
 	var n int64
 
 	// write t
-	n, err = Threshold(c.Threshold).WriteTo(w)
+	n, err = thresholdWrapper(c.Threshold).WriteTo(w)
 	total += n
 	if err != nil {
 		return
@@ -217,9 +217,19 @@ func (p Public) WriteTo(w io.Writer) (total int64, err error) {
 // a valid subset of the original parties of size > t,
 // and includes self.
 func (c *Config) CanSign(signers party.IDSlice) bool {
+	if !validThreshold(int(c.Threshold), len(signers)) {
+		return false
+	}
+
+	// check for duplicates
 	if !signers.Valid() {
 		return false
 	}
+
+	if !signers.Contains(c.ID) {
+		return false
+	}
+
 	// check that the signers are a subset of the original parties,
 	// that it includes self, and that the size is > t.
 	for _, j := range signers {
@@ -227,25 +237,16 @@ func (c *Config) CanSign(signers party.IDSlice) bool {
 			return false
 		}
 	}
-	if !signers.Contains(c.ID) {
+
+	return true
+}
+
+func validThreshold(t, n int) bool {
+	if t < 0 || t > math.MaxUint32 {
 		return false
 	}
-	if len(signers) <= int(c.Threshold) {
+	if n <= 0 || t > n-1 {
 		return false
 	}
 	return true
 }
-
-// Threshold wraps a int64 and allows.
-type Threshold int64
-
-// WriteTo implements io.WriterTo interface.
-func (t Threshold) WriteTo(w io.Writer) (int64, error) {
-	intBuffer := make([]byte, 8)
-	binary.BigEndian.PutUint64(intBuffer, uint64(t))
-	n, err := w.Write(intBuffer)
-	return int64(n), err
-}
-
-// Domain implements writer.WriterToWithDomain.
-func (Threshold) Domain() string { return "Threshold" }

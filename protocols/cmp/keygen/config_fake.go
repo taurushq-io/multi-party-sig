@@ -33,7 +33,7 @@ func FakeData(N, T int, source io.Reader) map[party.ID]*Config {
 
 		ecdsaSecret := f.Evaluate(pid.Scalar())
 		configs[pid] = &Config{
-			Threshold: int32(T),
+			Threshold: uint32(T),
 			Public:    public,
 			RID:       rid.Copy(),
 			Secret: &Secret{

@@ -104,7 +104,7 @@ func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 
 	UpdatedConfig := &Config{
-		Threshold: int32(r.Threshold),
+		Threshold: uint32(r.Threshold),
 		Public:    PublicData,
 		RID:       r.RID.Copy(),
 		Secret: &Secret{
