@@ -1,6 +1,7 @@
 package sign
 
 import (
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
@@ -9,6 +10,8 @@ import (
 
 type round2 struct {
 	*round1
+	D map[party.ID]*curve.Point
+	E map[party.ID]*curve.Point
 }
 
 // ProcessMessage implements round.Round.

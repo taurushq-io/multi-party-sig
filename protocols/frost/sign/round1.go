@@ -1,6 +1,10 @@
 package sign
 
 import (
+	"crypto/rand"
+
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
@@ -31,7 +35,27 @@ func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 
 // Finalize implements round.Round.
 func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
-	panic("unimplemented")
+	// We can think of this as roughly implementing Figure 2. The idea is
+	// to generate two nonces (d_i, e_i) in Z/(q)^*, then two commitments
+	// D_i = d_i * G, E_i = e_i * G, and then broadcast them.
+	d_i := sample.ScalarUnit(rand.Reader)
+	e_i := sample.ScalarUnit(rand.Reader)
+
+	D_i := curve.NewIdentityPoint().ScalarBaseMult(d_i)
+	E_i := curve.NewIdentityPoint().ScalarBaseMult(e_i)
+
+	// Broadcast the commitments
+	msg := r.MarshalMessage(&Sign2{D_i: D_i, E_i: E_i})
+	if err := r.SendMessage(msg, out); err != nil {
+		return r, err
+	}
+
+	D := make(map[party.ID]*curve.Point)
+	D[r.SelfID()] = D_i
+	E := make(map[party.ID]*curve.Point)
+	E[r.SelfID()] = E_i
+
+	return &round2{round1: r, D: D, E: E}, nil
 }
 
 // MessageContent implements round.Round.

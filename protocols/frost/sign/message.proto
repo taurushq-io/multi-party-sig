@@ -10,6 +10,10 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 message Sign2 {
   option (gogoproto.goproto_getters) = false;
+  // D_i is the first commitment produced by the sender of this message.
+  bytes D_i = 1 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point", (gogoproto.customname) = "D_i"];
+  // E_i is the second commitment produced by the sender of this message.
+  bytes E_i = 2 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point", (gogoproto.customname) = "E_i"];
 }
 
 message Sign3 {
