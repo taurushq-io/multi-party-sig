@@ -45,7 +45,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Note: I've adjusted the thresholds in this quote to reflect our convention
 	// that t + 1 participants are needed to create a signature.
 	a_i0 := sample.Scalar(rand.Reader)
-	a_i := polynomial.NewPolynomial(r.threshold, a_i0)
+	f_i := polynomial.NewPolynomial(r.threshold, a_i0)
 
 	// 2. "Every P_i computes a proof of knowledge to the corresponding secret a_i0
 	// by calculating sigma_i = (R_i, mu_i), such that:
@@ -74,7 +74,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// for each individual commitment.
 
 	// This method conveniently calculates all of that for us
-	Phi_i := polynomial.NewPolynomialExponent(a_i)
+	Phi_i := polynomial.NewPolynomialExponent(f_i)
 
 	// 4. "Every P_i broadcasts Phi_i, sigma_i to all other participants"
 	msg := r.MarshalMessage(&Keygen2{Phi_i, R_i, Mu_i})
