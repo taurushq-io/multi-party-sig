@@ -27,7 +27,21 @@ func (r *round3) ProcessMessage(l party.ID, content message.Content) error {
 		return fmt.Errorf("failed to convert message to Keygen3: %v", msg)
 	}
 
+	// These steps come from Figure 1, Round 2 of the Frost paper
+
+	// 2. "Each P_i verifies their shares by calculating
+	//
+	//   f_l(i) * G =? sum_{k = 0}^t (i^k mod q) * phi_lk
+	//
+	// aborting if the check fails."
+
 	r.shareFrom[l] = msg.F_li
+
+	expected := curve.NewIdentityPoint().ScalarBaseMult(r.shareFrom[l])
+	actual := r.Phi[l].Evaluate(r.SelfID().Scalar())
+	if !expected.Equal(actual) {
+		return fmt.Errorf("VSS failed to validate")
+	}
 
 	return nil
 }
