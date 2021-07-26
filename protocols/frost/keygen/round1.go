@@ -82,7 +82,9 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 		return r, err
 	}
 
-	return &round2{round1: r}, nil
+	Phi := make(map[party.ID]*polynomial.Exponent)
+	Phi[r.SelfID()] = Phi_i
+	return &round2{round1: r, f_i: f_i, Phi: Phi}, nil
 }
 
 // MessageContent implements round.Round.
