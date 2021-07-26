@@ -18,6 +18,13 @@ const (
 	protocolRounds types.RoundNumber = 3
 )
 
+// These assert that our rounds implement the round.Round interface
+var (
+	_ round.Round = (*round1)(nil)
+	_ round.Round = (*round2)(nil)
+	_ round.Round = (*round3)(nil)
+)
+
 // StartKeygen initiates the Frost key generation protocol.
 //
 // This protocol establishes a new threshold signature key among a set of participants.
