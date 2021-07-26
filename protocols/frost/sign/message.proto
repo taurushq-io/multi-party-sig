@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package keygen;
+
+option go_package = "github.com/taurusgroup/cmp-ecdsa/protocols/frost/sign";
+
+option (gogoproto.stable_marshaler_all) = true;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+message Sign2 {
+  option (gogoproto.goproto_getters) = false;
+}
+
+message Sign3 {
+  option (gogoproto.goproto_getters) = false;
+}
+

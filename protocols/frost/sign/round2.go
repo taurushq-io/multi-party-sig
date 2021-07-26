@@ -4,6 +4,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
 type round2 struct {
@@ -20,5 +21,13 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 // MessageContent implements round.Round.
 func (r *round2) MessageContent() message.Content {
-	return &message.First{}
+	return &Sign2{}
 }
+
+// Validate implements message.Content
+func (m *Sign2) Validate() error {
+	return nil
+}
+
+// RoundNumber implements message.Content
+func (m *Sign2) RoundNumber() types.RoundNumber { return 2 }
