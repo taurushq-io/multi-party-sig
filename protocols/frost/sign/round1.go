@@ -8,6 +8,13 @@ import (
 
 type round1 struct {
 	*round.Helper
+	// M is the hash of the message we're signing.
+	//
+	// This plays the same role as m in the Frost paper. One slight difference
+	// is that instead of including the message directly in various hashes,
+	// we include the *hash* of that message instead. This provides the same
+	// security.
+	M []byte
 }
 
 // ProcessMessage implements round.Round.
