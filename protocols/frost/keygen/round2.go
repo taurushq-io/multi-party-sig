@@ -1,6 +1,7 @@
 package keygen
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
@@ -80,6 +81,12 @@ func (r *round2) MessageContent() message.Content {
 
 // Validate implements message.Content
 func (m *Keygen2) Validate() error {
+	if m == nil {
+		return errors.New("keygen.round2: message is nil")
+	}
+	if m.Mu_i == nil || m.Phi_i == nil || m.R_i == nil {
+		return errors.New("keygen.round2: a message field is nil")
+	}
 	return nil
 }
 

@@ -1,6 +1,7 @@
 package keygen
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -84,6 +85,12 @@ func (r *round3) MessageContent() message.Content {
 
 // Validate implements message.Content
 func (m *Keygen3) Validate() error {
+	if m == nil {
+		return errors.New("keygen.round3: message is nil")
+	}
+	if m.F_li == nil {
+		return errors.New("keygen.round3: a message field is nil")
+	}
 	return nil
 }
 
