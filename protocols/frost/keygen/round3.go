@@ -47,7 +47,32 @@ func (r *round3) ProcessMessage(l party.ID, content message.Content) error {
 }
 
 func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
-	panic("unimplemented")
+	// These steps come from Figure 1, Round 2 of the Frost paper
+
+	// 3. "Each P_i calculates their long-lived private signing share by computing
+	// s_i = sum_{l = 1}^n f_l(i), stores s_i securely, and deletes each f_l(i)"
+
+	s_i := curve.NewScalar()
+	for l, f_li := range r.shareFrom {
+		s_i.Add(s_i, f_li)
+		// TODO: Maybe actually clear this in a better way
+		delete(r.shareFrom, l)
+	}
+
+	// 4. "Each P_i calculates their public verification share Y_i = s_i * G,
+	// and the group's public key Y = sum_{j = 1}^n phi_j0."
+
+	Y := curve.NewIdentityPoint()
+	for _, phi_j := range r.Phi {
+		Y.Add(Y, phi_j.Constant())
+	}
+
+	return &round.Output{Result: &Result{
+		ID:           r.SelfID(),
+		Threshold:    r.threshold,
+		PrivateShare: s_i,
+		PublicKey:    Y,
+	}}, nil
 }
 
 // MessageContent implements round.Round.
