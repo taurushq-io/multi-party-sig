@@ -79,7 +79,7 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 //
 // Since this is the first round of the protocol, we expect to see a dummy First type.
 func (r *round3) MessageContent() message.Content {
-	panic("unimplemented")
+	return &Keygen3{}
 }
 
 // Validate implements message.Content
