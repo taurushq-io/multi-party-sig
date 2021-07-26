@@ -22,4 +22,6 @@ message Keygen2 {
 
 message Keygen3 {
   option (gogoproto.goproto_getters) = false;
+  // F_li is the secret share sent from party l to this party.
+  bytes F_li = 1 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar", (gogoproto.customname) = "F_li"];
 }

@@ -55,7 +55,20 @@ func (r *round2) ProcessMessage(l party.ID, content message.Content) error {
 }
 
 func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
-	panic("unimplemented")
+	// These steps come from Figure 1, Round 2 of the Frost paper
+
+	// 1. "Each P_i securely sends to each other participant P_l a secret share
+	// (l, f_i(l)), deleting f_i and each share afterward except for (i, f_i(i)),
+	// which they keep for themselves."
+
+	for _, l := range r.OtherPartyIDs() {
+		msg := r.MarshalMessage(&Keygen3{F_li: r.f_i.Evaluate(l.Scalar())}, l)
+		if err := r.SendMessage(msg, out); err != nil {
+			return r, err
+		}
+	}
+
+	return &round3{round2: r}, nil
 }
 
 // MessageContent implements round.Round.
