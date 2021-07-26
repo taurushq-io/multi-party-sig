@@ -28,6 +28,10 @@ type round1 struct {
 	// we include the *hash* of that message instead. This provides the same
 	// security.
 	M []byte
+	// Y is the public key we're signing for.
+	Y *curve.Point
+	// s_i is our private secret share
+	s_i *curve.Scalar
 }
 
 // ProcessMessage implements round.Round.
@@ -55,7 +59,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	E := make(map[party.ID]*curve.Point)
 	E[r.SelfID()] = E_i
 
-	return &round2{round1: r, D: D, E: E}, nil
+	return &round2{round1: r, d_i: d_i, e_i: e_i, D: D, E: E}, nil
 }
 
 // MessageContent implements round.Round.

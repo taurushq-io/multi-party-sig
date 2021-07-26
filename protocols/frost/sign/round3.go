@@ -1,6 +1,7 @@
 package sign
 
 import (
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
@@ -9,6 +10,12 @@ import (
 
 type round3 struct {
 	*round2
+	// rho contains the binding values for each party.
+	//
+	// rho[l] corresponds to rho_l in Figure 3.
+	rho map[party.ID]*curve.Scalar
+	// R is the group commitment, and the first part of the consortium signature
+	R *curve.Point
 }
 
 // ProcessMessage implements round.Round.
