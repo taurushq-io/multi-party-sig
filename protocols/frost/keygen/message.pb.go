@@ -63,8 +63,41 @@ func (m *Keygen2) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Keygen2 proto.InternalMessageInfo
 
+type Keygen3 struct {
+}
+
+func (m *Keygen3) Reset()         { *m = Keygen3{} }
+func (m *Keygen3) String() string { return proto.CompactTextString(m) }
+func (*Keygen3) ProtoMessage()    {}
+func (*Keygen3) Descriptor() ([]byte, []int) {
+	return fileDescriptor_3e7dc99cae6693b0, []int{1}
+}
+func (m *Keygen3) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Keygen3) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	b = b[:cap(b)]
+	n, err := m.MarshalToSizedBuffer(b)
+	if err != nil {
+		return nil, err
+	}
+	return b[:n], nil
+}
+func (m *Keygen3) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Keygen3.Merge(m, src)
+}
+func (m *Keygen3) XXX_Size() int {
+	return m.Size()
+}
+func (m *Keygen3) XXX_DiscardUnknown() {
+	xxx_messageInfo_Keygen3.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Keygen3 proto.InternalMessageInfo
+
 func init() {
 	proto.RegisterType((*Keygen2)(nil), "keygen.Keygen2")
+	proto.RegisterType((*Keygen3)(nil), "keygen.Keygen3")
 }
 
 func init() {
@@ -72,7 +105,7 @@ func init() {
 }
 
 var fileDescriptor_3e7dc99cae6693b0 = []byte{
-	// 324 bytes of a gzipped FileDescriptorProto
+	// 331 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x52, 0x29, 0x28, 0xca, 0x2f,
 	0xc9, 0x4f, 0xce, 0xcf, 0x29, 0xd6, 0x4f, 0x2b, 0xca, 0x2f, 0x2e, 0xd1, 0xcf, 0x4e, 0xad, 0x4c,
 	0x4f, 0xcd, 0xd3, 0xcf, 0x4d, 0x2d, 0x2e, 0x4e, 0x4c, 0x4f, 0xd5, 0x03, 0x4b, 0x0b, 0xb1, 0x41,
@@ -89,11 +122,11 @@ var fileDescriptor_3e7dc99cae6693b0 = []byte{
 	0x55, 0x2f, 0x20, 0x3f, 0x33, 0xaf, 0xe4, 0xd1, 0x3d, 0x79, 0x90, 0x39, 0x41, 0x4c, 0x41, 0x9e,
 	0x42, 0xa1, 0x5c, 0x2c, 0xbe, 0xa5, 0xf1, 0x99, 0x12, 0xcc, 0x60, 0x33, 0x9d, 0x6e, 0xdd, 0x93,
 	0x37, 0x23, 0xd5, 0xcc, 0xe0, 0xe4, 0xc4, 0x9c, 0xc4, 0xa2, 0x47, 0xf7, 0xe4, 0xc1, 0x26, 0x05,
-	0x31, 0xfb, 0x96, 0x7a, 0x5a, 0xb1, 0x74, 0x2c, 0x90, 0x67, 0x70, 0x0a, 0x3d, 0xf1, 0x48, 0x8e,
-	0xf1, 0xc2, 0x23, 0x39, 0xc6, 0x1b, 0x8f, 0xe4, 0x18, 0x1f, 0x3c, 0x92, 0x63, 0x9c, 0xf0, 0x58,
-	0x8e, 0xe1, 0xc2, 0x63, 0x39, 0x86, 0x1b, 0x8f, 0xe5, 0x18, 0xa2, 0xcc, 0x09, 0x5b, 0x84, 0x35,
-	0xc6, 0x92, 0xd8, 0xc0, 0xe2, 0xc6, 0x80, 0x00, 0x00, 0x00, 0xff, 0xff, 0x0f, 0x33, 0x88, 0xce,
-	0xd2, 0x01, 0x00, 0x00,
+	0x31, 0xfb, 0x96, 0x7a, 0x5a, 0xb1, 0x74, 0x2c, 0x90, 0x67, 0x50, 0xe2, 0x87, 0x79, 0xd8, 0x18,
+	0x22, 0xe0, 0x14, 0x7a, 0xe2, 0x91, 0x1c, 0xe3, 0x85, 0x47, 0x72, 0x8c, 0x37, 0x1e, 0xc9, 0x31,
+	0x3e, 0x78, 0x24, 0xc7, 0x38, 0xe1, 0xb1, 0x1c, 0xc3, 0x85, 0xc7, 0x72, 0x0c, 0x37, 0x1e, 0xcb,
+	0x31, 0x44, 0x99, 0x13, 0xb6, 0x19, 0x6b, 0x14, 0x26, 0xb1, 0x81, 0xc5, 0x8d, 0x01, 0x01, 0x00,
+	0x00, 0xff, 0xff, 0x35, 0xd8, 0x3f, 0x2e, 0xe3, 0x01, 0x00, 0x00,
 }
 
 func (m *Keygen2) Marshal() (dAtA []byte, err error) {
@@ -155,6 +188,29 @@ func (m *Keygen2) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *Keygen3) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Keygen3) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Keygen3) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintMessage(dAtA []byte, offset int, v uint64) int {
 	offset -= sovMessage(v)
 	base := offset
@@ -184,6 +240,15 @@ func (m *Keygen2) Size() (n int) {
 		l = m.Mu_i.Size()
 		n += 1 + l + sovMessage(uint64(l))
 	}
+	return n
+}
+
+func (m *Keygen3) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
 	return n
 }
 
@@ -328,6 +393,56 @@ func (m *Keygen2) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessage(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Keygen3) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessage
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Keygen3: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Keygen3: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
 		default:
 			iNdEx = preIndex
 			skippy, err := skipMessage(dAtA[iNdEx:])

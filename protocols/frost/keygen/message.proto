@@ -19,3 +19,7 @@ message Keygen2 {
   // Mu_i is the second part of the Schnorr proof of knowledge of the participant's secret
   bytes Mu_i = 3 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar", (gogoproto.customname) = "Mu_i"];
 }
+
+message Keygen3 {
+  option (gogoproto.goproto_getters) = false;
+}
