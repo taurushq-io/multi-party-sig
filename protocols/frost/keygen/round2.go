@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -69,7 +70,9 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 		}
 	}
 
-	return &round3{round2: r}, nil
+	shareFrom := make(map[party.ID]*curve.Scalar)
+	shareFrom[r.SelfID()] = r.f_i.Evaluate(r.SelfID().Scalar())
+	return &round3{round2: r, shareFrom: shareFrom}, nil
 }
 
 // MessageContent implements round.Round.
