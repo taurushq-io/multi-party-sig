@@ -16,6 +16,6 @@ message Keygen2 {
   polynomial.Exponent Phi_i = 1 [(gogoproto.customname) = "Phi_i"];
   // R_i is the first part of the Schnorr proof of knowledge of the participant's secret
   bytes R_i = 2 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point", (gogoproto.customname) = "R_i"];
-  // mu_i is the second part of the Schnorr proof of knowledge of the participant's secret
-  bytes mu_i = 3 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar", (gogoproto.customname) = "mu_i"];
+  // Mu_i is the second part of the Schnorr proof of knowledge of the participant's secret
+  bytes Mu_i = 3 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar", (gogoproto.customname) = "Mu_i"];
 }
