@@ -80,6 +80,18 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.ID
 	actualPublicKey := curve.NewIdentityPoint().ScalarBaseMult(privateKey)
 
 	assert.True(t, publicKey.Equal(actualPublicKey))
+
+	shares := make(map[party.ID]*curve.Scalar)
+	for _, result := range results {
+		shares[result.ID] = result.PrivateShare
+	}
+
+	for _, result := range results {
+		for _, party := range parties {
+			expected := curve.NewIdentityPoint().ScalarBaseMult(shares[party])
+			assert.True(t, result.VerificationShares[party].Equal(expected))
+		}
+	}
 }
 
 func TestKeygen(t *testing.T) {

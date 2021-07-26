@@ -61,18 +61,30 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 
 	// 4. "Each P_i calculates their public verification share Y_i = s_i * G,
-	// and the group's public key Y = sum_{j = 1}^n phi_j0."
+	// and the group's public key Y = sum_{j = 1}^n phi_j0. Any participant
+	// can compute the verification share of any other participant by calculating
+	//
+	// Y_i = sum_{j = 1}^n sum_{k = 0}^t (i^k mod q) * phi_jk."
 
 	Y := curve.NewIdentityPoint()
 	for _, phi_j := range r.Phi {
 		Y.Add(Y, phi_j.Constant())
 	}
 
+	VerificationShares := make(map[party.ID]*curve.Point)
+	for _, i := range r.PartyIDs() {
+		VerificationShares[i] = curve.NewIdentityPoint()
+		for _, j := range r.PartyIDs() {
+			VerificationShares[i].Add(VerificationShares[i], r.Phi[j].Evaluate(i.Scalar()))
+		}
+	}
+
 	return &round.Output{Result: &Result{
-		ID:           r.SelfID(),
-		Threshold:    r.threshold,
-		PrivateShare: s_i,
-		PublicKey:    Y,
+		ID:                 r.SelfID(),
+		Threshold:          r.threshold,
+		PrivateShare:       s_i,
+		PublicKey:          Y,
+		VerificationShares: VerificationShares,
 	}}, nil
 }
 
