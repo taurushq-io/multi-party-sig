@@ -27,7 +27,7 @@ type round1 struct {
 	// is that instead of including the message directly in various hashes,
 	// we include the *hash* of that message instead. This provides the same
 	// security.
-	M []byte
+	M messageHash
 	// Y is the public key we're signing for.
 	Y *curve.Point
 	// s_i is our private secret share

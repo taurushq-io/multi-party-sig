@@ -3,7 +3,6 @@ package sign
 import (
 	fmt "fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
@@ -82,10 +81,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// This calculates H(m, B), allowing us to avoid re-hashing this data for
 	// each extra party l.
 	rhoPreHash := hash.New()
-	rhoPreHash.WriteAny(&writer.BytesWithDomain{
-		TheDomain: "Message Hash",
-		Bytes:     r.M,
-	})
+	rhoPreHash.WriteAny(r.M)
 	for _, D_l := range r.D {
 		rhoPreHash.WriteAny(D_l)
 	}
@@ -107,10 +103,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 
 	cHash := hash.New()
-	cHash.WriteAny(R, r.Y, &writer.BytesWithDomain{
-		TheDomain: "Message Hash",
-		Bytes:     r.M,
-	})
+	cHash.WriteAny(R, r.Y, r.M)
 	c := sample.Scalar(cHash)
 
 	// 5. "Each P_i computes their response using their long-lived secret share s_i
