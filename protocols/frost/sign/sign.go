@@ -25,6 +25,18 @@ const (
 // this participant.
 //
 // messageHash is the hash of the message a signature should be generated for.
+//
+// This protocol merges Figures 2 and 3 from the Frost paper:
+//   https://eprint.iacr.org/2020/852.pdf
+//
+//
+// We merge the pre-processing and signing protocols into a single signing protocol
+// which doesn't require any pre-processing.
+//
+// Another major difference is that there's no central "Signing Authority".
+// Instead, each participant independently verifies and broadcasts items as necessary.
+//
+// Differences stemming from this change are commented throughout the protocol.
 func StartSign(result *keygen.Result, signers []party.ID, messageHash []byte) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
 		sortedIDs := party.NewIDSlice(signers)
@@ -42,6 +54,6 @@ func StartSign(result *keygen.Result, signers []party.ID, messageHash []byte) pr
 		if result.Threshold+1 > sortedIDs.Len() {
 			return nil, nil, fmt.Errorf("sign.StartSign: insufficient number of signers")
 		}
-		return &round1{helper}, helper, nil
+		return &round1{Helper: helper, M: messageHash}, helper, nil
 	}
 }

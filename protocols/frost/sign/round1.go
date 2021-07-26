@@ -6,6 +6,15 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
+// This round sort of corresponds with Figure 2 of the Frost paper:
+//   https://eprint.iacr.org/2020/852.pdf
+//
+// The main difference is that instead of having a separate pre-processing step,
+// we instead have an additional round at the start of the signing step.
+// The goal of this round is to generate two nonces, and corresponding commitments.
+//
+// There are also differences corresponding to the lack of a signing authority,
+// namely that these commitments are broadcast, instead of stored with the authority.
 type round1 struct {
 	*round.Helper
 	// M is the hash of the message we're signing.
