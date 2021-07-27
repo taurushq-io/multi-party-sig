@@ -82,11 +82,8 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// each extra party l.
 	rhoPreHash := hash.New()
 	rhoPreHash.WriteAny(r.M)
-	for _, D_l := range r.D {
-		rhoPreHash.WriteAny(D_l)
-	}
-	for _, E_l := range r.E {
-		rhoPreHash.WriteAny(E_l)
+	for _, l := range r.PartyIDs() {
+		rhoPreHash.WriteAny(r.D[l], r.E[l])
 	}
 	for _, l := range r.PartyIDs() {
 		rhoHash := rhoPreHash.Clone()

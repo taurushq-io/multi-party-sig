@@ -59,6 +59,7 @@ func StartSign(result *keygen.Result, signers []party.ID, messageHash []byte) pr
 			M:       messageHash,
 			Y:       result.PublicKey,
 			YShares: result.VerificationShares,
+			s_i:     result.PrivateShare,
 		}, helper, nil
 	}
 }

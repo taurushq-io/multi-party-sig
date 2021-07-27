@@ -84,7 +84,7 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 // MessageContent implements round.Round.
 func (r *round3) MessageContent() message.Content {
-	return &message.First{}
+	return &Sign3{}
 }
 
 // Validate implements message.Content
