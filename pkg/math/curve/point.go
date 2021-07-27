@@ -147,6 +147,11 @@ func (v *Point) toAffine() *Point {
 	return v
 }
 
+// XBytes returns the Big Endian bytes for the X coordinate of this point.
+func (v *Point) XBytes() *[32]byte {
+	return v.p.X.Bytes()
+}
+
 var baseX, baseY secp256k1.FieldVal
 
 func init() {
