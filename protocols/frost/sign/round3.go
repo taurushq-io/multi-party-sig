@@ -76,10 +76,16 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 		z.Add(z, z_l)
 	}
 
-	return &round.Output{Result: Signature{
+	sig := Signature{
 		R: r.R,
 		z: z,
-	}}, nil
+	}
+
+	if !sig.Verify(r.Y, r.M) {
+		return r, fmt.Errorf("generated signature failed to verify")
+	}
+
+	return &round.Output{Result: sig}, nil
 }
 
 // MessageContent implements round.Round.
