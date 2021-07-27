@@ -11,10 +11,16 @@ import (
 func TestLagrange(t *testing.T) {
 	N := 10
 	allIDs := party.RandomIDs(N)
-	coefs := Lagrange(allIDs)
-	sum := curve.NewScalar()
-	for _, c := range coefs {
-		sum.Add(sum, c)
+	coefsEven := Lagrange(allIDs)
+	coefsOdd := Lagrange(allIDs[:N-1])
+	sumEven := curve.NewScalar()
+	sumOdd := curve.NewScalar()
+	for _, c := range coefsEven {
+		sumEven.Add(sumEven, c)
 	}
-	assert.True(t, sum.Equal(curve.NewScalar().SetUInt32(1)))
+	for _, c := range coefsOdd {
+		sumOdd.Add(sumOdd, c)
+	}
+	assert.True(t, sumEven.Equal(curve.NewScalar().SetUInt32(1)))
+	assert.True(t, sumOdd.Equal(curve.NewScalar().SetUInt32(1)))
 }
