@@ -29,6 +29,10 @@ type round3 struct {
 	//
 	// z[i] corresponds to z_i in the Frost paper
 	z map[party.ID]*curve.Scalar
+
+	// Lambda contains all Lagrange coefficients of the parties participating in this session.
+	// Lambda[l] = λₗ
+	Lambda map[party.ID]*curve.Scalar
 }
 
 // ProcessMessage implements round.Round.
@@ -51,7 +55,7 @@ func (r *round3) ProcessMessage(l party.ID, content message.Content) error {
 	// we've already computed everything that step computes.
 
 	expected := curve.NewIdentityPoint()
-	expected.ScalarMult(r.PartyIDs().Lagrange(l), r.YShares[l])
+	expected.ScalarMult(r.Lambda[l], r.YShares[l])
 	expected.ScalarMult(r.c, expected)
 	expected.Add(r.RShares[l], expected)
 

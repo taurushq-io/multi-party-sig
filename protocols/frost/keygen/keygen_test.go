@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
@@ -69,12 +70,13 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.ID
 
 	var publicKey *curve.Point
 	privateKey := curve.NewScalar()
+	lagrangeCoefficients := polynomial.Lagrange(parties)
 	for _, result := range results {
 		if publicKey != nil {
 			assert.True(t, publicKey.Equal(result.PublicKey))
 		}
 		publicKey = result.PublicKey
-		privateKey.MultiplyAdd(parties.Lagrange(result.ID), result.PrivateShare, privateKey)
+		privateKey.MultiplyAdd(lagrangeCoefficients[result.ID], result.PrivateShare, privateKey)
 	}
 
 	actualPublicKey := curve.NewIdentityPoint().ScalarBaseMult(privateKey)
