@@ -59,12 +59,10 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 	// We essentially follow this, although the order of hashing ends up being slightly
 	// different.
-	k := sample.Scalar(rand.Reader)
-	R_i := curve.NewIdentityPoint().ScalarBaseMult(k)
-	a_i0_times_G := curve.NewIdentityPoint().ScalarBaseMult(a_i0)
 	// At this point, we've already hashed context inside of helper, so we just
 	// add in our own ID, and then we're good to go.
-	Mu_i := zksch.Prove(r.Helper.HashForID(r.SelfID()), R_i, a_i0_times_G, k, a_i0)
+	a_i0_times_G := curve.NewIdentityPoint().ScalarBaseMult(a_i0)
+	Sigma_i := zksch.NewProof(r.Helper.HashForID(r.SelfID()), a_i0_times_G, a_i0)
 
 	// 3. "Every participant P_i computes a public comment Phi_i = <phi_i0, ..., phi_it>
 	// where phi_ij = a_ij * G."
@@ -77,7 +75,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	Phi_i := polynomial.NewPolynomialExponent(f_i)
 
 	// 4. "Every P_i broadcasts Phi_i, sigma_i to all other participants"
-	msg := r.MarshalMessage(&Keygen2{Phi_i, R_i, Mu_i})
+	msg := r.MarshalMessage(&Keygen2{Phi_i, Sigma_i})
 	if err := r.SendMessage(msg, out); err != nil {
 		return r, err
 	}

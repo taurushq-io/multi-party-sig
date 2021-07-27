@@ -10,7 +10,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
-	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
 
 // This round corresponds with steps 5 of Round 1, 1 of Round 2, Figure 1 in the Frost paper:
@@ -43,15 +42,14 @@ func (r *round2) ProcessMessage(l party.ID, content message.Content) error {
 	//
 	// Note: I've renamed C_l to Phi_l, as in the previous round.
 
-	r.Phi[l] = msg.Phi_i
-	R_l := msg.R_i
-	mu_l := msg.Mu_i
 	// To see why this is correct, compare this verification with the proof we
 	// produced in the previous round. Note how we do the same hash cloning,
 	// but this time with the ID of the message sender.
-	if !zksch.Verify(r.Helper.HashForID(l), R_l, r.Phi[l].Constant(), mu_l) {
+	if !msg.Sigma_i.Verify(r.Helper.HashForID(l), r.Phi[l].Constant()) {
 		return fmt.Errorf("failed to verify Schnorr proof for party %s", l)
 	}
+
+	r.Phi[l] = msg.Phi_i
 
 	return nil
 }
@@ -87,7 +85,7 @@ func (m *Keygen2) Validate() error {
 	if m == nil {
 		return errors.New("keygen.round2: message is nil")
 	}
-	if m.Mu_i == nil || m.Phi_i == nil || m.R_i == nil {
+	if m.Sigma_i == nil || m.Phi_i == nil {
 		return errors.New("keygen.round2: a message field is nil")
 	}
 	return nil

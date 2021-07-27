@@ -5,12 +5,13 @@ package zksch
 
 import (
 	fmt "fmt"
-	_ "github.com/gogo/protobuf/gogoproto"
-	proto "github.com/gogo/protobuf/proto"
-	github_com_taurusgroup_cmp_ecdsa_pkg_math_curve "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	io "io"
 	math "math"
 	math_bits "math/bits"
+
+	_ "github.com/gogo/protobuf/gogoproto"
+	proto "github.com/gogo/protobuf/proto"
+	github_com_taurusgroup_cmp_ecdsa_pkg_math_curve "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -58,16 +59,50 @@ func (m *Commitment) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_Commitment proto.InternalMessageInfo
 
-// Proof = randomness + H(..., commitment, public)•secret (mod p).
-type Proof struct {
+// Response = randomness + H(..., commitment, public)•secret (mod p).
+type Response struct {
 	Z github_com_taurusgroup_cmp_ecdsa_pkg_math_curve.Scalar `protobuf:"bytes,1,opt,name=z,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar" json:"z"`
+}
+
+func (z *Response) Reset()         { *z = Response{} }
+func (z *Response) String() string { return proto.CompactTextString(z) }
+func (*Response) ProtoMessage()    {}
+func (*Response) Descriptor() ([]byte, []int) {
+	return fileDescriptor_a165bf39e65c9d8c, []int{1}
+}
+func (z *Response) XXX_Unmarshal(b []byte) error {
+	return z.Unmarshal(b)
+}
+func (z *Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	b = b[:cap(b)]
+	n, err := z.MarshalToSizedBuffer(b)
+	if err != nil {
+		return nil, err
+	}
+	return b[:n], nil
+}
+func (z *Response) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Response.Merge(z, src)
+}
+func (z *Response) XXX_Size() int {
+	return z.Size()
+}
+func (z *Response) XXX_DiscardUnknown() {
+	xxx_messageInfo_Response.DiscardUnknown(z)
+}
+
+var xxx_messageInfo_Response proto.InternalMessageInfo
+
+type Proof struct {
+	C *Commitment `protobuf:"bytes,1,opt,name=c,proto3" json:"c,omitempty"`
+	Z *Response   `protobuf:"bytes,2,opt,name=z,proto3" json:"z,omitempty"`
 }
 
 func (m *Proof) Reset()         { *m = Proof{} }
 func (m *Proof) String() string { return proto.CompactTextString(m) }
 func (*Proof) ProtoMessage()    {}
 func (*Proof) Descriptor() ([]byte, []int) {
-	return fileDescriptor_a165bf39e65c9d8c, []int{1}
+	return fileDescriptor_a165bf39e65c9d8c, []int{2}
 }
 func (m *Proof) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -94,13 +129,14 @@ var xxx_messageInfo_Proof proto.InternalMessageInfo
 
 func init() {
 	proto.RegisterType((*Commitment)(nil), "zksch.Commitment")
+	proto.RegisterType((*Response)(nil), "zksch.Response")
 	proto.RegisterType((*Proof)(nil), "zksch.Proof")
 }
 
 func init() { proto.RegisterFile("pkg/zk/sch/sch.proto", fileDescriptor_a165bf39e65c9d8c) }
 
 var fileDescriptor_a165bf39e65c9d8c = []byte{
-	// 245 bytes of a gzipped FileDescriptorProto
+	// 289 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x29, 0xc8, 0x4e, 0xd7,
 	0xaf, 0xca, 0xd6, 0x2f, 0x4e, 0xce, 0x00, 0x61, 0xbd, 0x82, 0xa2, 0xfc, 0x92, 0x7c, 0x21, 0xd6,
 	0xaa, 0xec, 0xe2, 0xe4, 0x0c, 0x29, 0xdd, 0xf4, 0xcc, 0x92, 0x8c, 0xd2, 0x24, 0xbd, 0xe4, 0xfc,
@@ -110,13 +146,16 @@ var fileDescriptor_a165bf39e65c9d8c = []byte{
 	0xc9, 0x33, 0xdc, 0xba, 0x27, 0x6f, 0x8a, 0x64, 0x5e, 0x49, 0x62, 0x69, 0x51, 0x69, 0x71, 0x7a,
 	0x51, 0x7e, 0x69, 0x81, 0x7e, 0x72, 0x6e, 0x81, 0x6e, 0x6a, 0x72, 0x4a, 0x71, 0xa2, 0x3e, 0xc8,
 	0x35, 0xb9, 0x89, 0x25, 0x19, 0xfa, 0xc9, 0xa5, 0x45, 0x65, 0xa9, 0x7a, 0x01, 0xf9, 0x99, 0x79,
-	0x25, 0x41, 0x8c, 0xc9, 0x4a, 0xa1, 0x5c, 0xac, 0x01, 0x45, 0xf9, 0xf9, 0x69, 0x42, 0x3e, 0x5c,
-	0x8c, 0x55, 0x50, 0x53, 0xed, 0xa0, 0xa6, 0x9a, 0x91, 0x6a, 0x6a, 0x70, 0x72, 0x62, 0x4e, 0x62,
-	0x51, 0x10, 0x63, 0x95, 0x53, 0xf0, 0x89, 0x87, 0x72, 0x0c, 0x27, 0x1e, 0xc9, 0x31, 0x5e, 0x78,
-	0x24, 0xc7, 0x78, 0xe3, 0x91, 0x1c, 0xe3, 0x83, 0x47, 0x72, 0x8c, 0x13, 0x1e, 0xcb, 0x31, 0x5c,
-	0x78, 0x2c, 0xc7, 0x70, 0xe3, 0xb1, 0x1c, 0x43, 0x94, 0x21, 0x51, 0x86, 0x43, 0x02, 0xd0, 0x1a,
-	0x1c, 0x6a, 0x49, 0x6c, 0xe0, 0xd0, 0x30, 0x06, 0x04, 0x00, 0x00, 0xff, 0xff, 0x13, 0x7c, 0x55,
-	0xc5, 0x5b, 0x01, 0x00, 0x00,
+	0x25, 0x41, 0x8c, 0xc9, 0x4a, 0x11, 0x5c, 0x1c, 0x41, 0xa9, 0xc5, 0x05, 0xf9, 0x79, 0xc5, 0xa9,
+	0x42, 0x3e, 0x5c, 0x8c, 0x55, 0x50, 0x83, 0xed, 0xa0, 0x06, 0x9b, 0x91, 0x6a, 0x70, 0x70, 0x72,
+	0x62, 0x4e, 0x62, 0x51, 0x10, 0x63, 0x95, 0x92, 0x3b, 0x17, 0x6b, 0x40, 0x51, 0x7e, 0x7e, 0x9a,
+	0x90, 0x3c, 0xcc, 0xbd, 0xdc, 0x46, 0x82, 0x7a, 0x60, 0xff, 0xeb, 0x21, 0x7c, 0x13, 0xc4, 0x98,
+	0x2c, 0x24, 0x0b, 0xb2, 0x97, 0x09, 0xac, 0x80, 0x1f, 0xaa, 0x00, 0xe6, 0xa6, 0x20, 0xc6, 0x2a,
+	0xa7, 0xe0, 0x13, 0x0f, 0xe5, 0x18, 0x4e, 0x3c, 0x92, 0x63, 0xbc, 0xf0, 0x48, 0x8e, 0xf1, 0xc6,
+	0x23, 0x39, 0xc6, 0x07, 0x8f, 0xe4, 0x18, 0x27, 0x3c, 0x96, 0x63, 0xb8, 0xf0, 0x58, 0x8e, 0xe1,
+	0xc6, 0x63, 0x39, 0x86, 0x28, 0x43, 0xa2, 0x5c, 0x09, 0x89, 0x0c, 0x6b, 0xb0, 0x05, 0x49, 0x6c,
+	0xe0, 0x90, 0x35, 0x06, 0x04, 0x00, 0x00, 0xff, 0xff, 0x59, 0x7c, 0x23, 0x03, 0xa7, 0x01, 0x00,
+	0x00,
 }
 
 func (m *Commitment) Marshal() (dAtA []byte, err error) {
@@ -152,6 +191,39 @@ func (m *Commitment) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (z *Response) Marshal() (dAtA []byte, err error) {
+	size := z.Size()
+	dAtA = make([]byte, size)
+	n, err := z.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (z *Response) MarshalTo(dAtA []byte) (int, error) {
+	size := z.Size()
+	return z.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (z *Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	{
+		size := z.Z.Size()
+		i -= size
+		if _, err := z.Z.MarshalTo(dAtA[i:]); err != nil {
+			return 0, err
+		}
+		i = encodeVarintSch(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0xa
+	return len(dAtA) - i, nil
+}
+
 func (m *Proof) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -172,16 +244,30 @@ func (m *Proof) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	{
-		size := m.Z.Size()
-		i -= size
-		if _, err := m.Z.MarshalTo(dAtA[i:]); err != nil {
-			return 0, err
+	if m.Z != nil {
+		{
+			size, err := m.Z.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintSch(dAtA, i, uint64(size))
 		}
-		i = encodeVarintSch(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x12
 	}
-	i--
-	dAtA[i] = 0xa
+	if m.C != nil {
+		{
+			size, err := m.C.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintSch(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
 	return len(dAtA) - i, nil
 }
 
@@ -207,14 +293,31 @@ func (m *Commitment) Size() (n int) {
 	return n
 }
 
+func (z *Response) Size() (n int) {
+	if z == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = z.Z.Size()
+	n += 1 + l + sovSch(uint64(l))
+	return n
+}
+
 func (m *Proof) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	l = m.Z.Size()
-	n += 1 + l + sovSch(uint64(l))
+	if m.C != nil {
+		l = m.C.Size()
+		n += 1 + l + sovSch(uint64(l))
+	}
+	if m.Z != nil {
+		l = m.Z.Size()
+		n += 1 + l + sovSch(uint64(l))
+	}
 	return n
 }
 
@@ -307,6 +410,89 @@ func (m *Commitment) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (z *Response) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowSch
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Response: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Response: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Z", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSch
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthSch
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthSch
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := z.Z.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipSch(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthSch
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *Proof) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -338,9 +524,9 @@ func (m *Proof) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Z", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field C", wireType)
 			}
-			var byteLen int
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowSch
@@ -350,20 +536,59 @@ func (m *Proof) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				byteLen |= int(b&0x7F) << shift
+				msglen |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			if byteLen < 0 {
+			if msglen < 0 {
 				return ErrInvalidLengthSch
 			}
-			postIndex := iNdEx + byteLen
+			postIndex := iNdEx + msglen
 			if postIndex < 0 {
 				return ErrInvalidLengthSch
 			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
+			}
+			if m.C == nil {
+				m.C = &Commitment{}
+			}
+			if err := m.C.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Z", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSch
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthSch
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthSch
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Z == nil {
+				m.Z = &Response{}
 			}
 			if err := m.Z.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
