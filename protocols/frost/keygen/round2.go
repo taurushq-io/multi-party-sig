@@ -21,7 +21,7 @@ type round2 struct {
 	f_i *polynomial.Polynomial
 	// Phi contains the polynomial commitment for each participant, ourselves included.
 	//
-	// Phi[l][k] corresponds to phi_lk in the Frost paper.
+	// Phi[l][k] corresponds to ϕₗₖ in the Frost paper.
 	Phi map[party.ID]*polynomial.Exponent
 }
 
@@ -34,14 +34,15 @@ func (r *round2) ProcessMessage(l party.ID, content message.Content) error {
 
 	// These steps come from Figure 1, Round 1 of the Frost paper
 
-	// 5. "Upon receiving Phi_l, sigma_l from participants 1 ⩽ l ⩽ n, participant
-	// P_i verifies sigma_l = (R_l, mu_l), aborting on failure, by checking
-	// R_l = mu_l * G - c_l * phi_l0, where c_l = H(l, ctx, phi_l0, R_l).
+	// 5. "Upon receiving ϕₗ, σₗ from participants 1 ⩽ l ⩽ n, participant
+	// Pᵢ verifies σₗ = (Rₗ, μₗ), aborting on failure, by checking
+	// Rₗ = μₗ * G - cₗ * ϕₗ₀, where cₗ = H(l, ctx, ϕₗ₀, Rₗ).
 	//
-	// Upon success, participants delete { sigma_l | 1 ⩽ l ⩽ n }"
+	// Upon success, participants delete { σₗ | 1 ⩽ l ⩽ n }"
 	//
-	// Note: I've renamed C_l to Phi_l, as in the previous round.
-
+	// Note: I've renamed Cₗ to Φₗ, as in the previous round.
+	// R_l = Rₗ, mu_l = μₗ
+	//
 	// To see why this is correct, compare this verification with the proof we
 	// produced in the previous round. Note how we do the same hash cloning,
 	// but this time with the ID of the message sender.
@@ -57,8 +58,8 @@ func (r *round2) ProcessMessage(l party.ID, content message.Content) error {
 func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// These steps come from Figure 1, Round 2 of the Frost paper
 
-	// 1. "Each P_i securely sends to each other participant P_l a secret share
-	// (l, f_i(l)), deleting f_i and each share afterward except for (i, f_i(i)),
+	// 1. "Each P_i securely sends to each other participant Pₗ a secret share
+	// (l, fᵢ(l)), deleting f_i and each share afterward except for (i, fᵢ(i)),
 	// which they keep for themselves."
 
 	for _, l := range r.OtherPartyIDs() {

@@ -32,9 +32,9 @@ type round1 struct {
 	Y *curve.Point
 	// YShares are verification shares for each participant's fraction of the secret key
 	//
-	// This corresponds with Y_i in the Frost paper.
+	// YShares[i] corresponds with Yᵢ in the Frost paper.
 	YShares map[party.ID]*curve.Point
-	// s_i is our private secret share
+	// s_i = sᵢ is our private secret share
 	s_i *curve.Scalar
 }
 
@@ -44,8 +44,8 @@ func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 // Finalize implements round.Round.
 func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// We can think of this as roughly implementing Figure 2. The idea is
-	// to generate two nonces (d_i, e_i) in Z/(q)^*, then two commitments
-	// D_i = d_i * G, E_i = e_i * G, and then broadcast them.
+	// to generate two nonces (dᵢ, eᵢ) in Z/(q)ˣ, then two commitments
+	// Dᵢ = dᵢ * G, Eᵢ = eᵢ * G, and then broadcast them.
 	d_i := sample.ScalarUnit(rand.Reader)
 	e_i := sample.ScalarUnit(rand.Reader)
 

@@ -19,7 +19,7 @@ type round3 struct {
 
 	// shareFrom is the secret share sent to us by a given party, including ourselves.
 	//
-	// shareFrom[l] corresponds to f_l(i) in the Frost paper, with i our own ID.
+	// shareFrom[l] corresponds to fₗ(i) in the Frost paper, with i our own ID.
 	shareFrom map[party.ID]*curve.Scalar
 }
 
@@ -31,9 +31,9 @@ func (r *round3) ProcessMessage(l party.ID, content message.Content) error {
 
 	// These steps come from Figure 1, Round 2 of the Frost paper
 
-	// 2. "Each P_i verifies their shares by calculating
+	// 2. "Each Pᵢ verifies their shares by calculating
 	//
-	//   f_l(i) * G =? sum_{k = 0}^t (i^k mod q) * phi_lk
+	//   fₗ(i) * G =? ∑ₖ₌₀ᵗ (iᵏ mod q) * ϕₗₖ
 	//
 	// aborting if the check fails."
 
@@ -61,11 +61,11 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 		delete(r.shareFrom, l)
 	}
 
-	// 4. "Each P_i calculates their public verification share Y_i = s_i * G,
-	// and the group's public key Y = sum_{j = 1}^n phi_j0. Any participant
+	// 4. "Each Pᵢ calculates their public verification share Yᵢ = sᵢ • G,
+	// and the group's public key Y = ∑ⱼ₌₁ⁿ ϕⱼ₀. Any participant
 	// can compute the verification share of any other participant by calculating
 	//
-	// Y_i = sum_{j = 1}^n sum_{k = 0}^t (i^k mod q) * phi_jk."
+	// Yᵢ = ∑ⱼ₌₁ⁿ ∑ₖ₌₀ᵗ (iᵏ mod q) * ϕⱼₖ."
 
 	Y := curve.NewIdentityPoint()
 	for _, phi_j := range r.Phi {
