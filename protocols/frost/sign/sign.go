@@ -54,6 +54,11 @@ func StartSign(result *keygen.Result, signers []party.ID, messageHash []byte) pr
 		if result.Threshold+1 > sortedIDs.Len() {
 			return nil, nil, fmt.Errorf("sign.StartSign: insufficient number of signers")
 		}
-		return &round1{Helper: helper, M: messageHash}, helper, nil
+		return &round1{
+			Helper:  helper,
+			M:       messageHash,
+			Y:       result.PublicKey,
+			YShares: result.VerificationShares,
+		}, helper, nil
 	}
 }

@@ -95,11 +95,12 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 
 	R := curve.NewIdentityPoint()
-	tmp := curve.NewIdentityPoint()
+	RShares := make(map[party.ID]*curve.Point)
 	for _, l := range r.PartyIDs() {
-		tmp.ScalarMult(rho[l], r.E[l])
-		tmp.Add(tmp, r.D[l])
-		R.Add(R, tmp)
+		RShares[l] = curve.NewIdentityPoint()
+		RShares[l].ScalarMult(rho[l], r.E[l])
+		RShares[l].Add(RShares[l], r.D[l])
+		R.Add(R, RShares[l])
 	}
 
 	cHash := hash.New()
@@ -129,7 +130,16 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 		return r, err
 	}
 
-	return &round3{round2: r}, nil
+	z := make(map[party.ID]*curve.Scalar)
+	z[r.SelfID()] = z_i
+
+	return &round3{
+		round2:  r,
+		R:       R,
+		RShares: RShares,
+		c:       c,
+		z:       z,
+	}, nil
 }
 
 // MessageContent implements round.Round.

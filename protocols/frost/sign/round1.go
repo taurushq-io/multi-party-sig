@@ -30,6 +30,10 @@ type round1 struct {
 	M messageHash
 	// Y is the public key we're signing for.
 	Y *curve.Point
+	// YShares are verification shares for each participant's fraction of the secret key
+	//
+	// This corresponds with Y_i in the Frost paper.
+	YShares map[party.ID]*curve.Point
 	// s_i is our private secret share
 	s_i *curve.Scalar
 }
