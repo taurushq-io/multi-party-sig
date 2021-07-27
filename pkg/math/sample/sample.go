@@ -263,6 +263,19 @@ func Scalar(rand io.Reader) *curve.Scalar {
 	return &s
 }
 
+// Scalar returns a new *curve.Scalar by reading bytes from rand.
+func ScalarUnit(rand io.Reader) *curve.Scalar {
+	for i := 0; i < maxIterations; i++ {
+		s := Scalar(rand)
+		// Note: This works since our curve has prime order, but you need a more
+		// sophisticated check in other situations.
+		if !s.IsZero() {
+			return s
+		}
+	}
+	panic(ErrMaxIterations)
+}
+
 // ScalarPointPair returns a new *curve.Scalar/*curve.Point tuple (x,X) by reading bytes from rand.
 // The tuple satisfies X = x⋅G where G is the base point of the curve.
 func ScalarPointPair(rand io.Reader) (*curve.Scalar, *curve.Point) {
