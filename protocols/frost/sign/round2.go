@@ -125,7 +125,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// TODO: Securely delete the nonces.
 
 	// Broadcast our response
-	msg := r.MarshalMessage(&Sign3{z_i: z_i})
+	msg := r.MarshalMessage(&Sign3{Z_i: z_i})
 	if err := r.SendMessage(msg, out); err != nil {
 		return r, err
 	}

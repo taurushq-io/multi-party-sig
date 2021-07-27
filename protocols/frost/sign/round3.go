@@ -55,13 +55,13 @@ func (r *round3) ProcessMessage(l party.ID, content message.Content) error {
 	expected.ScalarMult(r.c, expected)
 	expected.Add(r.RShares[l], expected)
 
-	actual := curve.NewIdentityPoint().ScalarBaseMult(msg.z_i)
+	actual := curve.NewIdentityPoint().ScalarBaseMult(msg.Z_i)
 
 	if !actual.Equal(expected) {
 		return fmt.Errorf("failed to verify response from %v", l)
 	}
 
-	r.z[l] = msg.z_i
+	r.z[l] = msg.Z_i
 
 	return nil
 }

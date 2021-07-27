@@ -18,7 +18,7 @@ message Sign2 {
 
 message Sign3 {
   option (gogoproto.goproto_getters) = false;
-  // z_i is the response scalar computed by the sender of this message.
-  bytes z_i = 1 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar", (gogoproto.customname) = "z_i"];
+  // Z_i is the response scalar computed by the sender of this message.
+  bytes Z_i = 1 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar", (gogoproto.customname) = "Z_i"];
 }
 
