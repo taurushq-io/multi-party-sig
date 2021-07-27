@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
@@ -72,11 +73,18 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 
 	VerificationShares := make(map[party.ID]*curve.Point)
+	// This accomplishes the same sum as in the paper, by first summing
+	// together the exponent coefficients, and then evaluating.
+	exponents := make([]*polynomial.Exponent, 0, r.PartyIDs().Len())
+	for _, phi_j := range r.Phi {
+		exponents = append(exponents, phi_j)
+	}
+	verificationExponent, err := polynomial.Sum(exponents)
+	if err != nil {
+		panic(err)
+	}
 	for _, i := range r.PartyIDs() {
-		VerificationShares[i] = curve.NewIdentityPoint()
-		for _, j := range r.PartyIDs() {
-			VerificationShares[i].Add(VerificationShares[i], r.Phi[j].Evaluate(i.Scalar()))
-		}
+		VerificationShares[i] = verificationExponent.Evaluate(i.Scalar())
 	}
 
 	return &round.Output{Result: &Result{
