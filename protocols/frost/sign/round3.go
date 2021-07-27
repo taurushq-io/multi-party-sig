@@ -1,7 +1,7 @@
 package sign
 
 import (
-	fmt "fmt"
+	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
@@ -91,10 +91,10 @@ func (r *round3) MessageContent() message.Content {
 	return &Sign3{}
 }
 
-// Validate implements message.Content
+// Validate implements message.Content.
 func (m *Sign3) Validate() error {
 	return nil
 }
 
-// RoundNumber implements message.Content
+// RoundNumber implements message.Content.
 func (m *Sign3) RoundNumber() types.RoundNumber { return 3 }

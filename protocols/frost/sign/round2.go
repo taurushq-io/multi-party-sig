@@ -1,7 +1,7 @@
 package sign
 
 import (
-	fmt "fmt"
+	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -48,7 +48,7 @@ func (r *round2) ProcessMessage(l party.ID, content message.Content) error {
 	// and then checks D_l, E_l in G^* for each commitment in B, aborting if
 	// either check fails."
 	//
-	// We make a few deparatures.
+	// We make a few departures.
 	//
 	// We implicitly assume that the message validation has happened before
 	// calling this protocol.
@@ -82,13 +82,13 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// This calculates H(m, B), allowing us to avoid re-hashing this data for
 	// each extra party l.
 	rhoPreHash := hash.New()
-	rhoPreHash.WriteAny(r.M)
+	_, _ = rhoPreHash.WriteAny(r.M)
 	for _, l := range r.PartyIDs() {
-		rhoPreHash.WriteAny(r.D[l], r.E[l])
+		_, _ = rhoPreHash.WriteAny(r.D[l], r.E[l])
 	}
 	for _, l := range r.PartyIDs() {
 		rhoHash := rhoPreHash.Clone()
-		rhoHash.WriteAny(l)
+		_, _ = rhoHash.WriteAny(l)
 		rho[l] = sample.Scalar(rhoHash)
 	}
 
@@ -142,10 +142,10 @@ func (r *round2) MessageContent() message.Content {
 	return &Sign2{}
 }
 
-// Validate implements message.Content
+// Validate implements message.Content.
 func (m *Sign2) Validate() error {
 	return nil
 }
 
-// RoundNumber implements message.Content
+// RoundNumber implements message.Content.
 func (m *Sign2) RoundNumber() types.RoundNumber { return 2 }

@@ -48,11 +48,11 @@ func (r *round3) ProcessMessage(l party.ID, content message.Content) error {
 	return nil
 }
 
-func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
+func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 	// These steps come from Figure 1, Round 2 of the Frost paper
 
 	// 3. "Each P_i calculates their long-lived private signing share by computing
-	// s_i = sum_{l = 1}^n f_l(i), stores s_i securely, and deletes each f_l(i)"
+	// sᵢ = ∑ₗ₌₁ⁿ fₗ(i), stores s_i securely, and deletes each fₗ(i)"
 
 	s_i := curve.NewScalar()
 	for l, f_li := range r.shareFrom {
@@ -103,7 +103,7 @@ func (r *round3) MessageContent() message.Content {
 	return &Keygen3{}
 }
 
-// Validate implements message.Content
+// Validate implements message.Content.
 func (m *Keygen3) Validate() error {
 	if m == nil {
 		return errors.New("keygen.round3: message is nil")
@@ -114,5 +114,5 @@ func (m *Keygen3) Validate() error {
 	return nil
 }
 
-// RoundNumber implements message.Content
+// RoundNumber implements message.Content.
 func (m *Keygen3) RoundNumber() types.RoundNumber { return 3 }

@@ -80,7 +80,7 @@ func (r *round2) MessageContent() message.Content {
 	return &Keygen2{}
 }
 
-// Validate implements message.Content
+// Validate implements message.Content.
 func (m *Keygen2) Validate() error {
 	if m == nil {
 		return errors.New("keygen.round2: message is nil")
@@ -91,5 +91,5 @@ func (m *Keygen2) Validate() error {
 	return nil
 }
 
-// RoundNumber implements message.Content
+// RoundNumber implements message.Content.
 func (m *Keygen2) RoundNumber() types.RoundNumber { return 2 }

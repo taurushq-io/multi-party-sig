@@ -1,7 +1,7 @@
 package sign
 
 import (
-	fmt "fmt"
+	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"

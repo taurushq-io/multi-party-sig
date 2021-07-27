@@ -1,14 +1,14 @@
 package sign
 
 import (
-	io "io"
+	"io"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 )
 
-// messageHash is a wrapper around bytes to provide some domain separation
+// messageHash is a wrapper around bytes to provide some domain separation.
 type messageHash []byte
 
 // WriteTo makes messageHash implement the io.WriterTo interface.
@@ -41,7 +41,7 @@ type Signature struct {
 // Note that m is the hash of a message, and not the message itself.
 func (sig Signature) Verify(public *curve.Point, m []byte) bool {
 	challengeHash := hash.New()
-	challengeHash.WriteAny(sig.R, public, messageHash(m))
+	_, _ = challengeHash.WriteAny(sig.R, public, messageHash(m))
 	challenge := sample.Scalar(challengeHash)
 
 	expected := curve.NewIdentityPoint().ScalarMult(challenge, public)

@@ -263,7 +263,7 @@ func Scalar(rand io.Reader) *curve.Scalar {
 	return &s
 }
 
-// Scalar returns a new *curve.Scalar by reading bytes from rand.
+// ScalarUnit returns a new *curve.Scalar by reading bytes from rand.
 func ScalarUnit(rand io.Reader) *curve.Scalar {
 	for i := 0; i < maxIterations; i++ {
 		s := Scalar(rand)

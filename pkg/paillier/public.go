@@ -17,7 +17,7 @@ var (
 	ErrPaillierEven   = errors.New("modulus N is even")
 )
 
-var oneNat *safenum.Nat = new(safenum.Nat).SetUint64(1)
+var oneNat = new(safenum.Nat).SetUint64(1)
 
 // PublicKey is a Paillier public key. It is represented by a modulus N.
 type PublicKey struct {

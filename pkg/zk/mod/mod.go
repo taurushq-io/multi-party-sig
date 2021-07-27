@@ -25,7 +25,7 @@ type (
 	}
 )
 
-var oneNat *safenum.Nat = new(safenum.Nat).SetUint64(1).Resize(1)
+var oneNat = new(safenum.Nat).SetUint64(1).Resize(1)
 
 // isQRModPQ checks that y is a quadratic residue mod both p and q.
 //
