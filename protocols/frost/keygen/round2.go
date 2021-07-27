@@ -34,18 +34,18 @@ func (r *round2) ProcessMessage(l party.ID, content message.Content) error {
 
 	// These steps come from Figure 1, Round 1 of the Frost paper
 
-	// 5. "Upon receiving Phi_l, sigma_l from participants 1 <= l <= n, participant
+	// 5. "Upon receiving Phi_l, sigma_l from participants 1 ⩽ l ⩽ n, participant
 	// P_i verifies sigma_l = (R_l, mu_l), aborting on failure, by checking
 	// R_l = mu_l * G - c_l * phi_l0, where c_l = H(l, ctx, phi_l0, R_l).
 	//
-	// Upon success, participants delete { sigma_l | 1 <= l <= n }"
+	// Upon success, participants delete { sigma_l | 1 ⩽ l ⩽ n }"
 	//
 	// Note: I've renamed C_l to Phi_l, as in the previous round.
 
 	// To see why this is correct, compare this verification with the proof we
 	// produced in the previous round. Note how we do the same hash cloning,
 	// but this time with the ID of the message sender.
-	if !msg.Sigma_i.Verify(r.Helper.HashForID(l), r.Phi[l].Constant()) {
+	if !msg.Sigma_i.Verify(r.Helper.HashForID(l), msg.Phi_i.Constant()) {
 		return fmt.Errorf("failed to verify Schnorr proof for party %s", l)
 	}
 

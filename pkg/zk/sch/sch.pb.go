@@ -5,13 +5,12 @@ package zksch
 
 import (
 	fmt "fmt"
-	io "io"
-	math "math"
-	math_bits "math/bits"
-
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_taurusgroup_cmp_ecdsa_pkg_math_curve "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	io "io"
+	math "math"
+	math_bits "math/bits"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -64,31 +63,31 @@ type Response struct {
 	Z github_com_taurusgroup_cmp_ecdsa_pkg_math_curve.Scalar `protobuf:"bytes,1,opt,name=z,proto3,customtype=github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar" json:"z"`
 }
 
-func (z *Response) Reset()         { *z = Response{} }
-func (z *Response) String() string { return proto.CompactTextString(z) }
+func (m *Response) Reset()         { *m = Response{} }
+func (m *Response) String() string { return proto.CompactTextString(m) }
 func (*Response) ProtoMessage()    {}
 func (*Response) Descriptor() ([]byte, []int) {
 	return fileDescriptor_a165bf39e65c9d8c, []int{1}
 }
-func (z *Response) XXX_Unmarshal(b []byte) error {
-	return z.Unmarshal(b)
+func (m *Response) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
 }
-func (z *Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *Response) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	b = b[:cap(b)]
-	n, err := z.MarshalToSizedBuffer(b)
+	n, err := m.MarshalToSizedBuffer(b)
 	if err != nil {
 		return nil, err
 	}
 	return b[:n], nil
 }
-func (z *Response) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Response.Merge(z, src)
+func (m *Response) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Response.Merge(m, src)
 }
-func (z *Response) XXX_Size() int {
-	return z.Size()
+func (m *Response) XXX_Size() int {
+	return m.Size()
 }
-func (z *Response) XXX_DiscardUnknown() {
-	xxx_messageInfo_Response.DiscardUnknown(z)
+func (m *Response) XXX_DiscardUnknown() {
+	xxx_messageInfo_Response.DiscardUnknown(m)
 }
 
 var xxx_messageInfo_Response proto.InternalMessageInfo
@@ -191,30 +190,30 @@ func (m *Commitment) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (z *Response) Marshal() (dAtA []byte, err error) {
-	size := z.Size()
+func (m *Response) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := z.MarshalToSizedBuffer(dAtA[:size])
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
 	return dAtA[:n], nil
 }
 
-func (z *Response) MarshalTo(dAtA []byte) (int, error) {
-	size := z.Size()
-	return z.MarshalToSizedBuffer(dAtA[:size])
+func (m *Response) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (z *Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Response) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
 	{
-		size := z.Z.Size()
+		size := m.Z.Size()
 		i -= size
-		if _, err := z.Z.MarshalTo(dAtA[i:]); err != nil {
+		if _, err := m.Z.MarshalTo(dAtA[i:]); err != nil {
 			return 0, err
 		}
 		i = encodeVarintSch(dAtA, i, uint64(size))
@@ -293,13 +292,13 @@ func (m *Commitment) Size() (n int) {
 	return n
 }
 
-func (z *Response) Size() (n int) {
-	if z == nil {
+func (m *Response) Size() (n int) {
+	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	l = z.Z.Size()
+	l = m.Z.Size()
 	n += 1 + l + sovSch(uint64(l))
 	return n
 }
@@ -410,7 +409,7 @@ func (m *Commitment) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (z *Response) Unmarshal(dAtA []byte) error {
+func (m *Response) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -468,7 +467,7 @@ func (z *Response) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := z.Z.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			if err := m.Z.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

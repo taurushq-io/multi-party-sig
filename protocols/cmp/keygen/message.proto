@@ -57,5 +57,5 @@ message Keygen5 {
 message KeygenOutput {
   option (gogoproto.goproto_getters) = false;
   // Proof is the Schnorr proof of knowledge of the new secret share
-  zksch.Proof Proof = 1;
+  zksch.Response SchnorrResponse = 1;
 }

@@ -122,7 +122,7 @@ func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
 	proof := r.SchnorrRand.Prove(h, PublicData[r.SelfID()].ECDSA, UpdatedSecretECDSA)
 
 	// send to all
-	msg := r.MarshalMessage(&KeygenOutput{Proof: proof}, r.OtherPartyIDs()...)
+	msg := r.MarshalMessage(&KeygenOutput{SchnorrResponse: proof}, r.OtherPartyIDs()...)
 	if err = r.SendMessage(msg, out); err != nil {
 		return r, err
 	}

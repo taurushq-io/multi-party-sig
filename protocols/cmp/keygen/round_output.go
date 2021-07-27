@@ -22,7 +22,7 @@ type output struct {
 func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*KeygenOutput)
 
-	if !body.Proof.Verify(r.HashForID(j),
+	if !body.SchnorrResponse.Verify(r.HashForID(j),
 		r.UpdatedConfig.Public[j].ECDSA,
 		r.SchnorrCommitments[j]) {
 		return ErrRoundOutputZKSch
@@ -45,7 +45,7 @@ func (m *KeygenOutput) Validate() error {
 	if m == nil {
 		return errors.New("keygen.round5: message is nil")
 	}
-	if m.Proof == nil {
+	if m.SchnorrResponse == nil {
 		return errors.New("keygen.round5: sch proof is nil")
 	}
 	return nil
