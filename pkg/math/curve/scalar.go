@@ -109,9 +109,9 @@ func (s *Scalar) SetInt(i *safenum.Int) *Scalar {
 }
 
 // SetBytes sets s = x, and returns s.
-func (s *Scalar) SetBytes(in []byte) *Scalar {
-	s.s.SetByteSlice(in)
-	return s
+func (s *Scalar) SetBytes(in []byte) (*Scalar, bool) {
+	overflowed := s.s.SetByteSlice(in)
+	return s, !overflowed
 }
 
 // SetHash converts a hash value to a Scalar. There is some disagreement
