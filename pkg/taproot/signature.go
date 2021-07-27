@@ -1,7 +1,9 @@
 package taproot
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"hash"
 	"io"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -51,4 +53,22 @@ func GenKey(rand io.Reader) (SecretKey, PublicKey, error) {
 			return secret, public, nil
 		}
 	}
+}
+
+// TaggedHash addes some domain separation to SHA-256.
+//
+// This is the hash_tag function mentioned in BIP-340.
+type TaggedHash struct {
+	hash.Hash
+}
+
+// NewTaggedHash creates a new hasher with a certain tag.
+//
+// This tag is used to provide domain separation.
+func NewTaggedHash(tag string) TaggedHash {
+	tagHash := sha256.Sum256([]byte(tag))
+	h := TaggedHash{Hash: sha256.New()}
+	h.Write(tagHash[:])
+	h.Write(tagHash[:])
+	return h
 }
