@@ -170,6 +170,11 @@ func LiftX(xBytes []byte) (*Point, error) {
 	return &v, nil
 }
 
+// HasEvenY checks if a point's y coordinate is even.
+func (v *Point) HasEvenY() bool {
+	return !v.p.Y.IsOdd()
+}
+
 var baseX, baseY secp256k1.FieldVal
 
 func init() {

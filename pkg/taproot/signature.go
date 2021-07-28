@@ -2,12 +2,33 @@ package taproot
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
-	"hash"
 	"io"
+	"sync/atomic"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 )
+
+// TaggedHash addes some domain separation to SHA-256.
+//
+// This is the hash_tag function mentioned in BIP-340.
+//
+// See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#specification
+func TaggedHash(tag string, datas ...[]byte) []byte {
+	tagHash := sha256.New()
+	tagHash.Write([]byte(tag))
+
+	tagSum := tagHash.Sum(nil)
+
+	h := sha256.New()
+	h.Write(tagSum)
+	h.Write(tagSum)
+	for _, data := range datas {
+		h.Write(data)
+	}
+	return h.Sum(nil)
+}
 
 // SecretKeyLength is the number of bytes in a SecretKey.
 const SecretKeyLength = 32
@@ -55,22 +76,71 @@ func GenKey(rand io.Reader) (SecretKey, PublicKey, error) {
 	}
 }
 
-// TaggedHash addes some domain separation to SHA-256.
-//
-// This is the hash_tag function mentioned in BIP-340.
-//
-// See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#specification
-type TaggedHash struct {
-	hash.Hash
-}
+type Signature []byte
 
-// NewTaggedHash creates a new hasher with a certain tag.
-//
-// This tag is used to provide domain separation.
-func NewTaggedHash(tag string) TaggedHash {
-	tagHash := sha256.Sum256([]byte(tag))
-	h := TaggedHash{Hash: sha256.New()}
-	h.Write(tagHash[:])
-	h.Write(tagHash[:])
-	return h
+// signatureCounter is an atomic counter used to add some fault
+// resistance in case we don't use a source of randomness for Sign
+var signatureCounter uint64
+
+func (s SecretKey) Sign(rand io.Reader, m []byte) (Signature, error) {
+
+	d, ok := curve.NewScalar().SetBytes(s)
+	if !ok || d.IsZero() {
+		return nil, fmt.Errorf("invalid secret key")
+	}
+
+	P := curve.NewIdentityPoint().ScalarBaseMult(d)
+	PBytes := P.XBytes()[:]
+
+	if !P.HasEvenY() {
+		d.Negate(d)
+	}
+
+	a := make([]byte, 32)
+	k := curve.NewScalar()
+	for k.IsZero() {
+		// Either read new random bytes into a, or increment a global counter.
+		//
+		// Either way, the probability of us not finding a valid nonce
+		// is negligeable.
+		if rand != nil {
+			if _, err := io.ReadFull(rand, a); err != nil {
+				return nil, err
+			}
+		} else {
+			// Need to use atomics, because of potential multi-threading
+			ctr := atomic.AddUint64(&signatureCounter, 1)
+			binary.BigEndian.PutUint64(a, ctr)
+		}
+
+		t := d.Bytes()
+		aHash := TaggedHash("BIP0340/aux", a)
+		for i := 0; i < 32; i++ {
+			t[i] ^= aHash[i]
+		}
+
+		randHash := TaggedHash("BIP0340/nonce", t[:], PBytes, m)
+
+		k, _ = curve.NewScalar().SetBytes(randHash)
+	}
+
+	R := curve.NewIdentityPoint().ScalarBaseMult(k)
+
+	if !R.HasEvenY() {
+		k.Negate(k)
+	}
+
+	RBytes := R.XBytes()[:]
+
+	eHash := TaggedHash("BIP0340/challenge", RBytes, PBytes, m)
+	e, _ := curve.NewScalar().SetBytes(eHash)
+
+	z := e.MultiplyAdd(e, d, k)
+	zBytes := z.Bytes()
+
+	sig := make([]byte, 0, 64)
+	sig = append(sig, RBytes...)
+	sig = append(sig, zBytes[:]...)
+
+	return Signature(sig), nil
 }

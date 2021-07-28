@@ -171,6 +171,11 @@ func (s *Scalar) Int() *safenum.Int {
 	return new(safenum.Int).SetBytes(b[:])
 }
 
+// Bytes returns the 32 bytes that make up this scalar, in Big Endian order
+func (s *Scalar) Bytes() [32]byte {
+	return s.s.Bytes()
+}
+
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
 func (s *Scalar) WriteTo(w io.Writer) (int64, error) {
 	buf := make([]byte, params.BytesScalar)
