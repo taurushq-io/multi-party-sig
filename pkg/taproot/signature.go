@@ -1,6 +1,7 @@
 package taproot
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
@@ -143,4 +144,27 @@ func (s SecretKey) Sign(rand io.Reader, m []byte) (Signature, error) {
 	sig = append(sig, zBytes[:]...)
 
 	return Signature(sig), nil
+}
+
+func (pk PublicKey) Verify(sig Signature, m []byte) bool {
+	P, err := curve.LiftX(pk)
+	if err != nil {
+		return false
+	}
+	s, overflow := curve.NewScalar().SetBytes(sig[32:])
+	if overflow {
+		return false
+	}
+	eHash := TaggedHash("BIP0340/challenge", sig[:32], P.XBytes()[:], m)
+	e, _ := curve.NewScalar().SetBytes(eHash)
+
+	R := curve.NewIdentityPoint().ScalarBaseMult(s)
+	R.Subtract(R, P.ScalarMult(e, P))
+	if R.IsIdentity() {
+		return false
+	}
+	if !R.HasEvenY() {
+		return false
+	}
+	return bytes.Equal(R.XBytes()[:], sig[:32])
 }
