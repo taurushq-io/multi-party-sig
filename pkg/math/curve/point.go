@@ -150,7 +150,7 @@ func (v *Point) toAffine() *Point {
 
 // XBytes returns the Big Endian bytes for the X coordinate of this point.
 func (v *Point) XBytes() *[32]byte {
-	return v.p.X.Bytes()
+	return v.toAffine().p.X.Bytes()
 }
 
 // LiftX attempts to convert a single X coordinate back into a point.
@@ -161,6 +161,7 @@ func (v *Point) XBytes() *[32]byte {
 // on the curve.
 func LiftX(xBytes []byte) (*Point, error) {
 	var v Point
+	v.p.Z.SetInt(1)
 	if v.p.X.SetByteSlice(xBytes) {
 		return nil, fmt.Errorf("x coordinate out of range")
 	}
@@ -172,7 +173,7 @@ func LiftX(xBytes []byte) (*Point, error) {
 
 // HasEvenY checks if a point's y coordinate is even.
 func (v *Point) HasEvenY() bool {
-	return !v.p.Y.IsOdd()
+	return !v.toAffine().p.Y.IsOdd()
 }
 
 var baseX, baseY secp256k1.FieldVal

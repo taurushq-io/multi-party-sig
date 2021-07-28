@@ -57,6 +57,7 @@ func (s SecretKey) Public() (PublicKey, error) {
 		return nil, fmt.Errorf("invalid secret key")
 	}
 	point := curve.NewIdentityPoint().ScalarBaseMult(scalar)
+	fmt.Println("s.Public()", point)
 	return PublicKey(point.XBytes()[:]), nil
 }
 
@@ -136,7 +137,7 @@ func (s SecretKey) Sign(rand io.Reader, m []byte) (Signature, error) {
 	eHash := TaggedHash("BIP0340/challenge", RBytes, PBytes, m)
 	e, _ := curve.NewScalar().SetBytes(eHash)
 
-	z := e.MultiplyAdd(e, d, k)
+	z := curve.NewScalar().MultiplyAdd(e, d, k)
 	zBytes := z.Bytes()
 
 	sig := make([]byte, 0, 64)
@@ -151,8 +152,8 @@ func (pk PublicKey) Verify(sig Signature, m []byte) bool {
 	if err != nil {
 		return false
 	}
-	s, overflow := curve.NewScalar().SetBytes(sig[32:])
-	if overflow {
+	s, ok := curve.NewScalar().SetBytes(sig[32:])
+	if !ok {
 		return false
 	}
 	eHash := TaggedHash("BIP0340/challenge", sig[:32], P.XBytes()[:], m)
@@ -160,6 +161,7 @@ func (pk PublicKey) Verify(sig Signature, m []byte) bool {
 
 	R := curve.NewIdentityPoint().ScalarBaseMult(s)
 	R.Subtract(R, P.ScalarMult(e, P))
+	fmt.Println("R", R)
 	if R.IsIdentity() {
 		return false
 	}
