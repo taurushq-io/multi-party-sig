@@ -15,7 +15,6 @@ linters:
     - godot
     - goconst
     - godox
-    - goerr113
     - importas
     - nilerr
     - prealloc
