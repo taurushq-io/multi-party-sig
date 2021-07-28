@@ -78,15 +78,36 @@ func GenKey(rand io.Reader) (SecretKey, PublicKey, error) {
 	}
 }
 
+// SignatureLen is the number of bytes in a Signature.
+const SignatureLen = 64
+
+// Signature represents a signature according to BIP-340.
+//
+// This should exactly SignatureLen = 64 bytes long.
+//
+// This can only be produced using a secret key, but anyone with a public key
+// can verify the integrity of the signature.
 type Signature []byte
 
 // signatureCounter is an atomic counter used to add some fault
 // resistance in case we don't use a source of randomness for Sign
 var signatureCounter uint64
 
-func (s SecretKey) Sign(rand io.Reader, m []byte) (Signature, error) {
-
-	d, ok := curve.NewScalar().SetBytes(s)
+// Sign uses a secret key to create a new signature.
+//
+// Note that m should be the hash of a message, and not the actual message.
+//
+// This accepts a source of randomness, but nil can be passed to use entirely
+// deterministic signatures. Adding randomness hardens the implementation against
+// fault attacks, but isn't strictly necessary for security.
+//
+// Without randomness, an atomic counter is used to also hedge against attacks.
+//
+// Errors will be returned if the source of randomness produces an error,
+// or if the secret key is invalid.
+func (sk SecretKey) Sign(rand io.Reader, m []byte) (Signature, error) {
+	// See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#default-signing
+	d, ok := curve.NewScalar().SetBytes(sk)
 	if !ok || d.IsZero() {
 		return nil, fmt.Errorf("invalid secret key")
 	}
@@ -140,14 +161,22 @@ func (s SecretKey) Sign(rand io.Reader, m []byte) (Signature, error) {
 	z := curve.NewScalar().MultiplyAdd(e, d, k)
 	zBytes := z.Bytes()
 
-	sig := make([]byte, 0, 64)
+	sig := make([]byte, 0, SignatureLen)
 	sig = append(sig, RBytes...)
 	sig = append(sig, zBytes[:]...)
 
 	return Signature(sig), nil
 }
 
+// Verify checks the integrity of a signature, using a public key.
+//
+// Note that m is the hash of a message, and not the message itself.
 func (pk PublicKey) Verify(sig Signature, m []byte) bool {
+	// See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#verification
+	if len(sig) != SignatureLen {
+		return false
+	}
+
 	P, err := curve.LiftX(pk)
 	if err != nil {
 		return false
