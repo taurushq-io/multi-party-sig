@@ -18,7 +18,7 @@ const (
 	protocolRounds types.RoundNumber = 3
 )
 
-// These assert that our rounds implement the round.Round interface
+// These assert that our rounds implement the round.Round interface.
 var (
 	_ round.Round = (*round1)(nil)
 	_ round.Round = (*round2)(nil)

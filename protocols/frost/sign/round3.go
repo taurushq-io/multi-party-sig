@@ -1,7 +1,7 @@
 package sign
 
 import (
-	fmt "fmt"
+	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
@@ -27,7 +27,7 @@ type round3 struct {
 	c *curve.Scalar
 	// z contains the response from each participant
 	//
-	// z[i] corresponds to z_i in the Frost paper
+	// z[i] corresponds to zᵢ in the Frost paper
 	z map[party.ID]*curve.Scalar
 
 	// Lambda contains all Lagrange coefficients of the parties participating in this session.
@@ -46,12 +46,12 @@ func (r *round3) ProcessMessage(l party.ID, content message.Content) error {
 
 	// 7.b "Verify the validity of each response by checking
 	//
-	//    z_i * G = R_i + c * lambda_i * Y_i
+	//    zᵢ • G = Rᵢ + c * λᵢ * Yᵢ
 	//
-	// for each share z_i, i in S. If the equality does not hold, identify and report the
+	// for each share zᵢ, i in S. If the equality does not hold, identify and report the
 	// misbehaving participant, and then abort. Otherwise, continue."
 	//
-	// Note that step 7.a is an artificate of having a signing authority. In our case,
+	// Note that step 7.a is an artifact of having a signing authority. In our case,
 	// we've already computed everything that step computes.
 
 	expected := curve.NewIdentityPoint()
@@ -71,10 +71,10 @@ func (r *round3) ProcessMessage(l party.ID, content message.Content) error {
 }
 
 // Finalize implements round.Round.
-func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
+func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 	// These steps come from Figure 3 of the Frost paper.
 
-	// 7.c "Compute the group's response z = sum z_i"
+	// 7.c "Compute the group's response z = ∑ᵢ zᵢ"
 	z := curve.NewScalar()
 	for _, z_l := range r.z {
 		z.Add(z, z_l)
@@ -91,10 +91,10 @@ func (r *round3) MessageContent() message.Content {
 	return &Sign3{}
 }
 
-// Validate implements message.Content
+// Validate implements message.Content.
 func (m *Sign3) Validate() error {
 	return nil
 }
 
-// RoundNumber implements message.Content
+// RoundNumber implements message.Content.
 func (m *Sign3) RoundNumber() types.RoundNumber { return 3 }

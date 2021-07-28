@@ -19,7 +19,7 @@ In the keygen and refresh protocols, the broadcasted message is a commitment, so
 For the signing protocol, the "echo round" can be done in parallel during the second round.
 
 The main disadvantage of this approach is that an adversary can cause an abort by simply sending different messages to different parties.
-It therefore makes little sense to implement the indentifiable abort aspect of the signing protocol since an adversary could simply cause an annonymous abort at the start of the protocol.
+It therefore makes little sense to implement the indentifiable abort aspect of the signing protocol since an adversary could simply cause an anonymous abort at the start of the protocol.
 
 On the flip side, the user of the library only needs to provide authenticity and integrity between the point-to-point connections between parties.
 
