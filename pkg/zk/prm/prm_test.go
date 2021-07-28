@@ -14,7 +14,9 @@ func TestMod(t *testing.T) {
 	ped, lambda := sk.GeneratePedersen()
 
 	public := Public{
-		ped,
+		ped.N(),
+		ped.S(),
+		ped.T(),
 	}
 
 	proof := NewProof(hash.New(), public, Private{

@@ -3,6 +3,7 @@ package keygen
 import (
 	"errors"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/proto"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
@@ -49,12 +50,12 @@ func (r *round5) ProcessMessage(j party.ID, content message.Content) error {
 	}
 
 	// verify zkmod
-	if !body.Mod.Verify(r.HashForID(j), zkmod.Public{N: r.Pedersen[j].N}) {
+	if !body.Mod.Verify(r.HashForID(j), zkmod.Public{N: r.N[j]}) {
 		return ErrRound5ZKMod
 	}
 
 	// verify zkprm
-	if !body.Prm.Verify(r.HashForID(j), zkprm.Public{Pedersen: r.Pedersen[j]}) {
+	if !body.Prm.Verify(r.HashForID(j), zkprm.Public{N: r.N[j], S: r.S[j], T: r.T[j]}) {
 		return ErrRound5ZKPrm
 	}
 
@@ -66,21 +67,21 @@ func (r *round5) ProcessMessage(j party.ID, content message.Content) error {
 //
 // - sum of all received shares
 // - compute group public key and individual public keys
-// - recompute session SSID
-// - validate Session
+// - recompute config SSID
+// - validate Config
 // - write new ssid hash to old hash state
 // - create proof of knowledge of secret.
 func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// add all shares to our secret
-	SecretECDSA := curve.NewScalar().Set(r.PreviousSecretECDSA)
+	UpdatedSecretECDSA := curve.NewScalar().Set(r.PreviousSecretECDSA)
 	for _, j := range r.PartyIDs() {
-		SecretECDSA.Add(SecretECDSA, r.ShareReceived[j])
+		UpdatedSecretECDSA.Add(UpdatedSecretECDSA, r.ShareReceived[j])
 	}
 
 	// [F₁(X), …, Fₙ(X)]
-	ShamirPublicPolynomials := make([]*polynomial.Exponent, 0, r.N())
-	for _, j := range r.PartyIDs() {
-		ShamirPublicPolynomials = append(ShamirPublicPolynomials, r.VSSPolynomials[j])
+	ShamirPublicPolynomials := make([]*polynomial.Exponent, 0, len(r.VSSPolynomials))
+	for _, VSSPolynomial := range r.VSSPolynomials {
+		ShamirPublicPolynomials = append(ShamirPublicPolynomials, VSSPolynomial)
 	}
 
 	// ShamirPublicPolynomial = F(X) = ∑Fⱼ(X)
@@ -90,32 +91,40 @@ func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 
 	// compute the new public key share Xⱼ = F(j) (+X'ⱼ if doing a refresh)
-	PublicSharesECDSA := make(map[party.ID]*Public, r.N())
+	PublicData := make(map[party.ID]*Public, len(r.PartyIDs()))
 	for _, j := range r.PartyIDs() {
 		PublicECDSAShare := ShamirPublicPolynomial.Evaluate(j.Scalar())
 		PublicECDSAShare.Add(PublicECDSAShare, r.PreviousPublicSharesECDSA[j])
-		PublicSharesECDSA[j] = &Public{
-			ECDSA:    PublicECDSAShare,
-			Paillier: r.PaillierPublic[j],
-			Pedersen: r.Pedersen[j],
+		PublicData[j] = &Public{
+			ECDSA: PublicECDSAShare,
+			N:     r.N[j],
+			S:     r.S[j],
+			T:     r.T[j],
 		}
 	}
 
-	UpdatedSession, err := newSession(r.Threshold, PublicSharesECDSA, r.RID)
-	if err != nil {
-		return nil, err
+	UpdatedConfig := &Config{
+		Threshold: uint32(r.Threshold),
+		Public:    PublicData,
+		RID:       r.RID.Copy(),
+		Secret: &Secret{
+			ID:    r.SelfID(),
+			ECDSA: UpdatedSecretECDSA,
+			P:     &proto.NatMarshaller{Nat: r.PaillierSecret.P()},
+			Q:     &proto.NatMarshaller{Nat: r.PaillierSecret.Q()},
+		},
 	}
 
-	// write new ssid to hash, to bind the Schnorr proof to this new session
+	// write new ssid to hash, to bind the Schnorr proof to this new config
 	// Write SSID, selfID to temporary hash
 	h := r.Hash()
-	_, _ = h.WriteAny(UpdatedSession, r.SelfID())
+	_, _ = h.WriteAny(UpdatedConfig, r.SelfID())
 
 	proof := zksch.Prove(h,
 		r.SchnorrCommitments[r.SelfID()],
-		PublicSharesECDSA[r.SelfID()].ECDSA,
+		PublicData[r.SelfID()].ECDSA,
 		r.SchnorrRand,
-		SecretECDSA)
+		UpdatedSecretECDSA)
 
 	// send to all
 	msg := r.MarshalMessage(&KeygenOutput{Proof: proof}, r.OtherPartyIDs()...)
@@ -123,15 +132,10 @@ func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
 		return r, err
 	}
 
-	r.UpdateHashState(UpdatedSession)
+	r.UpdateHashState(UpdatedConfig)
 	return &output{
-		round5:  r,
-		Session: UpdatedSession,
-		Secret: &Secret{
-			ID:       r.SelfID(),
-			ECDSA:    SecretECDSA,
-			Paillier: r.PaillierSecret,
-		},
+		round5:        r,
+		UpdatedConfig: UpdatedConfig,
 	}, nil
 }
 

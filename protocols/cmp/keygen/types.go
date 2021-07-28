@@ -43,15 +43,16 @@ func (rid RID) Copy() RID {
 	return other
 }
 
-type Threshold int64
+// thresholdWrapper wraps a uint32 and enables writing with domain.
+type thresholdWrapper uint32
 
 // WriteTo implements io.WriterTo interface.
-func (t Threshold) WriteTo(w io.Writer) (int64, error) {
-	intBuffer := make([]byte, 8)
-	binary.BigEndian.PutUint64(intBuffer, uint64(t))
+func (t thresholdWrapper) WriteTo(w io.Writer) (int64, error) {
+	intBuffer := make([]byte, 4)
+	binary.BigEndian.PutUint32(intBuffer, uint32(t))
 	n, err := w.Write(intBuffer)
 	return int64(n), err
 }
 
 // Domain implements writer.WriterToWithDomain.
-func (Threshold) Domain() string { return "Threshold" }
+func (thresholdWrapper) Domain() string { return "Threshold" }

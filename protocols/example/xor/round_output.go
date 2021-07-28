@@ -13,13 +13,7 @@ import (
 // Round2 embeds Round1 so that it has access to previous information.
 type Round2 struct {
 	*Round1
-
-	// resultXOR is the XOR of all messages sent by parties
-	resultXOR []byte
 }
-
-// Result implements round.Final and returns the result.
-func (r *Round2) Result() interface{} { return Result(r.resultXOR) }
 
 // ProcessMessage casts the content to the appropriate type and stores the content.
 func (r *Round2) ProcessMessage(j party.ID, content message.Content) error {
@@ -31,13 +25,13 @@ func (r *Round2) ProcessMessage(j party.ID, content message.Content) error {
 
 // Finalize does not send any messages, but computes the output resulting from the received messages.
 func (r *Round2) Finalize(chan<- *message.Message) (round.Round, error) {
-	r.resultXOR = make([]byte, 32)
+	resultXOR := make([]byte, 32)
 	for _, received := range r.received {
-		for i := range r.resultXOR {
-			r.resultXOR[i] ^= received[i]
+		for i := range resultXOR {
+			resultXOR[i] ^= received[i]
 		}
 	}
-	return &round.Output{Result: Result(r.resultXOR)}, nil
+	return &round.Output{Result: Result(resultXOR)}, nil
 }
 
 // MessageContent returns an uninitialized Round2Message used to unmarshal contents embedded in message.Message.

@@ -2,6 +2,7 @@ package sign
 
 import (
 	"crypto/rand"
+	mrand "math/rand"
 	"reflect"
 	"testing"
 
@@ -46,10 +47,7 @@ func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundTy
 		for idJ, r := range rounds {
 			var m message.Message
 			require.NoError(t, proto.Unmarshal(msgBytes, &m), "failed to unmarshal message")
-			if m.From == idJ {
-				continue
-			}
-			if len(m.To) == 0 || party.IDSlice(m.To).Contains(idJ) {
+			if m.IsFor(idJ) {
 				content := r.MessageContent()
 				err = msg.UnmarshalContent(content)
 				require.NoError(t, err)
@@ -69,26 +67,26 @@ func TestRound(t *testing.T) {
 	rid := make([]byte, params.SecBytes)
 	_, _ = rand.Read(rid)
 
-	t.Log("generating sessions")
-	sessions, secrets, err := keygen.FakeSession(N, T)
-	require.NoError(t, err)
+	t.Log("generating configs")
+	configs := keygen.FakeData(N, T, mrand.New(mrand.NewSource(1)))
 	partyIDs := make([]party.ID, 0, T+1)
-	for id := range sessions {
+	for id := range configs {
 		partyIDs = append(partyIDs, id)
 		if len(partyIDs) == T+1 {
 			break
 		}
 	}
-	t.Log("done generating sessions")
+	t.Log("done generating configs")
 
 	messageToSign := []byte("hello")
 	messageHash := make([]byte, 64)
 	sha3.ShakeSum128(messageHash, messageToSign)
 
 	rounds := make(map[party.ID]round.Round, N)
+	var err error
 	for _, partyID := range partyIDs {
-		s := sessions[partyID]
-		rounds[partyID], _, err = StartSign(s, secrets[partyID], partyIDs, messageHash)()
+		c := configs[partyID]
+		rounds[partyID], _, err = StartSign(c, partyIDs, messageHash)()
 		require.NoError(t, err, "round creation should not result in an error")
 	}
 

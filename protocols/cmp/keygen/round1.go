@@ -2,6 +2,7 @@ package keygen
 
 import (
 	"crypto/rand"
+	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -10,7 +11,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
@@ -19,7 +19,7 @@ var _ round.Round = (*round1)(nil)
 type round1 struct {
 	*round.Helper
 
-	// Threshold is the integer t which defines the maximum number of corruptions tolerated for this session.
+	// Threshold is the integer t which defines the maximum number of corruptions tolerated for this config.
 	Threshold int
 
 	// PreviousSecretECDSA = sk'ᵢ
@@ -100,7 +100,9 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 		RIDs:               map[party.ID]RID{r.SelfID(): SelfRID},
 		ShareReceived:      map[party.ID]*curve.Scalar{r.SelfID(): SelfShare},
 		PaillierPublic:     map[party.ID]*paillier.PublicKey{r.SelfID(): SelfPaillierPublic},
-		Pedersen:           map[party.ID]*pedersen.Parameters{r.SelfID(): SelfPedersenPublic},
+		N:                  map[party.ID]*big.Int{r.SelfID(): SelfPedersenPublic.N()},
+		S:                  map[party.ID]*big.Int{r.SelfID(): SelfPedersenPublic.S()},
+		T:                  map[party.ID]*big.Int{r.SelfID(): SelfPedersenPublic.T()},
 		PaillierSecret:     PaillierSecret,
 		PedersenSecret:     PedersenSecret,
 		SchnorrRand:        SchnorrRand,

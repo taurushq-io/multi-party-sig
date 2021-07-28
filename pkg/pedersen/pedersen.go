@@ -1,7 +1,6 @@
 package pedersen
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -11,47 +10,62 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
-// Validate returns an error if
-// - Any parameter is nil
-// - S,T are not in [1, …,N-1]
-// - S,T is not coprime to N
-// - S == T.
-func (p *Parameters) Validate() error {
-	if p == nil || p.N == nil || p.S == nil || p.T == nil {
-		return errors.New("pedersen.Parameters: contains nil field")
+type Error string
+
+const (
+	ErrNilFields    Error = "contains nil field"
+	ErrSEqualT      Error = "S cannot be equal to T"
+	ErrNotValidModN Error = "S and T must be in [1,…,N-1] and coprime to N"
+)
+
+func (e Error) Error() string {
+	return fmt.Sprintf("pedersen: %s", string(e))
+}
+
+type Parameters struct {
+	n, s, t *big.Int
+}
+
+// New returns a new set of Pedersen parameters,
+// It returns an error if any of the following is true:
+// - n, s, or t is nil.
+// - s, t are not in [1, …,n-1].
+// - s, t are not coprime to N.
+// - s = t.
+func New(n, s, t *big.Int) (*Parameters, error) {
+	if err := ValidateParameters(n, s, t); err != nil {
+		return nil, err
 	}
+	return &Parameters{
+		n: n,
+		s: s,
+		t: t,
+	}, nil
+}
 
-	one := big.NewInt(1)
-	gcd := big.NewInt(1)
-
-	ints := []*big.Int{p.S, p.T}
-	names := []string{"S", "T"}
-	for i := 0; i < 2; i++ {
-
-		s := ints[i]
-		id := names[i]
-
-		// s < N
-		if s.Cmp(p.N) != -1 {
-			return fmt.Errorf("pedersen.Parameters: %s is >= N", id)
-		}
-
-		// s ⩾ 1
-		if s.Cmp(one) != 1 {
-			return fmt.Errorf("pedersen.Parameters: %s < 1", id)
-		}
-
-		// gcd(s,N) == 1
-		if gcd.GCD(nil, nil, s, p.N).Cmp(one) != 0 {
-			return fmt.Errorf("pedersen.Parameters: gcd(%s, N) ≠ 1", id)
-		}
+func ValidateParameters(n, s, t *big.Int) error {
+	if n == nil || s == nil || t == nil {
+		return ErrNilFields
 	}
-
-	if p.S.Cmp(p.T) == 0 {
-		return errors.New("pedersen.Parameters: S == T")
+	// s, t ∈ ℤₙˣ
+	if !arith.IsValidModN(n, s, t) {
+		return ErrNotValidModN
+	}
+	// s ≡ t
+	if s.Cmp(t) == 0 {
+		return ErrSEqualT
 	}
 	return nil
 }
+
+// N = p•q, p ≡ q ≡ 3 mod 4.
+func (p Parameters) N() *big.Int { return p.n }
+
+// S = r² mod N.
+func (p Parameters) S() *big.Int { return p.s }
+
+// T = Sˡ mod N.
+func (p Parameters) T() *big.Int { return p.t }
 
 // Commit computes sˣ tʸ (mod N)
 //
@@ -59,9 +73,9 @@ func (p *Parameters) Validate() error {
 // in general. The commitment produced, on the other hand, hides their values,
 // and can be safely shared. This is why we produce a big.Int instead.
 func (p Parameters) Commit(x, y *safenum.Int) *big.Int {
-	sx := new(safenum.Nat).SetBig(p.S, p.S.BitLen())
-	ty := new(safenum.Nat).SetBig(p.T, p.T.BitLen())
-	nMod := safenum.ModulusFromNat(new(safenum.Nat).SetBig(p.N, p.N.BitLen()))
+	sx := new(safenum.Nat).SetBig(p.s, p.s.BitLen())
+	ty := new(safenum.Nat).SetBig(p.t, p.t.BitLen())
+	nMod := safenum.ModulusFromNat(new(safenum.Nat).SetBig(p.n, p.n.BitLen()))
 
 	sx.ExpI(sx, x, nMod)
 	ty.ExpI(ty, y, nMod)
@@ -76,20 +90,20 @@ func (p Parameters) Verify(a, b, S, T, e *big.Int) bool {
 	if a == nil || b == nil || S == nil || T == nil || e == nil {
 		return false
 	}
-	if !arith.IsValidModN(p.N, S, T) {
+	if !arith.IsValidModN(p.n, S, T) {
 		return false
 	}
 
 	lhs, rhs := bigint(), bigint()
 
-	lhs.Exp(p.S, a, p.N) // lhs = sᵃ (mod N)
-	rhs.Exp(p.T, b, p.N) // rhs = tᵇ (mod N)
+	lhs.Exp(p.s, a, p.n) // lhs = sᵃ (mod N)
+	rhs.Exp(p.t, b, p.n) // rhs = tᵇ (mod N)
 	lhs.Mul(lhs, rhs)    // lhs *= rhs
-	lhs.Mod(lhs, p.N)    // lhs = lhs (mod N)
+	lhs.Mod(lhs, p.n)    // lhs = lhs (mod N)
 
-	rhs.Exp(T, e, p.N) // rhs = Tᵉ (mod N)
+	rhs.Exp(T, e, p.n) // rhs = Tᵉ (mod N)
 	rhs.Mul(rhs, S)    // rhs *= S
-	rhs.Mod(rhs, p.N)  // rhs = rhs (mod N)
+	rhs.Mod(rhs, p.n)  // rhs = rhs (mod N)
 	return lhs.Cmp(rhs) == 0
 }
 
@@ -100,28 +114,13 @@ func bigint() *big.Int {
 	return &x
 }
 
-// Clone creates a deep copy of the parameters.
-func (p Parameters) Clone() *Parameters {
-	var n, s, t big.Int
-	return &Parameters{
-		N: n.Set(p.N),
-		S: s.Set(p.S),
-		T: t.Set(p.T),
-	}
-}
-
-// Equal returns true if both parameters are equal.
-func (p Parameters) Equal(o *Parameters) bool {
-	return p.N.Cmp(o.N) == 0 && p.S.Cmp(o.S) == 0 && p.T.Cmp(o.T) == 0
-}
-
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
 func (p Parameters) WriteTo(w io.Writer) (int64, error) {
 	nAll := int64(0)
 	buf := make([]byte, params.BytesIntModN)
 
 	// write N, S, T
-	for _, i := range []*big.Int{p.N, p.S, p.T} {
+	for _, i := range []*big.Int{p.n, p.s, p.t} {
 		i.FillBytes(buf)
 		n, err := w.Write(buf)
 		nAll += int64(n)

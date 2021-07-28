@@ -41,7 +41,9 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 		RID:                r.RIDs[r.SelfID()],
 		VSSPolynomial:      r.VSSPolynomials[r.SelfID()],
 		SchnorrCommitments: r.SchnorrCommitments[r.SelfID()],
-		Pedersen:           r.Pedersen[r.SelfID()],
+		N:                  r.N[r.SelfID()],
+		S:                  r.S[r.SelfID()],
+		T:                  r.T[r.SelfID()],
 		Decommitment:       r.Decommitment,
 	}, r.OtherPartyIDs()...)
 	if err := r.SendMessage(msg, out); err != nil {

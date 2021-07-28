@@ -42,12 +42,8 @@ func NewHelper(protocolID types.ProtocolID, finalRoundNumber types.RoundNumber,
 	selfID party.ID, partyIDs party.IDSlice,
 	auxInfo ...writer.WriterToWithDomain) (*Helper, error) {
 
-	if !partyIDs.Sorted() {
-		return nil, errors.New("helper: PartyIDs are not sorted")
-	}
-
-	if partyIDs.ContainsDuplicates() {
-		return nil, errors.New("helper: PartyIDs contains duplicate")
+	if !partyIDs.Valid() {
+		return nil, errors.New("helper: partyIDs invalid")
 	}
 
 	// verify our ID is present

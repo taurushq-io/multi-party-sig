@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package sign;
 
-option go_package = "github.com/taurusgroup/cmp-ecdsa/protocol/sign";
+option go_package = "github.com/taurusgroup/cmp-ecdsa/protocol/cmp/sign";
 
 option (gogoproto.stable_marshaler_all) = true;
 

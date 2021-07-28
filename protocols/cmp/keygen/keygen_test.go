@@ -2,6 +2,7 @@ package keygen
 
 import (
 	"fmt"
+	mrand "math/rand"
 	"reflect"
 	"sync"
 	"testing"
@@ -45,10 +46,7 @@ func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundTy
 		for idJ, r := range rounds {
 			var m message.Message
 			require.NoError(t, proto.Unmarshal(msgBytes, &m), "failed to unmarshal message")
-			if m.From == idJ {
-				continue
-			}
-			if len(msg.To) == 0 || party.IDSlice(msg.To).Contains(idJ) {
+			if m.IsFor(idJ) {
 				content := r.MessageContent()
 				err = msg.UnmarshalContent(content)
 				require.NoError(t, err)
@@ -62,21 +60,19 @@ func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundTy
 
 func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
 	N := len(rounds)
-	newSessions := make([]*Session, 0, N)
-	newSecrets := make([]*Secret, 0, N)
+	newConfigs := make([]*Config, 0, N)
 	for _, r := range rounds {
 		resultRound := r.(*round.Output)
 		result := resultRound.Result.(*Result)
-		newSessions = append(newSessions, result.Session)
-		newSecrets = append(newSecrets, result.Secret)
+		newConfigs = append(newConfigs, result.Config)
 	}
 
-	firstSession := newSessions[0]
-	firstSessionJSON, _ := firstSession.MarshalJSON()
-	for i, s := range newSessions {
-		sJSON, _ := s.MarshalJSON()
-		assert.JSONEq(t, string(firstSessionJSON), string(sJSON), "sessions are different")
-		assert.NoError(t, s.ValidateSecret(newSecrets[i]), "failed to validate new session")
+	firstConfig := newConfigs[0]
+	pk := firstConfig.PublicKey()
+	for _, c := range newConfigs {
+		assert.Equal(t, pk, c.PublicKey(), "RID is different")
+		assert.Equal(t, firstConfig.RID, c.RID, "RID is different")
+		assert.NoError(t, c.Validate(), "failed to validate new config")
 	}
 }
 
@@ -101,13 +97,11 @@ func TestKeygen(t *testing.T) {
 func TestRefresh(t *testing.T) {
 	N := 4
 	T := N - 1
-
-	sessions, secrets, err := FakeSession(N, T)
-	require.NoError(t, err)
+	configs := FakeData(N, T, mrand.New(mrand.NewSource(1)))
 
 	parties := make(map[party.ID]round.Round, N)
-	for partyID, s := range sessions {
-		r, _, err := StartRefresh(s, secrets[partyID])()
+	for partyID, s := range configs {
+		r, _, err := StartRefresh(s)()
 		require.NoError(t, err, "round creation should not result in an error")
 		parties[partyID] = r
 
@@ -165,17 +159,14 @@ func TestProtocol(t *testing.T) {
 		assert.NoError(t, err)
 		assert.IsType(t, &Result{}, r)
 		res := r.(*Result)
-		err = res.Session.Validate()
-		assert.NoError(t, err)
-		err = res.Session.ValidateSecret(res.Secret)
-		assert.NoError(t, err)
+		assert.NoError(t, res.Config.Validate())
 	}
 
 	newPs := map[party.ID]*protocol.Handler{}
 	for id, p := range ps {
 		r, _ := p.Result()
 		res := r.(*Result)
-		p2, err := protocol.NewHandler(StartRefresh(res.Session, res.Secret))
+		p2, err := protocol.NewHandler(StartRefresh(res.Config))
 		require.NoError(t, err)
 		newPs[id] = p2
 	}
@@ -191,9 +182,6 @@ func TestProtocol(t *testing.T) {
 		assert.NoError(t, err)
 		assert.IsType(t, &Result{}, r)
 		res := r.(*Result)
-		err = res.Session.Validate()
-		assert.NoError(t, err)
-		err = res.Session.ValidateSecret(res.Secret)
-		assert.NoError(t, err)
+		assert.NoError(t, res.Config.Validate())
 	}
 }

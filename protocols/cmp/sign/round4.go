@@ -39,8 +39,8 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 		C:      r.K[j],
 		X:      body.BigDeltaShare,
 		G:      r.Gamma,
-		Prover: r.Public[j].Paillier,
-		Aux:    r.Public[r.SelfID()].Pedersen,
+		Prover: r.Paillier[j],
+		Aux:    r.Pedersen[r.SelfID()],
 	}
 	if !body.ProofLog.Verify(r.HashForID(j), zkLogPublic) {
 		return ErrRound4ZKLog

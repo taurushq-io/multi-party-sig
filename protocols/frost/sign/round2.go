@@ -5,6 +5,7 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -104,12 +105,11 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	cHash.WriteAny(R, r.Y, r.M)
 	c := sample.Scalar(cHash)
 
+	Lambdas := polynomial.Lagrange(r.PartyIDs())
 	// 5. "Each P_i computes their response using their long-lived secret share s_i
 	// by computing z_i = d_i + (e_i rho_i) + lambda_i s_i c, using S to determine
 	// the ith lagrange coefficient lambda_i"
-
-	z_i := r.PartyIDs().Lagrange(r.SelfID())
-	z_i.Multiply(z_i, r.s_i)
+	z_i := curve.NewScalar().Multiply(Lambdas[r.SelfID()], r.s_i)
 	z_i.Multiply(z_i, c)
 	z_i.Add(z_i, r.d_i)
 	z_i.MultiplyAdd(r.e_i, rho[r.SelfID()], z_i)
@@ -127,15 +127,13 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 		return r, err
 	}
 
-	z := make(map[party.ID]*curve.Scalar)
-	z[r.SelfID()] = z_i
-
 	return &round3{
 		round2:  r,
 		R:       R,
 		RShares: RShares,
 		c:       c,
-		z:       z,
+		z:       map[party.ID]*curve.Scalar{r.SelfID(): z_i},
+		Lambda:  Lambdas,
 	}, nil
 }
 

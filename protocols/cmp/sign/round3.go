@@ -37,19 +37,19 @@ func (r *round3) ProcessMessage(j party.ID, content message.Content) error {
 		return ErrRound3EchoHash
 	}
 
-	if err := r.DeltaMtA[j].Input(r.HashForID(j), r.Public[r.SelfID()].Pedersen, body.DeltaMtA, body.BigGammaShare); err != nil {
+	if err := r.DeltaMtA[j].Input(r.HashForID(j), r.Pedersen[r.SelfID()], body.DeltaMtA, body.BigGammaShare); err != nil {
 		return fmt.Errorf("delta MtA: %w", ErrRound3ZKAffGDeltaMtA)
 	}
 
-	if err := r.ChiMtA[j].Input(r.HashForID(j), r.Public[r.SelfID()].Pedersen, body.ChiMtA, r.Public[j].ECDSA); err != nil {
+	if err := r.ChiMtA[j].Input(r.HashForID(j), r.Pedersen[r.SelfID()], body.ChiMtA, r.ECDSA[j]); err != nil {
 		return fmt.Errorf("chi MtA: %w", ErrRound3ZKAffGChiMtA)
 	}
 
 	zkLogPublic := zklogstar.Public{
 		C:      r.G[j],
 		X:      body.BigGammaShare,
-		Prover: r.Public[j].Paillier,
-		Aux:    r.Public[r.SelfID()].Pedersen,
+		Prover: r.Paillier[j],
+		Aux:    r.Pedersen[r.SelfID()],
 	}
 	if !body.ProofLog.Verify(r.HashForID(j), zkLogPublic) {
 		return ErrRound3ZKLog
@@ -68,8 +68,8 @@ func (r *round3) ProcessMessage(j party.ID, content message.Content) error {
 func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Γ = ∑ⱼ Γⱼ
 	Gamma := curve.NewIdentityPoint()
-	for j := range r.Public {
-		Gamma.Add(Gamma, r.BigGammaShare[j])
+	for _, BigGammaShare := range r.BigGammaShare {
+		Gamma.Add(Gamma, BigGammaShare)
 	}
 
 	// Δᵢ = [kᵢ]Γ
@@ -79,7 +79,7 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	DeltaShare := curve.NewScalar().Multiply(r.GammaShare, r.KShare)
 
 	// χᵢ = xᵢ kᵢ
-	ChiShare := curve.NewScalar().Multiply(r.Secret.ECDSA, r.KShare)
+	ChiShare := curve.NewScalar().Multiply(r.SecretECDSA, r.KShare)
 
 	for _, j := range r.OtherPartyIDs() {
 		// δᵢ += αᵢⱼ + βᵢⱼ
@@ -99,8 +99,8 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 			C:      r.K[r.SelfID()],
 			X:      BigDeltaShare,
 			G:      Gamma,
-			Prover: r.Public[r.SelfID()].Paillier,
-			Aux:    r.Public[j].Pedersen,
+			Prover: r.Paillier[r.SelfID()],
+			Aux:    r.Pedersen[j],
 		}, zkPrivate)
 
 		msg := r.MarshalMessage(&Sign4{

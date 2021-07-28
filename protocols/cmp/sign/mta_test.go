@@ -1,7 +1,7 @@
 package sign
 
 import (
-	"crypto/rand"
+	mrand "math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,42 +10,37 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk"
-	"github.com/taurusgroup/cmp-ecdsa/protocols/cmp/keygen"
 )
 
 func Test_newMtA(t *testing.T) {
-	i := &keygen.Public{
-		Paillier: zk.ProverPaillierPublic,
-		Pedersen: zk.Pedersen,
-	}
-	j := &keygen.Public{
-		Paillier: zk.VerifierPaillierPublic,
-		Pedersen: zk.Pedersen,
-	}
+	source := mrand.New(mrand.NewSource(1))
+	paillierI := zk.ProverPaillierPublic
+	paillierJ := zk.VerifierPaillierPublic
+
 	ski := zk.ProverPaillierSecret
 	skj := zk.VerifierPaillierSecret
-	ai, Ai := sample.ScalarPointPair(rand.Reader)
-	aj, Aj := sample.ScalarPointPair(rand.Reader)
+	ai, Ai := sample.ScalarPointPair(source)
+	aj, Aj := sample.ScalarPointPair(source)
 
-	bi := sample.Scalar(rand.Reader)
-	bj := sample.Scalar(rand.Reader)
+	bi := sample.Scalar(source)
+	bj := sample.Scalar(source)
 
-	Bi, _ := i.Paillier.Enc(bi.Int())
-	Bj, _ := j.Paillier.Enc(bj.Int())
+	Bi, _ := paillierI.Enc(bi.Int())
+	Bj, _ := paillierJ.Enc(bj.Int())
 
 	aibj := curve.NewScalar().Multiply(ai, bj)
 	ajbi := curve.NewScalar().Multiply(aj, bi)
 	c := curve.NewScalar().Add(aibj, ajbi)
 
-	mtaI := NewMtA(ai, Ai, Bi, Bj, ski, j.Paillier)
-	mtaJ := NewMtA(aj, Aj, Bj, Bi, skj, i.Paillier)
+	mtaI := NewMtA(ai, Ai, Bi, Bj, ski, paillierJ)
+	mtaJ := NewMtA(aj, Aj, Bj, Bi, skj, paillierI)
 
-	msgJ := mtaI.ProofAffG(hash.New(), j.Pedersen)
-	msgI := mtaJ.ProofAffG(hash.New(), i.Pedersen)
+	msgForJ := mtaI.ProofAffG(hash.New(), zk.Pedersen)
+	msgForI := mtaJ.ProofAffG(hash.New(), zk.Pedersen)
 
-	err := mtaI.Input(hash.New(), j.Pedersen, msgI, Aj)
+	err := mtaI.Input(hash.New(), zk.Pedersen, msgForI, Aj)
 	require.NoError(t, err, "decryption should pass")
-	err = mtaJ.Input(hash.New(), i.Pedersen, msgJ, Ai)
+	err = mtaJ.Input(hash.New(), zk.Pedersen, msgForJ, Ai)
 	require.NoError(t, err, "decryption should pass")
 
 	gammaI := mtaI.Share()

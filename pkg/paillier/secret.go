@@ -12,12 +12,10 @@ import (
 )
 
 var (
-	ErrNotBlum         = errors.New("prime factor is not equivalent to 3 (mod 4)")
-	ErrPrimeBadLength  = errors.New("prime factor is not the right length")
-	ErrWrongPhi        = errors.New("paillier.SecretKey: ϕ ≠ (p-1)*(q-1)")
-	ErrWrongPhiInv     = errors.New("paillier.SecretKey: ϕ*ϕ⁻¹ mod N ≠ 1")
-	ErrModulusMismatch = errors.New("paillier.SecretKey: public key has different N")
-	ErrNotPrime        = errors.New("supposed prime factor is not prime")
+	ErrPrimeBadLength = errors.New("prime factor is not the right length")
+	ErrNotBlum        = errors.New("prime factor is not equivalent to 3 (mod 4)")
+	ErrNotPrime       = errors.New("supposed prime factor is not prime")
+	ErrNotSafePrime   = errors.New("supposed prime factor is not a safe prime")
 )
 
 // SecretKey is the secret key corresponding to a Public Paillier Key.
@@ -66,7 +64,7 @@ func NewSecretKey() *SecretKey {
 }
 
 func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
-
+	// TODO validate primes here ?
 	n := new(safenum.Nat).Mul(P, Q, -1)
 	nMod := safenum.ModulusFromNat(n)
 
@@ -77,12 +75,17 @@ func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
 	// ϕ⁻¹ mod N
 	phiInv := new(safenum.Nat).ModInverse(phi, nMod)
 
+	pk, err := NewPublicKey(n.Big())
+	if err != nil {
+		//todo handle error
+	}
+
 	return &SecretKey{
 		p:         P,
 		q:         Q,
 		phi:       phi,
 		phiInv:    phiInv,
-		PublicKey: NewPublicKey(n.Big()),
+		PublicKey: pk,
 	}
 }
 
@@ -125,73 +128,34 @@ func (sk *SecretKey) Clone() *SecretKey {
 
 func (sk SecretKey) GeneratePedersen() (*pedersen.Parameters, *safenum.Nat) {
 	s, t, lambda := sample.Pedersen(rand.Reader, sk.phi, sk.PublicKey.n)
-	return &pedersen.Parameters{
-		N: sk.PublicKey.n.Big(),
-		S: s.Big(),
-		T: t.Big(),
-	}, lambda
+	ped, _ := pedersen.New(sk.PublicKey.n.Big(), s.Big(), t.Big())
+	// TODO handle error ?
+	return ped, lambda
 }
 
-func is3mod4(n *safenum.Nat) bool {
-	return n.Byte(0)&0b11 == 3
-}
-
-func (sk SecretKey) Validate() error {
-	// check == 3 (mod 4)
-	if !is3mod4(sk.p) {
-		return fmt.Errorf("paillier.SecretKey: prime p: %w", ErrNotBlum)
-	}
-	if !is3mod4(sk.q) {
-		return fmt.Errorf("paillier.SecretKey: prime q: %w", ErrNotBlum)
-	}
-
+func ValidatePrime(p *safenum.Nat) error {
 	// check bit lengths
 	const bitsWant = params.BitsBlumPrime
 	// Technically, this leaks the number of bits, but this is fine, since returning
 	// an error asserts this number statically, anyways.
-	if bits := sk.p.TrueLen(); bits != bitsWant {
-		return fmt.Errorf("paillier.SecretKey: prime p have: %d, need %d: %w", bits, bitsWant, ErrPrimeBadLength)
+	if bits := p.TrueLen(); bits != bitsWant {
+		return fmt.Errorf("invalid prime size: have: %d, need %d: %w", bits, bitsWant, ErrPrimeBadLength)
 	}
-	if bits := sk.q.TrueLen(); bits != bitsWant {
-		return fmt.Errorf("paillier.SecretKey: prime q have: %d, need %d: %w", bits, bitsWant, ErrPrimeBadLength)
+	// check == 3 (mod 4)
+	if p.Byte(0)&0b11 != 3 {
+		return ErrNotBlum
 	}
-
 	// Hopefully this doesn't leak too much information about p or q
 	// check prime
-	if !sk.p.Big().ProbablyPrime(20) {
-		return fmt.Errorf("paillier.SecretKey: prime p: %w", ErrNotPrime)
-	}
-	// check prime
-	if !sk.q.Big().ProbablyPrime(20) {
-		return fmt.Errorf("paillier.SecretKey: prime q: %w", ErrNotPrime)
+	if !p.Big().ProbablyPrime(1) {
+		return ErrNotPrime
 	}
 
-	// check phi = (p-1)(q-1)
-	pMinus1 := new(safenum.Nat).Sub(sk.p, oneNat, -1)
-	qMinus1 := new(safenum.Nat).Sub(sk.q, oneNat, -1)
-	phi := new(safenum.Nat).Mul(pMinus1, qMinus1, -1)
-	if phi.Eq(sk.phi) != 1 {
-		return ErrWrongPhi
-	}
-
-	nNat := new(safenum.Nat).Mul(sk.p, sk.q, -1)
-	// Compare N
-	n := safenum.ModulusFromNat(nNat)
-	_, nEqual, _ := n.Cmp(sk.PublicKey.n)
-	if nEqual != 1 {
-		return ErrModulusMismatch
-	}
-
-	// check ϕ * phiInv = 1 (mod N)
-	phi.ModMul(phi, sk.phiInv, n)
-	if phi.Eq(oneNat) != 1 {
-		return ErrWrongPhiInv
-	}
-
-	// check public key too
-	err := sk.PublicKey.Validate()
-	if err != nil {
-		return fmt.Errorf("paillier.SecretKey: invalid public key: %w", err)
+	// check (p-1)/2 is prime
+	pMinus1Div2 := new(safenum.Nat).Sub(p, oneNat, -1)
+	pMinus1Div2.Rsh(p, 1, -1)
+	if !pMinus1Div2.Big().ProbablyPrime(1) {
+		return ErrNotSafePrime
 	}
 	return nil
 }

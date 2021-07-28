@@ -7,6 +7,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 	zkmod "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mod"
@@ -44,25 +45,27 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 	}
 
 	// Set Paillier
-	Nj := body.Pedersen.N
-	PaillierPublic := paillier.NewPublicKey(Nj)
-	if err := PaillierPublic.Validate(); err != nil {
+	PaillierPublic, err := paillier.NewPublicKey(body.N)
+	if err != nil {
 		return err
 	}
 
 	// Verify Pedersen
-	if err := body.Pedersen.Validate(); err != nil {
+	Pedersen, err := pedersen.New(body.N, body.S, body.T)
+	if err != nil {
 		return err
 	}
 
 	// Verify decommit
 	if !r.HashForID(j).Decommit(r.Commitments[j], body.Decommitment,
-		body.RID, VSSPolynomial, body.SchnorrCommitments, body.Pedersen) {
+		body.RID, VSSPolynomial, body.SchnorrCommitments, Pedersen) {
 		return ErrRound4Decommit
 	}
 
 	r.RIDs[j] = body.RID
-	r.Pedersen[j] = body.Pedersen
+	r.N[j] = body.N
+	r.S[j] = body.S
+	r.T[j] = body.T
 	r.PaillierPublic[j] = PaillierPublic
 	r.VSSPolynomials[j] = VSSPolynomial
 	r.SchnorrCommitments[j] = body.SchnorrCommitments
@@ -90,14 +93,14 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	_, _ = h.WriteAny(rid, r.SelfID())
 
 	// Prove N is a blum prime with zkmod
-	mod := zkmod.NewProof(h.Clone(), zkmod.Public{N: r.Pedersen[r.SelfID()].N}, zkmod.Private{
+	mod := zkmod.NewProof(h.Clone(), zkmod.Public{N: r.N[r.SelfID()]}, zkmod.Private{
 		P:   r.PaillierSecret.P(),
 		Q:   r.PaillierSecret.Q(),
 		Phi: r.PaillierSecret.Phi(),
 	})
 
 	// prove s, t are correct as aux parameters with zkprm
-	prm := zkprm.NewProof(h.Clone(), zkprm.Public{Pedersen: r.Pedersen[r.SelfID()]}, zkprm.Private{
+	prm := zkprm.NewProof(h.Clone(), zkprm.Public{N: r.N[r.SelfID()], S: r.S[r.SelfID()], T: r.T[r.SelfID()]}, zkprm.Private{
 		Lambda: r.PedersenSecret,
 		Phi:    r.PaillierSecret.Phi(),
 	})
@@ -143,8 +146,8 @@ func (m *Keygen4) Validate() error {
 		return fmt.Errorf("keygen.round3: %w", err)
 	}
 
-	if err := m.Pedersen.Validate(); err != nil {
-		return fmt.Errorf("keygen.round3: %w", err)
+	if m.N == nil || m.S == nil || m.T == nil {
+		return errors.New("keygen.round3: N,S,T invalid")
 	}
 
 	if m.VSSPolynomial == nil {

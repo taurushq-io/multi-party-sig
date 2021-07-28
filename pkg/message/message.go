@@ -83,12 +83,8 @@ func (m Message) Validate() error {
 	}
 
 	ids := party.IDSlice(m.To)
-	if !ids.Sorted() {
-		return ErrMessageNotSorted
-	}
-
-	if ids.ContainsDuplicates() {
-		return ErrMessageContainsDuplicates
+	if !ids.Valid() {
+		return ErrMessageInvalidTo
 	}
 	return nil
 }
