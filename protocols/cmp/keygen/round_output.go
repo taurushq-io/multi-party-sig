@@ -7,7 +7,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
-	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
 
 var _ round.Round = (*output)(nil)
@@ -22,10 +21,10 @@ type output struct {
 // - verify all Schnorr proof for the new ecdsa share.
 func (r *output) ProcessMessage(j party.ID, content message.Content) error {
 	body := content.(*KeygenOutput)
-	if !zksch.Verify(r.HashForID(j),
-		r.SchnorrCommitments[j],
+
+	if !body.SchnorrResponse.Verify(r.HashForID(j),
 		r.UpdatedConfig.Public[j].ECDSA,
-		body.Proof) {
+		r.SchnorrCommitments[j]) {
 		return ErrRoundOutputZKSch
 	}
 	return nil
@@ -46,7 +45,7 @@ func (m *KeygenOutput) Validate() error {
 	if m == nil {
 		return errors.New("keygen.round5: message is nil")
 	}
-	if m.Proof == nil {
+	if m.SchnorrResponse == nil {
 		return errors.New("keygen.round5: sch proof is nil")
 	}
 	return nil

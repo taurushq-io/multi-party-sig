@@ -38,46 +38,45 @@ func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// These steps come from Figure 1, Round 1 of the Frost paper.
 
-	// 1. "Every participant P_i samples t + 1 random values (a_i0, ..., ait)) <-$ Z/(q)
+	// 1. "Every participant P_i samples t + 1 random values (aᵢ₀, ..., aᵢₜ)) <-$ Z/(q)
 	// and uses these values as coefficients to define a degree t polynomial
-	// f_i(x) = sum_{j = 0}^{t - 1} a_ij x^j"
+	// fᵢ(x) = ∑ⱼ₌₀ᵗ⁻¹ aᵢⱼ xʲ"
 	//
 	// Note: I've adjusted the thresholds in this quote to reflect our convention
 	// that t + 1 participants are needed to create a signature.
 	a_i0 := sample.Scalar(rand.Reader)
 	f_i := polynomial.NewPolynomial(r.threshold, a_i0)
 
-	// 2. "Every P_i computes a proof of knowledge to the corresponding secret a_i0
-	// by calculating sigma_i = (R_i, mu_i), such that:
+	// 2. "Every Pᵢ computes a proof of knowledge to the corresponding secret aᵢ₀
+	// by calculating σᵢ = (Rᵢ, μᵢ), such that:
 	//
 	//   k <-$ Z/(q)
-	//   R_i = k * G
-	//   c_i = H(i, ctx, a_i0 * G, R_i)
-	//   mu_i = k + a_i0 c_i
+	//   Rᵢ = k * G
+	//   cᵢ = H(i, ctx, aᵢ₀ • G, Rᵢ)
+	//   μᵢ = k + aᵢ₀ cᵢ
 	//
 	// with ctx being a context string to prevent replay attacks"
 
 	// We essentially follow this, although the order of hashing ends up being slightly
 	// different.
-	k := sample.Scalar(rand.Reader)
-	R_i := curve.NewIdentityPoint().ScalarBaseMult(k)
-	a_i0_times_G := curve.NewIdentityPoint().ScalarBaseMult(a_i0)
 	// At this point, we've already hashed context inside of helper, so we just
 	// add in our own ID, and then we're good to go.
-	Mu_i := zksch.Prove(r.Helper.HashForID(r.SelfID()), R_i, a_i0_times_G, k, a_i0)
+	a_i0_times_G := curve.NewIdentityPoint().ScalarBaseMult(a_i0)
+	Sigma_i := zksch.NewProof(r.Helper.HashForID(r.SelfID()), a_i0_times_G, a_i0)
 
-	// 3. "Every participant P_i computes a public comment Phi_i = <phi_i0, ..., phi_it>
-	// where phi_ij = a_ij * G."
+	// 3. "Every participant Pᵢ computes a public comment Φᵢ = <ϕᵢ₀, ..., ϕᵢₜ>
+	// where ϕᵢⱼ = aᵢⱼ * G."
 	//
 	// Note: I've once again adjusted the threshold indices, I've also taken
-	// the liberty of renaming "C_i" to "Phi_i" so that we can later do Phi_i[j]
+	// the liberty of renaming "Cᵢ" to "Φᵢ" so that we can later do Phi_i[j]
 	// for each individual commitment.
 
 	// This method conveniently calculates all of that for us
+	// Phi_i = Φᵢ
 	Phi_i := polynomial.NewPolynomialExponent(f_i)
 
-	// 4. "Every P_i broadcasts Phi_i, sigma_i to all other participants"
-	msg := r.MarshalMessage(&Keygen2{Phi_i, R_i, Mu_i})
+	// 4. "Every Pᵢ broadcasts Φᵢ, σᵢ to all other participants
+	msg := r.MarshalMessage(&Keygen2{Phi_i, Sigma_i})
 	if err := r.SendMessage(msg, out); err != nil {
 		return r, err
 	}

@@ -9,15 +9,14 @@ option (gogoproto.stable_marshaler_all) = true;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 import "pkg/math/polynomial/exponent.proto";
+import "pkg/zk/sch/sch.proto";
 
 message Keygen2 {
   option (gogoproto.goproto_getters) = false;
   // Phi_i is the commitment to the polynomial that this participant generated.
   polynomial.Exponent Phi_i = 1 [(gogoproto.customname) = "Phi_i"];
-  // R_i is the first part of the Schnorr proof of knowledge of the participant's secret
-  bytes R_i = 2 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point", (gogoproto.customname) = "R_i"];
-  // Mu_i is the second part of the Schnorr proof of knowledge of the participant's secret
-  bytes Mu_i = 3 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar", (gogoproto.customname) = "Mu_i"];
+  // Sigma_i is the Schnorr proof of knowledge of the participant's secret
+  zksch.Proof Sigma_i = 2 [(gogoproto.customname) = "Sigma_i"];
 }
 
 message Keygen3 {

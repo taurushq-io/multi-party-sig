@@ -11,16 +11,16 @@ import (
 )
 
 func TestSchPass(t *testing.T) {
+	a := NewRandomness(rand.Reader)
 	x, X := sample.ScalarPointPair(rand.Reader)
-	a, A := sample.ScalarPointPair(rand.Reader)
 
-	proof := Prove(hash.New(), A, X, a, x)
-	assert.True(t, Verify(hash.New(), A, X, proof), "failed passing test")
+	proof := a.Prove(hash.New(), X, x)
+	assert.True(t, proof.Verify(hash.New(), X, a.Commitment()), "failed passing test")
 }
 func TestSchFail(t *testing.T) {
+	a := NewRandomness(rand.Reader)
 	x, X := curve.NewScalar(), curve.NewIdentityPoint()
-	a, A := sample.ScalarPointPair(rand.Reader)
 
-	proof := Prove(hash.New(), A, X, a, x)
-	assert.False(t, Verify(hash.New(), A, X, proof))
+	proof := a.Prove(hash.New(), X, x)
+	assert.False(t, proof.Verify(hash.New(), X, a.Commitment()), "proof should not accept identity point")
 }

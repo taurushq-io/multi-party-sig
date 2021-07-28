@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	proto "github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"

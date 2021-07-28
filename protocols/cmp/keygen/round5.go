@@ -12,7 +12,6 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 	zkmod "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mod"
 	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm"
-	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
 
 var _ round.Round = (*round5)(nil)
@@ -120,14 +119,10 @@ func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
 	h := r.Hash()
 	_, _ = h.WriteAny(UpdatedConfig, r.SelfID())
 
-	proof := zksch.Prove(h,
-		r.SchnorrCommitments[r.SelfID()],
-		PublicData[r.SelfID()].ECDSA,
-		r.SchnorrRand,
-		UpdatedSecretECDSA)
+	proof := r.SchnorrRand.Prove(h, PublicData[r.SelfID()].ECDSA, UpdatedSecretECDSA)
 
 	// send to all
-	msg := r.MarshalMessage(&KeygenOutput{Proof: proof}, r.OtherPartyIDs()...)
+	msg := r.MarshalMessage(&KeygenOutput{SchnorrResponse: proof}, r.OtherPartyIDs()...)
 	if err = r.SendMessage(msg, out); err != nil {
 		return r, err
 	}

@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package zksch;
+
+option go_package = "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch;zksch";
+
+option (gogoproto.stable_marshaler_all) = true;
+option (gogoproto.goproto_getters_all) = false;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+// Commitment = randomness•G, where
+message Commitment {
+  bytes c = 1 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point", (gogoproto.nullable) = false];
+}
+
+// Response = randomness + H(..., commitment, public)•secret (mod p).
+message Response {
+  bytes z = 1 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar", (gogoproto.nullable) = false];
+}
+
+message Proof {
+  Commitment c = 1;
+  Response z = 2;
+}

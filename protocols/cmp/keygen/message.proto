@@ -12,6 +12,7 @@ import "pkg/paillier/ciphertext.proto";
 import "pkg/math/polynomial/exponent.proto";
 import "pkg/zk/mod/mod.proto";
 import "pkg/zk/prm/prm.proto";
+import "pkg/zk/sch/sch.proto";
 
 message Keygen2 {
   option (gogoproto.goproto_getters) = false;
@@ -34,7 +35,7 @@ message Keygen4 {
   // VSSPolynomial = Fᵢ(X) VSSPolynomial
   polynomial.Exponent VSSPolynomial = 2;
   // SchnorrCommitments = Aᵢ Schnorr commitment for the final confirmation
-  bytes SchnorrCommitments = 3 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point"];
+  zksch.Commitment SchnorrCommitments = 3;
   // N Paillier and Pedersen N = p•q, p ≡ q ≡ 3 mod 4
   bytes N = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // S = r² mod N
@@ -56,5 +57,5 @@ message Keygen5 {
 message KeygenOutput {
   option (gogoproto.goproto_getters) = false;
   // Proof is the Schnorr proof of knowledge of the new secret share
-  bytes Proof = 1 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar"];
+  zksch.Response SchnorrResponse = 1;
 }

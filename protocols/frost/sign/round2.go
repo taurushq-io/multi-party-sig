@@ -1,7 +1,7 @@
 package sign
 
 import (
-	fmt "fmt"
+	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
@@ -25,13 +25,13 @@ import (
 // to everyone instead.
 type round2 struct {
 	*round1
-	// d_i is the first nonce we've created.
+	// d_i = dᵢ is the first nonce we've created.
 	d_i *curve.Scalar
-	// e_i is the second nonce we've created.
+	// e_i = eᵢ is the second nonce we've created.
 	e_i *curve.Scalar
-	// D will contain all of the commitments created by each party, ourself included.
+	// D[i] = Dᵢ will contain all of the commitments created by each party, ourself included.
 	D map[party.ID]*curve.Point
-	// E will contain all of the commitments created by each party, ourself included.
+	// E[i] = Eᵢ will contain all of the commitments created by each party, ourself included.
 	E map[party.ID]*curve.Point
 }
 
@@ -44,16 +44,16 @@ func (r *round2) ProcessMessage(l party.ID, content message.Content) error {
 
 	// This section roughly follows Figure 3.
 
-	// 3. "After receiving (m, B), each P_i first validates the message m,
-	// and then checks D_l, E_l in G^* for each commitment in B, aborting if
+	// 3. "After receiving (m, B), each Pᵢ first validates the message m,
+	// and then checks Dₗ, Eₗ in Gˣ for each commitment in B, aborting if
 	// either check fails."
 	//
-	// We make a few deparatures.
+	// We make a few departures.
 	//
 	// We implicitly assume that the message validation has happened before
 	// calling this protocol.
 	//
-	// We also receive each D_l, E_l from the participant l directly, instead of
+	// We also receive each Dₗ, Eₗ from the participant l directly, instead of
 	// an entire bundle from a signing authority.
 	if msg.D_i.IsIdentity() || msg.E_i.IsIdentity() {
 		return fmt.Errorf("nonce commitment is the identity point")
@@ -69,9 +69,9 @@ func (r *round2) ProcessMessage(l party.ID, content message.Content) error {
 func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// This essentially follows parts of Figure 3.
 
-	// 4. "Each P_i then computes the set of binding values p_l = H_1(l, m, B).
-	// Each P_i then derives the group commitment R = sum_l D_l + rho_l * E_l and
-	// the challenge c = H_2(R, Y, m)."
+	// 4. "Each Pᵢ then computes the set of binding values ρₗ = H₁(l, m, B).
+	// Each Pᵢ then derives the group commitment R = ∑ₗ Dₗ + ρₗ * Eₗ and
+	// the challenge c = H₂(R, Y, m)."
 	//
 	// It's easier to calculate H(m, B, l), that way we can simply clone the hash
 	// state after H(m, B), instead of rehashing them each time.
@@ -82,13 +82,13 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// This calculates H(m, B), allowing us to avoid re-hashing this data for
 	// each extra party l.
 	rhoPreHash := hash.New()
-	rhoPreHash.WriteAny(r.M)
+	_, _ = rhoPreHash.WriteAny(r.M)
 	for _, l := range r.PartyIDs() {
-		rhoPreHash.WriteAny(r.D[l], r.E[l])
+		_, _ = rhoPreHash.WriteAny(r.D[l], r.E[l])
 	}
 	for _, l := range r.PartyIDs() {
 		rhoHash := rhoPreHash.Clone()
-		rhoHash.WriteAny(l)
+		_, _ = rhoHash.WriteAny(l)
 		rho[l] = sample.Scalar(rhoHash)
 	}
 
@@ -102,22 +102,23 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 
 	cHash := hash.New()
-	cHash.WriteAny(R, r.Y, r.M)
+	_, _ = cHash.WriteAny(R, r.Y, r.M)
 	c := sample.Scalar(cHash)
 
+	// Lambdas[i] = λᵢ
 	Lambdas := polynomial.Lagrange(r.PartyIDs())
-	// 5. "Each P_i computes their response using their long-lived secret share s_i
-	// by computing z_i = d_i + (e_i rho_i) + lambda_i s_i c, using S to determine
-	// the ith lagrange coefficient lambda_i"
+	// 5. "Each Pᵢ computes their response using their long-lived secret share sᵢ
+	// by computing zᵢ = dᵢ + (eᵢ ρᵢ) + λᵢ sᵢ c, using S to determine
+	// the ith lagrange coefficient λᵢ"
 	z_i := curve.NewScalar().Multiply(Lambdas[r.SelfID()], r.s_i)
 	z_i.Multiply(z_i, c)
 	z_i.Add(z_i, r.d_i)
 	z_i.MultiplyAdd(r.e_i, rho[r.SelfID()], z_i)
 
-	// 6. "Each P_i securely deletes ((d_i, D_i), (e_i, E_i)) from their local storage,
-	// and returns z_i to SA."
+	// 6. "Each Pᵢ securely deletes ((dᵢ, Dᵢ), (eᵢ, Eᵢ)) from their local storage,
+	// and returns zᵢ to SA."
 	//
-	// Since we don't have a signing authority, we instead broadcast z_i.
+	// Since we don't have a signing authority, we instead broadcast zᵢ.
 
 	// TODO: Securely delete the nonces.
 
@@ -142,10 +143,10 @@ func (r *round2) MessageContent() message.Content {
 	return &Sign2{}
 }
 
-// Validate implements message.Content
+// Validate implements message.Content.
 func (m *Sign2) Validate() error {
 	return nil
 }
 
-// RoundNumber implements message.Content
+// RoundNumber implements message.Content.
 func (m *Sign2) RoundNumber() types.RoundNumber { return 2 }
