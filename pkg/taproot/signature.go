@@ -58,6 +58,8 @@ func GenKey(rand io.Reader) (SecretKey, PublicKey, error) {
 // TaggedHash addes some domain separation to SHA-256.
 //
 // This is the hash_tag function mentioned in BIP-340.
+//
+// See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#specification
 type TaggedHash struct {
 	hash.Hash
 }
