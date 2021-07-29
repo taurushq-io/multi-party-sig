@@ -113,16 +113,13 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 			for _, l := range r.PartyIDs() {
 				RShares[l].Negate(RShares[l])
 			}
-			R.Negate(R)
 		}
 
 		// BIP-340 adjustment: we need to calculate our hash as specified in:
 		// https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#default-signing
 		RBytes := R.XBytes()[:]
 		PBytes := r.Y.XBytes()[:]
-		fmt.Println("R", R.HasEvenY(), R.ToPublicKey())
 		cHash := taproot.TaggedHash("BIP0340/challenge", RBytes, PBytes, r.M)
-		fmt.Println("cHash", cHash)
 		c, _ = curve.NewScalar().SetBytes(cHash)
 	} else {
 		cHash := hash.New()

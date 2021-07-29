@@ -185,12 +185,10 @@ func (pk PublicKey) Verify(sig Signature, m []byte) bool {
 		return false
 	}
 	eHash := TaggedHash("BIP0340/challenge", sig[:32], pk, m)
-	fmt.Println("sig eHash", eHash)
 	e, _ := curve.NewScalar().SetBytes(eHash)
 
 	R := curve.NewIdentityPoint().ScalarBaseMult(s)
 	R.Subtract(R, P.ScalarMult(e, P))
-	fmt.Println("sig R", R.HasEvenY(), R.ToPublicKey())
 	if R.IsIdentity() {
 		return false
 	}

@@ -49,7 +49,6 @@ func startSignCommon(taproot bool, err error, result *keygen.Result, signers []p
 		if result.Threshold+1 > sortedIDs.Len() {
 			return nil, nil, fmt.Errorf("sign.StartSign: insufficient number of signers")
 		}
-		fmt.Println("Y", result.PublicKey.HasEvenY(), result.PublicKey.ToPublicKey())
 		return &round1{
 			Helper:  helper,
 			taproot: taproot,
