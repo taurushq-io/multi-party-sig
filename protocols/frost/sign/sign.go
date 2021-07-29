@@ -85,6 +85,11 @@ func StartSign(result *keygen.Result, signers []party.ID, messageHash []byte) pr
 	return startSignCommon(false, nil, result, signers, messageHash)
 }
 
+// StartSignTaproot is like StartSign, but will generate a Taproot / BIP-340 compatible signature.
+//
+// This needs to result of a Taproot compatible key generation phase, naturally.
+//
+// See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki
 func StartSignTaproot(result *keygen.TaprootResult, signers []party.ID, messageHash []byte) protocol.StartFunc {
 	publicKey, err := curve.LiftX(result.PublicKey)
 	normalResult := &keygen.Result{

@@ -105,7 +105,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	if r.taproot {
 		// BIP-340 adjustment: We need R to have an even y coordinate. This means
 		// conditionally negating k = ∑ᵢ (dᵢ + (eᵢ ρᵢ)), which we can accomplish
-		// by negating our dᵢ, eᵢ, if necessary This entails negating the RShares
+		// by negating our dᵢ, eᵢ, if necessary. This entails negating the RShares
 		// as well.
 		if !R.HasEvenY() {
 			r.d_i.Negate(r.d_i)
