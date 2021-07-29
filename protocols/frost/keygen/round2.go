@@ -49,6 +49,14 @@ func (r *round2) ProcessMessage(l party.ID, content message.Content) error {
 	if !msg.Sigma_i.Verify(r.Helper.HashForID(l), msg.Phi_i.Constant()) {
 		return fmt.Errorf("failed to verify Schnorr proof for party %s", l)
 	}
+	if r.taproot {
+		// BIP-340 adjustment: in the previous step, honest parties ensured
+		// that aₗ₀ generated a point with even y coordinate. We can verify
+		// this by checking that ϕₗ₀ has even y coordinate.
+		if !msg.Phi_i.Constant().HasEvenY() {
+			return fmt.Errorf("secret commitment did not have even y coordinate")
+		}
+	}
 
 	r.Phi[l] = msg.Phi_i
 

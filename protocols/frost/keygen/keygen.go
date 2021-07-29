@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
@@ -25,6 +26,44 @@ var (
 	_ round.Round = (*round3)(nil)
 )
 
+func startKeygenCommon(taproot bool, participants []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
+	return func() (round.Round, protocol.Info, error) {
+		// Negative thresholds obviously make no sense.
+		// We need threshold + 1 participants to sign, so if this number is larger
+		// then the set of all participants, we can't ever generate signatures,
+		// so the threshold makes no sense either.
+		if threshold < 0 || threshold >= len(participants) {
+			return nil, nil, fmt.Errorf("keygen.StartKeygen: invalid threshold: %d", threshold)
+		}
+
+		sortedIDs := party.NewIDSlice(participants)
+		var taprootFlag byte
+		if taproot {
+			taprootFlag = 1
+		}
+		helper, err := round.NewHelper(
+			protocolID,
+			protocolRounds,
+			selfID,
+			sortedIDs,
+			_Threshold(threshold),
+			&writer.BytesWithDomain{
+				TheDomain: "Taproot Flag",
+				Bytes:     []byte{taprootFlag},
+			},
+		)
+		if err != nil {
+			return nil, nil, fmt.Errorf("keygen.StartKeygen: %w", err)
+		}
+
+		return &round1{
+			Helper:    helper,
+			taproot:   taproot,
+			threshold: threshold,
+		}, helper, nil
+	}
+}
+
 // StartKeygen initiates the Frost key generation protocol.
 //
 // This protocol establishes a new threshold signature key among a set of participants.
@@ -43,32 +82,16 @@ var (
 // This protocol corresponds to Figure 1 of the Frost paper:
 //   https://eprint.iacr.org/2020/852.pdf
 func StartKeygen(participants []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
-	return func() (round.Round, protocol.Info, error) {
-		// Negative thresholds obviously make no sense.
-		// We need threshold + 1 participants to sign, so if this number is larger
-		// then the set of all participants, we can't ever generate signatures,
-		// so the threshold makes no sense either.
-		if threshold < 0 || threshold >= len(participants) {
-			return nil, nil, fmt.Errorf("keygen.StartKeygen: invalid threshold: %d", threshold)
-		}
+	return startKeygenCommon(false, participants, threshold, selfID)
+}
 
-		sortedIDs := party.NewIDSlice(participants)
-		helper, err := round.NewHelper(
-			protocolID,
-			protocolRounds,
-			selfID,
-			sortedIDs,
-			_Threshold(threshold),
-		)
-		if err != nil {
-			return nil, nil, fmt.Errorf("keygen.StartKeygen: %w", err)
-		}
-
-		return &round1{
-			Helper:    helper,
-			threshold: threshold,
-		}, helper, nil
-	}
+// StartKeygenTaproot is like StartKeygen, but will make Taproot / BIP-340 compatible keys.
+//
+// This will also return TaprootResult instead of Result, at the end of the protocol.
+//
+// See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#specification
+func StartKeygenTaproot(participants []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
+	return startKeygenCommon(true, participants, threshold, selfID)
 }
 
 // Threshold

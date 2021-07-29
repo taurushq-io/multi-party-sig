@@ -68,8 +68,15 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 	// Yᵢ = ∑ⱼ₌₁ⁿ ∑ₖ₌₀ᵗ (iᵏ mod q) * ϕⱼₖ."
 
 	Y := curve.NewIdentityPoint()
-	for _, phi_j := range r.Phi {
+	for j, phi_j := range r.Phi {
+		if r.taproot {
+			fmt.Println("  Y_y", Y.ToPublicKey().Y)
+			fmt.Println("    j", j, "phi_j0", phi_j.Constant().ToPublicKey())
+		}
 		Y.Add(Y, phi_j.Constant())
+	}
+	if r.taproot {
+		fmt.Println("Y_y", Y.ToPublicKey().Y.Text(16))
 	}
 
 	VerificationShares := make(map[party.ID]*curve.Point)
@@ -85,6 +92,22 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 	}
 	for _, i := range r.PartyIDs() {
 		VerificationShares[i] = verificationExponent.Evaluate(i.Scalar())
+	}
+
+	if r.taproot {
+		// We have to return a different result type. We can also provide a sanity
+		// check that the public key has an even y coordinate, although this
+		// should be guaranteed by the previous steps.
+		if !Y.HasEvenY() {
+			return nil, fmt.Errorf("public key has an odd y coordinate")
+		}
+		return &round.Output{Result: &TaprootResult{
+			ID:                 r.SelfID(),
+			Threshold:          r.threshold,
+			PrivateShare:       s_i,
+			PublicKey:          Y.XBytes()[:],
+			VerificationShares: VerificationShares,
+		}}, nil
 	}
 
 	return &round.Output{Result: &Result{
