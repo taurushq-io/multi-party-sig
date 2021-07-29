@@ -10,6 +10,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/taproot"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
@@ -100,10 +101,34 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 		RShares[l].Add(RShares[l], r.D[l])
 		R.Add(R, RShares[l])
 	}
+	var c *curve.Scalar
+	if r.taproot {
+		// BIP-340 adjustment: We need R to have an even y coordinate. This means
+		// conditionally negating k = ∑ᵢ (dᵢ + (eᵢ ρᵢ)), which we can accomplish
+		// by negating our dᵢ, eᵢ, if necessary This entails negating the RShares
+		// as well.
+		if !R.HasEvenY() {
+			r.d_i.Negate(r.d_i)
+			r.e_i.Negate(r.e_i)
+			for _, l := range r.PartyIDs() {
+				RShares[l].Negate(RShares[l])
+			}
+			R.Negate(R)
+		}
 
-	cHash := hash.New()
-	_, _ = cHash.WriteAny(R, r.Y, r.M)
-	c := sample.Scalar(cHash)
+		// BIP-340 adjustment: we need to calculate our hash as specified in:
+		// https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#default-signing
+		RBytes := R.XBytes()[:]
+		PBytes := r.Y.XBytes()[:]
+		fmt.Println("R", R.HasEvenY(), R.ToPublicKey())
+		cHash := taproot.TaggedHash("BIP0340/challenge", RBytes, PBytes, r.M)
+		fmt.Println("cHash", cHash)
+		c, _ = curve.NewScalar().SetBytes(cHash)
+	} else {
+		cHash := hash.New()
+		_, _ = cHash.WriteAny(R, r.Y, r.M)
+		c = sample.Scalar(cHash)
+	}
 
 	// Lambdas[i] = λᵢ
 	Lambdas := polynomial.Lagrange(r.PartyIDs())

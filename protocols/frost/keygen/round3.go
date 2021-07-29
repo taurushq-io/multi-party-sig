@@ -68,11 +68,7 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 	// Yᵢ = ∑ⱼ₌₁ⁿ ∑ₖ₌₀ᵗ (iᵏ mod q) * ϕⱼₖ."
 
 	Y := curve.NewIdentityPoint()
-	for j, phi_j := range r.Phi {
-		if r.taproot {
-			fmt.Println("  Y_y", Y.ToPublicKey().Y)
-			fmt.Println("    j", j, "phi_j0", phi_j.Constant().ToPublicKey())
-		}
+	for _, phi_j := range r.Phi {
 		Y.Add(Y, phi_j.Constant())
 	}
 
