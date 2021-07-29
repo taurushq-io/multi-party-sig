@@ -17,14 +17,11 @@ import (
 //
 // See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#specification
 func TaggedHash(tag string, datas ...[]byte) []byte {
-	tagHash := sha256.New()
-	tagHash.Write([]byte(tag))
-
-	tagSum := tagHash.Sum(nil)
+	tagSum := sha256.Sum256([]byte(tag))
 
 	h := sha256.New()
-	h.Write(tagSum)
-	h.Write(tagSum)
+	h.Write(tagSum[:])
+	h.Write(tagSum[:])
 	for _, data := range datas {
 		h.Write(data)
 	}
