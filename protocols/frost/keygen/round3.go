@@ -75,9 +75,6 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 		}
 		Y.Add(Y, phi_j.Constant())
 	}
-	if r.taproot {
-		fmt.Println("Y_y", Y.ToPublicKey().Y.Text(16))
-	}
 
 	VerificationShares := make(map[party.ID]*curve.Point)
 	// This accomplishes the same sum as in the paper, by first summing
@@ -95,11 +92,19 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 	}
 
 	if r.taproot {
-		// We have to return a different result type. We can also provide a sanity
-		// check that the public key has an even y coordinate, although this
-		// should be guaranteed by the previous steps.
+		// BIP-340 adjustment: If our public key is odd, then the underlying secret
+		// needs to be negated. Since this secret is ∑ᵢ aᵢ₀, we can negated each
+		// of these. Had we generated the polynomials -fᵢ instead, we would have
+		// ended up with the correct sharing of the secret. So, this means that
+		// we can correct by simply negating our share.
+		//
+		// We assume that everyone else does the same, so we negate all the verification
+		// shares.
 		if !Y.HasEvenY() {
-			return nil, fmt.Errorf("public key has an odd y coordinate")
+			s_i.Negate(s_i)
+			for _, y_i := range VerificationShares {
+				y_i.Negate(y_i)
+			}
 		}
 		return &round.Output{Result: &TaprootResult{
 			ID:                 r.SelfID(),
