@@ -13,8 +13,8 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/taproot"
 	"github.com/taurusgroup/cmp-ecdsa/protocols/frost/keygen"
 )

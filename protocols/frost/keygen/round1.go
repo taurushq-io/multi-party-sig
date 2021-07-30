@@ -7,8 +7,8 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
 	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
 

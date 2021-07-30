@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/internal/round"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
 )
 
 var roundTypes = []reflect.Type{
