@@ -6,8 +6,8 @@ import (
 	"math/big"
 
 	"github.com/cronokirby/safenum"
+	"github.com/taurusgroup/cmp-ecdsa/internal/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
 type Error string

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/params"
 	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 	"github.com/zeebo/blake3"
 )
 

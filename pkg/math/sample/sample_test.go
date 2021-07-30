@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/internal/params"
 )
 
 func TestModN(t *testing.T) {

@@ -5,9 +5,9 @@ import (
 	"io"
 
 	"github.com/cronokirby/safenum"
+	"github.com/taurusgroup/cmp-ecdsa/internal/params"
 	"github.com/taurusgroup/cmp-ecdsa/internal/proto"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
 )
 
 // Add sets ct to the homomorphic sum ct ⊕ ct₂.

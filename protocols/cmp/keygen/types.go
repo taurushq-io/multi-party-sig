@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/internal/params"
 )
 
 // RID is the unique identifier generated during the keygen.

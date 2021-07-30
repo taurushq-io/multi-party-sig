@@ -3,7 +3,7 @@ package arith
 import (
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/internal/params"
 )
 
 // IsValidModN checks that ints are all in the range [1,…,N-1] and co-prime to N.

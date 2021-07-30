@@ -7,7 +7,7 @@ import (
 	"io"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v3"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
+	"github.com/taurusgroup/cmp-ecdsa/internal/params"
 )
 
 // Point represents a secp256k1 elliptic curve point.
