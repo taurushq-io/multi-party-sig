@@ -1,6 +1,7 @@
 package keygen
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 
@@ -61,11 +62,11 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.ID
 	results := make([]Result, 0, N)
 	for id, r := range rounds {
 		resultRound, ok := r.(*round.Output)
-		assert.True(t, ok)
+		require.True(t, ok)
 		result, ok := resultRound.Result.(*Result)
-		assert.True(t, ok)
+		require.True(t, ok)
 		results = append(results, *result)
-		assert.Equal(t, id, result.ID)
+		require.Equal(t, id, result.ID)
 	}
 
 	var publicKey *curve.Point
@@ -73,7 +74,7 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.ID
 	lagrangeCoefficients := polynomial.Lagrange(parties)
 	for _, result := range results {
 		if publicKey != nil {
-			assert.True(t, publicKey.Equal(result.PublicKey))
+			require.True(t, publicKey.Equal(result.PublicKey))
 		}
 		publicKey = result.PublicKey
 		privateKey.MultiplyAdd(lagrangeCoefficients[result.ID], result.PrivateShare, privateKey)
@@ -81,7 +82,7 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.ID
 
 	actualPublicKey := curve.NewIdentityPoint().ScalarBaseMult(privateKey)
 
-	assert.True(t, publicKey.Equal(actualPublicKey))
+	require.True(t, publicKey.Equal(actualPublicKey))
 
 	shares := make(map[party.ID]*curve.Scalar)
 	for _, result := range results {
@@ -91,7 +92,7 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.ID
 	for _, result := range results {
 		for _, party := range parties {
 			expected := curve.NewIdentityPoint().ScalarBaseMult(shares[party])
-			assert.True(t, result.VerificationShares[party].Equal(expected))
+			require.True(t, result.VerificationShares[party].Equal(expected))
 		}
 	}
 }
@@ -113,4 +114,65 @@ func TestKeygen(t *testing.T) {
 	}
 
 	checkOutput(t, rounds, partyIDs)
+}
+
+func checkOutputTaproot(t *testing.T, rounds map[party.ID]round.Round, parties party.IDSlice) {
+	N := len(rounds)
+	results := make([]TaprootResult, 0, N)
+	for id, r := range rounds {
+		resultRound, ok := r.(*round.Output)
+		require.True(t, ok)
+		result, ok := resultRound.Result.(*TaprootResult)
+		require.True(t, ok)
+		results = append(results, *result)
+		require.Equal(t, id, result.ID)
+	}
+
+	var publicKey []byte
+	privateKey := curve.NewScalar()
+	lagrangeCoefficients := polynomial.Lagrange(parties)
+	for _, result := range results {
+		if publicKey != nil {
+			assert.True(t, bytes.Equal(publicKey, result.PublicKey))
+		}
+		publicKey = result.PublicKey
+		privateKey.MultiplyAdd(lagrangeCoefficients[result.ID], result.PrivateShare, privateKey)
+	}
+	effectivePublic, err := curve.LiftX(publicKey)
+	require.NoError(t, err)
+
+	actualPublicKey := curve.NewIdentityPoint().ScalarBaseMult(privateKey)
+
+	require.True(t, actualPublicKey.Equal(effectivePublic))
+
+	shares := make(map[party.ID]*curve.Scalar)
+	for _, result := range results {
+		shares[result.ID] = result.PrivateShare
+	}
+
+	for _, result := range results {
+		for _, party := range parties {
+			expected := curve.NewIdentityPoint().ScalarBaseMult(shares[party])
+			assert.True(t, result.VerificationShares[party].Equal(expected))
+		}
+	}
+}
+
+func TestKeygenTaproot(t *testing.T) {
+	N := 5
+	partyIDs := party.RandomIDs(N)
+
+	rounds := make(map[party.ID]round.Round, N)
+	for _, partyID := range partyIDs {
+		r, _, err := StartKeygenTaproot(partyIDs, N-1, partyID)()
+		require.NoError(t, err, "round creation should not result in an error")
+		rounds[partyID] = r
+
+	}
+
+	for _, roundType := range roundTypes {
+		processRound(t, rounds, roundType)
+	}
+
+	checkOutputTaproot(t, rounds, partyIDs)
 }

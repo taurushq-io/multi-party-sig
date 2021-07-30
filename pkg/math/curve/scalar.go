@@ -109,9 +109,9 @@ func (s *Scalar) SetInt(i *safenum.Int) *Scalar {
 }
 
 // SetBytes sets s = x, and returns s.
-func (s *Scalar) SetBytes(in []byte) *Scalar {
-	s.s.SetByteSlice(in)
-	return s
+func (s *Scalar) SetBytes(in []byte) (*Scalar, bool) {
+	overflowed := s.s.SetByteSlice(in)
+	return s, !overflowed
 }
 
 // SetHash converts a hash value to a Scalar. There is some disagreement
@@ -169,6 +169,11 @@ func (s *Scalar) BigInt() *big.Int {
 func (s *Scalar) Int() *safenum.Int {
 	b := s.s.Bytes()
 	return new(safenum.Int).SetBytes(b[:])
+}
+
+// Bytes returns the 32 bytes that make up this scalar, in Big Endian order
+func (s *Scalar) Bytes() [32]byte {
+	return s.s.Bytes()
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.

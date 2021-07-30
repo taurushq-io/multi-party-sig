@@ -87,6 +87,30 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 		VerificationShares[i] = verificationExponent.Evaluate(i.Scalar())
 	}
 
+	if r.taproot {
+		// BIP-340 adjustment: If our public key is odd, then the underlying secret
+		// needs to be negated. Since this secret is ∑ᵢ aᵢ₀, we can negated each
+		// of these. Had we generated the polynomials -fᵢ instead, we would have
+		// ended up with the correct sharing of the secret. So, this means that
+		// we can correct by simply negating our share.
+		//
+		// We assume that everyone else does the same, so we negate all the verification
+		// shares.
+		if !Y.HasEvenY() {
+			s_i.Negate(s_i)
+			for _, y_i := range VerificationShares {
+				y_i.Negate(y_i)
+			}
+		}
+		return &round.Output{Result: &TaprootResult{
+			ID:                 r.SelfID(),
+			Threshold:          r.threshold,
+			PrivateShare:       s_i,
+			PublicKey:          Y.XBytes()[:],
+			VerificationShares: VerificationShares,
+		}}, nil
+	}
+
 	return &round.Output{Result: &Result{
 		ID:                 r.SelfID(),
 		Threshold:          r.threshold,

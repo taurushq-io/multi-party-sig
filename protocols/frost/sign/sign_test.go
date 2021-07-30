@@ -2,6 +2,7 @@ package sign
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"reflect"
 	"testing"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/taproot"
 	"github.com/taurusgroup/cmp-ecdsa/protocols/frost/keygen"
 )
 
@@ -109,4 +111,62 @@ func TestSign(t *testing.T) {
 	}
 
 	checkOutput(t, rounds, publicKey, steak)
+}
+
+func checkOutputTaproot(t *testing.T, rounds map[party.ID]round.Round, public taproot.PublicKey, m []byte) {
+	for _, r := range rounds {
+		resultRound, ok := r.(*round.Output)
+		assert.True(t, ok)
+		signature, ok := resultRound.Result.(taproot.Signature)
+		assert.True(t, ok)
+		assert.True(t, public.Verify(signature, m))
+	}
+}
+
+func TestSignTaproot(t *testing.T) {
+	N := 5
+	threshold := 2
+
+	partyIDs := party.RandomIDs(N)
+
+	secret := sample.Scalar(rand.Reader)
+	publicPoint := curve.NewIdentityPoint().ScalarBaseMult(secret)
+	if !publicPoint.HasEvenY() {
+		secret.Negate(secret)
+	}
+	f := polynomial.NewPolynomial(threshold, secret)
+	publicKey := taproot.PublicKey(publicPoint.XBytes()[:])
+	steakHash := sha256.New()
+	_, _ = steakHash.Write([]byte{0xDE, 0xAD, 0xBE, 0xEF})
+	steak := steakHash.Sum(nil)
+
+	privateShares := make(map[party.ID]*curve.Scalar, N)
+	for _, id := range partyIDs {
+		privateShares[id] = f.Evaluate(id.Scalar())
+	}
+
+	verificationShares := make(map[party.ID]*curve.Point, N)
+	for _, id := range partyIDs {
+		verificationShares[id] = curve.NewIdentityPoint().ScalarBaseMult(privateShares[id])
+	}
+
+	rounds := make(map[party.ID]round.Round, N)
+	for _, id := range partyIDs {
+		result := &keygen.TaprootResult{
+			ID:                 id,
+			Threshold:          threshold,
+			PublicKey:          publicKey,
+			PrivateShare:       privateShares[id],
+			VerificationShares: verificationShares,
+		}
+		r, _, err := StartSignTaproot(result, partyIDs, steak)()
+		require.NoError(t, err, "round creation should not result in an error")
+		rounds[id] = r
+	}
+
+	for _, roundType := range roundTypes {
+		processRound(t, rounds, roundType)
+	}
+
+	checkOutputTaproot(t, rounds, publicKey, steak)
 }

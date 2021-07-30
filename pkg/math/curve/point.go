@@ -3,6 +3,7 @@ package curve
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
+	"fmt"
 	"io"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v3"
@@ -145,6 +146,34 @@ func (v *Point) toAffine() *Point {
 	}
 	v.p.ToAffine()
 	return v
+}
+
+// XBytes returns the Big Endian bytes for the X coordinate of this point.
+func (v *Point) XBytes() *[32]byte {
+	return v.toAffine().p.X.Bytes()
+}
+
+// LiftX attempts to convert a single X coordinate back into a point.
+//
+// The bytes are interpreted in Big Endian order.
+//
+// This will fail of X is out of range of the underlying field, or definitely not
+// on the curve.
+func LiftX(xBytes []byte) (*Point, error) {
+	var v Point
+	v.p.Z.SetInt(1)
+	if v.p.X.SetByteSlice(xBytes) {
+		return nil, fmt.Errorf("x coordinate out of range")
+	}
+	if !secp256k1.DecompressY(&v.p.X, false, &v.p.Y) {
+		return nil, fmt.Errorf("x coordinate not on curve")
+	}
+	return &v, nil
+}
+
+// HasEvenY checks if a point's y coordinate is even.
+func (v *Point) HasEvenY() bool {
+	return !v.toAffine().p.Y.IsOdd()
 }
 
 var baseX, baseY secp256k1.FieldVal

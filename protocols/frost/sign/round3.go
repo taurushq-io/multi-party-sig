@@ -7,6 +7,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/taproot"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
@@ -80,16 +81,32 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 		z.Add(z, z_l)
 	}
 
-	sig := Signature{
-		R: r.R,
-		z: z,
-	}
+	// The format of our signature depends on using taproot, naturally
+	if r.taproot {
+		sig := taproot.Signature(make([]byte, 0, taproot.SignatureLen))
+		sig = append(sig, r.R.XBytes()[:]...)
+		zBytes := z.Bytes()
+		sig = append(sig, zBytes[:]...)
 
-	if !sig.Verify(r.Y, r.M) {
-		return r, fmt.Errorf("generated signature failed to verify")
-	}
+		taprootPub := taproot.PublicKey(r.Y.XBytes()[:])
 
-	return &round.Output{Result: sig}, nil
+		if !taprootPub.Verify(sig, r.M) {
+			return r, fmt.Errorf("generated signature failed to verify")
+		}
+
+		return &round.Output{Result: sig}, nil
+	} else {
+		sig := Signature{
+			R: r.R,
+			z: z,
+		}
+
+		if !sig.Verify(r.Y, r.M) {
+			return r, fmt.Errorf("generated signature failed to verify")
+		}
+
+		return &round.Output{Result: sig}, nil
+	}
 }
 
 // MessageContent implements round.Round.

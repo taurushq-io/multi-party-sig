@@ -3,6 +3,8 @@ package sign
 import (
 	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
@@ -16,6 +18,47 @@ const (
 	// This protocol has 3 concrete rounds.
 	protocolRounds types.RoundNumber = 3
 )
+
+func startSignCommon(taproot bool, err error, result *keygen.Result, signers []party.ID, messageHash []byte) protocol.StartFunc {
+	return func() (round.Round, protocol.Info, error) {
+		// This is a bit of a hack, so that the Taproot can tell this function that the public key
+		// is invalid.
+		if err != nil {
+			return nil, nil, err
+		}
+		sortedIDs := party.NewIDSlice(signers)
+		var taprootFlag byte
+		if taproot {
+			taprootFlag = 1
+		}
+		helper, err := round.NewHelper(
+			protocolID,
+			protocolRounds,
+			result.ID,
+			sortedIDs,
+			&writer.BytesWithDomain{
+				TheDomain: "Taproot Flag",
+				Bytes:     []byte{taprootFlag},
+			},
+		)
+		if err != nil {
+			return nil, nil, fmt.Errorf("sign.StartSign: %w", err)
+		}
+		// We delay this until *after* creating the helper, that way we know that
+		// sortedIDs contains no duplicates.
+		if result.Threshold+1 > sortedIDs.Len() {
+			return nil, nil, fmt.Errorf("sign.StartSign: insufficient number of signers")
+		}
+		return &round1{
+			Helper:  helper,
+			taproot: taproot,
+			M:       messageHash,
+			Y:       result.PublicKey,
+			YShares: result.VerificationShares,
+			s_i:     result.PrivateShare,
+		}, helper, nil
+	}
+}
 
 // StartSign initiates the protocol for producing a threshold signature, with Frost.
 //
@@ -38,28 +81,22 @@ const (
 //
 // Differences stemming from this change are commented throughout the protocol.
 func StartSign(result *keygen.Result, signers []party.ID, messageHash []byte) protocol.StartFunc {
-	return func() (round.Round, protocol.Info, error) {
-		sortedIDs := party.NewIDSlice(signers)
-		helper, err := round.NewHelper(
-			protocolID,
-			protocolRounds,
-			result.ID,
-			sortedIDs,
-		)
-		if err != nil {
-			return nil, nil, fmt.Errorf("sign.StartSign: %w", err)
-		}
-		// We delay this until *after* creating the helper, that way we know that
-		// sortedIDs contains no duplicates.
-		if result.Threshold+1 > sortedIDs.Len() {
-			return nil, nil, fmt.Errorf("sign.StartSign: insufficient number of signers")
-		}
-		return &round1{
-			Helper:  helper,
-			M:       messageHash,
-			Y:       result.PublicKey,
-			YShares: result.VerificationShares,
-			s_i:     result.PrivateShare,
-		}, helper, nil
+	return startSignCommon(false, nil, result, signers, messageHash)
+}
+
+// StartSignTaproot is like StartSign, but will generate a Taproot / BIP-340 compatible signature.
+//
+// This needs to result of a Taproot compatible key generation phase, naturally.
+//
+// See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki
+func StartSignTaproot(result *keygen.TaprootResult, signers []party.ID, messageHash []byte) protocol.StartFunc {
+	publicKey, err := curve.LiftX(result.PublicKey)
+	normalResult := &keygen.Result{
+		ID:                 result.ID,
+		Threshold:          result.Threshold,
+		PrivateShare:       result.PrivateShare,
+		PublicKey:          publicKey,
+		VerificationShares: result.VerificationShares,
 	}
+	return startSignCommon(true, err, normalResult, signers, messageHash)
 }

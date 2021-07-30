@@ -16,7 +16,13 @@ import (
 //   https://eprint.iacr.org/2020/852.pdf
 type round1 struct {
 	*round.Helper
-
+	// taproot indicates whether or not to make taproot compatible keys.
+	//
+	// This means taking the necessary steps to ensure that the shared secret generates
+	// a public key with even y coordinate.
+	//
+	// We also end up returning a different result, to accomodate this fact.
+	taproot bool
 	// threshold is the integer t which defines the maximum number of corruptions tolerated for this session.
 	//
 	// Alternatively, the degree of the polynomial used to share the secret.
@@ -45,6 +51,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Note: I've adjusted the thresholds in this quote to reflect our convention
 	// that t + 1 participants are needed to create a signature.
 	a_i0 := sample.Scalar(rand.Reader)
+	a_i0_times_G := curve.NewIdentityPoint().ScalarBaseMult(a_i0)
 	f_i := polynomial.NewPolynomial(r.threshold, a_i0)
 
 	// 2. "Every Pᵢ computes a proof of knowledge to the corresponding secret aᵢ₀
@@ -61,7 +68,6 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// different.
 	// At this point, we've already hashed context inside of helper, so we just
 	// add in our own ID, and then we're good to go.
-	a_i0_times_G := curve.NewIdentityPoint().ScalarBaseMult(a_i0)
 	Sigma_i := zksch.NewProof(r.Helper.HashForID(r.SelfID()), a_i0_times_G, a_i0)
 
 	// 3. "Every participant Pᵢ computes a public comment Φᵢ = <ϕᵢ₀, ..., ϕᵢₜ>
