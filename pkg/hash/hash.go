@@ -6,7 +6,7 @@ import (
 
 	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"
-	"golang.org/x/crypto/sha3"
+	"github.com/zeebo/blake3"
 )
 
 // Hash is the hash function we use for generating commitments, consuming CMP types, etc.
@@ -14,12 +14,12 @@ import (
 // Internally, this is a wrapper around sha3.ShakeHash, but any hash function with
 // an easily extendable output would work as well.
 type Hash struct {
-	h sha3.ShakeHash
+	h *blake3.Hasher
 }
 
 // New creates a Hash struct where the internal hash function is initialized with "CMP".
 func New() *Hash {
-	hash := &Hash{sha3.NewCShake128(nil, []byte("CMP"))}
+	hash := &Hash{h: blake3.New()}
 	return hash
 }
 
@@ -28,7 +28,7 @@ func New() *Hash {
 // Implementing this interface is convenient in ZK proofs, which need to use the
 // output of a hash function as randomness later on.
 func (hash *Hash) Read(buf []byte) (n int, err error) {
-	return hash.h.Read(buf)
+	return hash.h.Digest().Read(buf)
 }
 
 // ReadBytes fills a buffer with bytes.

@@ -9,7 +9,8 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/rs/zerolog v1.23.0
 	github.com/stretchr/testify v1.7.0
-	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
-	golang.org/x/sys v0.0.0-20210525143221-35b2ab0089ea // indirect
+	github.com/zeebo/blake3 v0.2.0 // indirect
+	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
+	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
