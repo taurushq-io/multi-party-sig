@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
+	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"

@@ -17,7 +17,7 @@ import "pkg/zk/sch/sch.proto";
 message Keygen2 {
   option (gogoproto.goproto_getters) = false;
   // Commitment = Vᵢ = H(ρᵢ, Fᵢ(X), Aᵢ, Nᵢ, sᵢ, tᵢ, uᵢ)
-  bytes Commitment = 1 [(gogoproto.casttype) = "github.com/taurusgroup/cmp-ecdsa/pkg/hash.Commitment"];
+  bytes Commitment = 1 [(gogoproto.casttype) = "github.com/taurusgroup/cmp-ecdsa/internal/hash.Commitment"];
 }
 
 message Keygen3 {
@@ -43,7 +43,7 @@ message Keygen4 {
   // T = Sˡ mod N
   bytes T = 6 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // Decommitment = uᵢ decommitment bytes
-  bytes Decommitment = 7 [(gogoproto.casttype) = "github.com/taurusgroup/cmp-ecdsa/pkg/hash.Decommitment"];
+  bytes Decommitment = 7 [(gogoproto.casttype) = "github.com/taurusgroup/cmp-ecdsa/internal/hash.Decommitment"];
 }
 
 message Keygen5 {

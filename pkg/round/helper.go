@@ -7,8 +7,8 @@ import (
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v3"
 	any "github.com/gogo/protobuf/types"
+	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
 	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"

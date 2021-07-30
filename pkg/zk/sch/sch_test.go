@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
+	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 )

@@ -3,7 +3,7 @@ package sign
 import (
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
+	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"

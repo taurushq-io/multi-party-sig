@@ -5,7 +5,7 @@ import (
 	"math/big"
 
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
+	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/params"

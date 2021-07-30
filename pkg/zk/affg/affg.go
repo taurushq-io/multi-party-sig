@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/hash"
+	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
