@@ -8,6 +8,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
+	"github.com/zeebo/blake3"
 )
 
 // This round sort of corresponds with Figure 2 of the Frost paper:
@@ -47,13 +48,36 @@ type round1 struct {
 // ProcessMessage implements round.Round.
 func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 
+const deriveHashKeyContext = "github.com/taurusgroup/cmp-ecdsa/frost 2021-07-30T09:48+00:00 Derive hash Key"
+
 // Finalize implements round.Round.
 func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// We can think of this as roughly implementing Figure 2. The idea is
 	// to generate two nonces (dᵢ, eᵢ) in Z/(q)ˣ, then two commitments
 	// Dᵢ = dᵢ * G, Eᵢ = eᵢ * G, and then broadcast them.
-	d_i := sample.ScalarUnit(rand.Reader)
-	e_i := sample.ScalarUnit(rand.Reader)
+
+	// We use a hedged deterministic process, instead of simply sampling (d_i, e_i):
+	//
+	//   a = random()
+	//   hk = KDF(s_i)
+	//   (d_i, e_i) = H_hk(ctx, m, a)
+	//
+	// This protects against bad randomness, since a constant value for a is still unpredictable,
+	// and fault attacks against the hash function, because of the randomness.
+	s_iBytes := r.s_i.Bytes()
+
+	hashKey := make([]byte, 32)
+	blake3.DeriveKey(deriveHashKeyContext, s_iBytes[:], hashKey)
+	nonceHasher, _ := blake3.NewKeyed(hashKey)
+	_, _ = nonceHasher.Write(r.SSID())
+	_, _ = nonceHasher.Write(r.M)
+	a := make([]byte, 32)
+	_, _ = rand.Read(a)
+	_, _ = nonceHasher.Write(a)
+	nonceDigest := nonceHasher.Digest()
+
+	d_i := sample.ScalarUnit(nonceDigest)
+	e_i := sample.ScalarUnit(nonceDigest)
 
 	D_i := curve.NewIdentityPoint().ScalarBaseMult(d_i)
 	E_i := curve.NewIdentityPoint().ScalarBaseMult(e_i)
