@@ -9,9 +9,9 @@ import (
 	any "github.com/gogo/protobuf/types"
 	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
 	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
 )
 
 // Helper implements protocol.Info and can therefore be embedded in the first round of a protocol

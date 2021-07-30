@@ -10,8 +10,8 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/taproot"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
 // This round roughly corresponds with steps 3-6 of Figure 3 in the Frost paper:

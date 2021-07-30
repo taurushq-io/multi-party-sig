@@ -9,7 +9,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
 	zkmod "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mod"
 	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm"
 	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"

@@ -2,7 +2,7 @@ package protocol
 
 import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
 )
 
 // Info represents static information about a specific protocol execution.

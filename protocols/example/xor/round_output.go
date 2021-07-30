@@ -7,7 +7,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/internal/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
 )
 
 // Round2 embeds Round1 so that it has access to previous information.

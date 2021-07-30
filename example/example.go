@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
 	"github.com/taurusgroup/cmp-ecdsa/protocols/cmp/keygen"
 	"github.com/taurusgroup/cmp-ecdsa/protocols/cmp/sign"
 	"github.com/taurusgroup/cmp-ecdsa/protocols/example/xor"

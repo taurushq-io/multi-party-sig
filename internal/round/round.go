@@ -1,8 +1,8 @@
 package round
 
 import (
-	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
 )
 
 type Round interface {

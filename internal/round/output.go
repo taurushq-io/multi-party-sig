@@ -3,8 +3,8 @@ package round
 import (
 	"errors"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
 )
 
 // Output is an empty round containing the output of the protocol.

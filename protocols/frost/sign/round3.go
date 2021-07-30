@@ -7,8 +7,8 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/taproot"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 
 // This corresponds with step 7 of Figure 3 in the Frost paper:

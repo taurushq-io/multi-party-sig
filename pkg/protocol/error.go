@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
 )
 
 // Error is a custom error for protocols which contains information about the responsible round in which it occurred,

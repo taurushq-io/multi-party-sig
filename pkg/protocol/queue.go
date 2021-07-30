@@ -3,8 +3,8 @@ package protocol
 import (
 	"sync"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
 )
 
 type queue struct {
