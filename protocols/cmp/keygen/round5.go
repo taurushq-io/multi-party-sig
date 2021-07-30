@@ -4,11 +4,11 @@ import (
 	"errors"
 
 	"github.com/taurusgroup/cmp-ecdsa/internal/proto"
+	"github.com/taurusgroup/cmp-ecdsa/internal/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 	zkmod "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mod"
 	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm"

@@ -3,9 +3,9 @@ package keygen
 import (
 	"errors"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 )
 

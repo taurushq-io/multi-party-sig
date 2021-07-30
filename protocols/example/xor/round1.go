@@ -2,9 +2,9 @@ package xor
 
 import (
 	gogo "github.com/gogo/protobuf/types"
+	"github.com/taurusgroup/cmp-ecdsa/internal/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 )
 
 // Round1 can embed round.Helper which provides useful methods handling messages.

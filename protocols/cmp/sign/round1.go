@@ -3,13 +3,13 @@ package sign
 import (
 	"crypto/rand"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	zkenc "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
 )
 

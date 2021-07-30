@@ -4,11 +4,11 @@ import (
 	"errors"
 
 	"github.com/cronokirby/safenum"
+	"github.com/taurusgroup/cmp-ecdsa/internal/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/types"
 	zkenc "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
 	zklogstar "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"

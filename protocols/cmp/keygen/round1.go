@@ -5,12 +5,12 @@ import (
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
+	"github.com/taurusgroup/cmp-ecdsa/internal/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/round"
 	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
 
