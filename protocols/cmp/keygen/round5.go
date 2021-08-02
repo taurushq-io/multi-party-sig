@@ -117,7 +117,7 @@ func (r *round5) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// write new ssid to hash, to bind the Schnorr proof to this new config
 	// Write SSID, selfID to temporary hash
 	h := r.Hash()
-	_, _ = h.WriteAny(UpdatedConfig, r.SelfID())
+	_ = h.WriteAny(UpdatedConfig, r.SelfID())
 
 	proof := r.SchnorrRand.Prove(h, PublicData[r.SelfID()].ECDSA, UpdatedSecretECDSA)
 

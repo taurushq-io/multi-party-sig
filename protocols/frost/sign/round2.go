@@ -83,13 +83,13 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// This calculates H(m, B), allowing us to avoid re-hashing this data for
 	// each extra party l.
 	rhoPreHash := hash.New()
-	_, _ = rhoPreHash.WriteAny(r.M)
+	_ = rhoPreHash.WriteAny(r.M)
 	for _, l := range r.PartyIDs() {
-		_, _ = rhoPreHash.WriteAny(r.D[l], r.E[l])
+		_ = rhoPreHash.WriteAny(r.D[l], r.E[l])
 	}
 	for _, l := range r.PartyIDs() {
 		rhoHash := rhoPreHash.Clone()
-		_, _ = rhoHash.WriteAny(l)
+		_ = rhoHash.WriteAny(l)
 		rho[l] = sample.Scalar(rhoHash.Digest())
 	}
 
@@ -123,7 +123,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 		c, _ = curve.NewScalar().SetBytes(cHash)
 	} else {
 		cHash := hash.New()
-		_, _ = cHash.WriteAny(R, r.Y, r.M)
+		_ = cHash.WriteAny(R, r.Y, r.M)
 		c = sample.Scalar(cHash.Digest())
 	}
 

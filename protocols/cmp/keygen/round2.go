@@ -75,7 +75,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Broadcast the message we created in round1
 	h := r.Hash()
 	for _, j := range r.PartyIDs() {
-		_, _ = h.WriteAny(r.Commitments[j])
+		_ = h.WriteAny(r.Commitments[j])
 	}
 	EchoHash := h.Sum()
 

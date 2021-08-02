@@ -17,7 +17,7 @@ func (m messageHash) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
-// Domain implements WriterToWithDomain, and separates this type within hash.Hash.
+// Domain implements hash.WriterToWithDomain, and separates this type within hash.Hash.
 func (messageHash) Domain() string {
 	return "messageHash"
 }
@@ -41,7 +41,7 @@ type Signature struct {
 // Note that m is the hash of a message, and not the message itself.
 func (sig Signature) Verify(public *curve.Point, m []byte) bool {
 	challengeHash := hash.New()
-	_, _ = challengeHash.WriteAny(sig.R, public, messageHash(m))
+	_ = challengeHash.WriteAny(sig.R, public, messageHash(m))
 	challenge := sample.Scalar(challengeHash.Digest())
 
 	expected := curve.NewIdentityPoint().ScalarMult(challenge, public)

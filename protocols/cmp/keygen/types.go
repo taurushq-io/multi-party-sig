@@ -27,7 +27,7 @@ func (rid RID) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
-// Domain implements writer.WriterToWithDomain.
+// Domain implements hash.hash.WriterToWithDomain.
 func (RID) Domain() string { return "RID" }
 
 func (rid RID) Validate() error {
@@ -54,5 +54,5 @@ func (t thresholdWrapper) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
-// Domain implements writer.WriterToWithDomain.
+// Domain implements hash.hash.WriterToWithDomain.
 func (thresholdWrapper) Domain() string { return "Threshold" }

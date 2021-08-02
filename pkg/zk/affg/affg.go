@@ -212,7 +212,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 }
 
 func challenge(hash *hash.Hash, public Public, commitment *Commitment) *safenum.Int {
-	_, _ = hash.WriteAny(public.Aux, public.Prover, public.Verifier,
+	_ = hash.WriteAny(public.Aux, public.Prover, public.Verifier,
 		public.C, public.D, public.Y, public.X,
 		commitment.A, commitment.Bx, commitment.By,
 		commitment.E, commitment.S, commitment.F, commitment.T)

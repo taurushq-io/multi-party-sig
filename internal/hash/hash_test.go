@@ -14,7 +14,7 @@ func TestHash_WriteAny(t *testing.T) {
 
 	a := func(v interface{}) {
 		h := New()
-		_, err = h.WriteAny(v)
+		err = h.WriteAny(v)
 		if err != nil {
 			t.Error(err)
 		}
@@ -22,7 +22,7 @@ func TestHash_WriteAny(t *testing.T) {
 	b := func(vs ...interface{}) {
 		h := New()
 		for _, v := range vs {
-			_, err = h.WriteAny(v)
+			err = h.WriteAny(v)
 			if err != nil {
 				t.Error(err)
 			}

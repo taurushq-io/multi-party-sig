@@ -1,4 +1,4 @@
-package writer
+package hash
 
 import "io"
 
@@ -13,29 +13,23 @@ type WriterToWithDomain interface {
 	Domain() string
 }
 
-// WriteWithDomain writes out a piece of data, using its domain.
-func WriteWithDomain(w io.Writer, object WriterToWithDomain) (int64, error) {
-	total := int64(0)
+// writeWithDomain writes out a piece of data, using its domain.
+func writeWithDomain(w io.Writer, object WriterToWithDomain) error {
 	// Write out `(<domain><data>)`, so that each domain separated piece of data
 	// is distinguished from others.
-	n, err := w.Write([]byte("("))
-	total += int64(n)
-	if err != nil {
-		return total, err
+	if _, err := w.Write([]byte("(")); err != nil {
+		return err
 	}
-	n, err = w.Write([]byte(object.Domain()))
-	total += int64(n)
-	if err != nil {
-		return total, err
+	if _, err := w.Write([]byte(object.Domain())); err != nil {
+		return err
 	}
-	n64, err := object.WriteTo(w)
-	total += n64
-	if err != nil {
-		return total, err
+	if _, err := object.WriteTo(w); err != nil {
+		return err
 	}
-	n, err = w.Write([]byte(")"))
-	total += int64(n)
-	return total, err
+	if _, err := w.Write([]byte(")")); err != nil {
+		return err
+	}
+	return nil
 }
 
 // BytesWithDomain is a useful wrapper to annotate some chunk of data with a domain.

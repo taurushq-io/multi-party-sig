@@ -95,7 +95,7 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 	// temporary hash which does not modify the state
 	h := r.Hash()
-	_, _ = h.WriteAny(rid, r.SelfID())
+	_ = h.WriteAny(rid, r.SelfID())
 
 	// Prove N is a blum prime with zkmod
 	mod := zkmod.NewProof(h.Clone(), zkmod.Public{N: r.N[r.SelfID()]}, zkmod.Private{

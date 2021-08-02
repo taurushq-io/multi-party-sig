@@ -112,9 +112,9 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 }
 
 func challenge(hash *hash.Hash, public Public, A []*big.Int) []bool {
-	_, _ = hash.WriteAny(public.N, public.S, public.T)
+	_ = hash.WriteAny(public.N, public.S, public.T)
 	for _, a := range A {
-		_, _ = hash.WriteAny(a)
+		_ = hash.WriteAny(a)
 	}
 
 	tmpBytes := make([]byte, params.StatParam)

@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/internal/params"
-	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/zeebo/blake3"
 )
 
@@ -50,56 +49,51 @@ func (hash *Hash) Sum() []byte {
 //
 //  - []byte
 //  - *big.Int
-//  - writer.WriterToWithDomain
+//  - hash.WriterToWithDomain
 //
 // This function will apply its own domain separation for the first two types.
 // The last type already suggests which domain to use, and this function respects it.
-func (hash *Hash) WriteAny(data ...interface{}) (int64, error) {
-	total := int64(0)
+func (hash *Hash) WriteAny(data ...interface{}) error {
+	var err error
 	for _, d := range data {
 		switch t := d.(type) {
 		case []byte:
-			n, err := writer.WriteWithDomain(hash.h, &writer.BytesWithDomain{
+			err = writeWithDomain(hash.h, &BytesWithDomain{
 				TheDomain: "[]byte",
 				Bytes:     t,
 			})
-			total += n
 			if err != nil {
-				return total, fmt.Errorf("hash.Hash: write []byte: %w", err)
+				return fmt.Errorf("hash.Hash: write []byte: %w", err)
 			}
 		case *big.Int:
 			if t == nil {
-				return total, fmt.Errorf("hash.Hash: write *big.Int: nil")
+				return fmt.Errorf("hash.Hash: write *big.Int: nil")
 			}
 			bytes := make([]byte, params.BytesIntModN)
 			if t.BitLen() <= params.BitsIntModN && t.Sign() == 1 {
 				t.FillBytes(bytes)
 			} else {
-				var err error
 				bytes, err = t.GobEncode()
 				if err != nil {
-					return total, fmt.Errorf("hash.Hash: GobEncode: %w", err)
+					return fmt.Errorf("hash.Hash: GobEncode: %w", err)
 				}
 			}
-			n, err := writer.WriteWithDomain(hash.h, &writer.BytesWithDomain{
+			err = writeWithDomain(hash.h, &BytesWithDomain{
 				TheDomain: "big.Int",
 				Bytes:     bytes,
 			})
-			total += n
 			if err != nil {
-				return total, fmt.Errorf("hash.Hash: write *big.Int: %w", err)
+				return fmt.Errorf("hash.Hash: write *big.Int: %w", err)
 			}
-		case writer.WriterToWithDomain:
-			n, err := writer.WriteWithDomain(hash.h, t)
-			total += n
-			if err != nil {
-				return total, fmt.Errorf("hash.Hash: write io.WriterTo: %w", err)
+		case WriterToWithDomain:
+			if err = writeWithDomain(hash.h, t); err != nil {
+				return fmt.Errorf("hash.Hash: write io.WriterTo: %w", err)
 			}
 		default:
 			panic("hash.Hash: unsupported type")
 		}
 	}
-	return total, nil
+	return nil
 }
 
 // Clone returns a copy of the Hash in its current state.
