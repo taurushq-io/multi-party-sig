@@ -9,6 +9,13 @@ date: 14-07-2021
 
 Our implementation tries to follow the original specification provided in [CGGMP21], but we detail here the modifications we applied.
 
+## Chaining Key
+
+To support key deriviation methods, like
+[BIP-32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki), we create an
+additional 32 bytes of randomness through a chaining key $c$. This is generated in the
+exact same way as the round id $\rho$.
+
 ## Broadcast considerations
 
 Abort identification requires the use of a reliable broadcast channel.
@@ -61,7 +68,7 @@ $\textcolor{red}{\text{and retrieve private input \(\textsf{sk}_{old}^{(i)}\)}}$
   - Define VSS polynomial coefficients $F^{(i)}_l \gets f^{(i)}_l • G$, for $l = 1, \ldots, t$.
 - Sample $a^{(i)} \in \mathbb{F}_q$.
   - $A^{(i)} \gets a^{(i)} • G$.
-- Sample $\rho^{(i)}, u^{(i)} \in \{0,1\}^\kappa$.
+- Sample $\rho^{(i)}, c^{(i)}, u^{(i)} \in \{0,1\}^\kappa$.
 - $V^{(i)} \gets \textsf{H}(\textsf{s\textsf{sid}}, i, \rho^{(i)}, \{F^{(i)}_l\}_{l=1}^t, \textcolor{blue}{X^{(i)}}, A^{(i)}, N^{(i)}, s_1^{(i)}, s_2^{(i)}, u^{(i)})$.
 
 Broadcast $(\textsf{s\textsf{sid}}, i, V^{(i)})$.
@@ -96,6 +103,7 @@ Upon reception of $(\textsf{s\textsf{sid}}, j, \rho^{(j)}, \{F^{(j)}_l\}_{l=1}^t
 If all checks pass:
 
 - $\rho \gets \bigoplus_j \rho^{(j)}$.
+- $c \gets \bigoplus_j c^{(j)}$.
 - $F^{(j)}(Z) \gets \textcolor{blue}{X^{(j)} + } \sum_{l=1}^t Z^l • F^{(j)}_l$, for all $P^{(j)}$.
 - $C^{(i)}_j \gets Enc_j(f^{(i)}(j))$, for all $P^{(j)}$.
 - $\psi_{\textsf{mod}}^{(i)} \gets \textsf{Prove}(\textsf{mod}, (\textsf{s\textsf{sid}}, \rho, i), N^{(i)}; (p^{(i)},q^{(i)}))$.
@@ -131,11 +139,11 @@ Upon reception of $(\textsf{s\textsf{sid}}, i, \psi_{\textsf{sch}}^{(j)})$ from 
 If all checks pass, save:
 
 - Secret $\textsf{sk}^{(i)}, p^{(i)}, q^{(i)}$.
-- $\textsf{s\textsf{sid}} \gets (\textsf{sid}, \rho, \{\textsf{pk}^{(j)}\}_{j=1}^n, \{N^{(j)}\}_{j=1}^n, \{s_1^{(j)}\}_{j=1}^n, \{s_2^{(j)}\}_{j=1}^n)$.
+- $\textsf{s{sid}} \gets (\textsf{sid}, \rho, c, \{\textsf{pk}^{(j)}\}_{j=1}^n, \{N^{(j)}\}_{j=1}^n, \{s_1^{(j)}\}_{j=1}^n, \{s_2^{(j)}\}_{j=1}^n)$.
 
 ### Signing
 
-Interpret $\textsf{s\textsf{sid}} = (\textsf{sid}, \rho, \{\textsf{pk}^{(j)}\}_{j=1}^n, \{N^{(j)}\}_{j=1}^n, \{s_1^{(j)}\}_{j=1}^n, \{s_2^{(j)}\}_{j=1}^n, \{P^{(j)}\}_{j \in S}, m)$,
+Interpret $\textsf{s\textsf{sid}} = (\textsf{sid}, \rho, c, \{\textsf{pk}^{(j)}\}_{j=1}^n, \{N^{(j)}\}_{j=1}^n, \{s_1^{(j)}\}_{j=1}^n, \{s_2^{(j)}\}_{j=1}^n, \{P^{(j)}\}_{j \in S}, m)$,
 where $S$ is a subset of $\{ 1, \ldots, n \}$ of size at least $t+1$, and $m$ is the message to be signed.
 
 The protocol goes exactly as before, except that the `Config` will use $S$ to determine Lagrange coefficients and apply them to the set of public keys, as well as the signer's secret share.
