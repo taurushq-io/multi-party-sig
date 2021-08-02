@@ -63,11 +63,12 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 
 	// Verify decommit
 	if !r.HashForID(j).Decommit(r.Commitments[j], body.Decommitment,
-		body.RID, VSSPolynomial, body.SchnorrCommitments, Pedersen) {
+		body.RID, body.C, VSSPolynomial, body.SchnorrCommitments, Pedersen) {
 		return ErrRound4Decommit
 	}
 
 	r.RIDs[j] = body.RID
+	r.ChainKeys[j] = body.RID
 	r.N[j] = body.N
 	r.S[j] = body.S
 	r.T[j] = body.T
