@@ -88,9 +88,12 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 // - send proofs and encryption of share for Pⱼ.
 func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// RID = ⊕ⱼ RIDⱼ
+	// c = ⊕ⱼ cⱼ
 	rid := newRID()
+	chainKey := newRID()
 	for _, j := range r.PartyIDs() {
 		rid.XOR(r.RIDs[j])
+		chainKey.XOR(r.ChainKeys[j])
 	}
 
 	// temporary hash which does not modify the state
@@ -130,8 +133,9 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Write rid to the hash state
 	r.UpdateHashState(rid)
 	return &round5{
-		round4: r,
-		RID:    rid,
+		round4:   r,
+		RID:      rid,
+		ChainKey: chainKey,
 	}, nil
 }
 

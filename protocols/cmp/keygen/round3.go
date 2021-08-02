@@ -40,6 +40,7 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Send the message we created in round1 to all
 	msg := r.MarshalMessage(&Keygen4{
 		RID:                r.RIDs[r.SelfID()],
+		C:                  r.ChainKeys[r.SelfID()],
 		VSSPolynomial:      r.VSSPolynomials[r.SelfID()],
 		SchnorrCommitments: r.SchnorrRand.Commitment(),
 		N:                  r.N[r.SelfID()],

@@ -45,5 +45,8 @@ message Config {
   // RID is a 32 byte random identifier generated for this config
   bytes RID = 3 [(gogoproto.casttype) = "RID"];
 
-  Secret Secret = 4 [(gogoproto.embed) = true];
+  // ChainKey is the chaining key value associated with this public key
+  bytes ChainKey = 4;
+
+  Secret Secret = 5 [(gogoproto.embed) = true];
 }

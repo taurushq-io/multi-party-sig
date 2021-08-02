@@ -32,18 +32,19 @@ message Keygen4 {
   option (gogoproto.goproto_getters) = false;
   // RID = RIDᵢ
   bytes RID = 1 [(gogoproto.casttype) = "RID"];
+  bytes C = 2 [(gogoproto.casttype) = "RID"];
   // VSSPolynomial = Fᵢ(X) VSSPolynomial
-  polynomial.Exponent VSSPolynomial = 2;
+  polynomial.Exponent VSSPolynomial = 3;
   // SchnorrCommitments = Aᵢ Schnorr commitment for the final confirmation
-  zksch.Commitment SchnorrCommitments = 3;
+  zksch.Commitment SchnorrCommitments = 4;
   // N Paillier and Pedersen N = p•q, p ≡ q ≡ 3 mod 4
-  bytes N = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes N = 5 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // S = r² mod N
-  bytes S = 5 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes S = 6 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // T = Sˡ mod N
-  bytes T = 6 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes T = 7 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // Decommitment = uᵢ decommitment bytes
-  bytes Decommitment = 7 [(gogoproto.casttype) = "github.com/taurusgroup/cmp-ecdsa/internal/hash.Decommitment"];
+  bytes Decommitment = 8 [(gogoproto.casttype) = "github.com/taurusgroup/cmp-ecdsa/internal/hash.Decommitment"];
 }
 
 message Keygen5 {

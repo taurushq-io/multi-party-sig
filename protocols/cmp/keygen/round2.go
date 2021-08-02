@@ -30,6 +30,8 @@ type round2 struct {
 
 	// RIDs[j] = ridⱼ
 	RIDs map[party.ID]RID
+	// ChainKeys[j] = cⱼ
+	ChainKeys map[party.ID]RID
 
 	// ShareReceived[j] = xʲᵢ
 	// share received from party j

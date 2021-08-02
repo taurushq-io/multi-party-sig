@@ -4,6 +4,7 @@ import "errors"
 
 var (
 	ErrRound1SampleRho   = errors.New("failed to sample Rho")
+	ErrRound1SampleC     = errors.New("failed to sample c")
 	ErrRound1Commit      = errors.New("failed to commit")
 	ErrRound3EchoHash    = errors.New("received different echo hash")
 	ErrRound4VSSConstant = errors.New("vss polynomial has incorrect constant")
