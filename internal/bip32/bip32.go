@@ -27,6 +27,8 @@ func compressPoint(p *curve.Point) []byte {
 // index should be used instead.
 //
 // This function will panic if an index for a hardened key is used.
+//
+// See: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
 func DeriveScalar(public *curve.Point, chaining []byte, i uint32) (*curve.Scalar, []byte, error) {
 	if i>>31 != 0 {
 		panic("DeriveScalar doesn't work with hardened keys.")
