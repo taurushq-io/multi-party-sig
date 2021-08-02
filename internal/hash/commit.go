@@ -70,7 +70,7 @@ func (hash *Hash) Commit(data ...interface{}) (Commitment, Decommitment, error) 
 
 	_, _ = h.WriteAny(decommitment)
 
-	commitment := h.ReadBytes(nil)
+	commitment := h.DefaultDigest(nil)
 
 	return commitment, decommitment, nil
 }
@@ -96,7 +96,7 @@ func (hash *Hash) Decommit(c Commitment, d Decommitment, data ...interface{}) bo
 
 	_, _ = h.WriteAny(d)
 
-	computedCommitment := h.ReadBytes(nil)
+	computedCommitment := h.DefaultDigest(nil)
 
 	return bytes.Equal(computedCommitment, c)
 }

@@ -2,6 +2,7 @@ package zkprm
 
 import (
 	"crypto/rand"
+	"io"
 	"math/big"
 
 	"github.com/cronokirby/safenum"
@@ -117,7 +118,7 @@ func challenge(hash *hash.Hash, public Public, A []*big.Int) []bool {
 	}
 
 	tmpBytes := make([]byte, params.StatParam)
-	hash.ReadBytes(tmpBytes)
+	_, _ = io.ReadFull(hash.Digest(), tmpBytes)
 
 	out := make([]bool, params.StatParam)
 	for i := range out {

@@ -114,5 +114,5 @@ func challenge(hash *hash.Hash, public Public, commitment *Commitment) *safenum.
 	_, _ = hash.WriteAny(public.Aux, public.Prover, public.K,
 		commitment.S, commitment.A, commitment.C)
 
-	return sample.IntervalScalar(hash)
+	return sample.IntervalScalar(hash.Digest())
 }

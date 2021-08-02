@@ -2,6 +2,7 @@ package hash
 
 import (
 	"fmt"
+	"io"
 	"math/big"
 
 	"github.com/taurusgroup/cmp-ecdsa/internal/params"
@@ -23,32 +24,30 @@ func New() *Hash {
 	return hash
 }
 
-// Read makes Hash implement the io.Reader interface.
+// Digest returns a reader for the current output of the function.
 //
-// Implementing this interface is convenient in ZK proofs, which need to use the
-// output of a hash function as randomness later on.
-func (hash *Hash) Read(buf []byte) (n int, err error) {
-	return hash.h.Digest().Read(buf)
+// This finalizes the current state of the hash, and returns what's
+// essentially a stream of random bytes.
+func (hash *Hash) Digest() io.Reader {
+	return hash.h.Digest()
 }
 
-// ReadBytes fills a buffer with bytes.
+// DefaultDigest tries to read the default digest length of this hash into a buffer.
 //
-// If in is nil, then the default number of bytes are read into a new buffer.
-//
-// Otherwise, in is filled with exactly the right number of bytes.
-//
-// This function will panic if in is smaller than a safe number of bytes.
-func (hash *Hash) ReadBytes(in []byte) []byte {
-	if in == nil {
-		in = make([]byte, params.HashBytes)
+// The buffer can be nil, in which case this function will allocate a buffer of
+// the right length. If the buffer is too short to contain a safe hash length,
+// this function will panic. Otherwise, it will fill the first bytes of the buffer.
+func (hash *Hash) DefaultDigest(out []byte) []byte {
+	if out == nil {
+		out = make([]byte, params.HashBytes)
 	}
-	if len(in) < params.HashBytes {
+	if len(out) < params.HashBytes {
 		panic(fmt.Sprintf("hash.ReadBytes: tried to read less than %d bits", 8*params.HashBytes))
 	}
-	if _, err := hash.Read(in); err != nil {
+	if _, err := io.ReadFull(hash.Digest(), out[:params.HashBytes]); err != nil {
 		panic(fmt.Sprintf("hash.ReadBytes: internal hash failure: %v", err))
 	}
-	return in
+	return out
 }
 
 // WriteAny takes many different data types and writes them to the hash state.

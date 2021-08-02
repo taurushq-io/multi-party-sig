@@ -90,7 +90,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	for _, l := range r.PartyIDs() {
 		rhoHash := rhoPreHash.Clone()
 		_, _ = rhoHash.WriteAny(l)
-		rho[l] = sample.Scalar(rhoHash)
+		rho[l] = sample.Scalar(rhoHash.Digest())
 	}
 
 	R := curve.NewIdentityPoint()
@@ -124,7 +124,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	} else {
 		cHash := hash.New()
 		_, _ = cHash.WriteAny(R, r.Y, r.M)
-		c = sample.Scalar(cHash)
+		c = sample.Scalar(cHash.Digest())
 	}
 
 	// Lambdas[i] = λᵢ

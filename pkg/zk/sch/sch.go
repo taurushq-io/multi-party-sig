@@ -36,7 +36,7 @@ func NewRandomness(rand io.Reader) *Randomness {
 
 func challenge(hash *hash.Hash, commitment *Commitment, public *curve.Point) *curve.Scalar {
 	_, _ = hash.WriteAny(&commitment.C, public)
-	return sample.Scalar(hash)
+	return sample.Scalar(hash.Digest())
 }
 
 // Prove creates a Response = Randomness + H(..., Commitment, public)•secret (mod p).
