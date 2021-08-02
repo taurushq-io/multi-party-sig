@@ -77,7 +77,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	for _, j := range r.PartyIDs() {
 		_, _ = h.WriteAny(r.Commitments[j])
 	}
-	EchoHash := h.ReadBytes(nil)
+	EchoHash := h.Sum()
 
 	// send to all
 	msg := r.MarshalMessage(&Keygen3{HashEcho: EchoHash}, r.OtherPartyIDs()...)

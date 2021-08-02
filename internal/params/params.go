@@ -4,8 +4,7 @@ import "github.com/decred/dcrd/dcrec/secp256k1/v3"
 
 const (
 	SecParam  = 256
-	HashBytes = 64
-	SecBytes  = 32
+	SecBytes  = SecParam / 8
 	StatParam = 80
 
 	// ZKModIterations is the number of iterations that are performed to prove the validity of

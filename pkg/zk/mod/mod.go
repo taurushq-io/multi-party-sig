@@ -251,7 +251,7 @@ func challenge(hash *hash.Hash, n, w *big.Int) []*big.Int {
 	out := make([]*big.Int, params.StatParam)
 	nMod := safenum.ModulusFromNat(new(safenum.Nat).SetBig(n, n.BitLen()))
 	for i := range out {
-		out[i] = sample.ModN(hash, nMod).Big()
+		out[i] = sample.ModN(hash.Digest(), nMod).Big()
 	}
 
 	return out

@@ -26,8 +26,8 @@ func (Commitment) Domain() string {
 }
 
 func (c Commitment) Validate() error {
-	if l := len(c); l != params.HashBytes {
-		return fmt.Errorf("commitment: incorrect length (got %d, expected %d)", l, params.HashBytes)
+	if l := len(c); l != DigestLengthBytes {
+		return fmt.Errorf("commitment: incorrect length (got %d, expected %d)", l, DigestLengthBytes)
 	}
 	return nil
 }
@@ -70,7 +70,7 @@ func (hash *Hash) Commit(data ...interface{}) (Commitment, Decommitment, error) 
 
 	_, _ = h.WriteAny(decommitment)
 
-	commitment := h.ReadBytes(nil)
+	commitment := h.Sum()
 
 	return commitment, decommitment, nil
 }
@@ -96,7 +96,7 @@ func (hash *Hash) Decommit(c Commitment, d Decommitment, data ...interface{}) bo
 
 	_, _ = h.WriteAny(d)
 
-	computedCommitment := h.ReadBytes(nil)
+	computedCommitment := h.Sum()
 
 	return bytes.Equal(computedCommitment, c)
 }

@@ -42,7 +42,7 @@ type Signature struct {
 func (sig Signature) Verify(public *curve.Point, m []byte) bool {
 	challengeHash := hash.New()
 	_, _ = challengeHash.WriteAny(sig.R, public, messageHash(m))
-	challenge := sample.Scalar(challengeHash)
+	challenge := sample.Scalar(challengeHash.Digest())
 
 	expected := curve.NewIdentityPoint().ScalarMult(challenge, public)
 	expected.Add(expected, sig.R)

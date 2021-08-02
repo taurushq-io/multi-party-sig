@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/internal/params"
+	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
 	"github.com/taurusgroup/cmp-ecdsa/internal/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
@@ -61,8 +61,8 @@ func (m *Keygen3) Validate() error {
 	if m == nil {
 		return errors.New("keygen.round2: message is nil")
 	}
-	if l := len(m.HashEcho); l != params.HashBytes {
-		return fmt.Errorf("keygen.round2: invalid echo hash length (got %d, expected %d)", l, params.HashBytes)
+	if l := len(m.HashEcho); l != hash.DigestLengthBytes {
+		return fmt.Errorf("keygen.round2: invalid echo hash length (got %d, expected %d)", l, hash.DigestLengthBytes)
 	}
 	return nil
 }

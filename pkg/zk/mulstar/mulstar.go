@@ -145,5 +145,5 @@ func challenge(hash *hash.Hash, public Public, commitment *Commitment) *safenum.
 		commitment.A, commitment.Bx,
 		commitment.E, commitment.S)
 
-	return sample.IntervalScalar(hash)
+	return sample.IntervalScalar(hash.Digest())
 }
