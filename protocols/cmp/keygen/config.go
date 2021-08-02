@@ -9,6 +9,7 @@ import (
 	"math/big"
 
 	"github.com/cronokirby/safenum"
+	"github.com/taurusgroup/cmp-ecdsa/internal/bip32"
 	"github.com/taurusgroup/cmp-ecdsa/internal/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
@@ -17,8 +18,8 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
 )
 
-// PublicKey returns the group's public ECDSA key.
-func (c Config) PublicKey() *ecdsa.PublicKey {
+// PublicPoint returns the group's public ECC point.
+func (c Config) publicPoint() *curve.Point {
 	sum := curve.NewIdentityPoint()
 	tmp := curve.NewIdentityPoint()
 	partyIDs := make([]party.ID, 0, len(c.Public))
@@ -30,7 +31,12 @@ func (c Config) PublicKey() *ecdsa.PublicKey {
 		tmp.ScalarMult(l[j], partyJ.ECDSA)
 		sum.Add(sum, tmp)
 	}
-	return sum.ToPublicKey()
+	return sum
+}
+
+// PublicKey returns the group's public ECDSA key.
+func (c Config) PublicKey() *ecdsa.PublicKey {
+	return c.publicPoint().ToPublicKey()
 }
 
 // Validate ensures that the data is consistent. In particular it verifies:
@@ -249,4 +255,51 @@ func validThreshold(t, n int) bool {
 		return false
 	}
 	return true
+}
+
+// DeriveChild derives a sharing of the ith child of the consortium signing key.
+//
+// This function uses unhardened derivation, deriving a key without including the
+// underlying private key. This function will panic if i >= 2^31, since that indicates
+// a hardened key.
+//
+// Sometimes, an error will be returned, indicating that this index generates
+// an invalid key.
+//
+// See: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+func (c *Config) DeriveChild(i uint32) (*Config, error) {
+	public := c.publicPoint()
+	scalar, newChainKey, err := bip32.DeriveScalar(public, c.ChainKey, i)
+	if err != nil {
+		return nil, err
+	}
+
+	// We need to add the scalar we've derived to the underlying secret,
+	// for which it's sufficient to simply add it to each share. This means adding
+	// scalar * G to each verification share as well.
+
+	scalarG := curve.NewIdentityPoint().ScalarBaseMult(scalar)
+
+	publics := make(map[party.ID]*Public, len(c.Public))
+	for k, v := range c.Public {
+		publics[k] = &Public{
+			ECDSA: curve.NewIdentityPoint().Add(scalarG, v.ECDSA),
+			N:     v.N,
+			S:     v.S,
+			T:     v.T,
+		}
+	}
+
+	return &Config{
+		Threshold: c.Threshold,
+		Public:    publics,
+		RID:       c.RID,
+		ChainKey:  newChainKey,
+		Secret: &Secret{
+			ID:    c.ID,
+			ECDSA: curve.NewScalar().Add(scalar, c.ECDSA),
+			P:     c.P,
+			Q:     c.Q,
+		},
+	}, nil
 }

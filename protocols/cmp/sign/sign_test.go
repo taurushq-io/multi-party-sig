@@ -70,7 +70,8 @@ func TestRound(t *testing.T) {
 	t.Log("generating configs")
 	configs := keygen.FakeData(N, T, mrand.New(mrand.NewSource(1)))
 	partyIDs := make([]party.ID, 0, T+1)
-	for id := range configs {
+	for id, config := range configs {
+		configs[id], _ = config.DeriveChild(0)
 		partyIDs = append(partyIDs, id)
 		if len(partyIDs) == T+1 {
 			break
