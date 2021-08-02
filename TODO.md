@@ -6,11 +6,6 @@ Our implementation currently uses the `secp256k1` curve implementation from [dec
 We are working on a better interface that would seamlessly support multiple curve types.
 One possibility we are exploring is the use of generics.
 
-## Constant-time big.Int
-
-Some Paillier operations may leak information about secrets used. 
-Therefore, we are looking at using [cronokirby/safenum](https://github.com/cronokirby/safenum) for encryption and decryption of secret values
-
 ## Identifiable aborts
 
 In some instances, it may be possible for the user of the library to guarantee a reliable broadcast channel (trusted third party in star topology for example).
