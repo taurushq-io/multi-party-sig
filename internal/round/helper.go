@@ -63,7 +63,7 @@ func NewHelper(protocolID types.ProtocolID, finalRoundNumber types.RoundNumber,
 		partyIDs:         partyIDs,
 		otherPartyIDs:    partyIDs.Remove(selfID),
 		group:            group,
-		ssid:             h.Clone().DefaultDigest(nil),
+		ssid:             h.Clone().Sum(),
 		hash:             h,
 	}, nil
 }

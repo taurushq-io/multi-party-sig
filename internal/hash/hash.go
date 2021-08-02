@@ -10,6 +10,8 @@ import (
 	"github.com/zeebo/blake3"
 )
 
+const DigestLengthBytes = params.SecBytes * 2 // 64
+
 // Hash is the hash function we use for generating commitments, consuming CMP types, etc.
 //
 // Internally, this is a wrapper around sha3.ShakeHash, but any hash function with
@@ -32,19 +34,11 @@ func (hash *Hash) Digest() io.Reader {
 	return hash.h.Digest()
 }
 
-// DefaultDigest tries to read the default digest length of this hash into a buffer.
-//
-// The buffer can be nil, in which case this function will allocate a buffer of
-// the right length. If the buffer is too short to contain a safe hash length,
-// this function will panic. Otherwise, it will fill the first bytes of the buffer.
-func (hash *Hash) DefaultDigest(out []byte) []byte {
-	if out == nil {
-		out = make([]byte, params.HashBytes)
-	}
-	if len(out) < params.HashBytes {
-		panic(fmt.Sprintf("hash.ReadBytes: tried to read less than %d bits", 8*params.HashBytes))
-	}
-	if _, err := io.ReadFull(hash.Digest(), out[:params.HashBytes]); err != nil {
+// Sum returns a slice of length DigestLengthBytes resulting from the current hash state.
+// If a different length is required, use io.ReadFull(hash.Digest(), out) instead.
+func (hash *Hash) Sum() []byte {
+	out := make([]byte, DigestLengthBytes)
+	if _, err := io.ReadFull(hash.Digest(), out); err != nil {
 		panic(fmt.Sprintf("hash.ReadBytes: internal hash failure: %v", err))
 	}
 	return out

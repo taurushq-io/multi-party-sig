@@ -73,7 +73,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	for _, j := range r.PartyIDs() {
 		_, _ = h.WriteAny(r.K[j], r.G[j])
 	}
-	EchoHash := h.DefaultDigest(nil)
+	EchoHash := h.Sum()
 
 	zkPrivate := zklogstar.Private{
 		X:   r.GammaShare.Int(),
