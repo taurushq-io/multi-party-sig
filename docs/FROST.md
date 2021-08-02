@@ -11,6 +11,35 @@ We've implemented the [FROST](https://eprint.iacr.org/2020/852.pdf) protocol
 inside of this repo. This document details the departures we've made from the protocol
 as specified in the paper, along with the additions we've contributed.
 
+# Hedged Deterministic Nonces
+
+When signing, each party needs to generate two random nonces $d_i, e_i \in \mathbb{Z}/(q)$.
+Instead of simply sampling them randomly, we instead use a deterministic procedure,
+which optionally incorporates randomness:
+
+$$
+\begin{aligned}
+k &\leftarrow \text{KDF}(s_i) \\
+a &\xleftarrow{R} \{0, 1\}^{256} \\
+(d_i, e_i) &\leftarrow H_k(\text{SSID} || m || a)
+\end{aligned}
+$$
+
+$\text{KDF}$ is BLAKE3 in KDF mode, and $H_k$ is BLAKE3 in keyed-hash mode, $\text{SSID}$
+is a unique session identifier incorporating context information, like the protocol,
+the curve being used, the participants, etc. $m$ is the message, or message hash, and
+$s_i$ is the private share for this participant.
+
+Even if $a$ is not generated randomly, the result nonces cannot be computed, because the hash
+depends on knowing the secret share $s_i$.
+
+Incorporating a random $a$ protects against fault attacks, by making different different
+signings of the same message produce different nonces.
+
+It would likely be safe to include the share $s_i$ in the hash directly, instead
+of deriving a hashing key. We think that the deriving the key for a keyed hash is more
+defensible from the principle that keys should only be used for a single purpose.
+
 # Taproot compatible signatures
 
 We've implemented a variant of FROST to generate signatures compatible with
