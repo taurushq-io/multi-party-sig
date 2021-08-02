@@ -19,6 +19,10 @@ type Result struct {
 	//
 	// This key can be used to verify signatures produced by the consortium.
 	PublicKey *curve.Point
+	// ChainKey is the additional randomness we've agreed upon.
+	//
+	// This is only ever useful if you do BIP-32 key derivation, or something similar.
+	ChainKey []byte
 	// VerificationShares is a map between parties and a commitment to their private share.
 	//
 	// This will later be used to verify the integrity of the signing protocol.
@@ -39,6 +43,10 @@ type TaprootResult struct {
 	//
 	// This key can be used to verify signatures produced by the consortium.
 	PublicKey taproot.PublicKey
+	// ChainKey is the additional randomness we've agreed upon.
+	//
+	// This is only ever useful if you do BIP-32 key derivation, or something similar.
+	ChainKey []byte
 	// VerificationShares is a map between parties and a commitment to their private share.
 	//
 	// This will later be used to verify the integrity of the signing protocol.

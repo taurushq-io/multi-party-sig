@@ -70,13 +70,18 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.ID
 	}
 
 	var publicKey *curve.Point
+	var chainKey []byte
 	privateKey := curve.NewScalar()
 	lagrangeCoefficients := polynomial.Lagrange(parties)
 	for _, result := range results {
 		if publicKey != nil {
-			require.True(t, publicKey.Equal(result.PublicKey))
+			assert.True(t, publicKey.Equal(result.PublicKey))
 		}
 		publicKey = result.PublicKey
+		if chainKey != nil {
+			assert.True(t, bytes.Equal(chainKey, result.ChainKey))
+		}
+		chainKey = result.ChainKey
 		privateKey.MultiplyAdd(lagrangeCoefficients[result.ID], result.PrivateShare, privateKey)
 	}
 
@@ -129,6 +134,7 @@ func checkOutputTaproot(t *testing.T, rounds map[party.ID]round.Round, parties p
 	}
 
 	var publicKey []byte
+	var chainKey []byte
 	privateKey := curve.NewScalar()
 	lagrangeCoefficients := polynomial.Lagrange(parties)
 	for _, result := range results {
@@ -136,6 +142,10 @@ func checkOutputTaproot(t *testing.T, rounds map[party.ID]round.Round, parties p
 			assert.True(t, bytes.Equal(publicKey, result.PublicKey))
 		}
 		publicKey = result.PublicKey
+		if chainKey != nil {
+			assert.True(t, bytes.Equal(chainKey, result.ChainKey))
+		}
+		chainKey = result.ChainKey
 		privateKey.MultiplyAdd(lagrangeCoefficients[result.ID], result.PrivateShare, privateKey)
 	}
 	effectivePublic, err := curve.LiftX(publicKey)

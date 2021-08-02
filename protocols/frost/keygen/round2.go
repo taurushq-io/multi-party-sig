@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
 	"github.com/taurusgroup/cmp-ecdsa/internal/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
@@ -23,6 +24,14 @@ type round2 struct {
 	//
 	// Phi[l][k] corresponds to ϕₗₖ in the Frost paper.
 	Phi map[party.ID]*polynomial.Exponent
+	// ChainKey will be the final bit of randomness everybody contributes to.
+	//
+	// This is an addition to FROST, which we include for key derivation
+	ChainKey []byte
+	// ChainKeyDecommitment will be used to decommit our contribution to the chain key
+	ChainKeyDecommitment hash.Decommitment
+	// ChainKeyCommitments holds the commitments for the chain key contributions
+	ChainKeyCommitments map[party.ID]hash.Commitment
 }
 
 // ProcessMessage implements round.Round.
@@ -51,6 +60,7 @@ func (r *round2) ProcessMessage(l party.ID, content message.Content) error {
 	}
 
 	r.Phi[l] = msg.Phi_i
+	r.ChainKeyCommitments[l] = msg.Commitment
 
 	return nil
 }
@@ -63,7 +73,11 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// which they keep for themselves."
 
 	for _, l := range r.OtherPartyIDs() {
-		msg := r.MarshalMessage(&Keygen3{F_li: r.f_i.Evaluate(l.Scalar())}, l)
+		msg := r.MarshalMessage(&Keygen3{
+			F_li:         r.f_i.Evaluate(l.Scalar()),
+			C_l:          r.ChainKey,
+			Decommitment: r.ChainKeyDecommitment,
+		}, l)
 		if err := r.SendMessage(msg, out); err != nil {
 			return r, err
 		}
