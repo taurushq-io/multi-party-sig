@@ -39,6 +39,11 @@ type round1 struct {
 	// Refresh: pk'ⱼ = pk'ⱼ
 	PreviousPublicSharesECDSA map[party.ID]*curve.Point
 
+	// PreviousChainKey contains the chain key, if we're refreshing
+	//
+	// In that case, we will simply use the previous chain key at the very end.
+	PreviousChainKey []byte
+
 	// VSSSecret = fᵢ(X)
 	// Polynomial from which the new secret shares are computed.
 	// Keygen:  fᵢ(0) = xⁱ

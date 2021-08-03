@@ -91,12 +91,15 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// RID = ⊕ⱼ RIDⱼ
 	// c = ⊕ⱼ cⱼ
 	rid := newRID()
-	chainKey := newRID()
-	for _, j := range r.PartyIDs() {
-		rid.XOR(r.RIDs[j])
-		chainKey.XOR(r.ChainKeys[j])
+	chainKey := r.PreviousChainKey
+	if chainKey == nil {
+		chainKeyRID := newRID()
+		for _, j := range r.PartyIDs() {
+			rid.XOR(r.RIDs[j])
+			chainKeyRID.XOR(r.ChainKeys[j])
+		}
+		chainKey = chainKeyRID
 	}
-
 	// temporary hash which does not modify the state
 	h := r.Hash()
 	_, _ = h.WriteAny(rid, r.SelfID())
