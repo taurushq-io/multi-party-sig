@@ -181,12 +181,12 @@ func (c Config) WriteTo(w io.Writer) (total int64, err error) {
 	return
 }
 
-// Domain implements hash.hash.WriterToWithDomain.
+// Domain implements hash.WriterToWithDomain.
 func (c Config) Domain() string {
 	return "CMP Config"
 }
 
-// Domain implements hash.hash.WriterToWithDomain.
+// Domain implements hash.WriterToWithDomain.
 func (Public) Domain() string {
 	return "Public Data"
 }

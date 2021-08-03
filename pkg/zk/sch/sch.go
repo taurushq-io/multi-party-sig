@@ -81,7 +81,7 @@ func (c *Commitment) WriteTo(w io.Writer) (total int64, err error) {
 	return c.C.WriteTo(w)
 }
 
-// Domain implements hash.hash.WriterToWithDomain
+// Domain implements hash.WriterToWithDomain
 func (Commitment) Domain() string {
 	return "Schnorr Commitment"
 }

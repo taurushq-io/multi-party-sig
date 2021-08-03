@@ -105,5 +105,5 @@ func (t _Threshold) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
-// Domain implements hash.hash.WriterToWithDomain
+// Domain implements hash.WriterToWithDomain
 func (_Threshold) Domain() string { return "Threshold" }
