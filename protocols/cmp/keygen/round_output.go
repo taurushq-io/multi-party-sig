@@ -12,7 +12,7 @@ import (
 var _ round.Round = (*output)(nil)
 
 type output struct {
-	*round5
+	*round4
 	UpdatedConfig *Config
 }
 
@@ -43,10 +43,10 @@ func (r *output) MessageContent() message.Content { return &KeygenOutput{} }
 // Validate implements message.Content.
 func (m *KeygenOutput) Validate() error {
 	if m == nil {
-		return errors.New("keygen.round5: message is nil")
+		return errors.New("keygen.output: message is nil")
 	}
 	if m.SchnorrResponse == nil {
-		return errors.New("keygen.round5: sch proof is nil")
+		return errors.New("keygen.output: sch proof is nil")
 	}
 	return nil
 }

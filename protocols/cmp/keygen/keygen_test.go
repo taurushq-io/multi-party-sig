@@ -21,7 +21,6 @@ var roundTypes = []reflect.Type{
 	reflect.TypeOf(&round2{}),
 	reflect.TypeOf(&round3{}),
 	reflect.TypeOf(&round4{}),
-	reflect.TypeOf(&round5{}),
 	reflect.TypeOf(&output{}),
 }
 

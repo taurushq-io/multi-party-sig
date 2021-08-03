@@ -72,6 +72,7 @@ func (r *round2) ProcessMessage(j party.ID, content message.Content) error {
 // Since we assume a simple P2P network, we use an extra round to "echo"
 // the hash. Everybody sends a hash of all hashes.
 //
+// - send all committed data.
 // - send Hash(ssid, V₁, …, Vₙ).
 func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Broadcast the message we created in round1
@@ -81,15 +82,25 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 	EchoHash := h.Sum()
 
-	// send to all
-	msg := r.MarshalMessage(&Keygen3{HashEcho: EchoHash}, r.OtherPartyIDs()...)
+	// Send the message we created in round1 to all
+	msg := r.MarshalMessage(&Keygen3{
+		RID:                r.RIDs[r.SelfID()],
+		C:                  r.ChainKeys[r.SelfID()],
+		VSSPolynomial:      r.VSSPolynomials[r.SelfID()],
+		SchnorrCommitments: r.SchnorrRand.Commitment(),
+		N:                  r.N[r.SelfID()],
+		S:                  r.S[r.SelfID()],
+		T:                  r.T[r.SelfID()],
+		Decommitment:       r.Decommitment,
+		HashEcho:           EchoHash,
+	}, r.OtherPartyIDs()...)
 	if err := r.SendMessage(msg, out); err != nil {
 		return r, err
 	}
-
 	return &round3{
-		round2:   r,
-		EchoHash: EchoHash,
+		round2:             r,
+		EchoHash:           EchoHash,
+		SchnorrCommitments: map[party.ID]*zksch.Commitment{},
 	}, nil
 }
 
@@ -99,10 +110,10 @@ func (r *round2) MessageContent() message.Content { return &Keygen2{} }
 // Validate implements message.Content.
 func (m *Keygen2) Validate() error {
 	if m == nil {
-		return errors.New("keygen.round1: message is nil")
+		return errors.New("keygen.round2: message is nil")
 	}
 	if err := m.Commitment.Validate(); err != nil {
-		return fmt.Errorf("keygen.round1: %w", err)
+		return fmt.Errorf("keygen.round2: %w", err)
 	}
 	return nil
 }

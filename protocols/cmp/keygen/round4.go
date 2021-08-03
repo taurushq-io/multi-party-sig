@@ -1,9 +1,11 @@
 package keygen
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
 	"github.com/taurusgroup/cmp-ecdsa/internal/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -15,10 +17,12 @@ import (
 	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
 
-var _ round.Round = (*round4)(nil)
+var _ round.Round = (*round3)(nil)
 
-type round4 struct {
-	*round3
+type round3 struct {
+	*round2
+	// EchoHash = Hash(SSID, commitment₁, …, commitmentₙ)
+	EchoHash []byte
 
 	// SchnorrCommitments[j] = Aⱼ
 	// Commitment for proof of knowledge in the last round
@@ -27,6 +31,7 @@ type round4 struct {
 
 // ProcessMessage implements round.Round.
 //
+// - verify Hash(SSID, V₁, …, Vₙ) against received hash.
 // - store Fⱼ(X)
 //   - if keygen, verify Fⱼ(0) != ∞
 //   - if refresh, verify Fⱼ(0) == ∞
@@ -34,19 +39,23 @@ type round4 struct {
 // - validate Paillier
 // - validate Pedersen
 // - validate commitments.
-func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
-	body := content.(*Keygen4)
+func (r *round3) ProcessMessage(j party.ID, content message.Content) error {
+	body := content.(*Keygen3)
+
+	if !bytes.Equal(body.HashEcho, r.EchoHash) {
+		return ErrRound3EchoHash
+	}
 
 	// Save all X, VSSCommitments
 	VSSPolynomial := body.VSSPolynomial
 	// check that the constant coefficient is 0
 	// if refresh then the polynomial is constant
 	if !(r.VSSSecret.Constant().IsZero() == VSSPolynomial.IsConstant) {
-		return ErrRound4VSSConstant
+		return ErrRound3VSSConstant
 	}
 	// check deg(Fⱼ) = t
 	if VSSPolynomial.Degree() != r.Threshold {
-		return ErrRound4VSSDegree
+		return ErrRound3VSSDegree
 	}
 
 	// Set Paillier
@@ -64,7 +73,7 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 	// Verify decommit
 	if !r.HashForID(j).Decommit(r.Commitments[j], body.Decommitment,
 		body.RID, body.C, VSSPolynomial, body.SchnorrCommitments, Pedersen) {
-		return ErrRound4Decommit
+		return ErrRound3Decommit
 	}
 
 	r.RIDs[j] = body.RID
@@ -87,7 +96,7 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 //   - if refresh skip constant coefficient
 //
 // - send proofs and encryption of share for Pⱼ.
-func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
+func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// RID = ⊕ⱼ RIDⱼ
 	// c = ⊕ⱼ cⱼ
 	rid := newRID()
@@ -124,7 +133,7 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 		// Encrypt share
 		C, _ := r.PaillierPublic[j].Enc(share.Int())
 
-		msg := r.MarshalMessage(&Keygen5{
+		msg := r.MarshalMessage(&Keygen4{
 			Mod:   mod,
 			Prm:   prm,
 			Share: C,
@@ -136,18 +145,18 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 	// Write rid to the hash state
 	r.UpdateHashState(rid)
-	return &round5{
-		round4:   r,
+	return &round4{
+		round3:   r,
 		RID:      rid,
 		ChainKey: chainKey,
 	}, nil
 }
 
 // MessageContent implements round.Round.
-func (r *round4) MessageContent() message.Content { return &Keygen4{} }
+func (r *round3) MessageContent() message.Content { return &Keygen3{} }
 
 // Validate implements message.Content.
-func (m *Keygen4) Validate() error {
+func (m *Keygen3) Validate() error {
 	if m == nil {
 		return errors.New("keygen.round3: message is nil")
 	}
@@ -167,8 +176,11 @@ func (m *Keygen4) Validate() error {
 		return errors.New("keygen.round3: VSSPolynomial is nil")
 	}
 
+	if l := len(m.HashEcho); l != hash.DigestLengthBytes {
+		return fmt.Errorf("keygen.round2: invalid echo hash length (got %d, expected %d)", l, hash.DigestLengthBytes)
+	}
 	return nil
 }
 
 // RoundNumber implements message.Content.
-func (m *Keygen4) RoundNumber() types.RoundNumber { return 4 }
+func (m *Keygen3) RoundNumber() types.RoundNumber { return 4 }
