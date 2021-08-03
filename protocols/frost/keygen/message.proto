@@ -17,10 +17,16 @@ message Keygen2 {
   polynomial.Exponent Phi_i = 1 [(gogoproto.customname) = "Phi_i"];
   // Sigma_i is the Schnorr proof of knowledge of the participant's secret
   zksch.Proof Sigma_i = 2 [(gogoproto.customname) = "Sigma_i"];
+  // Commitment = H(cᵢ, uᵢ)
+  bytes Commitment = 3 [(gogoproto.casttype) = "github.com/taurusgroup/cmp-ecdsa/internal/hash.Commitment"];
 }
 
 message Keygen3 {
   option (gogoproto.goproto_getters) = false;
   // F_li is the secret share sent from party l to this party.
   bytes F_li = 1 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar", (gogoproto.customname) = "F_li"];
+  // C_l is contribution to the chaining key for this party.
+  bytes C_l = 2 [(gogoproto.customname) = "C_l"];
+  // Decommitment = uᵢ decommitment bytes
+  bytes Decommitment = 3 [(gogoproto.casttype) = "github.com/taurusgroup/cmp-ecdsa/internal/hash.Decommitment"];
 }

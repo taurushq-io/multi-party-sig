@@ -56,6 +56,7 @@ func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.S
 			PreviousPublicSharesECDSA: PreviousPublicSharesECDSA,
 			PreviousSecretECDSA:       PreviousSecretECDSA,
 			PreviousPublicKey:         PreviousPublicKey,
+			PreviousChainKey:          nil,
 			VSSSecret:                 VSSSecret,
 		}, helper, nil
 	}
@@ -91,6 +92,7 @@ func StartRefresh(c *Config) protocol.StartFunc {
 			PreviousSecretECDSA:       PreviousSecretECDSA,
 			PreviousPublicKey:         PreviousPublicKey,
 			PreviousPublicSharesECDSA: PreviousPublicSharesECDSA,
+			PreviousChainKey:          c.ChainKey,
 			VSSSecret:                 VSSSecret,
 		}, helper, nil
 	}

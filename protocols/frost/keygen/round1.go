@@ -2,7 +2,10 @@ package keygen
 
 import (
 	"crypto/rand"
+	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
+	"github.com/taurusgroup/cmp-ecdsa/internal/params"
 	"github.com/taurusgroup/cmp-ecdsa/internal/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
@@ -81,15 +84,30 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Phi_i = Φᵢ
 	Phi_i := polynomial.NewPolynomialExponent(f_i)
 
+	// c_i is our contribution to the chaining key
+	c_i := make([]byte, params.SecBytes)
+	if _, err := rand.Read(c_i[:]); err != nil {
+		return r, fmt.Errorf("failed to sample ChainKey")
+	}
+	commitment, decommitment, err := r.HashForID(r.SelfID()).Commit(c_i)
+	if err != nil {
+		return r, fmt.Errorf("failed to commit to chain key")
+	}
+
 	// 4. "Every Pᵢ broadcasts Φᵢ, σᵢ to all other participants
-	msg := r.MarshalMessage(&Keygen2{Phi_i, Sigma_i})
+	msg := r.MarshalMessage(&Keygen2{Phi_i, Sigma_i, commitment})
 	if err := r.SendMessage(msg, out); err != nil {
 		return r, err
 	}
 
-	Phi := make(map[party.ID]*polynomial.Exponent)
-	Phi[r.SelfID()] = Phi_i
-	return &round2{round1: r, f_i: f_i, Phi: Phi}, nil
+	return &round2{
+		round1:               r,
+		f_i:                  f_i,
+		Phi:                  map[party.ID]*polynomial.Exponent{r.SelfID(): Phi_i},
+		ChainKey:             c_i,
+		ChainKeyDecommitment: decommitment,
+		ChainKeyCommitments:  make(map[party.ID]hash.Commitment),
+	}, nil
 }
 
 // MessageContent implements round.Round.

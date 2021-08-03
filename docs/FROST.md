@@ -40,6 +40,16 @@ It would likely be safe to include the share $s_i$ in the hash directly, instead
 of deriving a hashing key. We think that the deriving the key for a keyed hash is more
 defensible from the principle that keys should only be used for a single purpose.
 
+# Chaining Key
+
+For some purposes, it's useful to have an additional bit of randomness alongside
+a public key, called a "chaining key". This is useful for key derivation
+in BIP-32, for example.
+
+We do this by having each party generate a random byte sequence $c_i$, broadcast
+a commitment in round 1, and then decommit in round 2. The final chaining key
+is then simply $\bigoplus_i c_i$.
+
 # Taproot compatible signatures
 
 We've implemented a variant of FROST to generate signatures compatible with

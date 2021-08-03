@@ -39,6 +39,11 @@ type round1 struct {
 	// Refresh: pk'ⱼ = pk'ⱼ
 	PreviousPublicSharesECDSA map[party.ID]*curve.Point
 
+	// PreviousChainKey contains the chain key, if we're refreshing
+	//
+	// In that case, we will simply use the previous chain key at the very end.
+	PreviousChainKey []byte
+
 	// VSSSecret = fᵢ(X)
 	// Polynomial from which the new secret shares are computed.
 	// Keygen:  fᵢ(0) = xⁱ
@@ -57,6 +62,7 @@ func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 // - set Aᵢ = aᵢ⋅G
 // - compute Fᵢ(X) = fᵢ(X)⋅G
 // - sample ridᵢ <- {0,1}ᵏ
+// - sample cᵢ <- {0,1}ᵏ
 // - commit to message.
 func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// generate Paillier and Pedersen
@@ -78,10 +84,14 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	if _, err := rand.Read(SelfRID[:]); err != nil {
 		return r, ErrRound1SampleRho
 	}
+	chainKey := newRID()
+	if _, err := rand.Read(chainKey[:]); err != nil {
+		return r, ErrRound1SampleC
+	}
 
 	// commit to data in message 2
 	SelfCommitment, Decommitment, err := r.HashForID(r.SelfID()).Commit(
-		SelfRID, SelfVSSPolynomial, SchnorrRand.Commitment(), SelfPedersenPublic)
+		SelfRID, chainKey, SelfVSSPolynomial, SchnorrRand.Commitment(), SelfPedersenPublic)
 	if err != nil {
 		return r, ErrRound1Commit
 	}
@@ -97,6 +107,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 		VSSPolynomials: map[party.ID]*polynomial.Exponent{r.SelfID(): SelfVSSPolynomial},
 		Commitments:    map[party.ID]hash.Commitment{r.SelfID(): SelfCommitment},
 		RIDs:           map[party.ID]RID{r.SelfID(): SelfRID},
+		ChainKeys:      map[party.ID]RID{r.SelfID(): chainKey},
 		ShareReceived:  map[party.ID]*curve.Scalar{r.SelfID(): SelfShare},
 		PaillierPublic: map[party.ID]*paillier.PublicKey{r.SelfID(): SelfPaillierPublic},
 		N:              map[party.ID]*big.Int{r.SelfID(): SelfPedersenPublic.N()},

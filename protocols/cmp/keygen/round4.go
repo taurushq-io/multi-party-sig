@@ -63,11 +63,12 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 
 	// Verify decommit
 	if !r.HashForID(j).Decommit(r.Commitments[j], body.Decommitment,
-		body.RID, VSSPolynomial, body.SchnorrCommitments, Pedersen) {
+		body.RID, body.C, VSSPolynomial, body.SchnorrCommitments, Pedersen) {
 		return ErrRound4Decommit
 	}
 
 	r.RIDs[j] = body.RID
+	r.ChainKeys[j] = body.RID
 	r.N[j] = body.N
 	r.S[j] = body.S
 	r.T[j] = body.T
@@ -88,11 +89,17 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 // - send proofs and encryption of share for Pⱼ.
 func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// RID = ⊕ⱼ RIDⱼ
+	// c = ⊕ⱼ cⱼ
 	rid := newRID()
-	for _, j := range r.PartyIDs() {
-		rid.XOR(r.RIDs[j])
+	chainKey := r.PreviousChainKey
+	if chainKey == nil {
+		chainKeyRID := newRID()
+		for _, j := range r.PartyIDs() {
+			rid.XOR(r.RIDs[j])
+			chainKeyRID.XOR(r.ChainKeys[j])
+		}
+		chainKey = chainKeyRID
 	}
-
 	// temporary hash which does not modify the state
 	h := r.Hash()
 	_, _ = h.WriteAny(rid, r.SelfID())
@@ -130,8 +137,9 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Write rid to the hash state
 	r.UpdateHashState(rid)
 	return &round5{
-		round4: r,
-		RID:    rid,
+		round4:   r,
+		RID:      rid,
+		ChainKey: chainKey,
 	}, nil
 }
 

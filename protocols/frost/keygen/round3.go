@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/params"
 	"github.com/taurusgroup/cmp-ecdsa/internal/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
@@ -43,6 +44,15 @@ func (r *round3) ProcessMessage(l party.ID, content message.Content) error {
 	actual := r.Phi[l].Evaluate(r.SelfID().Scalar())
 	if !expected.Equal(actual) {
 		return fmt.Errorf("VSS failed to validate")
+	}
+
+	// Verify that the commitment to the chain key contribution matches, and then xor
+	// it into the accumulated chain key so far.
+	if !r.HashForID(l).Decommit(r.ChainKeyCommitments[l], msg.Decommitment, msg.C_l) {
+		return fmt.Errorf("failed to verify chain key commitment")
+	}
+	for i := 0; i < params.SecBytes; i++ {
+		r.ChainKey[i] ^= msg.C_l[i]
 	}
 
 	return nil
