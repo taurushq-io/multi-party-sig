@@ -79,8 +79,11 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 		// is distinguished from others.
 		_, _ = hash.h.WriteString("(")
 		_, _ = hash.h.WriteString(toBeWritten.Domain())
-		_, _ = toBeWritten.WriteTo(hash.h)
+		_, err := toBeWritten.WriteTo(hash.h)
 		_, _ = hash.h.WriteString(")")
+		if err != nil {
+			return fmt.Errorf("hash.WriteAny: %w", err)
+		}
 	}
 	return nil
 }
