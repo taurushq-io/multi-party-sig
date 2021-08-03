@@ -19,9 +19,13 @@ type Hash struct {
 	h *blake3.Hasher
 }
 
-// New creates a Hash struct where the internal hash function is initialized with "CMP".
-func New() *Hash {
+// New creates a Hash struct where the internal hash function is initialized with "CMP-BLAKE".
+func New(initialData ...WriterToWithDomain) *Hash {
 	hash := &Hash{h: blake3.New()}
+	_, _ = hash.h.WriteString("CMP-BLAKE")
+	for _, d := range initialData {
+		_ = hash.WriteAny(d)
+	}
 	return hash
 }
 
@@ -54,44 +58,29 @@ func (hash *Hash) Sum() []byte {
 // This function will apply its own domain separation for the first two types.
 // The last type already suggests which domain to use, and this function respects it.
 func (hash *Hash) WriteAny(data ...interface{}) error {
-	var err error
+	var toBeWritten WriterToWithDomain
 	for _, d := range data {
 		switch t := d.(type) {
 		case []byte:
-			err = writeWithDomain(hash.h, &BytesWithDomain{
-				TheDomain: "[]byte",
-				Bytes:     t,
-			})
-			if err != nil {
-				return fmt.Errorf("hash.Hash: write []byte: %w", err)
-			}
+			toBeWritten = &BytesWithDomain{"[]byte", t}
 		case *big.Int:
 			if t == nil {
 				return fmt.Errorf("hash.Hash: write *big.Int: nil")
 			}
-			bytes := make([]byte, params.BytesIntModN)
-			if t.BitLen() <= params.BitsIntModN && t.Sign() == 1 {
-				t.FillBytes(bytes)
-			} else {
-				bytes, err = t.GobEncode()
-				if err != nil {
-					return fmt.Errorf("hash.Hash: GobEncode: %w", err)
-				}
-			}
-			err = writeWithDomain(hash.h, &BytesWithDomain{
-				TheDomain: "big.Int",
-				Bytes:     bytes,
-			})
-			if err != nil {
-				return fmt.Errorf("hash.Hash: write *big.Int: %w", err)
-			}
+			bytes, _ := t.GobEncode()
+			toBeWritten = &BytesWithDomain{"big.Int", bytes}
 		case WriterToWithDomain:
-			if err = writeWithDomain(hash.h, t); err != nil {
-				return fmt.Errorf("hash.Hash: write io.WriterTo: %w", err)
-			}
+			toBeWritten = t
 		default:
 			panic("hash.Hash: unsupported type")
 		}
+
+		// Write out `(<domain><data>)`, so that each domain separated piece of data
+		// is distinguished from others.
+		_, _ = hash.h.WriteString("(")
+		_, _ = hash.h.WriteString(toBeWritten.Domain())
+		_, _ = toBeWritten.WriteTo(hash.h)
+		_, _ = hash.h.WriteString(")")
 	}
 	return nil
 }

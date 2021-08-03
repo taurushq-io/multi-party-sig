@@ -73,12 +73,8 @@ func NewHelper(protocolID types.ProtocolID, finalRoundNumber types.RoundNumber,
 // It computes
 // - Hash(𝔾, q, Gₓ, n, P₁, …, Pₙ, auxInfo}.
 func hashFromSID(protocolID types.ProtocolID, group elliptic.Curve, partyIDs party.IDSlice, auxInfo ...hash.WriterToWithDomain) *hash.Hash {
-	h := hash.New()
-
-	// Write SID
-	// protocolID 𝔾, q, Gₓ, n, P₁, …, Pₙ
-	_ = h.WriteAny(
-		protocolID,
+	// sid = protocolID 𝔾, q, Gₓ, n, P₁, …, Pₙ
+	sid := []hash.WriterToWithDomain{
 		&hash.BytesWithDomain{
 			TheDomain: "Group Name",
 			Bytes:     []byte(group.Params().Name),
@@ -92,11 +88,8 @@ func hashFromSID(protocolID types.ProtocolID, group elliptic.Curve, partyIDs par
 			Bytes:     group.Params().Gx.Bytes(),
 		},
 		partyIDs,
-	)
-
-	for _, v := range auxInfo {
-		_ = h.WriteAny(v)
 	}
+	h := hash.New(append(sid, auxInfo...)...)
 	return h
 }
 
