@@ -18,7 +18,7 @@ func (pid ProtocolID) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
-// Domain implements writer.WriterToWithDomain.
+// Domain implements hash.WriterToWithDomain.
 func (ProtocolID) Domain() string {
 	return "Protocol ID"
 }

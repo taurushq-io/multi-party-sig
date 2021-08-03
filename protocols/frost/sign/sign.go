@@ -3,8 +3,8 @@ package sign
 import (
 	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
 	"github.com/taurusgroup/cmp-ecdsa/internal/round"
-	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
@@ -36,7 +36,7 @@ func startSignCommon(taproot bool, err error, result *keygen.Result, signers []p
 			protocolRounds,
 			result.ID,
 			sortedIDs,
-			&writer.BytesWithDomain{
+			&hash.BytesWithDomain{
 				TheDomain: "Taproot Flag",
 				Bytes:     []byte{taprootFlag},
 			},

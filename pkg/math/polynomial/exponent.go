@@ -176,7 +176,7 @@ func (p *Exponent) WriteTo(w io.Writer) (int64, error) {
 	return total, nil
 }
 
-// Domain implements WriterToWithDomain, and separates this type within hash.Hash.
+// Domain implements hash.WriterToWithDomain, and separates this type within hash.Hash.
 func (*Exponent) Domain() string {
 	return "Exponent"
 }

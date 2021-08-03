@@ -111,7 +111,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 }
 
 func challenge(hash *hash.Hash, public Public, commitment *Commitment) *safenum.Int {
-	_, _ = hash.WriteAny(public.Aux, public.Prover, public.K,
+	_ = hash.WriteAny(public.Aux, public.Prover, public.K,
 		commitment.S, commitment.A, commitment.C)
 
 	return sample.IntervalScalar(hash.Digest())

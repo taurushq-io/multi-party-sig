@@ -8,7 +8,6 @@ import (
 	"github.com/decred/dcrd/dcrec/secp256k1/v3"
 	any "github.com/gogo/protobuf/types"
 	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
-	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
@@ -40,7 +39,7 @@ type Helper struct {
 
 func NewHelper(protocolID types.ProtocolID, finalRoundNumber types.RoundNumber,
 	selfID party.ID, partyIDs party.IDSlice,
-	auxInfo ...writer.WriterToWithDomain) (*Helper, error) {
+	auxInfo ...hash.WriterToWithDomain) (*Helper, error) {
 
 	if !partyIDs.Valid() {
 		return nil, errors.New("helper: partyIDs invalid")
@@ -73,31 +72,24 @@ func NewHelper(protocolID types.ProtocolID, finalRoundNumber types.RoundNumber,
 // Calling hash.Sum() on the resulting hash function returns the hash of the SSID.
 // It computes
 // - Hash(𝔾, q, Gₓ, n, P₁, …, Pₙ, auxInfo}.
-func hashFromSID(protocolID types.ProtocolID, group elliptic.Curve, partyIDs party.IDSlice, auxInfo ...writer.WriterToWithDomain) *hash.Hash {
-	h := hash.New()
-
-	// Write SID
-	// protocolID 𝔾, q, Gₓ, n, P₁, …, Pₙ
-	_, _ = h.WriteAny(
-		protocolID,
-		&writer.BytesWithDomain{
+func hashFromSID(protocolID types.ProtocolID, group elliptic.Curve, partyIDs party.IDSlice, auxInfo ...hash.WriterToWithDomain) *hash.Hash {
+	// sid = protocolID 𝔾, q, Gₓ, n, P₁, …, Pₙ
+	sid := []hash.WriterToWithDomain{
+		&hash.BytesWithDomain{
 			TheDomain: "Group Name",
 			Bytes:     []byte(group.Params().Name),
 		},
-		&writer.BytesWithDomain{
+		&hash.BytesWithDomain{
 			TheDomain: "Group Order",
 			Bytes:     group.Params().N.Bytes(),
 		},
-		&writer.BytesWithDomain{
+		&hash.BytesWithDomain{
 			TheDomain: "Generator X Coordinate",
 			Bytes:     group.Params().Gx.Bytes(),
 		},
 		partyIDs,
-	)
-
-	for _, v := range auxInfo {
-		_, _ = h.WriteAny(v)
 	}
+	h := hash.New(append(sid, auxInfo...)...)
 	return h
 }
 
@@ -115,16 +107,16 @@ func (h *Helper) HashForID(id party.ID) *hash.Hash {
 
 	cloned := h.hash.Clone()
 	if id != "" {
-		_, _ = cloned.WriteAny(id)
+		_ = cloned.WriteAny(id)
 	}
 	return cloned
 }
 
 // UpdateHashState writes additional data to the hash state.
-func (h *Helper) UpdateHashState(value writer.WriterToWithDomain) {
+func (h *Helper) UpdateHashState(value hash.WriterToWithDomain) {
 	h.mtx.Lock()
 	defer h.mtx.Unlock()
-	_, _ = h.hash.WriteAny(value)
+	_ = h.hash.WriteAny(value)
 }
 
 // MarshalMessage returns a message.Message for the given content with the appropriate headers.

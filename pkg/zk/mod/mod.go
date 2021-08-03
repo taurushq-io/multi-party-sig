@@ -247,7 +247,7 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 }
 
 func challenge(hash *hash.Hash, n, w *big.Int) []*big.Int {
-	_, _ = hash.WriteAny(n, w)
+	_ = hash.WriteAny(n, w)
 	out := make([]*big.Int, params.StatParam)
 	nMod := safenum.ModulusFromNat(new(safenum.Nat).SetBig(n, n.BitLen()))
 	for i := range out {

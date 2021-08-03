@@ -35,7 +35,7 @@ func NewRandomness(rand io.Reader) *Randomness {
 }
 
 func challenge(hash *hash.Hash, commitment *Commitment, public *curve.Point) *curve.Scalar {
-	_, _ = hash.WriteAny(&commitment.C, public)
+	_ = hash.WriteAny(&commitment.C, public)
 	return sample.Scalar(hash.Digest())
 }
 
@@ -81,7 +81,7 @@ func (c *Commitment) WriteTo(w io.Writer) (total int64, err error) {
 	return c.C.WriteTo(w)
 }
 
-// Domain implements writer.WriterToWithDomain
+// Domain implements hash.WriterToWithDomain
 func (Commitment) Domain() string {
 	return "Schnorr Commitment"
 }

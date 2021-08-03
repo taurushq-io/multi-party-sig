@@ -131,7 +131,7 @@ func (p Parameters) WriteTo(w io.Writer) (int64, error) {
 	return nAll, nil
 }
 
-// Domain implements WriterToWithDomain, and separates this type within hash.Hash.
+// Domain implements hash.WriterToWithDomain, and separates this type within hash.Hash.
 func (Parameters) Domain() string {
 	return "Pedersen Parameters"
 }

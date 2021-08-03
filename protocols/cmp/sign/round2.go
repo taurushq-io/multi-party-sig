@@ -71,7 +71,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// was the culprit. We could maybe assume that we have an honest majority, but this clashes with the base assumptions.
 	h := r.Hash()
 	for _, j := range r.PartyIDs() {
-		_, _ = h.WriteAny(r.K[j], r.G[j])
+		_ = h.WriteAny(r.K[j], r.G[j])
 	}
 	EchoHash := h.Sum()
 

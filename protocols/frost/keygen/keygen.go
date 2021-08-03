@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
 	"github.com/taurusgroup/cmp-ecdsa/internal/round"
-	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
@@ -47,7 +47,7 @@ func startKeygenCommon(taproot bool, participants []party.ID, threshold int, sel
 			selfID,
 			sortedIDs,
 			_Threshold(threshold),
-			&writer.BytesWithDomain{
+			&hash.BytesWithDomain{
 				TheDomain: "Taproot Flag",
 				Bytes:     []byte{taprootFlag},
 			},
@@ -105,5 +105,5 @@ func (t _Threshold) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
-// Domain implements writer.WriterToWithDomain
+// Domain implements hash.WriterToWithDomain
 func (_Threshold) Domain() string { return "Threshold" }

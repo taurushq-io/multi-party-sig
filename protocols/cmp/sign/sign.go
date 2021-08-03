@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
 	"github.com/taurusgroup/cmp-ecdsa/internal/round"
-	"github.com/taurusgroup/cmp-ecdsa/internal/writer"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
@@ -55,7 +55,7 @@ func StartSign(config *keygen.Config, signers []party.ID, message []byte) protoc
 			// write the config, the signers and the message to this session.
 			config,
 			signerIDs,
-			writer.BytesWithDomain{
+			hash.BytesWithDomain{
 				TheDomain: "Signature Message",
 				Bytes:     message,
 			},

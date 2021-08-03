@@ -15,8 +15,7 @@ func StartXOR(selfID party.ID, partyIDs party.IDSlice) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
 		// create a hash function initialized with common information
 		h := hash.New()
-		_, err := h.WriteAny(partyIDs)
-		if err != nil {
+		if err := h.WriteAny(partyIDs); err != nil {
 			return nil, nil, err
 		}
 

@@ -63,12 +63,12 @@ func (hash *Hash) Commit(data ...interface{}) (Commitment, Decommitment, error) 
 	h := hash.Clone()
 
 	for _, item := range data {
-		if _, err = h.WriteAny(item); err != nil {
+		if err = h.WriteAny(item); err != nil {
 			return nil, nil, fmt.Errorf("hash.Commit: failed to write data: %w", err)
 		}
 	}
 
-	_, _ = h.WriteAny(decommitment)
+	_ = h.WriteAny(decommitment)
 
 	commitment := h.Sum()
 
@@ -89,12 +89,12 @@ func (hash *Hash) Decommit(c Commitment, d Decommitment, data ...interface{}) bo
 	h := hash.Clone()
 
 	for _, item := range data {
-		if _, err = h.WriteAny(item); err != nil {
+		if err = h.WriteAny(item); err != nil {
 			return false
 		}
 	}
 
-	_, _ = h.WriteAny(d)
+	_ = h.WriteAny(d)
 
 	computedCommitment := h.Sum()
 

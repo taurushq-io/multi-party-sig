@@ -98,7 +98,7 @@ func (partyIDs IDSlice) WriteTo(w io.Writer) (int64, error) {
 	return nAll, nil
 }
 
-// Domain implements WriterToWithDomain, and separates this type within hash.Hash.
+// Domain implements hash.WriterToWithDomain, and separates this type within hash.Hash.
 func (IDSlice) Domain() string {
 	return "IDSlice"
 }
