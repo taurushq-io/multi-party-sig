@@ -9,6 +9,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/taurusgroup/cmp-ecdsa/internal/params"
 	"github.com/taurusgroup/cmp-ecdsa/internal/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
@@ -81,6 +82,8 @@ func TestSign(t *testing.T) {
 	f := polynomial.NewPolynomial(threshold, secret)
 	publicKey := curve.NewIdentityPoint().ScalarBaseMult(secret)
 	steak := []byte{0xDE, 0xAD, 0xBE, 0xEF}
+	chainKey := make([]byte, params.SecBytes)
+	_, _ = rand.Read(chainKey)
 
 	privateShares := make(map[party.ID]*curve.Scalar, N)
 	for _, id := range partyIDs {
@@ -92,6 +95,7 @@ func TestSign(t *testing.T) {
 		verificationShares[id] = curve.NewIdentityPoint().ScalarBaseMult(privateShares[id])
 	}
 
+	var newPublicKey *curve.Point
 	rounds := make(map[party.ID]round.Round, N)
 	for _, id := range partyIDs {
 		result := &keygen.Result{
@@ -100,6 +104,11 @@ func TestSign(t *testing.T) {
 			PublicKey:          publicKey,
 			PrivateShare:       privateShares[id],
 			VerificationShares: verificationShares,
+			ChainKey:           chainKey,
+		}
+		result, _ = result.DeriveChild(1)
+		if newPublicKey == nil {
+			newPublicKey = result.PublicKey
 		}
 		r, _, err := StartSign(result, partyIDs, steak)()
 		require.NoError(t, err, "round creation should not result in an error")
@@ -110,7 +119,7 @@ func TestSign(t *testing.T) {
 		processRound(t, rounds, roundType)
 	}
 
-	checkOutput(t, rounds, publicKey, steak)
+	checkOutput(t, rounds, newPublicKey, steak)
 }
 
 func checkOutputTaproot(t *testing.T, rounds map[party.ID]round.Round, public taproot.PublicKey, m []byte) {
@@ -139,6 +148,8 @@ func TestSignTaproot(t *testing.T) {
 	steakHash := sha256.New()
 	_, _ = steakHash.Write([]byte{0xDE, 0xAD, 0xBE, 0xEF})
 	steak := steakHash.Sum(nil)
+	chainKey := make([]byte, params.SecBytes)
+	_, _ = rand.Read(chainKey)
 
 	privateShares := make(map[party.ID]*curve.Scalar, N)
 	for _, id := range partyIDs {
@@ -150,6 +161,7 @@ func TestSignTaproot(t *testing.T) {
 		verificationShares[id] = curve.NewIdentityPoint().ScalarBaseMult(privateShares[id])
 	}
 
+	var newPublicKey []byte
 	rounds := make(map[party.ID]round.Round, N)
 	for _, id := range partyIDs {
 		result := &keygen.TaprootResult{
@@ -158,6 +170,10 @@ func TestSignTaproot(t *testing.T) {
 			PublicKey:          publicKey,
 			PrivateShare:       privateShares[id],
 			VerificationShares: verificationShares,
+		}
+		result, _ = result.DeriveChild(1)
+		if newPublicKey == nil {
+			newPublicKey = result.PublicKey
 		}
 		r, _, err := StartSignTaproot(result, partyIDs, steak)()
 		require.NoError(t, err, "round creation should not result in an error")
@@ -168,5 +184,5 @@ func TestSignTaproot(t *testing.T) {
 		processRound(t, rounds, roundType)
 	}
 
-	checkOutputTaproot(t, rounds, publicKey, steak)
+	checkOutputTaproot(t, rounds, newPublicKey, steak)
 }

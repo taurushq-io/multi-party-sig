@@ -1,8 +1,6 @@
 package keygen
 
 import (
-	"errors"
-
 	"github.com/taurusgroup/cmp-ecdsa/internal/bip32"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
@@ -118,22 +116,15 @@ func (r *TaprootResult) Clone() *TaprootResult {
 	}
 }
 
-// ErrTaprootDeriveUnluckyIndex indicates that an unlucky index was encountered when deriving a key
-//
-// This happens quite a bit more often with Taproot, and simply indicates that a different
-// index should be tried, since this index cannot generate a valid key
-var ErrTaprootDeriveUnluckyIndex = errors.New("unlucky index when deriving Taproot key")
-
 // DeriveChild adjusts the shares to represent the derived public key at a certain index.
 //
 // This derivation works according to BIP-32, see:
 // https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
 //
 // Note that to do this derivation, we interpret the Taproot key as an "old"
-// ECDSA key, with the y coordinate byte set to 0x02. Because of this, key derivation
-// will also fail more often, so it's imperative to check that this function hasn't
-// produced ErrTaprootDeriveUnluckyIndex. This error indicates that trying again might
-// succeed with a different index
+// ECDSA key, with the y coordinate byte set to 0x02. We also only look at the x
+// coordinate of the derived public key, making sure that the corresponding secret
+// key matches the version of this point with an even y coordinate.
 func (r *TaprootResult) DeriveChild(i uint32) (*TaprootResult, error) {
 	publicKey, err := curve.LiftX(r.PublicKey)
 	if err != nil {
@@ -145,10 +136,14 @@ func (r *TaprootResult) DeriveChild(i uint32) (*TaprootResult, error) {
 	}
 	newR := r.Clone()
 	adjust(scalar, newR.PrivateShare, publicKey, newR.VerificationShares)
-	// Need to make sure that our new public key has the right format, otherwise
-	// we're going to run into trouble later
+	// If our public key is odd, we need to negate our secret key, and everything
+	// that entails. This means negating each secret share, and the corresponding
+	// verification shares.
 	if !publicKey.HasEvenY() {
-		return nil, ErrTaprootDeriveUnluckyIndex
+		newR.PrivateShare.Negate(newR.PrivateShare)
+		for _, v := range newR.VerificationShares {
+			v.Negate(v)
+		}
 	}
 	newR.PublicKey = publicKey.XBytes()[:]
 	newR.ChainKey = newChainKey
