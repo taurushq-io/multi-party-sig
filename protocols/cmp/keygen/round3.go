@@ -114,14 +114,14 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	_ = h.WriteAny(rid, r.SelfID())
 
 	// Prove N is a blum prime with zkmod
-	mod := zkmod.NewProof(h.Clone(), zkmod.Public{N: r.N[r.SelfID()]}, zkmod.Private{
+	mod := zkmod.NewProof(nil, h.Clone(), zkmod.Public{N: r.N[r.SelfID()]}, zkmod.Private{
 		P:   r.PaillierSecret.P(),
 		Q:   r.PaillierSecret.Q(),
 		Phi: r.PaillierSecret.Phi(),
 	})
 
 	// prove s, t are correct as aux parameters with zkprm
-	prm := zkprm.NewProof(h.Clone(), zkprm.Public{N: r.N[r.SelfID()], S: r.S[r.SelfID()], T: r.T[r.SelfID()]}, zkprm.Private{
+	prm := zkprm.NewProof(nil, h.Clone(), zkprm.Public{N: r.N[r.SelfID()], S: r.S[r.SelfID()], T: r.T[r.SelfID()]}, zkprm.Private{
 		Lambda: r.PedersenSecret,
 		Phi:    r.PaillierSecret.Phi(),
 	})

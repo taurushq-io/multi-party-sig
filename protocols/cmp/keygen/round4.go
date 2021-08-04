@@ -51,12 +51,12 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 	}
 
 	// verify zkmod
-	if !body.Mod.Verify(r.HashForID(j), zkmod.Public{N: r.N[j]}) {
+	if !body.Mod.Verify(nil, r.HashForID(j), zkmod.Public{N: r.N[j]}) {
 		return ErrRound4ZKMod
 	}
 
 	// verify zkprm
-	if !body.Prm.Verify(r.HashForID(j), zkprm.Public{N: r.N[j], S: r.S[j], T: r.T[j]}) {
+	if !body.Prm.Verify(nil, r.HashForID(j), zkprm.Public{N: r.N[j], S: r.S[j], T: r.T[j]}) {
 		return ErrRound4ZKPrm
 	}
 
