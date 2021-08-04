@@ -9,6 +9,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/internal/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pool"
 )
 
 type (
@@ -142,7 +143,7 @@ func (p *Proof) IsValid(public Public) bool {
 //  - z = y^{N⁻¹ mod ϕ(N)}
 //  - a, b s.t. y' = (-1)ᵃ wᵇ y
 //  - R = [(xᵢ aᵢ, bᵢ), zᵢ] for i = 1, …, m
-func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
+func NewProof(pl *pool.Pool, hash *hash.Hash, public Public, private Private) *Proof {
 	n, p, q, phi := public.N, private.P, private.Q, private.Phi
 	pHalf := new(safenum.Nat).Sub(p, oneNat, -1)
 	pHalf.Rsh(pHalf, 1, -1)
@@ -166,7 +167,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 
 	ys := challenge(hash, n, w)
 
-	for i := 0; i < params.StatParam; i++ {
+	pl.Parallelize(params.StatParam, func(i int) interface{} {
 		y := new(safenum.Nat).SetBig(ys[i], ys[i].BitLen())
 
 		// Z = y^{n⁻¹ (mod n)}
@@ -177,7 +178,9 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 		x := fourthRoot(yPrime, phi, nMod)
 
 		Xs[i], As[i], Bs[i], Zs[i] = x.Big(), a, b, z.Big()
-	}
+
+		return nil
+	})
 
 	return &Proof{
 		W: w,
@@ -188,7 +191,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	}
 }
 
-func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
+func (p *Proof) Verify(pl *pool.Pool, hash *hash.Hash, public Public) bool {
 	n := public.N
 	// check if n is odd and prime
 	if n.Bit(0) == 0 || n.ProbablyPrime(20) {
@@ -206,15 +209,14 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 	// get [yᵢ] <- ℤₙ
 	ys := challenge(hash, n, p.W)
 
-	var lhs, rhs big.Int
-	var z, x *big.Int
 	four := big.NewInt(4)
-	for i := 0; i < params.StatParam; i++ {
+	verifications := pl.Parallelize(params.StatParam, func(i int) interface{} {
+		var lhs, rhs big.Int
 		// get yᵢ
 		y := ys[i]
 
-		x = (*p.X)[i]
-		z = (*p.Z)[i]
+		x := (*p.X)[i]
+		z := (*p.Z)[i]
 
 		{
 			// lhs = zⁿ mod n
@@ -241,6 +243,13 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 			if lhs.Cmp(&rhs) != 0 {
 				return false
 			}
+		}
+
+		return true
+	})
+	for i := 0; i < len(verifications); i++ {
+		if !verifications[i].(bool) {
+			return false
 		}
 	}
 	return true

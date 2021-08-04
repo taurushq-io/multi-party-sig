@@ -75,8 +75,8 @@ func worker(commands <-chan command, out chan<- interface{}) {
 
 // Pool represents a pool of workers, used for parallelizing functions.
 //
-// Function needing a *Pool will work with a nil receiver, doing the equivalent
-// work on the current threat instead.
+// Functions needing a *Pool will work with a nil receiver, doing the equivalent
+// work on the current thread instead.
 //
 // By creating a pool, you avoid the overhead of spinning up goroutines for
 // each new operation.
