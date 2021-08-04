@@ -1,12 +1,20 @@
-# cmp-ecdsa
+# multi-party-sig
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-A Go implementation of the "CMP" protocol by [Canetti et al.](https://eprint.iacr.org/2021/060) for threshold ECDSA signing, with some additions to improve its practical reliability, including the "echo broadcast" from [Goldwasser and Lindell](https://doi.org/10.1007/s00145-005-0319-z). We documented these in [threshold_protocol.pdf](threshold_protocol.pdf). A list of proposed improvements is in [TODO.md](TODO.md). Our implementation supports ECDSA with secp256k1.
+A Go implementation of multi-party threshold signing for: 
+
+* ECDSA, using the "CMP" protocol by [Canetti et al.](https://eprint.iacr.org/2021/060) for threshold ECDSA signing, with some additions to improve its practical reliability, including the "echo broadcast" from [Goldwasser and Lindell](https://doi.org/10.1007/s00145-005-0319-z). We documented these in [threshold_protocol.pdf](threshold_protocol.pdf). A list of proposed improvements is in [TODO.md](TODO.md). Our implementation supports ECDSA with secp256k1.
+
+* Schnorr signatures (as integrated in Bitcoin's Taproot), using the FROST protocol. (Elaborate...)
+
+## Features
+
+TODO (BIP32, safenum, etc.)
 
 ## Usage
 
-`cmp-ecdsa` was designed with the goal of supporting multiple threshold signature schemes.
+`multi-party-sig` was designed with the goal of supporting multiple threshold signature schemes.
 Protocols such as [`keygen`](protocols/cmp/keygen) or [`sign`](protocols/cmp/sign) are defined in the [protocols](/protocols) directory.
 These packages define:
 
@@ -138,7 +146,7 @@ refreshedConfig := r.(*keygen.Result).Config
 ### Sign
 
 The [`sign`](/protocols/cmp/sign) protocol implements the "3 Round" signing protocol from CGGMP21, without pre-signing or identifiable aborts.
-Both these features may be implemented in a future version of `cmp-ecdsa`.
+Both these features may be implemented in a future version of `multi-party-sig`.
 
 The resulting signature is a valid ECDSA key.
 
@@ -160,7 +168,7 @@ ecdsa.Verify(refreshedConfig.PublicKey(), message, r, s)
 
 ## Build
 
-`cmp-ecdsa` requires a custom version of `gogo` which enables the use of `*big.Int` in protobufs.
+`multi-party-sig` requires a custom version of `gogo` which enables the use of `*big.Int` in protobufs.
 This version can be compiled by applying the path from [trasc/casttypewith](https://github.com/trasc/protobuf)
 It can be installed using the following shell commands:
 
@@ -181,6 +189,6 @@ Once installed, running `make` in the root will regenerate all `.proto` files.
 
 This code is copyright (c) Adrian Hamelink and Taurus SA, 2021, and under Apache 2.0 license.
 
-On potential patents: the company that sponsored the development of the
+On potential patents: the company that sponsored the development of the CMP
 protocol [stated](https://apnews.com/press-release/pr-newswire/26aab91e254bc254d331ceafc20b9859)
 that it "will not be applying for patents on this technology."
