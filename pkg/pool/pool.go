@@ -85,7 +85,7 @@ type Pool struct {
 	//
 	// This effectively makes a work stealing pool.
 	commands chan command
-	// This channel receives in results from the workers
+	// The channel used to receive results
 	out chan interface{}
 	// This holds the number of workers we've created
 	workerCount int
@@ -102,8 +102,8 @@ func NewPool(count int) *Pool {
 	}
 
 	p.commands = make(chan command)
-	p.out = make(chan interface{})
 	p.workerCount = count
+	p.out = make(chan interface{})
 
 	for i := 0; i < count; i++ {
 		go worker(p.commands, p.out)
@@ -139,7 +139,6 @@ func (p *Pool) Search(count int, f func() interface{}) []interface{} {
 	for i := 0; i < p.workerCount; i++ {
 		p.commands <- cmd
 	}
-
 	for i := 0; i < len(results); i++ {
 		results[i] = <-p.out
 	}
@@ -157,15 +156,26 @@ func (p *Pool) Parallelize(count int, f func(int) interface{}) []interface{} {
 
 	results := make([]interface{}, count)
 
-	for i := 0; i < count; i++ {
-		p.commands <- command{
+	resultI := 0
+	cmdI := 0
+	for cmdI < count {
+		cmd := command{
 			search: false,
-			i:      i,
+			i:      cmdI,
 			f:      f,
 		}
+		// We won't be able to send all the commands without blocking, so we make
+		// sure to interleave picking off the results of workers to free them up
+		// to receive our commands
+		select {
+		case p.commands <- cmd:
+			cmdI++
+		case results[resultI] = <-p.out:
+			resultI++
+		}
 	}
-	for i := 0; i < len(results); i++ {
-		results[i] = <-p.out
+	for ; resultI < len(results); resultI++ {
+		results[resultI] = <-p.out
 	}
 
 	return results
