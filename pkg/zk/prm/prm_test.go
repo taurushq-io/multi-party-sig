@@ -7,10 +7,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pool"
 )
 
 func TestMod(t *testing.T) {
-	sk := paillier.NewSecretKey()
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+
+	sk := paillier.NewSecretKey(pl)
 	ped, lambda := sk.GeneratePedersen()
 
 	public := Public{
@@ -19,7 +23,7 @@ func TestMod(t *testing.T) {
 		ped.T(),
 	}
 
-	proof := NewProof(hash.New(), public, Private{
+	proof := NewProof(pl, hash.New(), public, Private{
 		Lambda: lambda,
 		Phi:    sk.Phi(),
 	})
@@ -32,5 +36,5 @@ func TestMod(t *testing.T) {
 	proof3 := &Proof{}
 	require.NoError(t, proof3.Unmarshal(out2), "failed to unmarshal 2nd proof")
 
-	assert.True(t, proof3.Verify(hash.New(), public))
+	assert.True(t, proof3.Verify(pl, hash.New(), public))
 }
