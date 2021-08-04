@@ -8,6 +8,8 @@ A Go implementation of multi-party threshold signing for:
 
 * Schnorr signatures (as integrated in Bitcoin's Taproot), using the FROST protocol. (Elaborate...)
 
+> DISCLAIMER: Use at your own risk, this project needs further testing and auditing to be production-ready.
+
 ## Features
 
 TODO (BIP32, safenum, etc.)
