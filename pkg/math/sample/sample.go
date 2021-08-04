@@ -9,6 +9,7 @@ import (
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/internal/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pool"
 )
 
 const maxIterations = 255
@@ -200,42 +201,43 @@ const maxPrimeIterations = 100_000
 // ErrMaxPrimeIterations is the error we return when we fail to generate a prime.
 var ErrMaxPrimeIterations = fmt.Errorf("sample: failed to generate prime after %d iterations", maxPrimeIterations)
 
-// BlumPrime returns a safe prime p of size params.BitsBlumPrime.
-//
-// This means that q := (p - 1) / 2 is also a prime number.
-//
-// This implies that p = 3 mod 4, otherwise q wouldn't be prime.
-func BlumPrime(rand io.Reader) *safenum.Nat {
-	// TODO be more flexible on the number of bits in P, Q to avoid square root attack
-	one := new(big.Int).SetUint64(1)
-	for i := 0; i < maxPrimeIterations; i++ {
-		p, err := potentialSafePrime(rand, params.BitsBlumPrime)
-		if err != nil {
-			continue
-		}
-		// For p to be safe, we need q := (p - 1) / 2 to also be prime
-		q := new(big.Int).Sub(p, one)
-		q.Rsh(q, 1)
-		// p is likely to be prime already, so let's first do the other check,
-		// which is more likely to fail.
-		if !q.ProbablyPrime(blumPrimalityIterations) {
-			continue
-		}
-		// We've only done light checks on p so far, so now we need to make
-		// sure that it passes the extensive ones
-		if !p.ProbablyPrime(blumPrimalityIterations) {
-			continue
-		}
-		return new(safenum.Nat).SetBig(p, params.BitsBlumPrime)
+var one = new(big.Int).SetUint64(1)
+
+func tryBlumPrime(rand io.Reader) *safenum.Nat {
+	p, err := potentialSafePrime(rand, params.BitsBlumPrime)
+	if err != nil {
+		return nil
 	}
-	panic(ErrMaxPrimeIterations)
+	// For p to be safe, we need q := (p - 1) / 2 to also be prime
+	q := new(big.Int).Sub(p, one)
+	q.Rsh(q, 1)
+	// p is likely to be prime already, so let's first do the other check,
+	// which is more likely to fail.
+	if !q.ProbablyPrime(blumPrimalityIterations) {
+		return nil
+	}
+	// We've only done light checks on p so far, so now we need to make
+	// sure that it passes the extensive ones
+	if !p.ProbablyPrime(blumPrimalityIterations) {
+		return nil
+	}
+	return new(safenum.Nat).SetBig(p, params.BitsBlumPrime)
 }
 
 // Paillier generate the necessary integers for a Paillier key pair.
 // p, q are safe primes ((p - 1) / 2 is also prime), and Blum primes (p = 3 mod 4)
 // n = pq.
-func Paillier(rand io.Reader) (p, q *safenum.Nat) {
-	p, q = BlumPrime(rand), BlumPrime(rand)
+func Paillier(rand io.Reader, pl *pool.Pool) (p, q *safenum.Nat) {
+	reader := pool.NewLockedReader(rand)
+	results := pl.Search(2, func() interface{} {
+		q := tryBlumPrime(reader)
+		// You have to do this, because of how Go handles nil.
+		if q == nil {
+			return nil
+		}
+		return q
+	})
+	p, q = results[0].(*safenum.Nat), results[1].(*safenum.Nat)
 	return
 }
 

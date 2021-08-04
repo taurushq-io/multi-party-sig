@@ -30,7 +30,7 @@ func init() {
 }
 
 func reinit() {
-	paillierPublic, paillierSecret = KeyGen()
+	paillierPublic, paillierSecret = KeyGen(nil)
 }
 
 func TestCiphertextValidate(t *testing.T) {

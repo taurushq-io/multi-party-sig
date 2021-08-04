@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/internal/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pool"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
 )
@@ -94,9 +95,12 @@ func TestKeygen(t *testing.T) {
 }
 
 func TestRefresh(t *testing.T) {
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+
 	N := 4
 	T := N - 1
-	configs := FakeData(N, T, mrand.New(mrand.NewSource(1)))
+	configs := FakeData(N, T, mrand.New(mrand.NewSource(1)), pl)
 
 	parties := make(map[party.ID]round.Round, N)
 	for partyID, s := range configs {

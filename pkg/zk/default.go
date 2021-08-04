@@ -7,6 +7,7 @@ import (
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pool"
 )
 
 var (
@@ -18,8 +19,11 @@ var (
 )
 
 func generate() {
-	sk1 := paillier.NewSecretKey()
-	sk2 := paillier.NewSecretKey()
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+
+	sk1 := paillier.NewSecretKey(pl)
+	sk2 := paillier.NewSecretKey(pl)
 	fmt.Printf("p1, _ := new(safenum.Nat).SetHex(\"%s\")\n", sk1.P().Hex()[2:])
 	fmt.Printf("q1, _ := new(safenum.Nat).SetHex(\"%s\")\n", sk1.Q().Hex()[2:])
 	fmt.Printf("p2, _ := new(safenum.Nat).SetHex(\"%s\")\n", sk2.P().Hex()[2:])

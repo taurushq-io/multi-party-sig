@@ -66,7 +66,7 @@ func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 // - commit to message.
 func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// generate Paillier and Pedersen
-	PaillierSecret := paillier.NewSecretKey()
+	PaillierSecret := paillier.NewSecretKey(nil)
 	SelfPaillierPublic := PaillierSecret.PublicKey
 	SelfPedersenPublic, PedersenSecret := PaillierSecret.GeneratePedersen()
 
