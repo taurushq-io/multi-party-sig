@@ -22,14 +22,6 @@ message Keygen2 {
 
 message Keygen3 {
   option (gogoproto.goproto_getters) = false;
-  // HashEcho = H(V₁, …, Vₙ)
-  // This is essentially an echo of all messages from Keygen2.
-  // If one party received something different then everybody must abort.
-  bytes HashEcho = 1;
-}
-
-message Keygen4 {
-  option (gogoproto.goproto_getters) = false;
   // RID = RIDᵢ
   bytes RID = 1 [(gogoproto.casttype) = "RID"];
   bytes C = 2 [(gogoproto.casttype) = "RID"];
@@ -45,9 +37,13 @@ message Keygen4 {
   bytes T = 7 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
   // Decommitment = uᵢ decommitment bytes
   bytes Decommitment = 8 [(gogoproto.casttype) = "github.com/taurusgroup/cmp-ecdsa/internal/hash.Decommitment"];
+  // HashEcho = H(V₁, …, Vₙ)
+  // This is essentially an echo of all messages from Keygen2.
+  // If one party received something different then everybody must abort.
+  bytes HashEcho = 9;
 }
 
-message Keygen5 {
+message Keygen4 {
   option (gogoproto.goproto_getters) = false;
   zkmod.Proof Mod = 1;
   zkprm.Proof Prm = 2;
