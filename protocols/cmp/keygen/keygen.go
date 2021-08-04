@@ -9,6 +9,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pool"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
 )
@@ -24,6 +25,9 @@ const (
 
 func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
+		pl := pool.NewPool(0)
+		defer pl.TearDown()
+
 		sortedIDs := party.NewIDSlice(partyIDs)
 
 		n := len(sortedIDs)
@@ -52,6 +56,7 @@ func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.S
 
 		return &round1{
 			Helper:                    helper,
+			Pool:                      pl,
 			Threshold:                 threshold,
 			PreviousPublicSharesECDSA: PreviousPublicSharesECDSA,
 			PreviousSecretECDSA:       PreviousSecretECDSA,
@@ -64,6 +69,9 @@ func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.S
 
 func StartRefresh(c *Config) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
+		pl := pool.NewPool(0)
+		defer pl.TearDown()
+
 		partyIDs := c.PartyIDs()
 		helper, err := round.NewHelper(
 			protocolRefreshID,
@@ -88,6 +96,7 @@ func StartRefresh(c *Config) protocol.StartFunc {
 
 		return &round1{
 			Helper:                    helper,
+			Pool:                      pl,
 			Threshold:                 int(c.Threshold),
 			PreviousSecretECDSA:       PreviousSecretECDSA,
 			PreviousPublicKey:         PreviousPublicKey,
