@@ -33,7 +33,7 @@ func XOR(id party.ID, ids party.IDSlice, n Network) error {
 
 func Keygen(id party.ID, ids party.IDSlice, threshold int, n Network) (*keygen.Result, error) {
 	// KEYGEN
-	h, err := protocol.NewHandler(keygen.StartKeygen(ids, threshold, id))
+	h, err := protocol.NewHandler(keygen.StartKeygen(nil, ids, threshold, id))
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func Keygen(id party.ID, ids party.IDSlice, threshold int, n Network) (*keygen.R
 
 func Refresh(keygenResult *keygen.Result, n Network) (*keygen.Result, error) {
 	c := keygenResult.Config
-	hRefresh, err := protocol.NewHandler(keygen.StartRefresh(c))
+	hRefresh, err := protocol.NewHandler(keygen.StartRefresh(nil, c))
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func Refresh(keygenResult *keygen.Result, n Network) (*keygen.Result, error) {
 
 func Sign(refreshResult *keygen.Result, m []byte, signers party.IDSlice, n Network) error {
 	c := refreshResult.Config
-	h, err := protocol.NewHandler(sign.StartSign(c, signers, m))
+	h, err := protocol.NewHandler(sign.StartSign(nil, c, signers, m))
 	if err != nil {
 		return err
 	}

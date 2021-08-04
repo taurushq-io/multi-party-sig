@@ -91,7 +91,7 @@ func TestRound(t *testing.T) {
 	var err error
 	for _, partyID := range partyIDs {
 		c := configs[partyID]
-		rounds[partyID], _, err = StartSign(c, partyIDs, messageHash)()
+		rounds[partyID], _, err = StartSign(pl, c, partyIDs, messageHash)()
 		require.NoError(t, err, "round creation should not result in an error")
 	}
 

@@ -23,10 +23,8 @@ const (
 	protocolRounds types.RoundNumber = 6
 )
 
-func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
+func StartKeygen(pl *pool.Pool, partyIDs []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
-		pl := pool.NewPool(0)
-		defer pl.TearDown()
 
 		sortedIDs := party.NewIDSlice(partyIDs)
 
@@ -67,10 +65,8 @@ func StartKeygen(partyIDs []party.ID, threshold int, selfID party.ID) protocol.S
 	}
 }
 
-func StartRefresh(c *Config) protocol.StartFunc {
+func StartRefresh(pl *pool.Pool, c *Config) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
-		pl := pool.NewPool(0)
-		defer pl.TearDown()
 
 		partyIDs := c.PartyIDs()
 		helper, err := round.NewHelper(
