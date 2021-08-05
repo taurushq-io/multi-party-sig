@@ -86,7 +86,7 @@ The outcome is described by `handler.Result()`.
 If an error has occurred, it will be returned here.
 A malicious error will be described by a [`protocol.Error`](pkg/protocol/error.go), which may contain information on the responsible party.
 
-- [`protcol.Error`](/pkg/protocol/error.go): Indicates that the protocol has aborted, and may contain the identity of the culprit.
+- [`protocol.Error`](/pkg/protocol/error.go): Indicates that the protocol has aborted, and may contain the identity of the culprit.
 - [`message.Error`](/pkg/message/error.go): Indicates that the message could not be processed, either due to encoding failure, header validation issues, or incorrect routing.
 
 When the protocol successfully completes, the result must be cast to the appropriate type.
