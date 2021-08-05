@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package message;
 
-option go_package = "github.com/taurusgroup/cmp-ecdsa/pkg/message";
+option go_package = "github.com/taurusgroup/multi-party-sig/pkg/message";
 
 option (gogoproto.stable_marshaler_all) = true;
 
@@ -14,14 +14,14 @@ message Message {
   // SSID is a byte string which uniquely identifies the session this message belongs to.
   bytes SSID = 1;
   // From is the party.ID of the sender
-  string from = 2 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/party.ID", (gogoproto.nullable) = false];
+  string from = 2 [(gogoproto.customtype) = "github.com/taurusgroup/multi-party-sig/pkg/party.ID", (gogoproto.nullable) = false];
   // To is a list of intended recipients for this message.
   // If To == nil, then the message should be interpreted as a broadcast message.
-  repeated string to = 3 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/party.ID", (gogoproto.nullable) = false];
+  repeated string to = 3 [(gogoproto.customtype) = "github.com/taurusgroup/multi-party-sig/pkg/party.ID", (gogoproto.nullable) = false];
   // Protocol identifies the protocol this message belongs to
-  string protocol = 4 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types.ProtocolID", (gogoproto.nullable) = false];
+  string protocol = 4 [(gogoproto.customtype) = "github.com/taurusgroup/multi-party-sig/pkg/protocol/types.ProtocolID", (gogoproto.nullable) = false];
   // RoundNumber is the index of the round this message belongs to
-  uint32 roundNumber = 5 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types.RoundNumber", (gogoproto.nullable) = false];
+  uint32 roundNumber = 5 [(gogoproto.customtype) = "github.com/taurusgroup/multi-party-sig/pkg/protocol/types.RoundNumber", (gogoproto.nullable) = false];
   // Content is the actual content consumed by the round.
   google.protobuf.Any Content = 20;
 }

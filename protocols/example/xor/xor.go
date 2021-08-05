@@ -4,10 +4,10 @@ import (
 	"crypto/rand"
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
-	"github.com/taurusgroup/cmp-ecdsa/internal/round"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
+	"github.com/taurusgroup/multi-party-sig/internal/hash"
+	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/party"
+	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
 )
 
 // StartXOR is a function that creates the first round with all necessary information to create a protocol.Handler.

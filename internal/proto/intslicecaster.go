@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/internal/params"
+	"github.com/taurusgroup/multi-party-sig/internal/params"
 )
 
 // IntSliceCaster handles big int operations.

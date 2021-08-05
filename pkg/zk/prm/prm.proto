@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package zkprm;
 
-option go_package = "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm;zkprm";
+option go_package = "github.com/taurusgroup/multi-party-sig/pkg/zk/prm;zkprm";
 
 option (gogoproto.stable_marshaler_all) = true;
 option (gogoproto.goproto_getters_all) = false;
@@ -10,6 +10,6 @@ option (gogoproto.goproto_getters_all) = false;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 message Proof {
-  bytes a = 1 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/internal/proto.IntSlice;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntSliceCaster"];
-  bytes z = 2 [(gogoproto.casttypewith) = "github.com/taurusgroup/cmp-ecdsa/internal/proto.IntSlice;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntSliceCaster"];
+  bytes a = 1 [(gogoproto.casttypewith) = "github.com/taurusgroup/multi-party-sig/internal/proto.IntSlice;github.com/taurusgroup/multi-party-sig/internal/proto.IntSliceCaster"];
+  bytes z = 2 [(gogoproto.casttypewith) = "github.com/taurusgroup/multi-party-sig/internal/proto.IntSlice;github.com/taurusgroup/multi-party-sig/internal/proto.IntSliceCaster"];
 }

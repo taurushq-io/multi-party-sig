@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
-	"github.com/taurusgroup/cmp-ecdsa/protocols/cmp/keygen"
-	"github.com/taurusgroup/cmp-ecdsa/protocols/cmp/sign"
-	"github.com/taurusgroup/cmp-ecdsa/protocols/example/xor"
+	"github.com/taurusgroup/multi-party-sig/pkg/party"
+	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
+	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
+	"github.com/taurusgroup/multi-party-sig/protocols/cmp/keygen"
+	"github.com/taurusgroup/multi-party-sig/protocols/cmp/sign"
+	"github.com/taurusgroup/multi-party-sig/protocols/example/xor"
 )
 
 func XOR(id party.ID, ids party.IDSlice, n Network) error {

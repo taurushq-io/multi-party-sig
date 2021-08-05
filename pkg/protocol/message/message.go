@@ -5,8 +5,8 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	gogo "github.com/gogo/protobuf/types"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
+	"github.com/taurusgroup/multi-party-sig/pkg/party"
+	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
 )
 
 // First represents an empty message to be returned by Round.MessageContent() for the first round of a protocol.

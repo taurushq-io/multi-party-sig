@@ -5,8 +5,8 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 )
 
 func TestHash_WriteAny(t *testing.T) {

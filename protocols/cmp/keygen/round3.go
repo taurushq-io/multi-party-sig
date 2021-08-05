@@ -5,16 +5,16 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
-	"github.com/taurusgroup/cmp-ecdsa/internal/round"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
-	zkmod "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mod"
-	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm"
-	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
+	"github.com/taurusgroup/multi-party-sig/internal/hash"
+	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
+	"github.com/taurusgroup/multi-party-sig/pkg/party"
+	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
+	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
+	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
+	zkmod "github.com/taurusgroup/multi-party-sig/pkg/zk/mod"
+	zkprm "github.com/taurusgroup/multi-party-sig/pkg/zk/prm"
+	zksch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
 )
 
 var _ round.Round = (*round3)(nil)

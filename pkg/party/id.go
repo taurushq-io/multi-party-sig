@@ -3,7 +3,7 @@ package party
 import (
 	"io"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
 
 // ID represents a unique identifier for a participant in our scheme.

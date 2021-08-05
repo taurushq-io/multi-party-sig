@@ -4,9 +4,9 @@ import (
 	"crypto/rand"
 	"io"
 
-	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
+	"github.com/taurusgroup/multi-party-sig/internal/hash"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 )
 
 // Randomness = a ← ℤₚ.

@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/internal/round"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
-	zklogstar "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
+	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/party"
+	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
+	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
+	zklogstar "github.com/taurusgroup/multi-party-sig/pkg/zk/logstar"
 )
 
 var _ round.Round = (*round3)(nil)

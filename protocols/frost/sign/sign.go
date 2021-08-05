@@ -3,13 +3,13 @@ package sign
 import (
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
-	"github.com/taurusgroup/cmp-ecdsa/internal/round"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
-	"github.com/taurusgroup/cmp-ecdsa/protocols/frost/keygen"
+	"github.com/taurusgroup/multi-party-sig/internal/hash"
+	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/party"
+	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
+	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
+	"github.com/taurusgroup/multi-party-sig/protocols/frost/keygen"
 )
 
 const (

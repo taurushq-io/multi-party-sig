@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package zkdec;
 
-option go_package = "github.com/taurusgroup/cmp-ecdsa/pkg/zk/dec;zkdec";
+option go_package = "github.com/taurusgroup/multi-party-sig/pkg/zk/dec;zkdec";
 
 option (gogoproto.stable_marshaler_all) = true;
 option (gogoproto.goproto_getters_all) = false;
@@ -13,21 +13,21 @@ import "pkg/paillier/ciphertext.proto";
 
 message Commitment {
   // S = sʸ tᵘ
-  bytes S = 1 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes S = 1 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
   // T = sᵃ tᵛ
-  bytes T = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes T = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
   // A = Enc₀(α; r)
   paillier.Ciphertext A = 4;
   // Gamma = alpha (mod q)
-   bytes Gamma = 5 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar"];
+   bytes Gamma = 5 [(gogoproto.customtype) = "github.com/taurusgroup/multi-party-sig/pkg/math/curve.Scalar"];
 }
 
 message Proof {
   Commitment C = 1 [(gogoproto.embed) = true];
   // Z1 = α + e•y
-  bytes Z1 = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes Z1 = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
   // Z2 = ν + e•μ
-  bytes Z2 = 3 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes Z2 = 3 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
   // W  = r ρ ᵉ (mod N₀)
-  bytes W = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes W = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
 }

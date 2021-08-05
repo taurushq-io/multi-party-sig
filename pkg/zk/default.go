@@ -5,9 +5,9 @@ import (
 	"math/big"
 
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/pool"
+	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
+	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
+	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 )
 
 var (

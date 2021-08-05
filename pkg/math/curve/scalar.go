@@ -6,7 +6,7 @@ import (
 
 	"github.com/cronokirby/safenum"
 	"github.com/decred/dcrd/dcrec/secp256k1/v3"
-	"github.com/taurusgroup/cmp-ecdsa/internal/params"
+	"github.com/taurusgroup/multi-party-sig/internal/params"
 )
 
 // Scalar represents an element in ℤₚ where p is the order of the secp256k1 base point.

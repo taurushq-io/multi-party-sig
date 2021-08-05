@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package zkmulstar;
 
-option go_package = "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mulstar;zkmulstar";
+option go_package = "github.com/taurusgroup/multi-party-sig/pkg/zk/mulstar;zkmulstar";
 
 option (gogoproto.stable_marshaler_all) = true;
 option (gogoproto.goproto_getters_all) = false;
@@ -16,20 +16,20 @@ message Commitment {
   paillier.Ciphertext A = 1;
 
   // Bₓ = gᵃ
-  bytes Bx = 2 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point", (gogoproto.nullable) = false];
+  bytes Bx = 2 [(gogoproto.customtype) = "github.com/taurusgroup/multi-party-sig/pkg/math/curve.Point", (gogoproto.nullable) = false];
 
   // E = sᵃ tᵍ
-  bytes E = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes E = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
   // S = sˣ tᵐ
-  bytes S = 5 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes S = 5 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
 }
 
 message Proof {
   Commitment C = 1 [(gogoproto.embed) = true];
   // Z = α + ex
-  bytes Z1 = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes Z1 = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
   // U = r⋅ρᵉ mod N
-  bytes Z2 = 3 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes Z2 = 3 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
   // V = s⋅ρₓᵉ
-  bytes W = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes W = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
 }

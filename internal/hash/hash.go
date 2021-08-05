@@ -5,7 +5,7 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/internal/params"
+	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/zeebo/blake3"
 )
 

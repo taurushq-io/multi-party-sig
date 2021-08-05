@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v3"
-	"github.com/taurusgroup/cmp-ecdsa/internal/params"
+	"github.com/taurusgroup/multi-party-sig/internal/params"
 )
 
 // MarshalJSON implements json.Marshaler.

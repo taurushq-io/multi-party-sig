@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package zklogstar;
 
-option go_package = "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar;zklogstar";
+option go_package = "github.com/taurusgroup/multi-party-sig/pkg/zk/logstar;zklogstar";
 
 option (gogoproto.stable_marshaler_all) = true;
 option (gogoproto.goproto_getters_all) = false;
@@ -13,18 +13,18 @@ import "pkg/paillier/ciphertext.proto";
 
 message Commitment {
   // S = sˣ tᵘ
-  bytes S = 1 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes S = 1 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
   // A = Enc₀(alpha; r)
   paillier.Ciphertext A = 2;
   // Y = gᵃ
-  bytes Y = 3 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point", (gogoproto.nullable) = false];
+  bytes Y = 3 [(gogoproto.customtype) = "github.com/taurusgroup/multi-party-sig/pkg/math/curve.Point", (gogoproto.nullable) = false];
   // D = sᵃ tᵍ
-  bytes D = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes D = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
 }
 
 message Proof {
   Commitment C = 1 [(gogoproto.embed) = true];
-  bytes Z1 = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
-  bytes Z2 = 3 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
-  bytes Z3 = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes Z1 = 2 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
+  bytes Z2 = 3 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
+  bytes Z3 = 4 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
 }

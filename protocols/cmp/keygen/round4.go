@@ -3,15 +3,15 @@ package keygen
 import (
 	"errors"
 
-	"github.com/taurusgroup/cmp-ecdsa/internal/proto"
-	"github.com/taurusgroup/cmp-ecdsa/internal/round"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
-	zkmod "github.com/taurusgroup/cmp-ecdsa/pkg/zk/mod"
-	zkprm "github.com/taurusgroup/cmp-ecdsa/pkg/zk/prm"
+	"github.com/taurusgroup/multi-party-sig/internal/proto"
+	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
+	"github.com/taurusgroup/multi-party-sig/pkg/party"
+	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
+	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
+	zkmod "github.com/taurusgroup/multi-party-sig/pkg/zk/mod"
+	zkprm "github.com/taurusgroup/multi-party-sig/pkg/zk/prm"
 )
 
 var _ round.Round = (*round4)(nil)

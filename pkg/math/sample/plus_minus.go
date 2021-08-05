@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/cmp-ecdsa/internal/params"
+	"github.com/taurusgroup/multi-party-sig/internal/params"
 )
 
 func sampleNeg(rand io.Reader, bits int) *safenum.Int {

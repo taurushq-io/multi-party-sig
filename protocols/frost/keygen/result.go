@@ -1,10 +1,10 @@
 package keygen
 
 import (
-	"github.com/taurusgroup/cmp-ecdsa/internal/bip32"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/taproot"
+	"github.com/taurusgroup/multi-party-sig/internal/bip32"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/party"
+	"github.com/taurusgroup/multi-party-sig/pkg/taproot"
 )
 
 func adjust(with *curve.Scalar, priv *curve.Scalar, pub *curve.Point, pubShares map[party.ID]*curve.Point) {

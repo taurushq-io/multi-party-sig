@@ -3,11 +3,11 @@ package sign
 import (
 	"crypto/rand"
 
-	"github.com/taurusgroup/cmp-ecdsa/internal/round"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
+	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
+	"github.com/taurusgroup/multi-party-sig/pkg/party"
+	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
 	"github.com/zeebo/blake3"
 )
 
@@ -48,7 +48,7 @@ type round1 struct {
 // ProcessMessage implements round.Round.
 func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 
-const deriveHashKeyContext = "github.com/taurusgroup/cmp-ecdsa/frost 2021-07-30T09:48+00:00 Derive hash Key"
+const deriveHashKeyContext = "github.com/taurusgroup/multi-party-sig/frost 2021-07-30T09:48+00:00 Derive hash Key"
 
 // Finalize implements round.Round.
 func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {

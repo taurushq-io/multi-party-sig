@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 )
 
 var benchParams *Parameters

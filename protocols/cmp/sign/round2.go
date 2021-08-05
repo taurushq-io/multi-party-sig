@@ -4,14 +4,14 @@ import (
 	"errors"
 
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/cmp-ecdsa/internal/round"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
-	zkenc "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
-	zklogstar "github.com/taurusgroup/cmp-ecdsa/pkg/zk/logstar"
+	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
+	"github.com/taurusgroup/multi-party-sig/pkg/party"
+	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
+	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
+	zkenc "github.com/taurusgroup/multi-party-sig/pkg/zk/enc"
+	zklogstar "github.com/taurusgroup/multi-party-sig/pkg/zk/logstar"
 )
 
 var _ round.Round = (*round2)(nil)

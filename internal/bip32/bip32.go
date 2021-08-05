@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
 
 func compressPoint(p *curve.Point) []byte {

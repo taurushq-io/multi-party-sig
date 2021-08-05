@@ -1,4 +1,4 @@
-module github.com/taurusgroup/cmp-ecdsa
+module github.com/taurusgroup/multi-party-sig
 
 go 1.14
 

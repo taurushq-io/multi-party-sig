@@ -3,7 +3,7 @@ package sign
 import (
 	"math/big"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
 
 type Signature struct {

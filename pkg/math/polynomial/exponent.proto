@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package polynomial;
 
-option go_package = "github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial";
+option go_package = "github.com/taurusgroup/multi-party-sig/pkg/math/polynomial";
 
 option (gogoproto.stable_marshaler_all) = true;
 
@@ -16,5 +16,5 @@ message Exponent {
   // We do this so that we never need to send an encoded Identity point, and thus consider it invalid
   bool IsConstant = 1;
   // Coefficients is a list of curve.Point representing the coefficients of a polynomial over an elliptic curve.
-  repeated bytes Coefficients = 2 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point", (gogoproto.nullable) = true];
+  repeated bytes Coefficients = 2 [(gogoproto.customtype) = "github.com/taurusgroup/multi-party-sig/pkg/math/curve.Point", (gogoproto.nullable) = true];
 }

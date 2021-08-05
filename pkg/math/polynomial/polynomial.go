@@ -3,8 +3,8 @@ package polynomial
 import (
 	"crypto/rand"
 
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 )
 
 // Polynomial represents f(X) = a₀ + a₁⋅X + … + aₜ⋅Xᵗ.

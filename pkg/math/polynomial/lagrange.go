@@ -1,8 +1,8 @@
 package polynomial
 
 import (
-	"github.com/taurusgroup/cmp-ecdsa/pkg/math/curve"
-	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/party"
 )
 
 // Lagrange returns the Lagrange coefficients at 0 for all parties in the interpolation domain.

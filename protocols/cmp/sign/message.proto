@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package sign;
 
-option go_package = "github.com/taurusgroup/cmp-ecdsa/protocol/cmp/sign";
+option go_package = "github.com/taurusgroup/multi-party-sig/protocol/cmp/sign";
 
 option (gogoproto.stable_marshaler_all) = true;
 
@@ -34,7 +34,7 @@ message Sign3 {
   option (gogoproto.goproto_getters) = false;
   // EchoHash = Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
   bytes EchoHash = 1;
-  bytes BigGammaShare = 2 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point"];
+  bytes BigGammaShare = 2 [(gogoproto.customtype) = "github.com/taurusgroup/multi-party-sig/pkg/math/curve.Point"];
   MtAMessage DeltaMtA = 3;
   MtAMessage ChiMtA = 4;
   zklogstar.Proof ProofLog = 5;
@@ -42,12 +42,12 @@ message Sign3 {
 
 message Sign4 {
   option (gogoproto.goproto_getters) = false;
-  bytes DeltaShare = 1 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar"];
-  bytes BigDeltaShare = 2 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Point"];
+  bytes DeltaShare = 1 [(gogoproto.customtype) = "github.com/taurusgroup/multi-party-sig/pkg/math/curve.Scalar"];
+  bytes BigDeltaShare = 2 [(gogoproto.customtype) = "github.com/taurusgroup/multi-party-sig/pkg/math/curve.Point"];
   zklogstar.Proof ProofLog = 3;
 }
 
 message SignOutput {
   option (gogoproto.goproto_getters) = false;
-  bytes SigmaShare = 1 [(gogoproto.customtype) = "github.com/taurusgroup/cmp-ecdsa/pkg/math/curve.Scalar"];
+  bytes SigmaShare = 1 [(gogoproto.customtype) = "github.com/taurusgroup/multi-party-sig/pkg/math/curve.Scalar"];
 }

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/taurusgroup/cmp-ecdsa/internal/params"
+	"github.com/taurusgroup/multi-party-sig/internal/params"
 )
 
 type (

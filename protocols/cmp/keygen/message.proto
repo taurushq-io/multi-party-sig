@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package keygen;
 
-option go_package = "github.com/taurusgroup/cmp-ecdsa/protocol/cmp/keygen";
+option go_package = "github.com/taurusgroup/multi-party-sig/protocol/cmp/keygen";
 
 option (gogoproto.stable_marshaler_all) = true;
 
@@ -17,7 +17,7 @@ import "pkg/zk/sch/sch.proto";
 message Keygen2 {
   option (gogoproto.goproto_getters) = false;
   // Commitment = Vᵢ = H(ρᵢ, Fᵢ(X), Aᵢ, Nᵢ, sᵢ, tᵢ, uᵢ)
-  bytes Commitment = 1 [(gogoproto.casttype) = "github.com/taurusgroup/cmp-ecdsa/internal/hash.Commitment"];
+  bytes Commitment = 1 [(gogoproto.casttype) = "github.com/taurusgroup/multi-party-sig/internal/hash.Commitment"];
 }
 
 message Keygen3 {
@@ -30,13 +30,13 @@ message Keygen3 {
   // SchnorrCommitments = Aᵢ Schnorr commitment for the final confirmation
   zksch.Commitment SchnorrCommitments = 4;
   // N Paillier and Pedersen N = p•q, p ≡ q ≡ 3 mod 4
-  bytes N = 5 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes N = 5 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
   // S = r² mod N
-  bytes S = 6 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes S = 6 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
   // T = Sˡ mod N
-  bytes T = 7 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/cmp-ecdsa/internal/proto.IntCaster"];
+  bytes T = 7 [(gogoproto.casttypewith) = "math/big.Int;github.com/taurusgroup/multi-party-sig/internal/proto.IntCaster"];
   // Decommitment = uᵢ decommitment bytes
-  bytes Decommitment = 8 [(gogoproto.casttype) = "github.com/taurusgroup/cmp-ecdsa/internal/hash.Decommitment"];
+  bytes Decommitment = 8 [(gogoproto.casttype) = "github.com/taurusgroup/multi-party-sig/internal/hash.Decommitment"];
   // HashEcho = H(V₁, …, Vₙ)
   // This is essentially an echo of all messages from Keygen2.
   // If one party received something different then everybody must abort.
