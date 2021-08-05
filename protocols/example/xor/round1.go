@@ -15,7 +15,8 @@ type Round1 struct {
 }
 
 // ProcessMessage in the first round does nothing since no message have been received yet.
-func (r *Round1) ProcessMessage(party.ID, message.Content) error { return nil }
+func (r *Round1) VerifyMessage(party.ID, party.ID, message.Content) error { return nil }
+func (r *Round1) StoreMessage(party.ID, message.Content) error            { return nil }
 
 // Finalize uses the out channel to communicate messages to other parties.
 func (r *Round1) Finalize(out chan<- *message.Message) (round.Round, error) {

@@ -33,8 +33,11 @@ type round1 struct {
 	Message []byte
 }
 
-// ProcessMessage implements round.Round.
-func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
+// VerifyMessage implements round.Round.
+func (r *round1) VerifyMessage(party.ID, party.ID, message.Content) error { return nil }
+
+// StoreMessage implements round.Round.
+func (r *round1) StoreMessage(party.ID, message.Content) error { return nil }
 
 // Finalize implements round.Round
 //
@@ -96,7 +99,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 		K:             map[party.ID]*paillier.Ciphertext{r.SelfID(): K},
 		G:             map[party.ID]*paillier.Ciphertext{r.SelfID(): G},
 		BigGammaShare: map[party.ID]*curve.Point{r.SelfID(): BigGammaShare},
-		GammaShare:    GammaShare,
+		GammaShare:    GammaShare.Int(),
 		KShare:        KShare,
 		KNonce:        KNonce,
 		GNonce:        GNonce,

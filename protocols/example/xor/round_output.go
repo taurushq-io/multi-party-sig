@@ -16,10 +16,14 @@ type Round2 struct {
 }
 
 // ProcessMessage casts the content to the appropriate type and stores the content.
-func (r *Round2) ProcessMessage(j party.ID, content message.Content) error {
+func (r *Round2) VerifyMessage(from party.ID, to party.ID, content message.Content) error {
+	return nil
+}
+
+func (r *Round2) StoreMessage(from party.ID, content message.Content) error {
 	body := content.(*Round2Message)
 	// store the received value
-	r.received[j] = body.Value
+	r.received[from] = body.Value
 	return nil
 }
 

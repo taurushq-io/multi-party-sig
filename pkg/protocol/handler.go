@@ -188,7 +188,10 @@ func (h *Handler) handleMessage(msg *message.Message) error {
 	}
 
 	// process message
-	if err := h.r.ProcessMessage(msg.From, content); err != nil {
+	if err := h.r.VerifyMessage(msg.From, h.info.SelfID(), content); err != nil {
+		return h.abort(err, msg.From)
+	}
+	if err := h.r.StoreMessage(msg.From, content); err != nil {
 		return h.abort(err, msg.From)
 	}
 	return nil

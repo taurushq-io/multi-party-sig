@@ -50,7 +50,8 @@ func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundTy
 				content := r.MessageContent()
 				err = msg.UnmarshalContent(content)
 				require.NoError(t, err)
-				require.NoError(t, r.ProcessMessage(msg.From, content))
+				require.NoError(t, r.VerifyMessage(msg.From, idJ, content))
+				require.NoError(t, r.StoreMessage(msg.From, content))
 			}
 		}
 	}

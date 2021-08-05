@@ -28,7 +28,7 @@ type round2 struct {
 	BigGammaShare map[party.ID]*curve.Point
 
 	// GammaShare = γᵢ <- 𝔽
-	GammaShare *curve.Scalar
+	GammaShare *safenum.Int
 	// KShare = kᵢ  <- 𝔽
 	KShare *curve.Scalar
 
@@ -40,23 +40,29 @@ type round2 struct {
 	GNonce *safenum.Nat
 }
 
-// ProcessMessage implements round.Round.
+// VerifyMessage implements round.Round.
 //
-// - store Kⱼ, Gⱼ
 // - verify zkenc(Kⱼ).
-func (r *round2) ProcessMessage(j party.ID, content message.Content) error {
+func (r *round2) VerifyMessage(from party.ID, to party.ID, content message.Content) error {
 	body := content.(*Sign2)
 
-	if !body.ProofEnc.Verify(r.HashForID(j), zkenc.Public{
+	if !body.ProofEnc.Verify(r.HashForID(from), zkenc.Public{
 		K:      body.K,
-		Prover: r.Paillier[j],
-		Aux:    r.Pedersen[r.SelfID()],
+		Prover: r.Paillier[from],
+		Aux:    r.Pedersen[to],
 	}) {
 		return ErrRound2ZKEnc
 	}
+	return nil
+}
 
-	r.K[j] = body.K
-	r.G[j] = body.G
+// StoreMessage implements round.Round.
+//
+// - store Kⱼ, Gⱼ.
+func (r *round2) StoreMessage(from party.ID, content message.Content) error {
+	body := content.(*Sign2)
+	r.K[from] = body.K
+	r.G[from] = body.G
 	return nil
 }
 
@@ -76,27 +82,25 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	EchoHash := h.Sum()
 
 	zkPrivate := zklogstar.Private{
-		X:   r.GammaShare.Int(),
+		X:   r.GammaShare,
 		Rho: r.GNonce,
 	}
 
-	DeltaMtA := map[party.ID]*MtA{}
-	ChiMtA := map[party.ID]*MtA{}
+	DeltaMtA := map[party.ID]*mta.MtA{}
+	DeltaShareBeta := map[party.ID]*safenum.Int{}
+	ChiMtA := map[party.ID]*mta.MtA{}
+	ChiShareBeta := map[party.ID]*safenum.Int{}
 
 	// Broadcast the message we created in round1
 	otherIDs := r.OtherPartyIDs()
 	errors := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
 		j := otherIDs[i]
 
-		DeltaMtA[j] = NewMtA(
-			r.GammaShare,
-			r.BigGammaShare[r.SelfID()],
-			r.K[r.SelfID()], r.K[j],
+		DeltaMtA[j], DeltaShareBeta[j] = mta.New(
+			r.GammaShare, r.K[j],
 			r.SecretPaillier, r.Paillier[j])
-		ChiMtA[j] = NewMtA(
-			r.SecretECDSA,
-			r.ECDSA[r.SelfID()],
-			r.K[r.SelfID()], r.K[j],
+		ChiMtA[j], ChiShareBeta[j] = mta.New(
+			r.SecretECDSA.Int(), r.K[j],
 			r.SecretPaillier, r.Paillier[j])
 
 		proofLog := zklogstar.NewProof(r.HashForID(r.SelfID()), zklogstar.Public{
@@ -106,11 +110,20 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 			Aux:    r.Pedersen[j],
 		}, zkPrivate)
 
+		DeltaMtAProof := DeltaMtA[j].ProofAffG(
+			r.HashForID(r.SelfID()), r.GammaShare, r.BigGammaShare[r.SelfID()], r.K[j], DeltaShareBeta[j],
+			r.SecretPaillier, r.Paillier[j], r.Pedersen[j])
+		//r.HashForID(r.SelfID()), r.SecretPaillier, r.Paillier[j], r.Pedersen[j])
+		ChiMtAProof := ChiMtA[j].ProofAffG(
+			r.HashForID(r.SelfID()), r.SecretECDSA.Int(), r.ECDSA[r.SelfID()], r.K[j], ChiShareBeta[j],
+			r.SecretPaillier, r.Paillier[j], r.Pedersen[j])
+		//r.HashForID(r.SelfID()), r.SecretPaillier, r.Paillier[j], r.Pedersen[j])
+
 		msg := r.MarshalMessage(&Sign3{
 			EchoHash:      EchoHash,
 			BigGammaShare: r.BigGammaShare[r.SelfID()],
-			DeltaMtA:      DeltaMtA[j].ProofAffG(r.HashForID(r.SelfID()), r.Pedersen[j]),
-			ChiMtA:        ChiMtA[j].ProofAffG(r.HashForID(r.SelfID()), r.Pedersen[j]),
+			DeltaMtA:      DeltaMtAProof,
+			ChiMtA:        ChiMtAProof,
 			ProofLog:      proofLog,
 		}, j)
 		if err := r.SendMessage(msg, out); err != nil {
@@ -126,10 +139,14 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 
 	return &round3{
-		round2:   r,
-		DeltaMtA: DeltaMtA,
-		ChiMtA:   ChiMtA,
-		EchoHash: EchoHash,
+		round2:          r,
+		DeltaMtA:        DeltaMtA,
+		ChiMtA:          ChiMtA,
+		DeltaShareBeta:  DeltaShareBeta,
+		ChiShareBeta:    ChiShareBeta,
+		DeltaShareAlpha: map[party.ID]*safenum.Int{},
+		ChiShareAlpha:   map[party.ID]*safenum.Int{},
+		EchoHash:        EchoHash,
 	}, nil
 }
 

@@ -28,26 +28,33 @@ type round4 struct {
 	ChiShare *curve.Scalar
 }
 
-// ProcessMessage implements round.Round.
+// VerifyMessage implements round.Round.
 //
-// - Get Δⱼ, δⱼ, ϕ''ᵢⱼ
 // - Verify Π(log*)(ϕ''ᵢⱼ, Δⱼ, Γ).
-func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
+func (r *round4) VerifyMessage(from party.ID, to party.ID, content message.Content) error {
 	body := content.(*Sign4)
 
 	zkLogPublic := zklogstar.Public{
-		C:      r.K[j],
+		C:      r.K[from],
 		X:      body.BigDeltaShare,
 		G:      r.Gamma,
-		Prover: r.Paillier[j],
-		Aux:    r.Pedersen[r.SelfID()],
+		Prover: r.Paillier[from],
+		Aux:    r.Pedersen[to],
 	}
-	if !body.ProofLog.Verify(r.HashForID(j), zkLogPublic) {
+	if !body.ProofLog.Verify(r.HashForID(from), zkLogPublic) {
 		return ErrRound4ZKLog
 	}
 
-	r.BigDeltaShares[j] = body.BigDeltaShare
-	r.DeltaShares[j] = body.DeltaShare
+	return nil
+}
+
+// StoreMessage implements round.Round.
+//
+// - store Δⱼ, δⱼ.
+func (r *round4) StoreMessage(from party.ID, content message.Content) error {
+	body := content.(*Sign4)
+	r.BigDeltaShares[from] = body.BigDeltaShare
+	r.DeltaShares[from] = body.DeltaShare
 	return nil
 }
 

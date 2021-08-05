@@ -33,16 +33,15 @@ type output struct {
 	R *curve.Scalar
 }
 
-// ProcessMessage implements round.Round.
-//
-// - σⱼ != 0.
-func (r *output) ProcessMessage(j party.ID, content message.Content) error {
-	body := content.(*SignOutput)
+// VerifyMessage implements round.Round.
+func (r *output) VerifyMessage(party.ID, party.ID, message.Content) error { return nil }
 
-	if body.SigmaShare.IsZero() {
-		return ErrRoundOutputSigmaZero
-	}
-	r.SigmaShares[j] = body.SigmaShare
+// StoreMessage implements round.Round.
+//
+// - save σⱼ
+func (r *output) StoreMessage(from party.ID, content message.Content) error {
+	body := content.(*SignOutput)
+	r.SigmaShares[from] = body.SigmaShare
 	return nil
 }
 
@@ -82,8 +81,8 @@ func (m *SignOutput) Validate() error {
 	if m == nil {
 		return errors.New("sign.output: message is nil")
 	}
-	if m.SigmaShare == nil {
-		return errors.New("sign.output: message contains nil fields")
+	if m.SigmaShare == nil || m.SigmaShare.IsZero() {
+		return errors.New("sign.output: SigmaShare is nil or 0")
 	}
 	return nil
 }

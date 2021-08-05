@@ -36,12 +36,9 @@ type round3 struct {
 	Lambda map[party.ID]*curve.Scalar
 }
 
-// ProcessMessage implements round.Round.
-func (r *round3) ProcessMessage(l party.ID, content message.Content) error {
-	msg, ok := content.(*Sign3)
-	if !ok {
-		return fmt.Errorf("failed to convert message to Sign3: %v", msg)
-	}
+// VerifyMessage implements round.Round.
+func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Content) error {
+	msg := content.(*Sign3)
 
 	// These steps come from Figure 3 of the Frost paper.
 
@@ -56,17 +53,24 @@ func (r *round3) ProcessMessage(l party.ID, content message.Content) error {
 	// we've already computed everything that step computes.
 
 	expected := curve.NewIdentityPoint()
-	expected.ScalarMult(r.Lambda[l], r.YShares[l])
+	expected.ScalarMult(r.Lambda[from], r.YShares[from])
 	expected.ScalarMult(r.c, expected)
-	expected.Add(r.RShares[l], expected)
+	expected.Add(r.RShares[from], expected)
 
 	actual := curve.NewIdentityPoint().ScalarBaseMult(msg.Z_i)
 
 	if !actual.Equal(expected) {
-		return fmt.Errorf("failed to verify response from %v", l)
+		return fmt.Errorf("failed to verify response from %v", from)
 	}
 
-	r.z[l] = msg.Z_i
+	return nil
+}
+
+// StoreMessage implements round.Round.
+func (r *round3) StoreMessage(from party.ID, content message.Content) error {
+	msg := content.(*Sign3)
+
+	r.z[from] = msg.Z_i
 
 	return nil
 }

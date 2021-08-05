@@ -58,12 +58,15 @@ type round2 struct {
 	Decommitment hash.Decommitment // uᵢ
 }
 
-// ProcessMessage implements round.Round.
+// VerifyMessage implements round.Round.
+func (r *round2) VerifyMessage(party.ID, party.ID, message.Content) error { return nil }
+
+// StoreMessage implements round.Round.
 //
-// - store commitment Vⱼ.
-func (r *round2) ProcessMessage(j party.ID, content message.Content) error {
+// - save commitment Vⱼ.
+func (r *round2) StoreMessage(from party.ID, content message.Content) error {
 	body := content.(*Keygen2)
-	r.Commitments[j] = body.Commitment
+	r.Commitments[from] = body.Commitment
 	return nil
 }
 

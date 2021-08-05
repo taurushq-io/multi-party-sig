@@ -45,8 +45,9 @@ type round1 struct {
 	s_i *curve.Scalar
 }
 
-// ProcessMessage implements round.Round.
-func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
+// VerifyMessage implements round.Round.
+func (r *round1) VerifyMessage(party.ID, party.ID, message.Content) error { return nil }
+func (r *round1) StoreMessage(party.ID, message.Content) error            { return nil }
 
 const deriveHashKeyContext = "github.com/taurusgroup/multi-party-sig/frost 2021-07-30T09:48+00:00 Derive hash Key"
 
@@ -87,13 +88,13 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	if err := r.SendMessage(msg, out); err != nil {
 		return r, err
 	}
-
-	D := make(map[party.ID]*curve.Point)
-	D[r.SelfID()] = D_i
-	E := make(map[party.ID]*curve.Point)
-	E[r.SelfID()] = E_i
-
-	return &round2{round1: r, d_i: d_i, e_i: e_i, D: D, E: E}, nil
+	return &round2{
+		round1: r,
+		d_i:    d_i,
+		e_i:    e_i,
+		D:      map[party.ID]*curve.Point{r.SelfID(): D_i},
+		E:      map[party.ID]*curve.Point{r.SelfID(): E_i},
+	}, nil
 }
 
 // MessageContent implements round.Round.

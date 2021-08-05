@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package mta;
+
+option go_package = "github.com/taurusgroup/multi-party-sig/internal/mta";
+
+option (gogoproto.stable_marshaler_all) = true;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+import "pkg/paillier/ciphertext.proto";
+import "pkg/zk/affg/affg.proto";
+
+message Message {
+  option (gogoproto.goproto_getters) = false;
+  // Dij is Dᵢⱼ = (aⱼ ⊙ Bᵢ) ⊕ encᵢ(- βⱼᵢ, sⱼᵢ)
+  paillier.Ciphertext Dij = 1;
+
+  // Fij is Fᵢⱼ = encⱼ(βⱼᵢ, rⱼᵢ)
+  paillier.Ciphertext Fij = 2;
+  zkaffg.Proof Proof = 3;
+}

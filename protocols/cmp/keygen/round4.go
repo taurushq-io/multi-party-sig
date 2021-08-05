@@ -26,11 +26,32 @@ type round4 struct {
 	ChainKey []byte
 }
 
-// ProcessMessage implements round.Round.
+// VerifyMessage implements round.Round.
 //
-// - decrypt share
-// - verify VSS.
-func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
+// - verify Mod, Prm proof for N
+func (r *round4) VerifyMessage(from party.ID, _ party.ID, content message.Content) error {
+	body := content.(*Keygen4)
+
+	// verify zkmod
+	if !body.Mod.Verify(r.HashForID(from), zkmod.Public{N: r.N[from]}) {
+		return ErrRound4ZKMod
+	}
+
+	// verify zkprm
+	if !body.Prm.Verify(r.HashForID(from), zkprm.Public{N: r.N[from], S: r.S[from], T: r.T[from]}) {
+		return ErrRound4ZKPrm
+	}
+
+	return nil
+}
+
+// StoreMessage implements round.Round.
+//
+// Since this message is only intended for us, we need to to the VSS verification here.
+// - check that the decrypted share did not overflow.
+// - check VSS condition.
+// - save share.
+func (r *round4) StoreMessage(from party.ID, content message.Content) error {
 	body := content.(*Keygen4)
 	// decrypt share
 	DecryptedShare, err := r.PaillierSecret.Dec(body.Share)
@@ -43,24 +64,14 @@ func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
 	}
 
 	// verify share with VSS
-	ExpectedPublicShare := r.VSSPolynomials[j].Evaluate(r.SelfID().Scalar()) // Fⱼ(i)
+	ExpectedPublicShare := r.VSSPolynomials[from].Evaluate(r.SelfID().Scalar()) // Fⱼ(i)
 	PublicShare := curve.NewIdentityPoint().ScalarBaseMult(Share)
 	// X == Fⱼ(i)
 	if !PublicShare.Equal(ExpectedPublicShare) {
 		return ErrRound4VSS
 	}
 
-	// verify zkmod
-	if !body.Mod.Verify(r.Pool, r.HashForID(j), zkmod.Public{N: r.N[j]}) {
-		return ErrRound4ZKMod
-	}
-
-	// verify zkprm
-	if !body.Prm.Verify(r.Pool, r.HashForID(j), zkprm.Public{N: r.N[j], S: r.S[j], T: r.T[j]}) {
-		return ErrRound4ZKPrm
-	}
-
-	r.ShareReceived[j] = Share
+	r.ShareReceived[from] = Share
 	return nil
 }
 

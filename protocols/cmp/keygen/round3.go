@@ -29,17 +29,17 @@ type round3 struct {
 	SchnorrCommitments map[party.ID]*zksch.Commitment // Aⱼ
 }
 
-// ProcessMessage implements round.Round.
+// VerifyMessage implements round.Round.
 //
 // - verify Hash(SSID, V₁, …, Vₙ) against received hash.
-// - store Fⱼ(X)
+// - verify length of Schnorr commitments
+// - verify degree of VSS polynomial Fⱼ "in-the-exponent"
 //   - if keygen, verify Fⱼ(0) != ∞
 //   - if refresh, verify Fⱼ(0) == ∞
-// - verify length of Schnorr commitments
 // - validate Paillier
 // - validate Pedersen
 // - validate commitments.
-func (r *round3) ProcessMessage(j party.ID, content message.Content) error {
+func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Content) error {
 	body := content.(*Keygen3)
 
 	if !bytes.Equal(body.HashEcho, r.EchoHash) {
@@ -59,8 +59,7 @@ func (r *round3) ProcessMessage(j party.ID, content message.Content) error {
 	}
 
 	// Set Paillier
-	PaillierPublic, err := paillier.NewPublicKey(body.N)
-	if err != nil {
+	if err := paillier.ValidateN(body.N); err != nil {
 		return err
 	}
 
@@ -71,19 +70,26 @@ func (r *round3) ProcessMessage(j party.ID, content message.Content) error {
 	}
 
 	// Verify decommit
-	if !r.HashForID(j).Decommit(r.Commitments[j], body.Decommitment,
+	if !r.HashForID(from).Decommit(r.Commitments[from], body.Decommitment,
 		body.RID, body.C, VSSPolynomial, body.SchnorrCommitments, Pedersen) {
 		return ErrRound3Decommit
 	}
 
-	r.RIDs[j] = body.RID
-	r.ChainKeys[j] = body.RID
-	r.N[j] = body.N
-	r.S[j] = body.S
-	r.T[j] = body.T
-	r.PaillierPublic[j] = PaillierPublic
-	r.VSSPolynomials[j] = VSSPolynomial
-	r.SchnorrCommitments[j] = body.SchnorrCommitments
+	return nil
+}
+
+// StoreMessage implements round.Round.
+// - store ridⱼ, Cⱼ, Nⱼ, Sⱼ, Tⱼ, Fⱼ(X), Aⱼ.
+func (r *round3) StoreMessage(from party.ID, content message.Content) error {
+	body := content.(*Keygen3)
+	r.RIDs[from] = body.RID
+	r.ChainKeys[from] = body.RID
+	r.N[from] = body.N
+	r.S[from] = body.S
+	r.T[from] = body.T
+	r.PaillierPublic[from], _ = paillier.NewPublicKey(body.N)
+	r.VSSPolynomials[from] = body.VSSPolynomial
+	r.SchnorrCommitments[from] = body.SchnorrCommitments
 	return nil
 }
 

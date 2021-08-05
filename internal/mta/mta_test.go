@@ -1,4 +1,4 @@
-package sign
+package mta
 
 import (
 	mrand "math/rand"
@@ -32,20 +32,30 @@ func Test_newMtA(t *testing.T) {
 	ajbi := curve.NewScalar().Multiply(aj, bi)
 	c := curve.NewScalar().Add(aibj, ajbi)
 
-	mtaI := NewMtA(ai, Ai, Bi, Bj, ski, paillierJ)
-	mtaJ := NewMtA(aj, Aj, Bj, Bi, skj, paillierI)
+	mtaI, betaI := New(ai.Int(), Bj, ski, paillierJ)
+	mtaJ, betaJ := New(aj.Int(), Bi, skj, paillierI)
 
-	msgForJ := mtaI.ProofAffG(hash.New(), zk.Pedersen)
-	msgForI := mtaJ.ProofAffG(hash.New(), zk.Pedersen)
+	msgForJ := mtaI.ProofAffG(hash.New(),
+		ai.Int(), Ai, Bj, betaI,
+		ski, paillierJ, zk.Pedersen)
+	msgForI := mtaJ.ProofAffG(hash.New(),
+		aj.Int(), Aj, Bi, betaJ,
+		skj, paillierI, zk.Pedersen)
 
-	err := mtaI.Input(hash.New(), zk.Pedersen, msgForI, Aj)
+	err := mtaI.VerifyAffG(hash.New(), Bi, Aj, msgForI, paillierJ, paillierI, zk.Pedersen)
 	require.NoError(t, err, "decryption should pass")
-	err = mtaJ.Input(hash.New(), zk.Pedersen, msgForJ, Ai)
+	err = mtaJ.VerifyAffG(hash.New(), Bj, Ai, msgForJ, paillierI, paillierJ, zk.Pedersen)
 	require.NoError(t, err, "decryption should pass")
 
-	gammaI := mtaI.Share()
-	gammaJ := mtaJ.Share()
-	gamma := curve.NewScalar().Add(gammaI, gammaJ)
-	assert.Equal(t, c, gamma, "a•b should be equal to α + β")
+	alphaI, err := ski.Dec(msgForI.Dij)
+	require.NoError(t, err, "decryption should pass")
+	alphaJ, err := skj.Dec(msgForJ.Dij)
+	require.NoError(t, err, "decryption should pass")
+
+	gammaI := alphaI.Add(alphaI, betaI, -1)
+	gammaJ := alphaJ.Add(alphaJ, betaJ, -1)
+	gamma := gammaI.Add(gammaI, gammaJ, -1)
+	gammaS := curve.NewScalarInt(gamma)
+	assert.Equal(t, c, gammaS, "a•b should be equal to α + β")
 
 }

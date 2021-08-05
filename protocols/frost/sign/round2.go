@@ -36,12 +36,9 @@ type round2 struct {
 	E map[party.ID]*curve.Point
 }
 
-// ProcessMessage implements round.Round.
-func (r *round2) ProcessMessage(l party.ID, content message.Content) error {
-	msg, ok := content.(*Sign2)
-	if !ok {
-		return fmt.Errorf("failed to convert message to Sign2: %v", msg)
-	}
+// VerifyMessage implements round.Round.
+func (r *round2) VerifyMessage(_ party.ID, _ party.ID, content message.Content) error {
+	msg := content.(*Sign2)
 
 	// This section roughly follows Figure 3.
 
@@ -60,9 +57,14 @@ func (r *round2) ProcessMessage(l party.ID, content message.Content) error {
 		return fmt.Errorf("nonce commitment is the identity point")
 	}
 
-	r.D[l] = msg.D_i
-	r.E[l] = msg.E_i
+	return nil
+}
 
+// StoreMessage implements round.Round.
+func (r *round2) StoreMessage(from party.ID, content message.Content) error {
+	msg := content.(*Sign2)
+	r.D[from] = msg.D_i
+	r.E[from] = msg.E_i
 	return nil
 }
 

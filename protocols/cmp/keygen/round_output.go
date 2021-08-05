@@ -16,19 +16,22 @@ type output struct {
 	UpdatedConfig *Config
 }
 
-// ProcessMessage implements round.Round.
+// VerifyMessage implements round.Round.
 //
 // - verify all Schnorr proof for the new ecdsa share.
-func (r *output) ProcessMessage(j party.ID, content message.Content) error {
+func (r *output) VerifyMessage(from party.ID, to party.ID, content message.Content) error {
 	body := content.(*KeygenOutput)
 
-	if !body.SchnorrResponse.Verify(r.HashForID(j),
-		r.UpdatedConfig.Public[j].ECDSA,
-		r.SchnorrCommitments[j]) {
+	if !body.SchnorrResponse.Verify(r.HashForID(from),
+		r.UpdatedConfig.Public[from].ECDSA,
+		r.SchnorrCommitments[from]) {
 		return ErrRoundOutputZKSch
 	}
 	return nil
 }
+
+// StoreMessage implements round.Round.
+func (r *output) StoreMessage(party.ID, message.Content) error { return nil }
 
 // Finalize implements round.Round.
 func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {

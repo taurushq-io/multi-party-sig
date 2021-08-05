@@ -55,8 +55,11 @@ type round1 struct {
 	VSSSecret *polynomial.Polynomial
 }
 
-// ProcessMessage implements round.Round.
-func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
+// VerifyMessage implements round.Round.
+func (r *round1) VerifyMessage(party.ID, party.ID, message.Content) error { return nil }
+
+// StoreMessage implements round.Round.
+func (r *round1) StoreMessage(party.ID, message.Content) error { return nil }
 
 // Finalize implements round.Round
 //

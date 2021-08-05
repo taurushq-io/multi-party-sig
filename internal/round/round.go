@@ -6,10 +6,15 @@ import (
 )
 
 type Round interface {
-	// ProcessMessage handles an incoming Message from j and validates it's content with regard to the protocol specification.
+	// VerifyMessage handles an incoming Message from j and validates it's content with regard to the protocol specification.
 	// The content argument can be cast to the appropriate type for this round without error check.
 	// In the first round, this function returns nil.
-	ProcessMessage(j party.ID, content message.Content) error
+	// This function should not modify any saved state as it may be be running concurrently.
+	VerifyMessage(from party.ID, to party.ID, content message.Content) error
+
+	// StoreMessage should be called after VerifyMessage and should only store the appropriate fields from the
+	// content.
+	StoreMessage(from party.ID, content message.Content) error
 
 	// Finalize is called after all messages from the parties have been processed in the current round.
 	// Messages for the next round are sent out through the out channel.

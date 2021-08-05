@@ -45,11 +45,12 @@ func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundTy
 			if m.From == idJ {
 				continue
 			}
-			if len(msg.To) == 0 || party.IDSlice(msg.To).Contains(idJ) {
+			if msg.IsFor(idJ) {
 				content := r.MessageContent()
 				err = msg.UnmarshalContent(content)
 				require.NoError(t, err)
-				require.NoError(t, r.ProcessMessage(msg.From, content))
+				require.NoError(t, r.VerifyMessage(msg.From, idJ, content))
+				require.NoError(t, r.StoreMessage(msg.From, content))
 			}
 		}
 	}

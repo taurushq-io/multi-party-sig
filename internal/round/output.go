@@ -12,7 +12,11 @@ type Output struct {
 	Result interface{}
 }
 
-func (r *Output) ProcessMessage(party.ID, message.Content) error {
+func (r *Output) VerifyMessage(party.ID, party.ID, message.Content) error {
+	return errors.New("result round does not accept any message")
+}
+
+func (r *Output) StoreMessage(party.ID, message.Content) error {
 	return errors.New("result round does not accept any message")
 }
 
