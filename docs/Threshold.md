@@ -16,20 +16,6 @@ To support key deriviation methods, like
 additional 32 bytes of randomness through a chaining key $c$. This is generated in the
 exact same way as the round id $\rho$.
 
-## Broadcast considerations
-
-Abort identification requires the use of a reliable broadcast channel.
-Unfortunately, this condition is hard to meet in practice when the network is modeled as point-to-point.
-The protocol generally requires the message from the first round to be reliably broadcast, and so for this step we use the _"echo broadcast"_ from Goldwasser and Lindell.
-
-In the keygen and refresh protocols, the broadcasted message is a commitment, so we need to add an extra round of communication to make sure the parties agree on the first set of messages.
-For the signing protocol, the "echo round" can be done in parallel during the second round.
-
-The main disadvantage of this approach is that an adversary can cause an abort by simply sending different messages to different parties.
-It therefore makes little sense to implement the indentifiable abort aspect of the signing protocol since an adversary could simply cause an anonymous abort at the start of the protocol.
-
-On the flip side, the user of the library only needs to provide authenticity and integrity between the point-to-point connections between parties.
-
 ## Threshold Keygen/Refresh Protocols
 
 In the original paper, the TSS functionality is such that the keygen needs to run the refresh protocol right after.
@@ -73,30 +59,19 @@ $\textcolor{red}{\text{and retrieve private input \(\textsf{sk}_{old}^{(i)}\)}}$
 
 Broadcast $(\textsf{s\textsf{sid}}, i, V^{(i)})$.
 
-#### _Round 1 (Echo)_
+#### Round 2
 
 Upon reception of $(\textsf{s\textsf{sid}}, i, V^{(j)})$ from all $P^{(j)}$:
 
 - $E^{(i)} \gets \textsf{H}(\textsf{s\textsf{sid}}, V^{(1)}, \ldots, V^{(n)})$.
 
-Broadcast $(\textsf{s\textsf{sid}}, i, E^{(i)})$.
-
-Upon reception of $(\textsf{s\textsf{sid}}, i, E^{(j)})$ from all $P^{(j)}$:
-
-- $E^{(i)} \stackrel{?}{=} E^{(j)}$.
-
-Deliver $(\textsf{s\textsf{sid}}, i, V^{(j)})$ from all $P^{(j)}$ for the next round.
-
-#### Round 2
-
-Upon reception of $(\textsf{s\textsf{sid}}, i, V^{(j)})$ from all $P^{(j)}$:
-
-Send $(\textsf{s\textsf{sid}}, i, \rho^{(i)}, \{F^{(i)}_l\}_{l=1}^t, \textcolor{blue}{X^{(i)}}, A^{(i)}, N^{(i)}, s_1^{(i)}, s_2^{(i)}, u^{(i)})$ to all.
+Send $(\textsf{s\textsf{sid}}, i, \rho^{(i)}, \{F^{(i)}_l\}_{l=1}^t, \textcolor{blue}{X^{(i)}}, A^{(i)}, N^{(i)}, s_1^{(i)}, s_2^{(i)}, u^{(i)}, E^{(i)})$ to all.
 
 #### Round 3
 
-Upon reception of $(\textsf{s\textsf{sid}}, j, \rho^{(j)}, \{F^{(j)}_l\}_{l=1}^t, \textcolor{blue}{X^{(j)}}, A^{(j)}, N^{(j)}, s_1^{(j)}, s_2^{(j)}, u^{(j)})$ from $P^{(j)}$:
+Upon reception of $(\textsf{s\textsf{sid}}, j, \rho^{(j)}, \{F^{(j)}_l\}_{l=1}^t, \textcolor{blue}{X^{(j)}}, A^{(j)}, N^{(j)}, s_1^{(j)}, s_2^{(j)}, u^{(j)}, E^{(j)})$ from $P^{(j)}$:
 
+- $E^{(i)} \stackrel{?}{=} E^{(j)}$.
 - $V^{(j)} \stackrel{?}{=} \textsf{H}(\textsf{s\textsf{sid}}, j, \rho^{(j)}, \{F^{(j)}_l\}_{l=1}^t, \textcolor{blue}{X^{(j)}}, A^{(j)}, N^{(j)}, s_1^{(j)}, s_2^{(j)}, u^{(j)})$.
 - $\log_2 N^{(j)} \stackrel{?}{=} 8 \kappa$.
 
@@ -166,6 +141,7 @@ Both $s$ and $r$ are used to multiply other values, so sampling from the
 unit group makes sense. On the other hand, $\alpha$ is used as an exponent,
 so this doesn't make sense. We believe that this is a typo, and that instead
 we should have:
+
 $$
 \alpha \leftarrow \pm 2^{l + \epsilon}
 $$
