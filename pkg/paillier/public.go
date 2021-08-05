@@ -136,7 +136,10 @@ func (pk PublicKey) Clone() *PublicKey {
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
-func (pk PublicKey) WriteTo(w io.Writer) (int64, error) {
+func (pk *PublicKey) WriteTo(w io.Writer) (int64, error) {
+	if pk == nil {
+		return 0, io.ErrUnexpectedEOF
+	}
 	buf := pk.n.Bytes()
 	n, err := w.Write(buf)
 	return int64(n), err

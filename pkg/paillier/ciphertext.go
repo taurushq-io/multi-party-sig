@@ -66,6 +66,9 @@ func newCiphertext() *Ciphertext {
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
 func (ct *Ciphertext) WriteTo(w io.Writer) (int64, error) {
+	if ct == nil {
+		return 0, io.ErrUnexpectedEOF
+	}
 	buf := make([]byte, params.BytesCiphertext)
 	ct.C.FillBytes(buf)
 	n, err := w.Write(buf)

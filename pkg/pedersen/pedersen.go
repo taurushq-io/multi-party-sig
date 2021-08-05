@@ -115,7 +115,10 @@ func bigint() *big.Int {
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
-func (p Parameters) WriteTo(w io.Writer) (int64, error) {
+func (p *Parameters) WriteTo(w io.Writer) (int64, error) {
+	if p == nil {
+		return 0, io.ErrUnexpectedEOF
+	}
 	nAll := int64(0)
 	buf := make([]byte, params.BytesIntModN)
 

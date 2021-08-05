@@ -149,7 +149,10 @@ func (s *Secret) Paillier() *paillier.SecretKey {
 }
 
 // WriteTo implements io.WriterTo interface.
-func (c Config) WriteTo(w io.Writer) (total int64, err error) {
+func (c *Config) WriteTo(w io.Writer) (total int64, err error) {
+	if c == nil {
+		return 0, io.ErrUnexpectedEOF
+	}
 	var n int64
 
 	// write t
@@ -198,7 +201,10 @@ func (Public) Domain() string {
 }
 
 // WriteTo implements io.WriterTo interface.
-func (p Public) WriteTo(w io.Writer) (total int64, err error) {
+func (p *Public) WriteTo(w io.Writer) (total int64, err error) {
+	if p == nil {
+		return 0, io.ErrUnexpectedEOF
+	}
 	// write ECDSA
 	total, err = p.ECDSA.WriteTo(w)
 	if err != nil {
@@ -260,7 +266,7 @@ func validThreshold(t, n int) bool {
 // DeriveChild derives a sharing of the ith child of the consortium signing key.
 //
 // This function uses unhardened derivation, deriving a key without including the
-// underlying private key. This function will panic if i >= 2^31, since that indicates
+// underlying private key. This function will panic if i ⩾ 2³¹, since that indicates
 // a hardened key.
 //
 // Sometimes, an error will be returned, indicating that this index generates

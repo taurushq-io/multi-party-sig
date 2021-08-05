@@ -150,6 +150,9 @@ func (p *Exponent) Constant() *curve.Point {
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
 func (p *Exponent) WriteTo(w io.Writer) (int64, error) {
+	if p == nil {
+		return 0, io.ErrUnexpectedEOF
+	}
 	total := int64(0)
 
 	// write the number of coefficients

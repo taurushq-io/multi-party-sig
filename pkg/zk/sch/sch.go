@@ -41,6 +41,9 @@ func challenge(hash *hash.Hash, commitment *Commitment, public *curve.Point) *cu
 
 // Prove creates a Response = Randomness + H(..., Commitment, public)•secret (mod p).
 func (r *Randomness) Prove(hash *hash.Hash, public *curve.Point, secret *curve.Scalar) *Response {
+	if public.IsIdentity() || secret.IsZero() {
+		return nil
+	}
 	var p Response
 	p.Z = *challenge(hash, &r.commitment, public)
 	p.Z.MultiplyAdd(&p.Z, secret, &r.a)
@@ -54,7 +57,7 @@ func (r *Randomness) Commitment() *Commitment {
 
 // Verify checks that Response•G = Commitment + H(..., Commitment, public)•Public.
 func (z *Response) Verify(hash *hash.Hash, public *curve.Point, commitment *Commitment) bool {
-	if !z.IsValid() || public.IsIdentity() {
+	if z == nil || !z.IsValid() || public.IsIdentity() {
 		return false
 	}
 

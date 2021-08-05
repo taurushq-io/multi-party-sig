@@ -154,7 +154,7 @@ func (s *Scalar) Invert(t *Scalar) *Scalar {
 
 // IsZero returns true if s ≡ 0.
 func (s *Scalar) IsZero() bool {
-	return s.s.IsZero()
+	return s == nil || s.s.IsZero()
 }
 
 // BigInt returns s as a *big.Int.
@@ -178,6 +178,9 @@ func (s *Scalar) Bytes() [32]byte {
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
 func (s *Scalar) WriteTo(w io.Writer) (int64, error) {
+	if s == nil {
+		return 0, io.ErrUnexpectedEOF
+	}
 	buf := make([]byte, params.BytesScalar)
 	if _, err := s.MarshalTo(buf); err != nil {
 		return 0, err

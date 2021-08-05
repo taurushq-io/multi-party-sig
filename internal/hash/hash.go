@@ -1,6 +1,7 @@
 package hash
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -62,10 +63,13 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 	for _, d := range data {
 		switch t := d.(type) {
 		case []byte:
+			if t == nil {
+				return errors.New("hash.WriteAny: nil []byte")
+			}
 			toBeWritten = &BytesWithDomain{"[]byte", t}
 		case *big.Int:
 			if t == nil {
-				return fmt.Errorf("hash.Hash: write *big.Int: nil")
+				return errors.New("hash.WriteAny: write *big.Int: nil")
 			}
 			bytes, _ := t.GobEncode()
 			toBeWritten = &BytesWithDomain{"big.Int", bytes}

@@ -93,8 +93,8 @@ func NewIdentityPoint() *Point {
 }
 
 // IsIdentity returns true if the point is ∞.
-func (v Point) IsIdentity() bool {
-	return (v.p.X.IsZero() && v.p.Y.IsZero()) || v.p.Z.IsZero()
+func (v *Point) IsIdentity() bool {
+	return v == nil || (v.p.X.IsZero() && v.p.Y.IsZero()) || v.p.Z.IsZero()
 }
 
 // ToPublicKey returns an "official" ECDSA public key.
