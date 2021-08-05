@@ -16,7 +16,17 @@ Taproot's specific point encoding, as specified in [BIP-0340](https://github.com
 
 ## Features
 
-TODO (BIP32, safenum, etc.)
+- **[BIP-32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki) key derivation**.
+    Parties can convert their shares of a public key into shares of a child key,
+    as per BIP-32's key derivation spec. Only unhardened derivation is supported,
+    since hardened derivation would require hashing the secret key, which no party
+    has access to.
+- **Constant-time arithmetic**, via [safenum](https://github.com/cronokirby/safenum).
+    The CMP protocol requires Paillier encryption, as well as related ZK proofs
+    performing modular arithmetic. We use a constant-time implementation of this
+    arithmetic to mitigate timing-leaks
+- **Parallel processing.** When possible, we parallelize heavy computation to speed
+  up protocol execution.
 
 ## Usage
 
