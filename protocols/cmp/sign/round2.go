@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/cronokirby/safenum"
+	"github.com/taurusgroup/multi-party-sig/internal/mta"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
@@ -113,11 +114,9 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 		DeltaMtAProof := DeltaMtA[j].ProofAffG(
 			r.HashForID(r.SelfID()), r.GammaShare, r.BigGammaShare[r.SelfID()], r.K[j], DeltaShareBeta[j],
 			r.SecretPaillier, r.Paillier[j], r.Pedersen[j])
-		//r.HashForID(r.SelfID()), r.SecretPaillier, r.Paillier[j], r.Pedersen[j])
 		ChiMtAProof := ChiMtA[j].ProofAffG(
 			r.HashForID(r.SelfID()), r.SecretECDSA.Int(), r.ECDSA[r.SelfID()], r.K[j], ChiShareBeta[j],
 			r.SecretPaillier, r.Paillier[j], r.Pedersen[j])
-		//r.HashForID(r.SelfID()), r.SecretPaillier, r.Paillier[j], r.Pedersen[j])
 
 		msg := r.MarshalMessage(&Sign3{
 			EchoHash:      EchoHash,

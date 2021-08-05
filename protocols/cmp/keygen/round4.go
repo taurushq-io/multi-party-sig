@@ -33,12 +33,12 @@ func (r *round4) VerifyMessage(from party.ID, _ party.ID, content message.Conten
 	body := content.(*Keygen4)
 
 	// verify zkmod
-	if !body.Mod.Verify(r.HashForID(from), zkmod.Public{N: r.N[from]}) {
+	if !body.Mod.Verify(r.Pool, r.HashForID(from), zkmod.Public{N: r.N[from]}) {
 		return ErrRound4ZKMod
 	}
 
 	// verify zkprm
-	if !body.Prm.Verify(r.HashForID(from), zkprm.Public{N: r.N[from], S: r.S[from], T: r.T[from]}) {
+	if !body.Prm.Verify(r.Pool, r.HashForID(from), zkprm.Public{N: r.N[from], S: r.S[from], T: r.T[from]}) {
 		return ErrRound4ZKPrm
 	}
 
