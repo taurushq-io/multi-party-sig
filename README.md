@@ -6,7 +6,11 @@ A Go implementation of multi-party threshold signing for:
 
 * ECDSA, using the "CMP" protocol by [Canetti et al.](https://eprint.iacr.org/2021/060) for threshold ECDSA signing, with some additions to improve its practical reliability, including the "echo broadcast" from [Goldwasser and Lindell](https://doi.org/10.1007/s00145-005-0319-z). We documented these in [threshold_protocol.pdf](threshold_protocol.pdf). A list of proposed improvements is in [TODO.md](TODO.md). Our implementation supports ECDSA with secp256k1.
 
-* Schnorr signatures (as integrated in Bitcoin's Taproot), using the FROST protocol. (Elaborate...)
+* Schnorr signatures (as integrated in Bitcoin's Taproot), using the
+[FROST](https://eprint.iacr.org/2020/852.pdf) protocol. Because of the linear structure
+of Schnorr signatures, this protocol is less expensive then CMP. We've also
+made the necessary adjustments to make our signatures compatible with
+Taproot's specific point encoding, as specified in [BIP-0340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki).
 
 > DISCLAIMER: Use at your own risk, this project needs further testing and auditing to be production-ready.
 
