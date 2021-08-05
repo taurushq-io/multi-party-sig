@@ -12,6 +12,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/internal/params"
 	"github.com/taurusgroup/cmp-ecdsa/internal/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pool"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
 	"github.com/taurusgroup/cmp-ecdsa/protocols/cmp/keygen"
 	"golang.org/x/crypto/sha3"
@@ -61,6 +62,9 @@ func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundTy
 }
 
 func TestRound(t *testing.T) {
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+
 	N := 2
 	T := 1
 
@@ -68,7 +72,7 @@ func TestRound(t *testing.T) {
 	_, _ = rand.Read(rid)
 
 	t.Log("generating configs")
-	configs := keygen.FakeData(N, T, mrand.New(mrand.NewSource(1)))
+	configs := keygen.FakeData(N, T, mrand.New(mrand.NewSource(1)), pl)
 	partyIDs := make([]party.ID, 0, T+1)
 	for id, config := range configs {
 		configs[id], _ = config.DeriveChild(0)
@@ -87,7 +91,7 @@ func TestRound(t *testing.T) {
 	var err error
 	for _, partyID := range partyIDs {
 		c := configs[partyID]
-		rounds[partyID], _, err = StartSign(c, partyIDs, messageHash)()
+		rounds[partyID], _, err = StartSign(pl, c, partyIDs, messageHash)()
 		require.NoError(t, err, "round creation should not result in an error")
 	}
 

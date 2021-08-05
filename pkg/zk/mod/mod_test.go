@@ -10,14 +10,18 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/internal/hash"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pool"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/zk"
 )
 
 func TestMod(t *testing.T) {
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+
 	p, q := zk.ProverPaillierSecret.P(), zk.ProverPaillierSecret.Q()
 	sk := zk.ProverPaillierSecret
 	public := Public{N: sk.PublicKey.N()}
-	proof := NewProof(hash.New(), public, Private{
+	proof := NewProof(pl, hash.New(), public, Private{
 		P:   p,
 		Q:   q,
 		Phi: sk.Phi(),
@@ -31,14 +35,14 @@ func TestMod(t *testing.T) {
 	proof3 := &Proof{}
 	require.NoError(t, proof3.Unmarshal(out2), "failed to unmarshal 2nd proof")
 
-	assert.True(t, proof3.Verify(hash.New(), public))
+	assert.True(t, proof3.Verify(pl, hash.New(), public))
 
 	proof.W = big.NewInt(0)
 	for idx := range *proof.X {
 		(*proof.X)[idx] = big.NewInt(0)
 	}
 
-	assert.False(t, proof.Verify(hash.New(), public), "proof should have failed")
+	assert.False(t, proof.Verify(pl, hash.New(), public), "proof should have failed")
 }
 
 func Test_set4thRoot(t *testing.T) {

@@ -9,6 +9,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pool"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
 	zkenc "github.com/taurusgroup/cmp-ecdsa/pkg/zk/enc"
 )
@@ -17,6 +18,9 @@ var _ round.Round = (*round1)(nil)
 
 type round1 struct {
 	*round.Helper
+
+	// Pool allows us to parallelize certain operations
+	Pool *pool.Pool
 
 	PublicKey *curve.Point
 
@@ -58,7 +62,9 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Kᵢ = Encᵢ(kᵢ;ρᵢ)
 	K, KNonce := r.Paillier[r.SelfID()].Enc(KShare.Int())
 
-	for _, j := range r.OtherPartyIDs() {
+	otherIDs := r.OtherPartyIDs()
+	errors := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
+		j := otherIDs[i]
 		proof := zkenc.NewProof(r.HashForID(r.SelfID()), zkenc.Public{
 			K:      K,
 			Prover: r.Paillier[r.SelfID()],
@@ -75,7 +81,13 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 			G:        G,
 		}, j)
 		if err := r.SendMessage(msg, out); err != nil {
-			return r, err
+			return err
+		}
+		return nil
+	})
+	for _, err := range errors {
+		if err != nil {
+			return r, err.(error)
 		}
 	}
 

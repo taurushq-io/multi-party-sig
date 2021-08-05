@@ -10,6 +10,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/polynomial"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pool"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
 	zksch "github.com/taurusgroup/cmp-ecdsa/pkg/zk/sch"
 )
@@ -18,6 +19,9 @@ var _ round.Round = (*round1)(nil)
 
 type round1 struct {
 	*round.Helper
+
+	// Pool is used to parallelize operations
+	Pool *pool.Pool
 
 	// Threshold is the integer t which defines the maximum number of corruptions tolerated for this config.
 	Threshold int
@@ -66,7 +70,7 @@ func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
 // - commit to message.
 func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// generate Paillier and Pedersen
-	PaillierSecret := paillier.NewSecretKey()
+	PaillierSecret := paillier.NewSecretKey(nil)
 	SelfPaillierPublic := PaillierSecret.PublicKey
 	SelfPedersenPublic, PedersenSecret := PaillierSecret.GeneratePedersen()
 

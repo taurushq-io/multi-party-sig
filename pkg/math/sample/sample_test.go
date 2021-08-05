@@ -7,6 +7,7 @@ import (
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/cmp-ecdsa/internal/params"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pool"
 )
 
 func TestModN(t *testing.T) {
@@ -20,8 +21,12 @@ func TestModN(t *testing.T) {
 
 const blumPrimeProbabilityIterations = 20
 
-func TestBlumPrime(t *testing.T) {
-	p := BlumPrime(rand.Reader).Big()
+func TestPaillier(t *testing.T) {
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+
+	pNat, _ := Paillier(rand.Reader, pl)
+	p := pNat.Big()
 	if !p.ProbablyPrime(blumPrimeProbabilityIterations) {
 		t.Error("BlumPrime generated a non prime number: ", p)
 	}
@@ -36,9 +41,12 @@ func TestBlumPrime(t *testing.T) {
 // having them optimized away.
 var resultNat *safenum.Nat
 
-func BenchmarkBlumPrime(b *testing.B) {
+func BenchmarkPaillier(b *testing.B) {
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+
 	for i := 0; i < b.N; i++ {
-		resultNat = BlumPrime(rand.Reader)
+		resultNat, _ = Paillier(rand.Reader, pl)
 	}
 }
 

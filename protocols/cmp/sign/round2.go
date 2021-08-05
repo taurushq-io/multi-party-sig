@@ -84,7 +84,10 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	ChiMtA := map[party.ID]*MtA{}
 
 	// Broadcast the message we created in round1
-	for _, j := range r.OtherPartyIDs() {
+	otherIDs := r.OtherPartyIDs()
+	errors := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
+		j := otherIDs[i]
+
 		DeltaMtA[j] = NewMtA(
 			r.GammaShare,
 			r.BigGammaShare[r.SelfID()],
@@ -111,7 +114,14 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 			ProofLog:      proofLog,
 		}, j)
 		if err := r.SendMessage(msg, out); err != nil {
-			return r, err
+			return err
+		}
+
+		return nil
+	})
+	for _, err := range errors {
+		if err != nil {
+			return r, err.(error)
 		}
 	}
 

@@ -94,7 +94,10 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 		Rho: r.KNonce,
 	}
 
-	for _, j := range r.OtherPartyIDs() {
+	otherIDs := r.OtherPartyIDs()
+	errors := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
+		j := otherIDs[i]
+
 		proofLog := zklogstar.NewProof(r.HashForID(r.SelfID()), zklogstar.Public{
 			C:      r.K[r.SelfID()],
 			X:      BigDeltaShare,
@@ -109,7 +112,13 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 			ProofLog:      proofLog,
 		}, j)
 		if err := r.SendMessage(msg, out); err != nil {
-			return r, err
+			return err
+		}
+		return nil
+	})
+	for _, err := range errors {
+		if err != nil {
+			return r, err.(error)
 		}
 	}
 

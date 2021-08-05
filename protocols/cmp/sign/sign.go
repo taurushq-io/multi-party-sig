@@ -11,6 +11,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/pkg/paillier"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pool"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/types"
 	"github.com/taurusgroup/cmp-ecdsa/protocols/cmp/keygen"
@@ -30,8 +31,9 @@ var (
 	_ round.Round = (*output)(nil)
 )
 
-func StartSign(config *keygen.Config, signers []party.ID, message []byte) protocol.StartFunc {
+func StartSign(pl *pool.Pool, config *keygen.Config, signers []party.ID, message []byte) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
+
 		// this could be used to indicate a pre-signature later on
 		if len(message) == 0 {
 			return nil, nil, errors.New("sign.Create: message is nil")
@@ -91,6 +93,7 @@ func StartSign(config *keygen.Config, signers []party.ID, message []byte) protoc
 
 		return &round1{
 			Helper:         helper,
+			Pool:           pl,
 			PublicKey:      PublicKey,
 			SecretECDSA:    SecretECDSA,
 			SecretPaillier: config.Paillier(),

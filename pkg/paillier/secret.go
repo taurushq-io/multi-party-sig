@@ -9,6 +9,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/internal/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/pedersen"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pool"
 )
 
 var (
@@ -53,14 +54,14 @@ func (sk *SecretKey) Phi() *safenum.Nat {
 	return sk.phi
 }
 
-func KeyGen() (pk *PublicKey, sk *SecretKey) {
-	sk = NewSecretKey()
+func KeyGen(pl *pool.Pool) (pk *PublicKey, sk *SecretKey) {
+	sk = NewSecretKey(pl)
 	pk = sk.PublicKey
 	return
 }
 
-func NewSecretKey() *SecretKey {
-	return NewSecretKeyFromPrimes(sample.Paillier(rand.Reader))
+func NewSecretKey(pl *pool.Pool) *SecretKey {
+	return NewSecretKeyFromPrimes(sample.Paillier(rand.Reader, pl))
 }
 
 func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {

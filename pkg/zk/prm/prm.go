@@ -10,6 +10,7 @@ import (
 	"github.com/taurusgroup/cmp-ecdsa/internal/params"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/arith"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pool"
 )
 
 type (
@@ -42,7 +43,7 @@ func (p Proof) IsValid(public Public) bool {
 
 // NewProof generates a proof that:
 // s = t^lambda (mod N).
-func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
+func NewProof(pl *pool.Pool, hash *hash.Hash, public Public, private Private) *Proof {
 	n := public.N
 	lambda := private.Lambda
 	phi := safenum.ModulusFromNat(private.Phi)
@@ -50,18 +51,22 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	a := make([]*safenum.Nat, params.StatParam)
 	A := make([]*big.Int, params.StatParam)
 
-	for i := 0; i < params.StatParam; i++ {
+	lockedRand := pool.NewLockedReader(rand.Reader)
+	pl.Parallelize(params.StatParam, func(i int) interface{} {
 		// aᵢ ∈ mod ϕ(N)
-		a[i] = sample.ModN(rand.Reader, phi)
+		a[i] = sample.ModN(lockedRand, phi)
 
 		// Aᵢ = tᵃ mod N
 		A[i] = a[i].Big()
 		A[i] = A[i].Exp(public.T, A[i], n)
-	}
+
+		return nil
+	})
 
 	es := challenge(hash, public, A)
 
 	Z := make([]*big.Int, params.StatParam)
+	// Modular addition is not expensive enough to warrant parallelizing
 	for i := 0; i < params.StatParam; i++ {
 		z := a[i]
 		// The challenge is public, so branching is ok
@@ -77,7 +82,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	}
 }
 
-func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
+func (p *Proof) Verify(pl *pool.Pool, hash *hash.Hash, public Public) bool {
 	if !p.IsValid(public) {
 		return false
 	}
@@ -86,9 +91,9 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 
 	es := challenge(hash, public, *p.A)
 
-	var lhs, rhs big.Int
 	one := big.NewInt(1)
-	for i := 0; i < params.StatParam; i++ {
+	verifications := pl.Parallelize(params.StatParam, func(i int) interface{} {
+		var lhs, rhs big.Int
 		z := (*p.Z)[i]
 		a := (*p.A)[i]
 
@@ -105,6 +110,14 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 		}
 
 		if lhs.Cmp(&rhs) != 0 {
+			return false
+		}
+
+		return true
+	})
+	for i := 0; i < len(verifications); i++ {
+		ok, _ := verifications[i].(bool)
+		if !ok {
 			return false
 		}
 	}

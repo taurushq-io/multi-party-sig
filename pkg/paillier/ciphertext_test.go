@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/taurusgroup/cmp-ecdsa/internal/proto"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/math/sample"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pool"
 )
 
 var (
@@ -30,7 +31,9 @@ func init() {
 }
 
 func reinit() {
-	paillierPublic, paillierSecret = KeyGen()
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+	paillierPublic, paillierSecret = KeyGen(pl)
 }
 
 func TestCiphertextValidate(t *testing.T) {

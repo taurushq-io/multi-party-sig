@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/cmp-ecdsa/internal/round"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/party"
+	"github.com/taurusgroup/cmp-ecdsa/pkg/pool"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol"
 	"github.com/taurusgroup/cmp-ecdsa/pkg/protocol/message"
 )
@@ -76,12 +77,15 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
 }
 
 func TestKeygen(t *testing.T) {
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+
 	N := 2
 	partyIDs := party.RandomIDs(N)
 
 	rounds := make(map[party.ID]round.Round, N)
 	for _, partyID := range partyIDs {
-		r, _, err := StartKeygen(partyIDs, N-1, partyID)()
+		r, _, err := StartKeygen(pl, partyIDs, N-1, partyID)()
 		require.NoError(t, err, "round creation should not result in an error")
 		rounds[partyID] = r
 
@@ -94,13 +98,16 @@ func TestKeygen(t *testing.T) {
 }
 
 func TestRefresh(t *testing.T) {
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+
 	N := 4
 	T := N - 1
-	configs := FakeData(N, T, mrand.New(mrand.NewSource(1)))
+	configs := FakeData(N, T, mrand.New(mrand.NewSource(1)), pl)
 
 	parties := make(map[party.ID]round.Round, N)
 	for partyID, s := range configs {
-		r, _, err := StartRefresh(s)()
+		r, _, err := StartRefresh(pl, s)()
 		require.NoError(t, err, "round creation should not result in an error")
 		parties[partyID] = r
 
@@ -113,6 +120,9 @@ func TestRefresh(t *testing.T) {
 }
 
 func TestProtocol(t *testing.T) {
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+
 	ids := party.IDSlice{"a", "b"}
 	threshold := 1
 	ps := map[party.ID]*protocol.Handler{}
@@ -143,7 +153,7 @@ func TestProtocol(t *testing.T) {
 	}
 
 	for _, id := range ids {
-		p, err := protocol.NewHandler(StartKeygen(ids, threshold, id))
+		p, err := protocol.NewHandler(StartKeygen(pl, ids, threshold, id))
 		require.NoError(t, err)
 		ps[id] = p
 	}
@@ -165,7 +175,7 @@ func TestProtocol(t *testing.T) {
 	for id, p := range ps {
 		r, _ := p.Result()
 		res := r.(*Result)
-		p2, err := protocol.NewHandler(StartRefresh(res.Config))
+		p2, err := protocol.NewHandler(StartRefresh(pl, res.Config))
 		require.NoError(t, err)
 		newPs[id] = p2
 	}
