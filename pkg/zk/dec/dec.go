@@ -33,7 +33,10 @@ type (
 	}
 )
 
-func (p Proof) IsValid(public Public) bool {
+func (p *Proof) IsValid(public Public) bool {
+	if p == nil {
+		return false
+	}
 	if p.Gamma == nil || p.Gamma.IsZero() {
 		return false
 	}
@@ -65,7 +68,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 		Gamma: gamma,
 	}
 
-	e := challenge(hash, public, commitment)
+	e, _ := challenge(hash, public, commitment)
 
 	// z₁ = e•y+α
 	z1 := new(safenum.Int).Mul(e, private.Y, -1)
@@ -90,7 +93,10 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 		return false
 	}
 
-	e := challenge(hash, public, p.Commitment)
+	e, err := challenge(hash, public, p.Commitment)
+	if err != nil {
+		return false
+	}
 
 	if !public.Aux.Verify(p.Z1, p.Z2, p.T, p.S, e.Big()) {
 		return false
@@ -125,10 +131,10 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment *Commitment) *safenum.Int {
-	_ = hash.WriteAny(public.Aux, public.Prover,
+func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safenum.Int, err error) {
+	err = hash.WriteAny(public.Aux, public.Prover,
 		public.C, public.X,
 		commitment.S, commitment.T, commitment.A, commitment.Gamma)
-
-	return sample.IntervalScalar(hash.Digest())
+	e = sample.IntervalScalar(hash.Digest())
+	return
 }

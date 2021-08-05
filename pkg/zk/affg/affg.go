@@ -54,7 +54,10 @@ type (
 	}
 )
 
-func (p Proof) IsValid(public Public) bool {
+func (p *Proof) IsValid(public Public) bool {
+	if p == nil {
+		return false
+	}
 	if !public.Verifier.ValidateCiphertexts(p.A) {
 		return false
 	}
@@ -106,7 +109,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 		T:  public.Aux.Commit(private.Y, mu),
 	}
 
-	e := challenge(hash, public, commitment)
+	e, _ := challenge(hash, public, commitment)
 
 	// e•x+α
 	z1 := new(safenum.Int).Mul(e, private.X, -1)
@@ -153,7 +156,10 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 		return false
 	}
 
-	e := challenge(hash, public, p.Commitment)
+	e, err := challenge(hash, public, p.Commitment)
+	if err != nil {
+		return false
+	}
 	eBig := e.Big()
 
 	if !public.Aux.Verify(p.Z1, p.Z3, p.E, p.S, eBig) {
@@ -211,11 +217,12 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment *Commitment) *safenum.Int {
-	_ = hash.WriteAny(public.Aux, public.Prover, public.Verifier,
+func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safenum.Int, err error) {
+	err = hash.WriteAny(public.Aux, public.Prover, public.Verifier,
 		public.C, public.D, public.Y, public.X,
 		commitment.A, commitment.Bx, commitment.By,
 		commitment.E, commitment.S, commitment.F, commitment.T)
 
-	return sample.IntervalScalar(hash.Digest())
+	e = sample.IntervalScalar(hash.Digest())
+	return
 }

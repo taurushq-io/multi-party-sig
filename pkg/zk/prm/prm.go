@@ -22,7 +22,10 @@ type (
 	}
 )
 
-func (p Proof) IsValid(public Public) bool {
+func (p *Proof) IsValid(public Public) bool {
+	if p == nil {
+		return false
+	}
 	if len(*p.A) != params.StatParam || len(*p.Z) != params.StatParam {
 		return false
 	}
@@ -64,7 +67,7 @@ func NewProof(pl *pool.Pool, hash *hash.Hash, public Public, private Private) *P
 		return nil
 	})
 
-	es := challenge(hash, public, A)
+	es, _ := challenge(hash, public, A)
 
 	Z := make([]*big.Int, params.StatParam)
 	// Modular addition is not expensive enough to warrant parallelizing
@@ -90,7 +93,10 @@ func (p *Proof) Verify(pl *pool.Pool, hash *hash.Hash, public Public) bool {
 
 	n, s, t := public.N, public.S, public.T
 
-	es := challenge(hash, public, *p.A)
+	es, err := challenge(hash, public, *p.A)
+	if err != nil {
+		return false
+	}
 
 	one := big.NewInt(1)
 	verifications := pl.Parallelize(params.StatParam, func(i int) interface{} {
@@ -125,8 +131,8 @@ func (p *Proof) Verify(pl *pool.Pool, hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, A []*big.Int) []bool {
-	_ = hash.WriteAny(public.N, public.S, public.T)
+func challenge(hash *hash.Hash, public Public, A []*big.Int) (es []bool, err error) {
+	err = hash.WriteAny(public.N, public.S, public.T)
 	for _, a := range A {
 		_ = hash.WriteAny(a)
 	}
@@ -134,11 +140,11 @@ func challenge(hash *hash.Hash, public Public, A []*big.Int) []bool {
 	tmpBytes := make([]byte, params.StatParam)
 	_, _ = io.ReadFull(hash.Digest(), tmpBytes)
 
-	out := make([]bool, params.StatParam)
-	for i := range out {
+	es = make([]bool, params.StatParam)
+	for i := range es {
 		b := (tmpBytes[i] & 1) == 1
-		out[i] = b
+		es[i] = b
 	}
 
-	return out
+	return
 }

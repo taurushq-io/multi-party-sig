@@ -34,9 +34,10 @@ func NewRandomness(rand io.Reader) *Randomness {
 	return &r
 }
 
-func challenge(hash *hash.Hash, commitment *Commitment, public *curve.Point) *curve.Scalar {
-	_ = hash.WriteAny(&commitment.C, public)
-	return sample.Scalar(hash.Digest())
+func challenge(hash *hash.Hash, commitment *Commitment, public *curve.Point) (e *curve.Scalar, err error) {
+	err = hash.WriteAny(&commitment.C, public)
+	e = sample.Scalar(hash.Digest())
+	return
 }
 
 // Prove creates a Response = Randomness + H(..., Commitment, public)•secret (mod p).
@@ -45,8 +46,11 @@ func (r *Randomness) Prove(hash *hash.Hash, public *curve.Point, secret *curve.S
 		return nil
 	}
 	var p Response
-	p.Z = *challenge(hash, &r.commitment, public)
-	p.Z.MultiplyAdd(&p.Z, secret, &r.a)
+	z, err := challenge(hash, &r.commitment, public)
+	if err != nil {
+		return nil
+	}
+	p.Z.MultiplyAdd(z, secret, &r.a)
 	return &p
 }
 
@@ -61,7 +65,10 @@ func (z *Response) Verify(hash *hash.Hash, public *curve.Point, commitment *Comm
 		return false
 	}
 
-	e := challenge(hash, commitment, public)
+	e, err := challenge(hash, commitment, public)
+	if err != nil {
+		return false
+	}
 
 	var lhs, rhs curve.Point
 	lhs.ScalarBaseMult(&z.Z)

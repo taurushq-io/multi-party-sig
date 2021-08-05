@@ -107,6 +107,9 @@ func makeQuadraticResidue(y, w, pHalf, qHalf *safenum.Nat, n, p, q *safenum.Modu
 }
 
 func (p *Proof) IsValid(public Public) bool {
+	if p == nil {
+		return false
+	}
 	if len(*p.X) != params.StatParam ||
 		len(p.A) != params.StatParam ||
 		len(p.B) != params.StatParam ||
@@ -165,7 +168,7 @@ func NewProof(pl *pool.Pool, hash *hash.Hash, public Public, private Private) *P
 	Bs := make([]bool, params.StatParam)
 	Zs := make([]*big.Int, params.StatParam)
 
-	ys := challenge(hash, n, w)
+	ys, _ := challenge(hash, n, w)
 
 	pl.Parallelize(params.StatParam, func(i int) interface{} {
 		y := new(safenum.Nat).SetBig(ys[i], ys[i].BitLen())
@@ -207,7 +210,10 @@ func (p *Proof) Verify(pl *pool.Pool, hash *hash.Hash, public Public) bool {
 	}
 
 	// get [yᵢ] <- ℤₙ
-	ys := challenge(hash, n, p.W)
+	ys, err := challenge(hash, n, p.W)
+	if err != nil {
+		return false
+	}
 
 	four := big.NewInt(4)
 	verifications := pl.Parallelize(params.StatParam, func(i int) interface{} {
@@ -255,13 +261,12 @@ func (p *Proof) Verify(pl *pool.Pool, hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, n, w *big.Int) []*big.Int {
-	_ = hash.WriteAny(n, w)
-	out := make([]*big.Int, params.StatParam)
+func challenge(hash *hash.Hash, n, w *big.Int) (es []*big.Int, err error) {
+	err = hash.WriteAny(n, w)
+	es = make([]*big.Int, params.StatParam)
 	nMod := safenum.ModulusFromNat(new(safenum.Nat).SetBig(n, n.BitLen()))
-	for i := range out {
-		out[i] = sample.ModN(hash.Digest(), nMod).Big()
+	for i := range es {
+		es[i] = sample.ModN(hash.Digest(), nMod).Big()
 	}
-
-	return out
+	return
 }

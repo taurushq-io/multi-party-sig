@@ -37,6 +37,9 @@ type (
 )
 
 func (p *Proof) IsValid(public Public) bool {
+	if p == nil {
+		return false
+	}
 	if !arith.IsValidModN(public.Prover.N(), p.U, p.V) {
 		return false
 	}
@@ -63,7 +66,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 		A: A,
 		B: prover.EncWithNonce(alpha, s),
 	}
-	e := challenge(hash, public, commitment)
+	e, _ := challenge(hash, public, commitment)
 
 	// Z = α + ex
 	z := new(safenum.Int).Mul(e, private.X, -1)
@@ -90,7 +93,10 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 
 	prover := public.Prover
 
-	e := challenge(hash, public, p.Commitment)
+	e, err := challenge(hash, public, p.Commitment)
+	if err != nil {
+		return false
+	}
 
 	z := new(safenum.Int).SetBig(p.Z, p.Z.BitLen())
 	v := new(safenum.Nat).SetBig(p.V, p.V.BitLen())
@@ -121,9 +127,10 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment *Commitment) *safenum.Int {
-	_ = hash.WriteAny(public.Prover,
+func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safenum.Int, err error) {
+	err = hash.WriteAny(public.Prover,
 		public.X, public.Y, public.C,
 		commitment.A, commitment.B)
-	return sample.IntervalScalar(hash.Digest())
+	e = sample.IntervalScalar(hash.Digest())
+	return
 }
