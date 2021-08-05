@@ -201,16 +201,14 @@ const maxPrimeIterations = 100_000
 // ErrMaxPrimeIterations is the error we return when we fail to generate a prime.
 var ErrMaxPrimeIterations = fmt.Errorf("sample: failed to generate prime after %d iterations", maxPrimeIterations)
 
-var one = new(big.Int).SetUint64(1)
-
 func tryBlumPrime(rand io.Reader) *safenum.Nat {
 	p, err := potentialSafePrime(rand, params.BitsBlumPrime)
 	if err != nil {
 		return nil
 	}
 	// For p to be safe, we need q := (p - 1) / 2 to also be prime
-	q := new(big.Int).Sub(p, one)
-	q.Rsh(q, 1)
+	// Since p is odd, p / 2 = (p - 1) / 2
+	q := new(big.Int).Rsh(p, 1)
 	// p is likely to be prime already, so let's first do the other check,
 	// which is more likely to fail.
 	if !q.ProbablyPrime(blumPrimalityIterations) {
