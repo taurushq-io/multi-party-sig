@@ -53,11 +53,10 @@ func workerSearch(results []interface{}, ctrChanged chan<- struct{}, f func(int)
 			continue
 		}
 		i := atomic.AddInt64(ctr, -1)
-		ctrChanged <- struct{}{}
-		if i < 0 {
-			break
+		if i >= 0 {
+			results[i] = res
 		}
-		results[i] = res
+		ctrChanged <- struct{}{}
 	}
 }
 
@@ -138,8 +137,13 @@ func (p *Pool) Search(count int, f func() interface{}) []interface{} {
 		f:       func(i int) interface{} { return f() },
 		results: results,
 	}
-	for i := 0; i < p.workerCount; i++ {
-		p.commands <- cmd
+	cmdI := 0
+	for cmdI < p.workerCount {
+		select {
+		case p.commands <- cmd:
+			cmdI++
+		case <-p.ctrChanged:
+		}
 	}
 	for atomic.LoadInt64(&ctr) > 0 {
 		<-p.ctrChanged
