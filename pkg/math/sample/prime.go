@@ -50,6 +50,12 @@ const blumPrimalityIterations = 20
 
 var thePrimes []uint32
 var initPrimes sync.Once
+var sievePool = sync.Pool{
+	New: func() interface{} {
+		sieve := make([]bool, sieveSize)
+		return &sieve
+	},
+}
 
 func tryBlumPrime(rand io.Reader) *safenum.Nat {
 	initPrimes.Do(func() {
@@ -70,7 +76,9 @@ func tryBlumPrime(rand io.Reader) *safenum.Nat {
 	base := new(big.Int).SetBytes(bytes)
 
 	// sieve checks the candidacy of base, base+1, base+2, etc.
-	sieve := make([]bool, sieveSize)
+	sievePtr := sievePool.Get().(*[]bool)
+	sieve := *sievePtr
+	defer sievePool.Put(sievePtr)
 	for i := 0; i < len(sieve); i++ {
 		sieve[i] = true
 	}
