@@ -2,7 +2,6 @@ package sign
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 
 	"github.com/cronokirby/safenum"
@@ -36,12 +35,28 @@ type round3 struct {
 	EchoHash []byte
 }
 
+type Sign3 struct {
+	// EchoHash = Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
+	EchoHash      []byte
+	BigGammaShare *curve.Point
+	DeltaMtA      *mta.Message
+	ChiMtA        *mta.Message
+	ProofLog      *zklogstar.Proof
+}
+
 // VerifyMessage implements round.Round.
 //
 // - verify Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
 // - verify zkproofs affg (2x) zklog*.
 func (r *round3) VerifyMessage(from party.ID, to party.ID, content message.Content) error {
-	body := content.(*Sign3)
+	body, ok := content.(*Sign3)
+	if !ok || body == nil {
+		return message.ErrInvalidContent
+	}
+
+	if body.BigGammaShare == nil || body.DeltaMtA == nil || body.ChiMtA == nil || body.ProofLog == nil {
+		return message.ErrNilContent
+	}
 
 	if !bytes.Equal(body.EchoHash, r.EchoHash) {
 		return ErrRound3EchoHash
@@ -74,6 +89,7 @@ func (r *round3) VerifyMessage(from party.ID, to party.ID, content message.Conte
 // - save Γⱼ, αᵢⱼ, α̂ᵢⱼ.
 func (r *round3) StoreMessage(from party.ID, content message.Content) error {
 	body := content.(*Sign3)
+
 	r.BigGammaShare[from] = body.BigGammaShare
 
 	ChiShareAlpha, err := body.ChiMtA.AlphaShare(r.SecretPaillier)
@@ -169,17 +185,6 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 // MessageContent implements round.Round.
 func (r *round3) MessageContent() message.Content { return &Sign3{} }
-
-// Validate implements message.Content.
-func (m *Sign3) Validate() error {
-	if m == nil {
-		return errors.New("sign.round3: message is nil")
-	}
-	if m.BigGammaShare == nil || m.DeltaMtA == nil || m.ChiMtA == nil || m.ProofLog == nil {
-		return errors.New("sign.round3: message contains nil fields")
-	}
-	return nil
-}
 
 // RoundNumber implements message.Content.
 func (m *Sign3) RoundNumber() types.RoundNumber { return 3 }

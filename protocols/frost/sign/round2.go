@@ -36,9 +36,19 @@ type round2 struct {
 	E map[party.ID]*curve.Point
 }
 
+type Sign2 struct {
+	// D_i is the first commitment produced by the sender of this message.
+	D_i *curve.Point
+	// E_i is the second commitment produced by the sender of this message.
+	E_i *curve.Point
+}
+
 // VerifyMessage implements round.Round.
 func (r *round2) VerifyMessage(_ party.ID, _ party.ID, content message.Content) error {
-	msg := content.(*Sign2)
+	body, ok := content.(*Sign2)
+	if !ok || body == nil {
+		return message.ErrInvalidContent
+	}
 
 	// This section roughly follows Figure 3.
 
@@ -53,7 +63,7 @@ func (r *round2) VerifyMessage(_ party.ID, _ party.ID, content message.Content) 
 	//
 	// We also receive each Dₗ, Eₗ from the participant l directly, instead of
 	// an entire bundle from a signing authority.
-	if msg.D_i.IsIdentity() || msg.E_i.IsIdentity() {
+	if body.D_i.IsIdentity() || body.E_i.IsIdentity() {
 		return fmt.Errorf("nonce commitment is the identity point")
 	}
 
@@ -165,11 +175,6 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 // MessageContent implements round.Round.
 func (r *round2) MessageContent() message.Content {
 	return &Sign2{}
-}
-
-// Validate implements message.Content.
-func (m *Sign2) Validate() error {
-	return nil
 }
 
 // RoundNumber implements message.Content.

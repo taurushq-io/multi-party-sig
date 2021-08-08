@@ -3,10 +3,10 @@ package keygen
 import (
 	"errors"
 
-	"github.com/taurusgroup/multi-party-sig/internal/proto"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
+	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
@@ -26,11 +26,42 @@ type round4 struct {
 	ChainKey []byte
 }
 
+type Keygen4 struct {
+	Mod *zkmod.Proof
+	Prm *zkprm.Proof
+	// Share = Encᵢ(x) is the encryption of the receivers share
+	Share *paillier.Ciphertext
+}
+
+// Validate implements message.Content.
+func (m *Keygen4) Validate() error {
+	if m == nil {
+		return errors.New("keygen.round4: message is nil")
+	}
+	if m.Mod == nil {
+		return errors.New("keygen.round4: zkmod proof is nil")
+	}
+	if m.Prm == nil {
+		return errors.New("keygen.round4: zkprm proof is nil")
+	}
+	if m.Share == nil {
+		return errors.New("keygen.round4: Share proof is nil")
+	}
+	return nil
+}
+
 // VerifyMessage implements round.Round.
 //
 // - verify Mod, Prm proof for N
 func (r *round4) VerifyMessage(from party.ID, _ party.ID, content message.Content) error {
-	body := content.(*Keygen4)
+	body, ok := content.(*Keygen4)
+	if !ok || body == nil {
+		return message.ErrInvalidContent
+	}
+
+	if body.Mod == nil || body.Prm == nil || body.Share == nil {
+		return message.ErrNilContent
+	}
 
 	// verify zkmod
 	if !body.Mod.Verify(r.Pool, r.HashForID(from), zkmod.Public{N: r.N[from]}) {
@@ -120,12 +151,10 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 		Public:    PublicData,
 		RID:       r.RID.Copy(),
 		ChainKey:  r.ChainKey,
-		Secret: &Secret{
-			ID:    r.SelfID(),
-			ECDSA: UpdatedSecretECDSA,
-			P:     &proto.NatMarshaller{Nat: r.PaillierSecret.P()},
-			Q:     &proto.NatMarshaller{Nat: r.PaillierSecret.Q()},
-		},
+		ID:        r.SelfID(),
+		ECDSA:     UpdatedSecretECDSA,
+		P:         r.PaillierSecret.P(),
+		Q:         r.PaillierSecret.Q(),
 	}
 
 	// write new ssid to hash, to bind the Schnorr proof to this new config
@@ -150,23 +179,6 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 // MessageContent implements round.Round.
 func (r *round4) MessageContent() message.Content { return &Keygen4{} }
-
-// Validate implements message.Content.
-func (m *Keygen4) Validate() error {
-	if m == nil {
-		return errors.New("keygen.round4: message is nil")
-	}
-	if m.Mod == nil {
-		return errors.New("keygen.round4: zkmod proof is nil")
-	}
-	if m.Prm == nil {
-		return errors.New("keygen.round4: zkprm proof is nil")
-	}
-	if m.Share == nil {
-		return errors.New("keygen.round4: Share proof is nil")
-	}
-	return nil
-}
 
 // RoundNumber implements message.Content.
 func (m *Keygen4) RoundNumber() types.RoundNumber { return 5 }

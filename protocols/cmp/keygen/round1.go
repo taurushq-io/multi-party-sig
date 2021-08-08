@@ -2,8 +2,8 @@ package keygen
 
 import (
 	"crypto/rand"
-	"math/big"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -117,9 +117,9 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 		ChainKeys:      map[party.ID]RID{r.SelfID(): chainKey},
 		ShareReceived:  map[party.ID]*curve.Scalar{r.SelfID(): SelfShare},
 		PaillierPublic: map[party.ID]*paillier.PublicKey{r.SelfID(): SelfPaillierPublic},
-		N:              map[party.ID]*big.Int{r.SelfID(): SelfPedersenPublic.N()},
-		S:              map[party.ID]*big.Int{r.SelfID(): SelfPedersenPublic.S()},
-		T:              map[party.ID]*big.Int{r.SelfID(): SelfPedersenPublic.T()},
+		N:              map[party.ID]*safenum.Modulus{r.SelfID(): SelfPedersenPublic.N()},
+		S:              map[party.ID]*safenum.Nat{r.SelfID(): SelfPedersenPublic.S()},
+		T:              map[party.ID]*safenum.Nat{r.SelfID(): SelfPedersenPublic.T()},
 		PaillierSecret: PaillierSecret,
 		PedersenSecret: PedersenSecret,
 		SchnorrRand:    SchnorrRand,

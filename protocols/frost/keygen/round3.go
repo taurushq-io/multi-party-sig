@@ -1,9 +1,9 @@
 package keygen
 
 import (
-	"errors"
 	"fmt"
 
+	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -24,13 +24,30 @@ type round3 struct {
 	shareFrom map[party.ID]*curve.Scalar
 }
 
+type Keygen3 struct {
+	// F_li is the secret share sent from party l to this party.
+	F_li *curve.Scalar
+	// C_l is contribution to the chaining key for this party.
+	C_l []byte
+	// Decommitment = uᵢ decommitment bytes
+	Decommitment hash.Decommitment
+}
+
 // VerifyMessage implements round.Round.
 func (r *round3) VerifyMessage(from party.ID, to party.ID, content message.Content) error {
-	msg := content.(*Keygen3)
+	body, ok := content.(*Keygen3)
+	if !ok || body == nil {
+		return message.ErrInvalidContent
+	}
+
+	// check nil
+	if body.F_li == nil {
+		return message.ErrNilFields
+	}
 
 	// Verify that the commitment to the chain key contribution matches, and then xor
 	// it into the accumulated chain key so far.
-	if !r.HashForID(from).Decommit(r.ChainKeyCommitments[from], msg.Decommitment, msg.C_l) {
+	if !r.HashForID(from).Decommit(r.ChainKeyCommitments[from], body.Decommitment, body.C_l) {
 		return fmt.Errorf("failed to verify chain key commitment")
 	}
 	return nil
@@ -146,17 +163,6 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 // Since this is the first round of the protocol, we expect to see a dummy First type.
 func (r *round3) MessageContent() message.Content {
 	return &Keygen3{}
-}
-
-// Validate implements message.Content.
-func (m *Keygen3) Validate() error {
-	if m == nil {
-		return errors.New("keygen.round3: message is nil")
-	}
-	if m.F_li == nil {
-		return errors.New("keygen.round3: a message field is nil")
-	}
-	return nil
 }
 
 // RoundNumber implements message.Content.

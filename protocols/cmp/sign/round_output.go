@@ -2,7 +2,6 @@ package sign
 
 import (
 	"crypto/ecdsa"
-	"errors"
 
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -33,8 +32,23 @@ type output struct {
 	R *curve.Scalar
 }
 
+type SignOutput struct {
+	SigmaShare *curve.Scalar
+}
+
 // VerifyMessage implements round.Round.
-func (r *output) VerifyMessage(party.ID, party.ID, message.Content) error { return nil }
+func (r *output) VerifyMessage(_ party.ID, _ party.ID, content message.Content) error {
+	body, ok := content.(*SignOutput)
+	if !ok || body == nil {
+		return message.ErrInvalidContent
+	}
+
+	if body.SigmaShare == nil || body.SigmaShare.IsZero() {
+		return message.ErrNilContent
+	}
+
+	return nil
+}
 
 // StoreMessage implements round.Round.
 //
@@ -75,16 +89,6 @@ func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {
 
 func (r *output) MessageContent() message.Content {
 	return &SignOutput{}
-}
-
-func (m *SignOutput) Validate() error {
-	if m == nil {
-		return errors.New("sign.output: message is nil")
-	}
-	if m.SigmaShare == nil || m.SigmaShare.IsZero() {
-		return errors.New("sign.output: SigmaShare is nil or 0")
-	}
-	return nil
 }
 
 func (m *SignOutput) RoundNumber() types.RoundNumber {

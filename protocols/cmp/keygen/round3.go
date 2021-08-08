@@ -2,11 +2,11 @@ package keygen
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
@@ -29,6 +29,33 @@ type round3 struct {
 	SchnorrCommitments map[party.ID]*zksch.Commitment // Aⱼ
 }
 
+type Keygen3 struct {
+	// RID = RIDᵢ
+	RID RID
+	C   RID
+	// VSSPolynomial = Fᵢ(X) VSSPolynomial
+	VSSPolynomial *polynomial.Exponent
+	// SchnorrCommitments = Aᵢ Schnorr commitment for the final confirmation
+	SchnorrCommitments *zksch.Commitment
+	// N Paillier and Pedersen N = p•q, p ≡ q ≡ 3 mod 4
+	N *safenum.Modulus
+	// S = r² mod N
+	S *safenum.Nat
+	// T = Sˡ mod N
+	T *safenum.Nat
+	// Decommitment = uᵢ decommitment bytes
+	Decommitment hash.Decommitment
+	// HashEcho = H(V₁, …, Vₙ)
+	// This is essentially an echo of all messages from Keygen2.
+	// If one party received something different then everybody must abort.
+	HashEcho []byte
+}
+
+// Validate implements message.Content.
+func (m *Keygen3) Validate() error {
+	return nil
+}
+
 // VerifyMessage implements round.Round.
 //
 // - verify Hash(SSID, V₁, …, Vₙ) against received hash.
@@ -40,8 +67,24 @@ type round3 struct {
 // - validate Pedersen
 // - validate commitments.
 func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Content) error {
-	body := content.(*Keygen3)
+	body, ok := content.(*Keygen3)
+	if !ok || body == nil {
+		return message.ErrInvalidContent
+	}
 
+	// check nil
+	if body.N == nil || body.S == nil || body.T == nil || body.VSSPolynomial == nil {
+		return message.ErrNilFields
+	}
+	// check RID length
+	if err := body.RID.Validate(); err != nil {
+		return err
+	}
+	// check decommitment
+	if err := body.Decommitment.Validate(); err != nil {
+		return err
+	}
+	// check echo hash
 	if !bytes.Equal(body.HashEcho, r.EchoHash) {
 		return ErrRound3EchoHash
 	}
@@ -160,33 +203,6 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 // MessageContent implements round.Round.
 func (r *round3) MessageContent() message.Content { return &Keygen3{} }
-
-// Validate implements message.Content.
-func (m *Keygen3) Validate() error {
-	if m == nil {
-		return errors.New("keygen.round3: message is nil")
-	}
-	if err := m.RID.Validate(); err != nil {
-		return fmt.Errorf("keygen.round3: %w", err)
-	}
-
-	if err := m.Decommitment.Validate(); err != nil {
-		return fmt.Errorf("keygen.round3: %w", err)
-	}
-
-	if m.N == nil || m.S == nil || m.T == nil {
-		return errors.New("keygen.round3: N,S,T invalid")
-	}
-
-	if m.VSSPolynomial == nil {
-		return errors.New("keygen.round3: VSSPolynomial is nil")
-	}
-
-	if l := len(m.HashEcho); l != hash.DigestLengthBytes {
-		return fmt.Errorf("keygen.round2: invalid echo hash length (got %d, expected %d)", l, hash.DigestLengthBytes)
-	}
-	return nil
-}
 
 // RoundNumber implements message.Content.
 func (m *Keygen3) RoundNumber() types.RoundNumber { return 4 }

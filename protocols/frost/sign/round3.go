@@ -36,9 +36,22 @@ type round3 struct {
 	Lambda map[party.ID]*curve.Scalar
 }
 
+type Sign3 struct {
+	// Z_i is the response scalar computed by the sender of this message.
+	Z_i *curve.Scalar
+}
+
 // VerifyMessage implements round.Round.
 func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Content) error {
-	msg := content.(*Sign3)
+	body, ok := content.(*Sign3)
+	if !ok || body == nil {
+		return message.ErrInvalidContent
+	}
+
+	// check nil
+	if body.Z_i == nil {
+		return message.ErrNilFields
+	}
 
 	// These steps come from Figure 3 of the Frost paper.
 
@@ -57,7 +70,7 @@ func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Conten
 	expected.ScalarMult(r.c, expected)
 	expected.Add(r.RShares[from], expected)
 
-	actual := curve.NewIdentityPoint().ScalarBaseMult(msg.Z_i)
+	actual := curve.NewIdentityPoint().ScalarBaseMult(body.Z_i)
 
 	if !actual.Equal(expected) {
 		return fmt.Errorf("failed to verify response from %v", from)
@@ -116,11 +129,6 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 // MessageContent implements round.Round.
 func (r *round3) MessageContent() message.Content {
 	return &Sign3{}
-}
-
-// Validate implements message.Content.
-func (m *Sign3) Validate() error {
-	return nil
 }
 
 // RoundNumber implements message.Content.

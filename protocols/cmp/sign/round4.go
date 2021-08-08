@@ -1,8 +1,6 @@
 package sign
 
 import (
-	"errors"
-
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -28,11 +26,26 @@ type round4 struct {
 	ChiShare *curve.Scalar
 }
 
+type Sign4 struct {
+	// DeltaShare = δⱼ
+	DeltaShare *curve.Scalar
+	// BigDeltaShare = Δⱼ = [kⱼ]•Γⱼ
+	BigDeltaShare *curve.Point
+	ProofLog      *zklogstar.Proof
+}
+
 // VerifyMessage implements round.Round.
 //
 // - Verify Π(log*)(ϕ''ᵢⱼ, Δⱼ, Γ).
 func (r *round4) VerifyMessage(from party.ID, to party.ID, content message.Content) error {
-	body := content.(*Sign4)
+	body, ok := content.(*Sign4)
+	if !ok || body == nil {
+		return message.ErrInvalidContent
+	}
+
+	if body.DeltaShare == nil || body.BigDeltaShare == nil || body.ProofLog == nil {
+		return message.ErrNilContent
+	}
 
 	zkLogPublic := zklogstar.Public{
 		C:      r.K[from],
@@ -108,18 +121,6 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 // MessageContent implements round.Round.
 func (r *round4) MessageContent() message.Content { return &Sign4{} }
-
-// Validate implements message.Content.
-func (m *Sign4) Validate() error {
-	if m == nil {
-		return errors.New("sign.round4: message is nil")
-	}
-	if m.DeltaShare == nil || m.BigDeltaShare == nil || m.ProofLog == nil {
-		return errors.New("sign.round4: message contains nil fields")
-	}
-
-	return nil
-}
 
 // RoundNumber implements message.Content.
 func (m *Sign4) RoundNumber() types.RoundNumber { return 4 }

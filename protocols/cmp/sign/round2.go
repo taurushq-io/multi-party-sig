@@ -1,8 +1,6 @@
 package sign
 
 import (
-	"errors"
-
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/mta"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
@@ -41,11 +39,24 @@ type round2 struct {
 	GNonce *safenum.Nat
 }
 
+type Sign2 struct {
+	ProofEnc *zkenc.Proof
+	K        *paillier.Ciphertext
+	G        *paillier.Ciphertext
+}
+
 // VerifyMessage implements round.Round.
 //
 // - verify zkenc(Kⱼ).
 func (r *round2) VerifyMessage(from party.ID, to party.ID, content message.Content) error {
-	body := content.(*Sign2)
+	body, ok := content.(*Sign2)
+	if !ok || body == nil {
+		return message.ErrInvalidContent
+	}
+
+	if body.ProofEnc == nil || body.G == nil || body.K == nil {
+		return message.ErrNilContent
+	}
 
 	if !body.ProofEnc.Verify(r.HashForID(from), zkenc.Public{
 		K:      body.K,
@@ -151,17 +162,6 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 // MessageContent implements round.Round.
 func (r *round2) MessageContent() message.Content { return &Sign2{} }
-
-// Validate implements message.Content.
-func (m *Sign2) Validate() error {
-	if m == nil {
-		return errors.New("sign.round2: message is nil")
-	}
-	if m.G == nil || m.K == nil {
-		return errors.New("sign.round2: K or G is nil")
-	}
-	return nil
-}
 
 // RoundNumber implements message.Content.
 func (m *Sign2) RoundNumber() types.RoundNumber { return 2 }

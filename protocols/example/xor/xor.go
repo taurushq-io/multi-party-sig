@@ -1,7 +1,6 @@
 package xor
 
 import (
-	"crypto/rand"
 	"fmt"
 
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
@@ -19,17 +18,13 @@ func StartXOR(selfID party.ID, partyIDs party.IDSlice) protocol.StartFunc {
 			return nil, nil, err
 		}
 
-		xor := make([]byte, 32)
-		_, _ = rand.Read(xor)
-
 		// create the helper with a description of the protocol
 		helper, err := round.NewHelper("example/xor", 2, selfID, partyIDs)
 		if err != nil {
 			return nil, nil, fmt.Errorf("xor: %w", err)
 		}
 		r := &Round1{
-			Helper:   helper,
-			received: map[party.ID][]byte{selfID: xor},
+			Helper: helper,
 		}
 		return r, helper, nil
 	}
