@@ -10,35 +10,27 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
+	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 )
 
-type (
-	Public struct {
-		N, S, T *big.Int
-	}
-	Private struct {
-		Lambda, Phi *safenum.Nat
-	}
-)
+type Public struct {
+	N    *safenum.Modulus
+	S, T *safenum.Nat
+}
+type Private struct {
+	Lambda, Phi *safenum.Nat
+}
+
+type Proof struct {
+	As, Zs [params.StatParam]*safenum.Nat
+}
 
 func (p *Proof) IsValid(public Public) bool {
 	if p == nil {
 		return false
 	}
-	if len(*p.A) != params.StatParam || len(*p.Z) != params.StatParam {
-		return false
-	}
-	if !arith.IsValidModN(public.N, *p.A...) {
-		return false
-	}
-	if !arith.IsValidModN(public.N, *p.Z...) {
-		return false
-	}
-	if !arith.IsValidModN(public.N, public.S, public.T) {
-		return false
-	}
-	if public.S.Cmp(public.T) == 0 {
+	if !arith.IsValidNatModN(public.N, append(p.As[:], p.Zs[:]...)...) {
 		return false
 	}
 	return true
@@ -48,52 +40,48 @@ func (p *Proof) IsValid(public Public) bool {
 // s = t^lambda (mod N).
 func NewProof(pl *pool.Pool, hash *hash.Hash, public Public, private Private) *Proof {
 	n := public.N
-	nMod := safenum.ModulusFromNat(new(safenum.Nat).SetBig(n, n.BitLen()))
 	lambda := private.Lambda
 	phi := safenum.ModulusFromNat(private.Phi)
 
-	a := make([]*safenum.Nat, params.StatParam)
-	A := make([]*big.Int, params.StatParam)
+	var as, As, Zs [params.StatParam]*safenum.Nat
 
 	lockedRand := pool.NewLockedReader(rand.Reader)
 	pl.Parallelize(params.StatParam, func(i int) interface{} {
+
 		// aᵢ ∈ mod ϕ(N)
-		a[i] = sample.ModN(lockedRand, phi)
+		as[i] = sample.ModN(lockedRand, phi)
 
 		// Aᵢ = tᵃ mod N
-		Ai := new(safenum.Nat).SetBig(public.T, public.T.BitLen())
-		A[i] = Ai.Exp(Ai, a[i], nMod).Big()
+		As[i] = new(safenum.Nat).Exp(public.T, as[i], n)
 
 		return nil
 	})
 
-	es, _ := challenge(hash, public, A)
-
-	Z := make([]*big.Int, params.StatParam)
+	es, _ := challenge(hash, public, As)
 	// Modular addition is not expensive enough to warrant parallelizing
 	for i := 0; i < params.StatParam; i++ {
-		z := a[i]
+		z := as[i]
 		// The challenge is public, so branching is ok
 		if es[i] {
 			z.ModAdd(z, lambda, phi)
 		}
-		Z[i] = z.Big()
+		Zs[i] = z
 	}
 
 	return &Proof{
-		A: &A,
-		Z: &Z,
+		As: As,
+		Zs: Zs,
 	}
 }
 
 func (p *Proof) Verify(pl *pool.Pool, hash *hash.Hash, public Public) bool {
-	if !p.IsValid(public) {
+	if err := pedersen.ValidateParameters(public.N, public.S, public.T); err != nil {
 		return false
 	}
 
-	n, s, t := public.N, public.S, public.T
+	n, s, t := public.N.Big(), public.S.Big(), public.T.Big()
 
-	es, err := challenge(hash, public, *p.A)
+	es, err := challenge(hash, public, p.As)
 	if err != nil {
 		return false
 	}
@@ -101,8 +89,12 @@ func (p *Proof) Verify(pl *pool.Pool, hash *hash.Hash, public Public) bool {
 	one := big.NewInt(1)
 	verifications := pl.Parallelize(params.StatParam, func(i int) interface{} {
 		var lhs, rhs big.Int
-		z := (*p.Z)[i]
-		a := (*p.A)[i]
+		z := p.Zs[i].Big()
+		a := p.As[i].Big()
+
+		if !arith.IsValidBigModN(n, a, z) {
+			return false
+		}
 
 		if a.Cmp(one) == 0 {
 			return false
@@ -131,7 +123,7 @@ func (p *Proof) Verify(pl *pool.Pool, hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, A []*big.Int) (es []bool, err error) {
+func challenge(hash *hash.Hash, public Public, A [params.StatParam]*safenum.Nat) (es []bool, err error) {
 	err = hash.WriteAny(public.N, public.S, public.T)
 	for _, a := range A {
 		_ = hash.WriteAny(a)

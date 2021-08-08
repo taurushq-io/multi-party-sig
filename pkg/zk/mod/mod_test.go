@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/cronokirby/safenum"
+	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
@@ -26,20 +27,22 @@ func TestMod(t *testing.T) {
 		Q:   q,
 		Phi: sk.Phi(),
 	})
-	out, err := proof.Marshal()
+	assert.True(t, proof.Verify(pl, hash.New(), public))
+
+	out, err := cbor.Marshal(proof)
 	require.NoError(t, err, "failed to marshal proof")
 	proof2 := &Proof{}
-	require.NoError(t, proof2.Unmarshal(out), "failed to unmarshal proof")
-	out2, err := proof2.Marshal()
+	require.NoError(t, cbor.Unmarshal(out, proof2), "failed to unmarshal proof")
+	out2, err := cbor.Marshal(proof2)
 	require.NoError(t, err, "failed to marshal 2nd proof")
 	proof3 := &Proof{}
-	require.NoError(t, proof3.Unmarshal(out2), "failed to unmarshal 2nd proof")
+	require.NoError(t, cbor.Unmarshal(out2, proof3), "failed to unmarshal 2nd proof")
 
 	assert.True(t, proof3.Verify(pl, hash.New(), public))
 
-	proof.W = big.NewInt(0)
-	for idx := range *proof.X {
-		(*proof.X)[idx] = big.NewInt(0)
+	proof.W = new(safenum.Nat).SetUint64(0)
+	for idx := range proof.Responses {
+		proof.Responses[idx].X = new(safenum.Nat).SetUint64(0)
 	}
 
 	assert.False(t, proof.Verify(pl, hash.New(), public), "proof should have failed")
@@ -52,11 +55,9 @@ func Test_set4thRoot(t *testing.T) {
 	qMod := safenum.ModulusFromUint64(q)
 	qHalf := new(safenum.Nat).SetUint64((q - 1) / 2)
 	n := safenum.ModulusFromUint64(p * q)
-	nBig := big.NewInt(int64(p * q))
 	phi := new(safenum.Nat).SetUint64((p - 1) * (q - 1))
 	y := new(safenum.Nat).SetUint64(502)
-	wBig := sample.QNR(rand.Reader, nBig)
-	w := new(safenum.Nat).SetBig(wBig, wBig.BitLen())
+	w := sample.QNR(rand.Reader, n)
 
 	a, b, x := makeQuadraticResidue(y, w, pHalf, qHalf, n, pMod, qMod)
 

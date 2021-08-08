@@ -11,8 +11,23 @@ import (
 
 // Randomness = a ← ℤₚ.
 type Randomness struct {
-	a          curve.Scalar
+	a          *curve.Scalar
 	commitment Commitment
+}
+
+// Commitment = randomness•G, where
+type Commitment struct {
+	C *curve.Point
+}
+
+// Response = randomness + H(..., commitment, public)•secret (mod p).
+type Response struct {
+	Z *curve.Scalar
+}
+
+type Proof struct {
+	C Commitment
+	Z Response
 }
 
 // NewProof generates a Schnorr proof of knowledge of exponent for public, using the Fiat-Shamir transform.
@@ -20,22 +35,23 @@ func NewProof(hash *hash.Hash, public *curve.Point, private *curve.Scalar) *Proo
 	a := NewRandomness(rand.Reader)
 	z := a.Prove(hash, public, private)
 	return &Proof{
-		C: a.Commitment(),
-		Z: z,
+		C: *a.Commitment(),
+		Z: *z,
 	}
 }
 
 // NewRandomness creates a new a ∈ ℤₚ and the corresponding commitment C = a•G.
 // This can be used to run the proof in a non-interactive way.
 func NewRandomness(rand io.Reader) *Randomness {
-	var r Randomness
-	r.a = *sample.Scalar(rand)
-	r.commitment.C.ScalarBaseMult(&r.a)
-	return &r
+	a, c := sample.ScalarPointPair(rand)
+	return &Randomness{
+		a:          a,
+		commitment: Commitment{C: c},
+	}
 }
 
 func challenge(hash *hash.Hash, commitment *Commitment, public *curve.Point) (e *curve.Scalar, err error) {
-	err = hash.WriteAny(&commitment.C, public)
+	err = hash.WriteAny(commitment.C, public)
 	e = sample.Scalar(hash.Digest())
 	return
 }
@@ -45,13 +61,12 @@ func (r *Randomness) Prove(hash *hash.Hash, public *curve.Point, secret *curve.S
 	if public.IsIdentity() || secret.IsZero() {
 		return nil
 	}
-	var p Response
 	z, err := challenge(hash, &r.commitment, public)
 	if err != nil {
 		return nil
 	}
-	p.Z.MultiplyAdd(z, secret, &r.a)
-	return &p
+	z.MultiplyAdd(z, secret, r.a)
+	return &Response{z}
 }
 
 // Commitment returns the commitment C = a•G for the randomness a.
@@ -71,9 +86,9 @@ func (z *Response) Verify(hash *hash.Hash, public *curve.Point, commitment *Comm
 	}
 
 	var lhs, rhs curve.Point
-	lhs.ScalarBaseMult(&z.Z)
+	lhs.ScalarBaseMult(z.Z)
 	rhs.ScalarMult(e, public)
-	rhs.Add(&rhs, &commitment.C)
+	rhs.Add(&rhs, commitment.C)
 
 	return lhs.Equal(&rhs)
 }
@@ -83,7 +98,7 @@ func (p *Proof) Verify(hash *hash.Hash, public *curve.Point) bool {
 	if !p.IsValid() {
 		return false
 	}
-	return p.Z.Verify(hash, public, p.C)
+	return p.Z.Verify(hash, public, &p.C)
 }
 
 // WriteTo implements io.WriterTo.

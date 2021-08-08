@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"testing"
 
+	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
@@ -33,14 +34,16 @@ func TestLogStar(t *testing.T) {
 		X:   x,
 		Rho: rho,
 	})
-	out, err := proof.Marshal()
+	assert.True(t, proof.Verify(hash.New(), public))
+
+	out, err := cbor.Marshal(proof)
 	require.NoError(t, err, "failed to marshal proof")
 	proof2 := &Proof{}
-	require.NoError(t, proof2.Unmarshal(out), "failed to unmarshal proof")
-	out2, err := proof2.Marshal()
+	require.NoError(t, cbor.Unmarshal(out, proof2), "failed to unmarshal proof")
+	out2, err := cbor.Marshal(proof2)
 	require.NoError(t, err, "failed to marshal 2nd proof")
 	proof3 := &Proof{}
-	require.NoError(t, proof3.Unmarshal(out2), "failed to unmarshal 2nd proof")
+	require.NoError(t, cbor.Unmarshal(out2, proof3), "failed to unmarshal 2nd proof")
 
 	assert.True(t, proof3.Verify(hash.New(), public))
 }

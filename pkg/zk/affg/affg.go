@@ -12,47 +12,79 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
 )
 
-type (
-	Public struct {
-		// C = Enc₀(?;?)
-		// Kⱼ = Encⱼ(kⱼ; )
-		C *paillier.Ciphertext
+type Public struct {
+	// C = Enc₀(?;?)
+	// Kⱼ = Encⱼ(kⱼ; )
+	C *paillier.Ciphertext
 
-		// D = (x ⨀ C) ⨁ Enc₀(y;ρ)
-		//   = (xᵢ ⨀ Kⱼ) ⨁ Encⱼ(- βᵢⱼ; sᵢⱼ)
-		D *paillier.Ciphertext
+	// D = (x ⨀ C) ⨁ Enc₀(y;ρ)
+	//   = (xᵢ ⨀ Kⱼ) ⨁ Encⱼ(- βᵢⱼ; sᵢⱼ)
+	D *paillier.Ciphertext
 
-		// Y = Enc₁(y;ρ')
-		//   = Encᵢ(βᵢⱼ,rᵢⱼ)
-		// y is Bob's additive share
-		Y *paillier.Ciphertext
+	// Y = Enc₁(y;ρ')
+	//   = Encᵢ(βᵢⱼ,rᵢⱼ)
+	// y is Bob's additive share
+	Y *paillier.Ciphertext
 
-		// X = gˣ
-		// x is Alice's multiplicative share
-		X *curve.Point
+	// X = gˣ
+	// x is Alice's multiplicative share
+	X *curve.Point
 
-		// Prover = N₁
-		// Verifier = N₀
-		Prover, Verifier *paillier.PublicKey
-		Aux              *pedersen.Parameters
-	}
+	// Prover = N₁
+	// Verifier = N₀
+	Prover, Verifier *paillier.PublicKey
+	Aux              *pedersen.Parameters
+}
 
-	Private struct {
-		// X ∈ ± 2ˡ
-		// Bob's multiplicative share
-		X *safenum.Int
+type Private struct {
+	// X ∈ ± 2ˡ
+	// Bob's multiplicative share
+	X *safenum.Int
 
-		// Y ∈ ± 2ˡº
-		// Bob's additive share βᵢⱼ
-		Y *safenum.Int
+	// Y ∈ ± 2ˡº
+	// Bob's additive share βᵢⱼ
+	Y *safenum.Int
 
-		// Rho = Nonce D = sᵢⱼ
-		Rho *safenum.Nat
+	// Rho = ρ
+	// Nonce D = sᵢⱼ
+	Rho *safenum.Nat
 
-		// RhoY = Nonce Y = rᵢⱼ
-		RhoY *safenum.Nat
-	}
-)
+	// RhoY = ρy
+	// Nonce for Y = rᵢⱼ
+	RhoY *safenum.Nat
+}
+type Commitment struct {
+	// A = (alpha ⊙ c ) ⊕ Enc(N0, beta, r)
+	A *paillier.Ciphertext
+	// Bₓ = gᵃ
+	Bx *curve.Point
+	// By = Enc(N1, beta, ry)
+	By *paillier.Ciphertext
+	// E = sᵃ tᵍ
+	E *safenum.Nat
+	// S = sˣ tᵐ
+	S *safenum.Nat
+	// F = sᵇ tᵈ
+	F *safenum.Nat
+	// T = sʸ tᵘ
+	T *safenum.Nat
+}
+
+type Proof struct {
+	*Commitment
+	// Z1 = Z₁ = α + e⋅x
+	Z1 *safenum.Int
+	// Z2 = Z₂ = β + e⋅y
+	Z2 *safenum.Int
+	// Z3 = Z₃ = γ + e⋅m
+	Z3 *safenum.Int
+	// Z4 = Z₄ = δ + e⋅μ
+	Z4 *safenum.Int
+	// W = w = r⋅ρᵉ (mod N₀)
+	W *safenum.Nat
+	// Wy = wy = ry ⋅ρyᵉ (mod N₁)
+	Wy *safenum.Nat
+}
 
 func (p *Proof) IsValid(public Public) bool {
 	if p == nil {
@@ -64,10 +96,10 @@ func (p *Proof) IsValid(public Public) bool {
 	if !public.Prover.ValidateCiphertexts(p.By) {
 		return false
 	}
-	if !arith.IsValidModN(public.Prover.N(), p.Wy) {
+	if !arith.IsValidNatModN(public.Prover.N(), p.Wy) {
 		return false
 	}
-	if !arith.IsValidModN(public.Verifier.N(), p.W) {
+	if !arith.IsValidNatModN(public.Verifier.N(), p.W) {
 		return false
 	}
 	if p.Bx.IsIdentity() {
@@ -77,10 +109,8 @@ func (p *Proof) IsValid(public Public) bool {
 }
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
-	N0Big := public.Verifier.N()
-	N0 := safenum.ModulusFromNat(new(safenum.Nat).SetBig(N0Big, N0Big.BitLen()))
-	N1Big := public.Prover.N()
-	N1 := safenum.ModulusFromNat(new(safenum.Nat).SetBig(N1Big, N1Big.BitLen()))
+	N0 := public.Verifier.N()
+	N1 := public.Prover.N()
 
 	verifier := public.Verifier
 	prover := public.Prover
@@ -92,21 +122,25 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	rY := sample.UnitModN(rand.Reader, N1)
 
 	gamma := sample.IntervalLEpsN(rand.Reader)
-	m := sample.IntervalLEpsN(rand.Reader)
+	m := sample.IntervalLN(rand.Reader)
 	delta := sample.IntervalLEpsN(rand.Reader)
 	mu := sample.IntervalLN(rand.Reader)
 
 	cAlpha := public.C.Clone().Mul(verifier, alpha)           // = Cᵃ mod N₀ = α ⊙ C
 	A := verifier.EncWithNonce(beta, r).Add(verifier, cAlpha) // = Enc₀(β,r) ⊕ (α ⊙ C)
 
+	E := public.Aux.Commit(alpha, gamma)
+	S := public.Aux.Commit(private.X, m)
+	F := public.Aux.Commit(beta, delta)
+	T := public.Aux.Commit(private.Y, mu)
 	commitment := &Commitment{
 		A:  A,
-		Bx: *curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarInt(alpha)),
+		Bx: curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarInt(alpha)),
 		By: prover.EncWithNonce(beta, rY),
-		E:  public.Aux.Commit(alpha, gamma),
-		S:  public.Aux.Commit(private.X, m),
-		F:  public.Aux.Commit(beta, delta),
-		T:  public.Aux.Commit(private.Y, mu),
+		E:  E,
+		S:  S,
+		F:  F,
+		T:  T,
 	}
 
 	e, _ := challenge(hash, public, commitment)
@@ -132,12 +166,12 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 
 	return &Proof{
 		Commitment: commitment,
-		Z1:         z1.Big(),
-		Z2:         z2.Big(),
-		Z3:         z3.Big(),
-		Z4:         z4.Big(),
-		W:          w.Big(),
-		Wy:         wY.Big(),
+		Z1:         z1,
+		Z2:         z2,
+		Z3:         z3,
+		Z4:         z4,
+		W:          w,
+		Wy:         wY,
 	}
 }
 
@@ -160,26 +194,20 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	if err != nil {
 		return false
 	}
-	eBig := e.Big()
 
-	if !public.Aux.Verify(p.Z1, p.Z3, p.E, p.S, eBig) {
+	if !public.Aux.Verify(p.Z1, p.Z3, e, p.E, p.S) {
 		return false
 	}
 
-	if !public.Aux.Verify(p.Z2, p.Z4, p.F, p.T, eBig) {
+	if !public.Aux.Verify(p.Z2, p.Z4, e, p.F, p.T) {
 		return false
 	}
-
-	z1 := new(safenum.Int).SetBig(p.Z1, p.Z1.BitLen())
-	z2 := new(safenum.Int).SetBig(p.Z2, p.Z2.BitLen())
-	w := new(safenum.Nat).SetBig(p.W, p.W.BitLen())
-	wY := new(safenum.Nat).SetBig(p.Wy, p.Wy.BitLen())
 
 	{
 		// tmp = z₁ ⊙ C
 		// lhs = Enc₀(z₂;w) ⊕ z₁ ⊙ C
-		tmp := public.C.Clone().Mul(verifier, z1)
-		lhs := verifier.EncWithNonce(z2, w).Add(verifier, tmp)
+		tmp := public.C.Clone().Mul(verifier, p.Z1)
+		lhs := verifier.EncWithNonce(p.Z2, p.W).Add(verifier, tmp)
 
 		// rhs = (e ⊙ D) ⊕ A
 		rhs := public.D.Clone().Mul(verifier, e).Add(verifier, p.A)
@@ -192,11 +220,11 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	{
 
 		// lhs = [z₁]G
-		lhs := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarBigInt(p.Z1))
+		lhs := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarInt(p.Z1))
 
 		// rhsPt = Bₓ + [e]X
 		rhs := curve.NewIdentityPoint().ScalarMult(curve.NewScalarInt(e), public.X)
-		rhs.Add(&p.Bx, rhs)
+		rhs.Add(p.Bx, rhs)
 		if !lhs.Equal(rhs) {
 			return false
 		}
@@ -204,7 +232,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 
 	{
 		// lhs = Enc₁(z₂; wy)
-		lhs := prover.EncWithNonce(z2, wY)
+		lhs := prover.EncWithNonce(p.Z2, p.Wy)
 
 		// rhs = (e ⊙ Y) ⊕ By
 		rhs := public.Y.Clone().Mul(prover, e).Add(prover, p.By)
