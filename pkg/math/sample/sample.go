@@ -51,15 +51,16 @@ func UnitModN(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
 }
 
 // QNR samples a random quadratic non-residue in Z_n.
-func QNR(rand io.Reader, n *big.Int) *big.Int {
+func QNR(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
 	var w big.Int
+	nBig := n.Big()
 	buf := make([]byte, params.BitsIntModN/8)
 	for i := 0; i < maxIterations; i++ {
 		mustReadBits(rand, buf)
 		w.SetBytes(buf)
-		w.Mod(&w, n)
-		if big.Jacobi(&w, n) == -1 {
-			return &w
+		w.Mod(&w, nBig)
+		if big.Jacobi(&w, nBig) == -1 {
+			return new(safenum.Nat).SetBig(&w, w.BitLen())
 		}
 	}
 	panic(ErrMaxIterations)
