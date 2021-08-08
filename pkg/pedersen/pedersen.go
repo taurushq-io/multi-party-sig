@@ -3,7 +3,6 @@ package pedersen
 import (
 	"fmt"
 	"io"
-	"math/big"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
@@ -23,7 +22,8 @@ func (e Error) Error() string {
 }
 
 type Parameters struct {
-	n, s, t *big.Int
+	n    *safenum.Modulus
+	s, t *safenum.Nat
 }
 
 // New returns a new set of Pedersen parameters,
@@ -32,7 +32,7 @@ type Parameters struct {
 // - s, t are not in [1, …,n-1].
 // - s, t are not coprime to N.
 // - s = t.
-func New(n, s, t *big.Int) (*Parameters, error) {
+func New(n *safenum.Modulus, s, t *safenum.Nat) (*Parameters, error) {
 	if err := ValidateParameters(n, s, t); err != nil {
 		return nil, err
 	}
@@ -43,75 +43,62 @@ func New(n, s, t *big.Int) (*Parameters, error) {
 	}, nil
 }
 
-func ValidateParameters(n, s, t *big.Int) error {
+func ValidateParameters(n *safenum.Modulus, s, t *safenum.Nat) error {
 	if n == nil || s == nil || t == nil {
 		return ErrNilFields
 	}
 	// s, t ∈ ℤₙˣ
-	if !arith.IsValidModN(n, s, t) {
+	if !arith.IsValidNatModN(n, s, t) {
 		return ErrNotValidModN
 	}
 	// s ≡ t
-	if s.Cmp(t) == 0 {
+	if _, eq, _ := s.Cmp(t); eq == 1 {
 		return ErrSEqualT
 	}
 	return nil
 }
 
 // N = p•q, p ≡ q ≡ 3 mod 4.
-func (p Parameters) N() *big.Int { return p.n }
+func (p Parameters) N() *safenum.Modulus { return p.n }
 
 // S = r² mod N.
-func (p Parameters) S() *big.Int { return p.s }
+func (p Parameters) S() *safenum.Nat { return p.s }
 
 // T = Sˡ mod N.
-func (p Parameters) T() *big.Int { return p.t }
+func (p Parameters) T() *safenum.Nat { return p.t }
 
 // Commit computes sˣ tʸ (mod N)
 //
 // x and y are taken as safenum.Int, because we want to keep these values in secret,
 // in general. The commitment produced, on the other hand, hides their values,
 // and can be safely shared. This is why we produce a big.Int instead.
-func (p Parameters) Commit(x, y *safenum.Int) *big.Int {
-	sx := new(safenum.Nat).SetBig(p.s, p.s.BitLen())
-	ty := new(safenum.Nat).SetBig(p.t, p.t.BitLen())
-	nMod := safenum.ModulusFromNat(new(safenum.Nat).SetBig(p.n, p.n.BitLen()))
+func (p Parameters) Commit(x, y *safenum.Int) *safenum.Nat {
+	sx := new(safenum.Nat).ExpI(p.s, x, p.n)
+	ty := new(safenum.Nat).ExpI(p.t, y, p.n)
 
-	sx.ExpI(sx, x, nMod)
-	ty.ExpI(ty, y, nMod)
+	result := sx.ModMul(sx, ty, p.n)
 
-	result := sx.ModMul(sx, ty, nMod)
-
-	return result.Big()
+	return result
 }
 
 // Verify returns true if sᵃ tᵇ ≡ S Tᵉ (mod N).
-func (p Parameters) Verify(a, b, S, T, e *big.Int) bool {
+func (p Parameters) Verify(a, b, e *safenum.Int, S, T *safenum.Nat) bool {
 	if a == nil || b == nil || S == nil || T == nil || e == nil {
 		return false
 	}
-	if !arith.IsValidModN(p.n, S, T) {
+	if !arith.IsValidNatModN(p.n, S, T) {
 		return false
 	}
 
-	lhs, rhs := bigint(), bigint()
+	lhs, rhs := new(safenum.Nat), new(safenum.Nat)
 
-	lhs.Exp(p.s, a, p.n) // lhs = sᵃ (mod N)
-	rhs.Exp(p.t, b, p.n) // rhs = tᵇ (mod N)
-	lhs.Mul(lhs, rhs)    // lhs *= rhs
-	lhs.Mod(lhs, p.n)    // lhs = lhs (mod N)
+	lhs.ExpI(p.s, a, p.n)     // lhs = sᵃ (mod N)
+	rhs.ExpI(p.t, b, p.n)     // rhs = tᵇ (mod N)
+	lhs.ModMul(lhs, rhs, p.n) // lhs *= rhs (mod N)
 
-	rhs.Exp(T, e, p.n) // rhs = Tᵉ (mod N)
-	rhs.Mul(rhs, S)    // rhs *= S
-	rhs.Mod(rhs, p.n)  // rhs = rhs (mod N)
-	return lhs.Cmp(rhs) == 0
-}
-
-func bigint() *big.Int {
-	var x big.Int
-	buf := make([]big.Word, 0, 68)
-	x.SetBits(buf)
-	return &x
+	rhs.ExpI(T, e, p.n)     // rhs = Tᵉ (mod N)
+	rhs.ModMul(rhs, S, p.n) // rhs *= S (mod N)
+	return lhs.Eq(rhs) == 1
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
@@ -123,7 +110,7 @@ func (p *Parameters) WriteTo(w io.Writer) (int64, error) {
 	buf := make([]byte, params.BytesIntModN)
 
 	// write N, S, T
-	for _, i := range []*big.Int{p.n, p.s, p.t} {
+	for _, i := range []*safenum.Nat{p.n.Nat(), p.s, p.t} {
 		i.FillBytes(buf)
 		n, err := w.Write(buf)
 		nAll += int64(n)
