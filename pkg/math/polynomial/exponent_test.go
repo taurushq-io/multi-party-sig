@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 )
@@ -63,4 +65,17 @@ func TestSum(t *testing.T) {
 	evaluationFromScalar := curve.NewIdentityPoint().ScalarBaseMult(evaluationScalar)
 	assert.True(t, evaluationSum.Equal(evaluationFromScalar))
 	assert.True(t, evaluationSum.Equal(evaluationPartial))
+}
+
+func TestMarshall(t *testing.T) {
+
+	sec := sample.Scalar(rand.Reader)
+	poly := NewPolynomial(10, sec)
+	polyExp := NewPolynomialExponent(poly)
+	out, err := cbor.Marshal(polyExp)
+	require.NoError(t, err, "failed to Marshal")
+	polyExp2 := &Exponent{}
+	err = cbor.Unmarshal(out, polyExp2)
+	require.NoError(t, err, "failed to Unmarshal")
+	assert.True(t, polyExp.Equal(*polyExp2), "should be the same")
 }
