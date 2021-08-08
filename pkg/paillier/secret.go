@@ -66,17 +66,17 @@ func NewSecretKey(pl *pool.Pool) *SecretKey {
 
 func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
 	// TODO validate primes here ?
-	n := new(safenum.Nat).Mul(P, Q, -1)
-	nMod := safenum.ModulusFromNat(n)
+	nNat := new(safenum.Nat).Mul(P, Q, -1)
+	n := safenum.ModulusFromNat(nNat)
 
 	pMinus1 := new(safenum.Nat).Sub(P, oneNat, -1)
 	qMinus1 := new(safenum.Nat).Sub(Q, oneNat, -1)
 
 	phi := new(safenum.Nat).Mul(pMinus1, qMinus1, -1)
 	// ϕ⁻¹ mod N
-	phiInv := new(safenum.Nat).ModInverse(phi, nMod)
+	phiInv := new(safenum.Nat).ModInverse(phi, n)
 
-	pk, err := NewPublicKey(n.Big())
+	pk, err := NewPublicKey(n)
 	if err != nil {
 		//todo handle error
 	}
@@ -105,7 +105,7 @@ func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
 
 	result := new(safenum.Nat)
 	// r = c^Phi 						(mod N²)
-	result.Exp(ct.C.Nat, phi, nSquared)
+	result.Exp(ct.c, phi, nSquared)
 	// r = c^Phi - 1
 	result.Sub(result, oneNat, -1)
 	// r = [(c^Phi - 1)/N]
@@ -129,7 +129,7 @@ func (sk *SecretKey) Clone() *SecretKey {
 
 func (sk SecretKey) GeneratePedersen() (*pedersen.Parameters, *safenum.Nat) {
 	s, t, lambda := sample.Pedersen(rand.Reader, sk.phi, sk.PublicKey.n)
-	ped, _ := pedersen.New(sk.PublicKey.n.Big(), s.Big(), t.Big())
+	ped, _ := pedersen.New(sk.PublicKey.n, s, t)
 	// TODO handle error ?
 	return ped, lambda
 }
