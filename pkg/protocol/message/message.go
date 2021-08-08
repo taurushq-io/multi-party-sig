@@ -3,59 +3,52 @@ package message
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
-	gogo "github.com/gogo/protobuf/types"
+	"github.com/fxamacker/cbor/v2"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
 )
 
 // First represents an empty message to be returned by Round.MessageContent() for the first round of a protocol.
-type First struct {
-	gogo.Any
-}
+type First struct{}
 
-// Validate always returns an error since the first round does not expect a message.
-func (m *First) Validate() error {
-	return ErrMessageFirstRound
-}
-
-// RoundNumber returns 1 since it is the first round.
-func (m *First) RoundNumber() types.RoundNumber {
-	return 1
-}
+func (m *First) RoundNumber() types.RoundNumber { return 1 }
 
 // Final represents an empty message, and can be returned by the first round of a protocol.
-type Final struct {
-	gogo.Any
-}
+type Final struct{}
 
-// Validate always returns an error since the first round does not expect a message.
-func (m *Final) Validate() error {
-	return ErrMessageLastRound
-}
-
-// RoundNumber returns 0 to indicate that it is the final round.
-func (m *Final) RoundNumber() types.RoundNumber {
-	return 0
-}
+func (m *Final) RoundNumber() types.RoundNumber { return 0 }
 
 // Content represents a message body for a specific round.
 type Content interface {
-	proto.Message
-	Validate() error
 	RoundNumber() types.RoundNumber
+}
+
+type Message struct {
+	// SSID is a byte string which uniquely identifies the session this message belongs to.
+	SSID []byte
+	// From is the party.ID of the sender
+	From party.ID
+	// To is a list of intended recipients for this message.
+	// If To == nil, then the message should be interpreted as a broadcast message.
+	To []party.ID
+	// Protocol identifies the protocol this message belongs to
+	Protocol types.ProtocolID
+	// RoundNumber is the index of the round this message belongs to
+	RoundNumber types.RoundNumber
+	// Content is the actual content consumed by the round.
+	Content []byte
 }
 
 // UnmarshalContent expects a pointer to an uninitialized object implementing Content.
 // Returns an error if the round number is inconsistent with the content.
 func (m *Message) UnmarshalContent(content Content) error {
 	if m.RoundNumber != content.RoundNumber() {
-		return ErrMessageInconsistentRound
+		return ErrInconsistentRound
 	}
-	if err := gogo.UnmarshalAny(m.Content, content); err != nil {
+	if err := cbor.Unmarshal(m.Content, content); err != nil {
 		return err
 	}
-	return content.Validate()
+	return nil
 }
 
 // String implements fmt.Stringer.
@@ -74,17 +67,17 @@ func (m Message) Broadcast() bool {
 // - To is sorted and does not contain duplicates.
 func (m Message) Validate() error {
 	if m.Content == nil {
-		return ErrMessageNilContent
+		return ErrNilContent
 	}
 
 	// check if message for previous round or beyond expected
 	if m.RoundNumber <= 1 {
-		return ErrMessageInvalidRoundNumber
+		return ErrInvalidRoundNumber
 	}
 
 	ids := party.IDSlice(m.To)
 	if !ids.Valid() {
-		return ErrMessageInvalidTo
+		return ErrInvalidTo
 	}
 	return nil
 }

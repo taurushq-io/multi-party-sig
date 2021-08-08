@@ -138,33 +138,33 @@ func (h *Handler) validate(msg *message.Message) error {
 	}
 
 	if !msg.IsFor(h.info.SelfID()) {
-		return message.ErrMessageWrongDestination
+		return message.ErrWrongDestination
 	}
 
 	// check SSID
 	if !bytes.Equal(h.info.SSID(), msg.SSID) {
-		return message.ErrMessageWrongSSID
+		return message.ErrWrongSSID
 	}
 
 	// check protocol ID
 	if msg.Protocol != h.info.ProtocolID() {
-		return message.ErrMessageWrongProtocolID
+		return message.ErrWrongProtocolID
 	}
 
 	// check if message for unexpected round
 	if msg.RoundNumber > h.info.FinalRoundNumber() {
-		return message.ErrMessageInvalidRoundNumber
+		return message.ErrInvalidRoundNumber
 	}
 
 	// do we know the sender
 	if _, ok := h.received[msg.From]; !ok {
-		return message.ErrMessageUnknownSender
+		return message.ErrUnknownSender
 	}
 
 	// previous round
 	currentRound := h.roundNumber()
 	if msg.RoundNumber < currentRound {
-		return message.ErrMessageDuplicate
+		return message.ErrDuplicate
 	}
 
 	return nil
@@ -176,7 +176,7 @@ func (h *Handler) handleMessage(msg *message.Message) error {
 		return h.queue.Store(msg)
 	}
 	if h.received[msg.From] {
-		return message.ErrMessageDuplicate
+		return message.ErrDuplicate
 	}
 
 	h.received[msg.From] = true
