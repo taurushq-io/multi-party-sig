@@ -13,6 +13,14 @@ import (
 	zkaffg "github.com/taurusgroup/multi-party-sig/pkg/zk/affg"
 )
 
+type Message struct {
+	// Dij is Dᵢⱼ = (aⱼ ⊙ Bᵢ) ⊕ encᵢ(- βⱼᵢ, sⱼᵢ)
+	Dij *paillier.Ciphertext
+	// Fij is Fᵢⱼ = encⱼ(βⱼᵢ, rⱼᵢ)
+	Fij   *paillier.Ciphertext
+	Proof *zkaffg.Proof
+}
+
 // MtA holds the local data for the multiplicative-to-additive share conversion protocol.
 // The sender and receiver are denoted by index i and j respectively, and we take the perspective of party i.
 // i has share aᵢ and j has share bⱼ.
