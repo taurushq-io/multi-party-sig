@@ -6,7 +6,6 @@ import (
 
 	"github.com/cronokirby/safenum"
 	"github.com/decred/dcrd/dcrec/secp256k1/v3"
-	"github.com/taurusgroup/multi-party-sig/internal/params"
 )
 
 // Scalar represents an element in ℤₚ where p is the order of the secp256k1 base point.
@@ -181,11 +180,11 @@ func (s *Scalar) WriteTo(w io.Writer) (int64, error) {
 	if s == nil {
 		return 0, io.ErrUnexpectedEOF
 	}
-	buf := make([]byte, params.BytesScalar)
-	if _, err := s.MarshalTo(buf); err != nil {
+	data, err := s.MarshalBinary()
+	if err != nil {
 		return 0, err
 	}
-	n, err := w.Write(buf)
+	n, err := w.Write(data)
 	return int64(n), err
 }
 

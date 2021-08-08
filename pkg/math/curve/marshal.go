@@ -9,27 +9,29 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 )
 
-// MarshalJSON implements json.Marshaler.
-func (v *Point) MarshalJSON() ([]byte, error) {
-	data, err := v.Marshal()
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(data)
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s *Scalar) MarshalBinary() ([]byte, error) {
+	data := make([]byte, params.BytesScalar)
+	s.s.PutBytesUnchecked(data)
+	return data, nil
 }
 
-// UnmarshalJSON implements json.Unmarshaler.
-func (v *Point) UnmarshalJSON(bytes []byte) error {
-	var data []byte
-	if err := json.Unmarshal(bytes, &data); err != nil {
-		return fmt.Errorf("curve.Point: failed to unmarshal compressed point: %w", err)
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *Scalar) UnmarshalBinary(data []byte) error {
+	var scalar secp256k1.ModNScalar
+	if len(data) < params.BytesScalar {
+		return errors.New("curve.Scalar.Unmarshal: data is too small")
 	}
-	return v.Unmarshal(data)
+	if scalar.SetByteSlice(data[:params.BytesScalar]) {
+		return errors.New("curve.Scalar.Unmarshal: scalar was >= q")
+	}
+	s.s.Set(&scalar)
+	return nil
 }
 
 // MarshalJSON implements json.Marshaler.
 func (s Scalar) MarshalJSON() ([]byte, error) {
-	data, _ := s.Marshal()
+	data, _ := s.MarshalBinary()
 	return json.Marshal(data)
 }
 
@@ -39,33 +41,20 @@ func (s *Scalar) UnmarshalJSON(bytes []byte) error {
 	if err := json.Unmarshal(bytes, &data); err != nil {
 		return fmt.Errorf("curve.Point: failed to unmarshal compressed point: %w", err)
 	}
-	return s.Unmarshal(data)
+	return s.UnmarshalBinary(data)
 }
 
-// Marshal implements proto.Marshaler.
-func (v *Point) Marshal() (data []byte, err error) {
-	const size = params.BytesPoint
-	data = make([]byte, size)
-	n, err := v.MarshalToSizedBuffer(data[:size])
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-// MarshalTo implements proto.Marshaler.
-func (v *Point) MarshalTo(data []byte) (int, error) {
-	return v.MarshalToSizedBuffer(data[:params.BytesPoint])
-}
-
-func (v *Point) MarshalToSizedBuffer(data []byte) (int, error) {
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (v *Point) MarshalBinary() (data []byte, err error) {
 	if v == nil {
-		return 0, errors.New("curve.Point.MarshalToSizedBuffer: point is nil")
-	}
-	if v.IsIdentity() {
-		return 0, errors.New("curve.Point.MarshalToSizedBuffer: tries to marshal identity")
+		return nil, errors.New("curve.Point.MarshalToSizedBuffer: point is nil")
 	}
 	v.toAffine()
+	if v.IsIdentity() {
+		return nil, errors.New("curve.Point.MarshalToSizedBuffer: tries to marshal identity")
+	}
+
+	data = make([]byte, params.BytesPoint)
 	// Choose the format byte depending on the oddness of the Y coordinate.
 	format := secp256k1.PubKeyFormatCompressedEven
 	if v.p.Y.IsOdd() {
@@ -75,54 +64,11 @@ func (v *Point) MarshalToSizedBuffer(data []byte) (int, error) {
 	// 0x02 or 0x03 ∥ 32-byte x coordinate
 	data[0] = format
 	v.p.X.PutBytesUnchecked(data[1:33])
-	return params.BytesPoint, nil
+	return data, nil
 }
 
-// Marshal implements proto.Marshaler.
-func (s *Scalar) Marshal() ([]byte, error) {
-	data := make([]byte, params.BytesScalar)
-	n, err := s.MarshalTo(data)
-	return data[:n], err
-}
-
-// MarshalTo implements proto.Marshaler.
-func (s *Scalar) MarshalTo(data []byte) (int, error) {
-	s.s.PutBytesUnchecked(data)
-	return params.BytesScalar, nil
-}
-
-// Size implements proto.Sizer.
-func (v *Point) Size() (n int) {
-	return params.BytesPoint
-}
-
-// Size implements proto.Sizer.
-func (s *Scalar) Size() (n int) {
-	return params.BytesScalar
-}
-
-// String implements fmt.Stringer.
-func (v *Point) String() string {
-	if v == nil {
-		return "nil"
-	}
-	if v.IsIdentity() {
-		return "Point{Identity}"
-	}
-	s := fmt.Sprintf("Point{X: %v, Y: %v, Z: %v", v.p.X, v.p.Y, v.p.Z)
-	return s
-}
-
-// String implements fmt.Stringer.
-func (s *Scalar) String() string {
-	if s == nil {
-		return "nil"
-	}
-	return s.s.String()
-}
-
-// Unmarshal implements proto.Unmarshaler.
-func (v *Point) Unmarshal(data []byte) error {
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (v *Point) UnmarshalBinary(data []byte) error {
 	if len(data) < params.BytesPoint {
 		return errors.New("curve.Point.Unmarshal: data is too small")
 	}
@@ -152,15 +98,40 @@ func (v *Point) Unmarshal(data []byte) error {
 	return nil
 }
 
-// Unmarshal implements proto.Unmarshaler.
-func (s *Scalar) Unmarshal(data []byte) error {
-	var scalar secp256k1.ModNScalar
-	if len(data) < params.BytesScalar {
-		return errors.New("curve.Scalar.Unmarshal: data is too small")
+// MarshalJSON implements json.Marshaler.
+func (v *Point) MarshalJSON() ([]byte, error) {
+	data, err := v.MarshalBinary()
+	if err != nil {
+		return nil, err
 	}
-	if scalar.SetByteSlice(data[:params.BytesScalar]) {
-		return errors.New("curve.Scalar.Unmarshal: scalar was >= q")
+	return json.Marshal(data)
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (v *Point) UnmarshalJSON(bytes []byte) error {
+	var data []byte
+	if err := json.Unmarshal(bytes, &data); err != nil {
+		return fmt.Errorf("curve.Point: failed to unmarshal compressed point: %w", err)
 	}
-	s.s.Set(&scalar)
-	return nil
+	return v.UnmarshalBinary(data)
+}
+
+// String implements fmt.Stringer.
+func (v *Point) String() string {
+	if v == nil {
+		return "nil"
+	}
+	if v.IsIdentity() {
+		return "Point{Identity}"
+	}
+	s := fmt.Sprintf("Point{X: %v, Y: %v, Z: %v", v.p.X, v.p.Y, v.p.Z)
+	return s
+}
+
+// String implements fmt.Stringer.
+func (s *Scalar) String() string {
+	if s == nil {
+		return "nil"
+	}
+	return s.s.String()
 }
