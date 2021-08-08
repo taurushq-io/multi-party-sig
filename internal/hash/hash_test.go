@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/cronokirby/safenum"
 	"github.com/stretchr/testify/assert"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
@@ -23,14 +24,12 @@ func TestHash_WriteAny(t *testing.T) {
 		}
 		return nil
 	}
+	b := big.NewInt(35)
+	i := new(safenum.Int).SetBig(b, b.BitLen())
+	n := new(safenum.Nat).SetBig(b, b.BitLen())
+	m := safenum.ModulusFromBytes(b.Bytes())
 
-	assert.NoError(t, testFunc(big.NewInt(35)))
+	assert.NoError(t, testFunc(i, n, m))
 	assert.NoError(t, testFunc(curve.NewIdentityPoint().ScalarBaseMult(sample.Scalar(rand.Reader))))
 	assert.NoError(t, testFunc([]byte{1, 4, 6}))
-
-	var i *big.Int
-
-	assert.Error(t, testFunc(i))
-
-	assert.NoError(t, testFunc(big.NewInt(35), []byte{1, 4, 6}))
 }
