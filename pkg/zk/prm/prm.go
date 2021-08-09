@@ -45,6 +45,7 @@ func (p Proof) IsValid(public Public) bool {
 // s = t^lambda (mod N).
 func NewProof(pl *pool.Pool, hash *hash.Hash, public Public, private Private) *Proof {
 	n := public.N
+	nMod := safenum.ModulusFromNat(new(safenum.Nat).SetBig(n, n.BitLen()))
 	lambda := private.Lambda
 	phi := safenum.ModulusFromNat(private.Phi)
 
@@ -57,8 +58,8 @@ func NewProof(pl *pool.Pool, hash *hash.Hash, public Public, private Private) *P
 		a[i] = sample.ModN(lockedRand, phi)
 
 		// Aᵢ = tᵃ mod N
-		A[i] = a[i].Big()
-		A[i] = A[i].Exp(public.T, A[i], n)
+		Ai := new(safenum.Nat).SetBig(public.T, public.T.BitLen())
+		A[i] = Ai.Exp(Ai, a[i], nMod).Big()
 
 		return nil
 	})
