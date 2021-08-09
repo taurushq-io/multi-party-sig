@@ -26,7 +26,7 @@ type ScalarI interface {
 	Equal(ScalarI) bool
 	IsZero() bool
 	Set(ScalarI) ScalarI
-	SetNat(ScalarI)
+	SetNat(*safenum.Nat) ScalarI
 	Act(PointI) PointI
 	ActOnBase() PointI
 }
@@ -35,6 +35,6 @@ type PointI interface {
 	encoding.BinaryMarshaler
 	encoding.BinaryUnmarshaler
 	Add(PointI) PointI
-	Negate(PointI) PointI
+	Negate() PointI
 	Equal(PointI) bool
 }
