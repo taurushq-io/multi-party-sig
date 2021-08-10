@@ -14,6 +14,7 @@ var qMod = safenum.ModulusFromNat(new(safenum.Nat).SetBig(q, q.BitLen()))
 type Curve interface {
 	NewPoint() PointI
 	NewScalar() ScalarI
+	Name() string
 }
 
 type ScalarI interface {

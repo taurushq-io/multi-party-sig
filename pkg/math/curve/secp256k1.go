@@ -18,6 +18,10 @@ func (Secp256k1) NewScalar() ScalarI {
 	return new(secp256k1Scalar)
 }
 
+func (Secp256k1) Name() string {
+	return "secp256k1"
+}
+
 type secp256k1Scalar struct {
 	value secp256k1.ModNScalar
 }
