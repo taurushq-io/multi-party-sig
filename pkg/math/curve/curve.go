@@ -11,6 +11,7 @@ type Curve interface {
 	NewScalar() Scalar
 	Name() string
 	SafeScalarBytes() int
+	Order() *safenum.Modulus
 }
 
 type Scalar interface {

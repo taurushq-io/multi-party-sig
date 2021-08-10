@@ -22,6 +22,13 @@ func (Secp256k1) SafeScalarBytes() int {
 	return 32
 }
 
+var secp256k1OrderNat, _ = new(safenum.Nat).SetHex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141")
+var secp256k1Order = safenum.ModulusFromNat(secp256k1OrderNat)
+
+func (Secp256k1) Order() *safenum.Modulus {
+	return secp256k1Order
+}
+
 func (Secp256k1) LiftX(data []byte) (*Secp256k1Point, error) {
 	scalar := new(Secp256k1Scalar)
 	if err := scalar.UnmarshalBinary(data); err != nil {
@@ -121,10 +128,15 @@ func (s *Secp256k1Scalar) IsZero() bool {
 }
 
 func (s *Secp256k1Scalar) Set(that Scalar) Scalar {
+	other := secp256k1CastScalar(that)
+
+	s.value.Set(&other.value)
 	return s
 }
 
 func (s *Secp256k1Scalar) SetNat(x *safenum.Nat) Scalar {
+	reduced := new(safenum.Nat).Mod(x, secp256k1Order)
+	s.value.SetByteSlice(reduced.Bytes())
 	return s
 }
 
