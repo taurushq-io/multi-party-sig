@@ -1,13 +1,12 @@
 package round
 
 import (
-	"crypto/elliptic"
 	"errors"
 	"sync"
 
-	"github.com/decred/dcrd/dcrec/secp256k1/v3"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
@@ -27,7 +26,7 @@ type Helper struct {
 	partyIDs, otherPartyIDs party.IDSlice
 
 	// group for signature
-	group elliptic.Curve
+	group curve.Curve
 
 	// ssid the unique identifier for this protocol execution
 	ssid []byte
@@ -37,7 +36,7 @@ type Helper struct {
 	mtx sync.Mutex
 }
 
-func NewHelper(protocolID types.ProtocolID, finalRoundNumber types.RoundNumber,
+func NewHelper(group curve.Curve, protocolID types.ProtocolID, finalRoundNumber types.RoundNumber,
 	selfID party.ID, partyIDs party.IDSlice,
 	auxInfo ...hash.WriterToWithDomain) (*Helper, error) {
 
@@ -49,9 +48,6 @@ func NewHelper(protocolID types.ProtocolID, finalRoundNumber types.RoundNumber,
 	if !partyIDs.Contains(selfID) {
 		return nil, errors.New("helper: selfID not included in partyIDs")
 	}
-
-	// todo change to allow different groups
-	group := secp256k1.S256()
 
 	h := hashFromSID(protocolID, group, partyIDs, auxInfo...)
 
@@ -71,21 +67,13 @@ func NewHelper(protocolID types.ProtocolID, finalRoundNumber types.RoundNumber,
 // It assumes that the state is in a correct, and can panic if it is not.
 // Calling hash.Sum() on the resulting hash function returns the hash of the SSID.
 // It computes
-// - Hash(𝔾, q, Gₓ, n, P₁, …, Pₙ, auxInfo}.
-func hashFromSID(protocolID types.ProtocolID, group elliptic.Curve, partyIDs party.IDSlice, auxInfo ...hash.WriterToWithDomain) *hash.Hash {
-	// sid = protocolID 𝔾, q, Gₓ, n, P₁, …, Pₙ
+// - Hash(𝔾, n, P₁, …, Pₙ, auxInfo}.
+func hashFromSID(protocolID types.ProtocolID, group curve.Curve, partyIDs party.IDSlice, auxInfo ...hash.WriterToWithDomain) *hash.Hash {
+	// sid = protocolID 𝔾, n, P₁, …, Pₙ
 	sid := []hash.WriterToWithDomain{
 		&hash.BytesWithDomain{
 			TheDomain: "Group Name",
-			Bytes:     []byte(group.Params().Name),
-		},
-		&hash.BytesWithDomain{
-			TheDomain: "Group Order",
-			Bytes:     group.Params().N.Bytes(),
-		},
-		&hash.BytesWithDomain{
-			TheDomain: "Generator X Coordinate",
-			Bytes:     group.Params().Gx.Bytes(),
+			Bytes:     []byte(group.Name()),
 		},
 		partyIDs,
 	}
@@ -170,5 +158,5 @@ func (h *Helper) N() int { return len(h.partyIDs) }
 // OtherPartyIDs returns a sorted list of parties that does not contain SelfID.
 func (h *Helper) OtherPartyIDs() party.IDSlice { return h.partyIDs.Remove(h.selfID) }
 
-// Curve returns the curve used for this protocol.
-func (h *Helper) Curve() elliptic.Curve { return h.group }
+// Group returns the curve used for this protocol.
+func (h *Helper) Group() curve.Curve { return h.group }

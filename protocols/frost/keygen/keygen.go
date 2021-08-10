@@ -7,6 +7,7 @@ import (
 
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
@@ -42,6 +43,7 @@ func startKeygenCommon(taproot bool, participants []party.ID, threshold int, sel
 			taprootFlag = 1
 		}
 		helper, err := round.NewHelper(
+			curve.Secp256k1{},
 			protocolID,
 			protocolRounds,
 			selfID,

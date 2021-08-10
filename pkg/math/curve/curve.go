@@ -4,38 +4,35 @@ import (
 	"encoding"
 
 	"github.com/cronokirby/safenum"
-	"github.com/decred/dcrd/dcrec/secp256k1/v3"
 )
 
-// q is the order of the base point.
-var q = secp256k1.S256().Params().N
-var qMod = safenum.ModulusFromNat(new(safenum.Nat).SetBig(q, q.BitLen()))
-
 type Curve interface {
-	NewPoint() PointI
-	NewScalar() ScalarI
+	NewPoint() Point
+	NewScalar() Scalar
 	Name() string
+	SafeScalarBytes() int
 }
 
-type ScalarI interface {
+type Scalar interface {
 	encoding.BinaryMarshaler
 	encoding.BinaryUnmarshaler
-	Add(ScalarI) ScalarI
-	Mul(ScalarI) ScalarI
-	Invert() ScalarI
-	Negate() ScalarI
-	Equal(ScalarI) bool
+	Add(Scalar) Scalar
+	Mul(Scalar) Scalar
+	Invert() Scalar
+	Negate() Scalar
+	Equal(Scalar) bool
 	IsZero() bool
-	Set(ScalarI) ScalarI
-	SetNat(*safenum.Nat) ScalarI
-	Act(PointI) PointI
-	ActOnBase() PointI
+	Set(Scalar) Scalar
+	SetNat(*safenum.Nat) Scalar
+	Act(Point) Point
+	ActOnBase() Point
 }
 
-type PointI interface {
+type Point interface {
 	encoding.BinaryMarshaler
 	encoding.BinaryUnmarshaler
-	Add(PointI) PointI
-	Negate() PointI
-	Equal(PointI) bool
+	Add(Point) Point
+	Negate() Point
+	Set(Point) Point
+	Equal(Point) bool
 }

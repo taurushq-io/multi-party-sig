@@ -14,18 +14,18 @@ type Polynomial struct {
 
 // NewPolynomial generates a Polynomial f(X) = secret + a₁⋅X + … + aₜ⋅Xᵗ,
 // with coefficients in ℤₚ, and degree t.
-func NewPolynomial(degree int, constant *curve.Scalar) *Polynomial {
+func NewPolynomial(group curve.Curve, degree int, constant curve.Scalar) *Polynomial {
 	var polynomial Polynomial
 	polynomial.coefficients = make([]curve.Scalar, degree+1)
 
 	// if the constant is nil, we interpret it as 0.
 	if constant == nil {
-		constant = curve.NewScalar()
+		constant = group.NewScalar()
 	}
-	polynomial.coefficients[0] = *constant
+	polynomial.coefficients[0] = constant
 
 	for i := 1; i <= degree; i++ {
-		polynomial.coefficients[i] = *sample.Scalar(rand.Reader)
+		polynomial.coefficients[i] = sample.Scalar(rand.Reader, group)
 	}
 
 	return &polynomial
@@ -33,7 +33,7 @@ func NewPolynomial(degree int, constant *curve.Scalar) *Polynomial {
 
 // Evaluate evaluates a polynomial in a given variable index
 // We use Horner's method: https://en.wikipedia.org/wiki/Horner%27s_method
-func (p *Polynomial) Evaluate(index *curve.Scalar) *curve.Scalar {
+func (p *Polynomial) Evaluate(index curve.Scalar) curve.Scalar {
 	if index.IsZero() {
 		panic("attempt to leak secret")
 	}
