@@ -82,6 +82,17 @@ func (s *Secp256k1Scalar) Add(that Scalar) Scalar {
 	return s
 }
 
+func (s *Secp256k1Scalar) Sub(that Scalar) Scalar {
+	other := secp256k1CastScalar(that)
+
+	negated := new(Secp256k1Scalar)
+	negated.value.Set(&other.value)
+	negated.value.Negate()
+
+	s.value.Add(&negated.value)
+	return s
+}
+
 func (s *Secp256k1Scalar) Mul(that Scalar) Scalar {
 	other := secp256k1CastScalar(that)
 

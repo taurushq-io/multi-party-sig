@@ -18,9 +18,10 @@ type Scalar interface {
 	encoding.BinaryUnmarshaler
 	Curve() Curve
 	Add(Scalar) Scalar
+	Sub(Scalar) Scalar
+	Negate() Scalar
 	Mul(Scalar) Scalar
 	Invert() Scalar
-	Negate() Scalar
 	Equal(Scalar) bool
 	IsZero() bool
 	Set(Scalar) Scalar
