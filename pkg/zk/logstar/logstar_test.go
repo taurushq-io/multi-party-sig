@@ -14,14 +14,15 @@ import (
 )
 
 func TestLogStar(t *testing.T) {
+	var group curve.Curve
 	verifier := zk.Pedersen
 	prover := zk.ProverPaillierPublic
 
-	G := curve.NewIdentityPoint().ScalarBaseMult(sample.Scalar(rand.Reader))
+	G := sample.Scalar(rand.Reader, group).ActOnBase()
 
 	x := sample.IntervalL(rand.Reader)
 	C, rho := prover.Enc(x)
-	X := curve.NewIdentityPoint().ScalarMult(curve.NewScalarInt(x), G)
+	X := group.NewScalar().SetInt(x).Act(G)
 	public := Public{
 		C:      C,
 		X:      X,
@@ -30,7 +31,7 @@ func TestLogStar(t *testing.T) {
 		Aux:    verifier,
 	}
 
-	proof := NewProof(hash.New(), public, Private{
+	proof := NewProof(group, hash.New(), public, Private{
 		X:   x,
 		Rho: rho,
 	})
@@ -38,11 +39,11 @@ func TestLogStar(t *testing.T) {
 
 	out, err := cbor.Marshal(proof)
 	require.NoError(t, err, "failed to marshal proof")
-	proof2 := &Proof{}
+	proof2 := Empty(group)
 	require.NoError(t, cbor.Unmarshal(out, proof2), "failed to unmarshal proof")
 	out2, err := cbor.Marshal(proof2)
 	require.NoError(t, err, "failed to marshal 2nd proof")
-	proof3 := &Proof{}
+	proof3 := Empty(group)
 	require.NoError(t, cbor.Unmarshal(out2, proof3), "failed to unmarshal 2nd proof")
 
 	assert.True(t, proof3.Verify(hash.New(), public))

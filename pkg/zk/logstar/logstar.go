@@ -48,6 +48,7 @@ type Commitment struct {
 }
 
 type Proof struct {
+	group curve.Curve
 	*Commitment
 	// Z1 = α + e x
 	Z1 *safenum.Int
@@ -113,13 +114,13 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	}
 }
 
-func (p Proof) Verify(group curve.Curve, hash *hash.Hash, public Public) bool {
+func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	if !p.IsValid(public) {
 		return false
 	}
 
 	if public.G == nil {
-		public.G = group.NewPoint()
+		public.G = p.group.NewPoint()
 	}
 
 	if !arith.IsInIntervalLPrimeEps(p.Z1) {
@@ -150,10 +151,10 @@ func (p Proof) Verify(group curve.Curve, hash *hash.Hash, public Public) bool {
 
 	{
 		// lhs = [z₁]G
-		lhs := group.NewScalar().SetInt(p.Z1).Act(public.G)
+		lhs := p.group.NewScalar().SetInt(p.Z1).Act(public.G)
 
 		// rhs = Y + [e]X
-		rhs := group.NewScalar().SetInt(e).Act(public.X)
+		rhs := p.group.NewScalar().SetInt(e).Act(public.X)
 		rhs.Add(p.Y)
 
 		if !lhs.Equal(rhs) {
@@ -174,6 +175,7 @@ func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safen
 
 func Empty(group curve.Curve) *Proof {
 	return &Proof{
+		group:      group,
 		Commitment: &Commitment{Y: group.NewPoint()},
 	}
 }

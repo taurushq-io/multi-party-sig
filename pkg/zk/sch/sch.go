@@ -22,7 +22,8 @@ type Commitment struct {
 
 // Response = randomness + H(..., commitment, public)•secret (mod p).
 type Response struct {
-	Z curve.Scalar
+	group curve.Curve
+	Z     curve.Scalar
 }
 
 type Proof struct {
@@ -76,12 +77,12 @@ func (r *Randomness) Commitment() *Commitment {
 }
 
 // Verify checks that Response•G = Commitment + H(..., Commitment, public)•Public.
-func (z *Response) Verify(group curve.Curve, hash *hash.Hash, public curve.Point, commitment *Commitment) bool {
+func (z *Response) Verify(hash *hash.Hash, public curve.Point, commitment *Commitment) bool {
 	if z == nil || !z.IsValid() || public.IsIdentity() {
 		return false
 	}
 
-	e, err := challenge(group, hash, commitment, public)
+	e, err := challenge(z.group, hash, commitment, public)
 	if err != nil {
 		return false
 	}
@@ -94,11 +95,11 @@ func (z *Response) Verify(group curve.Curve, hash *hash.Hash, public curve.Point
 }
 
 // Verify checks that Proof.Response•G = Proof.Commitment + H(..., Proof.Commitment, Public)•Public.
-func (p *Proof) Verify(group curve.Curve, hash *hash.Hash, public curve.Point) bool {
+func (p *Proof) Verify(hash *hash.Hash, public curve.Point) bool {
 	if !p.IsValid() {
 		return false
 	}
-	return p.Z.Verify(group, hash, public, &p.C)
+	return p.Z.Verify(hash, public, &p.C)
 }
 
 // WriteTo implements io.WriterTo.
@@ -135,12 +136,12 @@ func (p *Proof) IsValid() bool {
 func EmptyProof(group curve.Curve) *Proof {
 	return &Proof{
 		C: Commitment{C: group.NewPoint()},
-		Z: Response{Z: group.NewScalar()},
+		Z: Response{group: group, Z: group.NewScalar()},
 	}
 }
 
 func EmptyResponse(group curve.Curve) *Response {
-	return &Response{Z: group.NewScalar()}
+	return &Response{group: group, Z: group.NewScalar()}
 }
 
 func EmptyCommitment(group curve.Curve) *Commitment {
