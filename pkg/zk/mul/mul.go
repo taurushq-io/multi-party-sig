@@ -14,7 +14,7 @@ type Public struct {
 	// X = Enc(x; ρₓ)
 	X *paillier.Ciphertext
 
-	// Y = Enc(?;?)
+	// Y is a ciphertext over the prover's public key
 	Y *paillier.Ciphertext
 
 	// C = x ⊙ Y % ρ
@@ -23,16 +23,18 @@ type Public struct {
 	// Prover = N
 	Prover *paillier.PublicKey
 }
+
 type Private struct {
-	// X enc of X
+	// X = x is the plaintext of Public.X.
 	X *safenum.Int
 
-	// Rho = Nonce C = ρ
+	// Rho = ρ is the nonce for Public.C.
 	Rho *safenum.Nat
 
-	// RhoX = Nonce X = ρₓ
+	// RhoX = ρₓ is the nonce for Public.X
 	RhoX *safenum.Nat
 }
+
 type Commitment struct {
 	// A = α ⊙ Y % ρ
 	A *paillier.Ciphertext

@@ -35,14 +35,8 @@ func (pk *PublicKey) N() *safenum.Modulus {
 	return pk.n
 }
 
-// NewPublicKey returns an initialized paillier.PublicKey and computes N, N² and (N-1)/2.
-// Validation is performed on n and an error is returned if it is not a valid modulus.
-// The input n is copied.
-func NewPublicKey(n *safenum.Modulus) (*PublicKey, error) {
-	if err := ValidateN(n); err != nil {
-		return nil, err
-	}
-
+// NewPublicKey returns an initialized paillier.PublicKey and caches N, N² and (N-1)/2.
+func NewPublicKey(n *safenum.Modulus) *PublicKey {
 	nNat := n.Nat()
 	nSquared := new(safenum.Nat).Mul(nNat, nNat, -1)
 	nPlusOne := new(safenum.Nat).Add(nNat, oneNat, -1)
@@ -54,15 +48,21 @@ func NewPublicKey(n *safenum.Modulus) (*PublicKey, error) {
 		nNat:     nNat,
 		nSquared: safenum.ModulusFromNat(nSquared),
 		nPlusOne: nPlusOne,
-	}, nil
+	}
 }
 
+// ValidateN performs basic checks to make sure the modulus is valid:
+// - log₂(n) = params.BitsPaillier.
+// - n is odd.
 func ValidateN(n *safenum.Modulus) error {
 	// log₂(N) = BitsPaillier
-	if bits := n.Big().BitLen(); bits != params.BitsPaillier {
-		return fmt.Errorf("paillier.publicKey: have: %d, need %d: %w", bits, params.BitsPaillier, ErrPaillierLength)
+	nBig := n.Big()
+	if bits := nBig.BitLen(); bits != params.BitsPaillier {
+		return fmt.Errorf("have: %d, need %d: %w", bits, params.BitsPaillier, ErrPaillierLength)
 	}
-	// TODO check if odd
+	if nBig.Bit(0) != 1 {
+		return ErrPaillierEven
+	}
 	return nil
 }
 
@@ -120,16 +120,6 @@ func (pk PublicKey) ValidateCiphertexts(cts ...*Ciphertext) bool {
 		}
 	}
 	return true
-}
-
-// Clone performs a deep copy of the public key.
-func (pk PublicKey) Clone() *PublicKey {
-	return &PublicKey{
-		n:        pk.n,
-		nNat:     pk.nNat.Clone(),
-		nSquared: pk.nSquared,
-		nPlusOne: pk.nPlusOne.Clone(),
-	}
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.

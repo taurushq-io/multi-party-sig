@@ -23,6 +23,7 @@ type Public struct {
 	Prover *paillier.PublicKey
 	Aux    *pedersen.Parameters
 }
+
 type Private struct {
 	// Y = y
 	Y *safenum.Int
@@ -30,6 +31,7 @@ type Private struct {
 	// Rho = ρ
 	Rho *safenum.Nat
 }
+
 type Commitment struct {
 	// S = sʸ tᵘ
 	S *safenum.Nat
@@ -37,9 +39,10 @@ type Commitment struct {
 	T *safenum.Nat
 	// A = Enc₀(α; r)
 	A *paillier.Ciphertext
-	// Gamma = alpha (mod q)
+	// Gamma = α (mod q)
 	Gamma *curve.Scalar
 }
+
 type Proof struct {
 	*Commitment
 	// Z1 = α + e•y

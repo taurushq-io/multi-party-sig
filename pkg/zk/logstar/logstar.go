@@ -17,35 +17,36 @@ type Public struct {
 	// Encryption of x under the prover's key
 	C *paillier.Ciphertext
 
-	// X = [x] G
-	// x "in the exponent"
+	// X = x⋅G
 	X *curve.Point
 
-	// G = Base point of the curve,
-	// If G = nil, the default base point is used
+	// G is the base point of the curve.
+	// If G = nil, the default base point is used.
 	G *curve.Point
 
 	Prover *paillier.PublicKey
 	Aux    *pedersen.Parameters
 }
+
 type Private struct {
-	// X is the plaintext of C and the dlog of X
+	// X is the plaintext of C and the discrete log of X.
 	X *safenum.Int
 
-	// Rho = ρ
-	// nonce of C
+	// Rho = ρ is nonce used to encrypt C.
 	Rho *safenum.Nat
 }
+
 type Commitment struct {
-	// S = sˣ tᵘ
+	// S = sˣ tᵘ (mod N)
 	S *safenum.Nat
 	// A = Enc₀(alpha; r)
 	A *paillier.Ciphertext
-	// Y = gᵃ
+	// Y = α⋅G
 	Y *curve.Point
-	// D = sᵃ tᵍ
+	// D = sᵃ tᵍ (mod N)
 	D *safenum.Nat
 }
+
 type Proof struct {
 	*Commitment
 	// Z1 = α + e x

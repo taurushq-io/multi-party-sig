@@ -13,8 +13,7 @@ import (
 )
 
 type Public struct {
-	// C = Enc₀(?;?)
-	// Kⱼ = Encⱼ(kⱼ; )
+	// C is a ciphertext encrypted with N₀
 	C *paillier.Ciphertext
 
 	// D = (x ⨀ C) ⨁ Enc₀(y;ρ)
@@ -54,19 +53,19 @@ type Private struct {
 	RhoY *safenum.Nat
 }
 type Commitment struct {
-	// A = (alpha ⊙ c ) ⊕ Enc(N0, beta, r)
+	// A = (α ⊙ c ) ⊕ Enc(N0, beta, r)
 	A *paillier.Ciphertext
-	// Bₓ = gᵃ
+	// Bₓ = α⋅G
 	Bx *curve.Point
 	// By = Enc(N1, beta, ry)
 	By *paillier.Ciphertext
-	// E = sᵃ tᵍ
+	// E = sᵃ tᵍ (mod N)
 	E *safenum.Nat
-	// S = sˣ tᵐ
+	// S = sˣ tᵐ (mod N)
 	S *safenum.Nat
-	// F = sᵇ tᵈ
+	// F = sᵇ tᵈ (mod N)
 	F *safenum.Nat
-	// T = sʸ tᵘ
+	// T = sʸ tᵘ (mod N)
 	T *safenum.Nat
 }
 

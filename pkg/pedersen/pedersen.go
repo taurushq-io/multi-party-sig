@@ -26,23 +26,21 @@ type Parameters struct {
 	s, t *safenum.Nat
 }
 
-// New returns a new set of Pedersen parameters,
-// It returns an error if any of the following is true:
-// - n, s, or t is nil.
-// - s, t are not in [1, …,n-1].
-// - s, t are not coprime to N.
-// - s = t.
-func New(n *safenum.Modulus, s, t *safenum.Nat) (*Parameters, error) {
-	if err := ValidateParameters(n, s, t); err != nil {
-		return nil, err
-	}
+// New returns a new set of Pedersen parameters.
+// Assumes ValidateParameters(n, s, t) returns nil.
+func New(n *safenum.Modulus, s, t *safenum.Nat) *Parameters {
 	return &Parameters{
 		n: n,
 		s: s,
 		t: t,
-	}, nil
+	}
 }
 
+// ValidateParameters check n, s and t, and returns an error if any of the following is true:
+// - n, s, or t is nil.
+// - s, t are not in [1, …,n-1].
+// - s, t are not coprime to N.
+// - s = t.
 func ValidateParameters(n *safenum.Modulus, s, t *safenum.Nat) error {
 	if n == nil || s == nil || t == nil {
 		return ErrNilFields

@@ -26,6 +26,7 @@ type Public struct {
 	Verifier *paillier.PublicKey
 	Aux      *pedersen.Parameters
 }
+
 type Private struct {
 	// X ∈ ± 2ˡ
 	X *safenum.Int
@@ -44,6 +45,7 @@ type Commitment struct {
 	// S = sˣ tᵐ
 	S *safenum.Nat
 }
+
 type Proof struct {
 	*Commitment
 	// Z1 = α + ex

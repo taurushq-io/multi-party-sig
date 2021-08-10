@@ -107,10 +107,10 @@ func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Conten
 	}
 
 	// Verify Pedersen
-	Pedersen, err := pedersen.New(body.N, body.S, body.T)
-	if err != nil {
+	if err := pedersen.ValidateParameters(body.N, body.S, body.T); err != nil {
 		return err
 	}
+	Pedersen := pedersen.New(body.N, body.S, body.T)
 
 	// Verify decommit
 	if !r.HashForID(from).Decommit(r.Commitments[from], body.Decommitment,
@@ -130,7 +130,7 @@ func (r *round3) StoreMessage(from party.ID, content message.Content) error {
 	r.N[from] = body.N
 	r.S[from] = body.S
 	r.T[from] = body.T
-	r.PaillierPublic[from], _ = paillier.NewPublicKey(body.N)
+	r.PaillierPublic[from] = paillier.NewPublicKey(body.N)
 	r.VSSPolynomials[from] = body.VSSPolynomial
 	r.SchnorrCommitments[from] = body.SchnorrCommitments
 	return nil
