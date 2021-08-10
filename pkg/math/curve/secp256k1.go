@@ -18,6 +18,10 @@ func (Secp256k1) NewScalar() Scalar {
 	return new(Secp256k1Scalar)
 }
 
+func (Secp256k1) SafeScalarBytes() int {
+	return 32
+}
+
 func (Secp256k1) LiftX(data []byte) (*Secp256k1Point, error) {
 	scalar := new(Secp256k1Scalar)
 	if err := scalar.UnmarshalBinary(data); err != nil {
@@ -48,6 +52,10 @@ func secp256k1CastScalar(generic Scalar) *Secp256k1Scalar {
 		panic(fmt.Sprintf("failed to convert to secp256k1Scalar: %v", generic))
 	}
 	return out
+}
+
+func (*Secp256k1Scalar) Curve() Curve {
+	return Secp256k1{}
 }
 
 func (s *Secp256k1Scalar) MarshalBinary() ([]byte, error) {
@@ -132,6 +140,10 @@ func secp256k1CastPoint(generic Point) *Secp256k1Point {
 		panic(fmt.Sprintf("failed to convert to secp256k1Point: %v", generic))
 	}
 	return out
+}
+
+func (*Secp256k1Point) Curve() Curve {
+	return Secp256k1{}
 }
 
 func (p *Secp256k1Point) MarshalBinary() ([]byte, error) {

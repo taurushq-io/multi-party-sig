@@ -16,6 +16,7 @@ type Curve interface {
 type Scalar interface {
 	encoding.BinaryMarshaler
 	encoding.BinaryUnmarshaler
+	Curve() Curve
 	Add(Scalar) Scalar
 	Mul(Scalar) Scalar
 	Invert() Scalar
@@ -31,6 +32,7 @@ type Scalar interface {
 type Point interface {
 	encoding.BinaryMarshaler
 	encoding.BinaryUnmarshaler
+	Curve() Curve
 	Add(Point) Point
 	Negate() Point
 	Set(Point) Point
