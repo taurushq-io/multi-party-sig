@@ -11,8 +11,23 @@ import (
 
 // Randomness = a ← ℤₚ.
 type Randomness struct {
-	a          curve.Scalar
+	a          *curve.Scalar
 	commitment Commitment
+}
+
+// Commitment = randomness•G, where
+type Commitment struct {
+	C *curve.Point
+}
+
+// Response = randomness + H(..., commitment, public)•secret (mod p).
+type Response struct {
+	Z *curve.Scalar
+}
+
+type Proof struct {
+	C Commitment
+	Z Response
 }
 
 // NewProof generates a Schnorr proof of knowledge of exponent for public, using the Fiat-Shamir transform.
@@ -20,31 +35,38 @@ func NewProof(hash *hash.Hash, public *curve.Point, private *curve.Scalar) *Proo
 	a := NewRandomness(rand.Reader)
 	z := a.Prove(hash, public, private)
 	return &Proof{
-		C: a.Commitment(),
-		Z: z,
+		C: *a.Commitment(),
+		Z: *z,
 	}
 }
 
 // NewRandomness creates a new a ∈ ℤₚ and the corresponding commitment C = a•G.
 // This can be used to run the proof in a non-interactive way.
 func NewRandomness(rand io.Reader) *Randomness {
-	var r Randomness
-	r.a = *sample.Scalar(rand)
-	r.commitment.C.ScalarBaseMult(&r.a)
-	return &r
+	a, c := sample.ScalarPointPair(rand)
+	return &Randomness{
+		a:          a,
+		commitment: Commitment{C: c},
+	}
 }
 
-func challenge(hash *hash.Hash, commitment *Commitment, public *curve.Point) *curve.Scalar {
-	_ = hash.WriteAny(&commitment.C, public)
-	return sample.Scalar(hash.Digest())
+func challenge(hash *hash.Hash, commitment *Commitment, public *curve.Point) (e *curve.Scalar, err error) {
+	err = hash.WriteAny(commitment.C, public)
+	e = sample.Scalar(hash.Digest())
+	return
 }
 
 // Prove creates a Response = Randomness + H(..., Commitment, public)•secret (mod p).
 func (r *Randomness) Prove(hash *hash.Hash, public *curve.Point, secret *curve.Scalar) *Response {
-	var p Response
-	p.Z = *challenge(hash, &r.commitment, public)
-	p.Z.MultiplyAdd(&p.Z, secret, &r.a)
-	return &p
+	if public.IsIdentity() || secret.IsZero() {
+		return nil
+	}
+	z, err := challenge(hash, &r.commitment, public)
+	if err != nil {
+		return nil
+	}
+	z.MultiplyAdd(z, secret, r.a)
+	return &Response{z}
 }
 
 // Commitment returns the commitment C = a•G for the randomness a.
@@ -54,16 +76,19 @@ func (r *Randomness) Commitment() *Commitment {
 
 // Verify checks that Response•G = Commitment + H(..., Commitment, public)•Public.
 func (z *Response) Verify(hash *hash.Hash, public *curve.Point, commitment *Commitment) bool {
-	if !z.IsValid() || public.IsIdentity() {
+	if z == nil || !z.IsValid() || public.IsIdentity() {
 		return false
 	}
 
-	e := challenge(hash, commitment, public)
+	e, err := challenge(hash, commitment, public)
+	if err != nil {
+		return false
+	}
 
 	var lhs, rhs curve.Point
-	lhs.ScalarBaseMult(&z.Z)
+	lhs.ScalarBaseMult(z.Z)
 	rhs.ScalarMult(e, public)
-	rhs.Add(&rhs, &commitment.C)
+	rhs.Add(&rhs, commitment.C)
 
 	return lhs.Equal(&rhs)
 }
@@ -73,7 +98,7 @@ func (p *Proof) Verify(hash *hash.Hash, public *curve.Point) bool {
 	if !p.IsValid() {
 		return false
 	}
-	return p.Z.Verify(hash, public, p.C)
+	return p.Z.Verify(hash, public, &p.C)
 }
 
 // WriteTo implements io.WriterTo.

@@ -9,6 +9,15 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
 
+// Exponent represent a polynomial F(X) whose coefficients belong to a group 𝔾.
+type Exponent struct {
+	// IsConstant indicates that the constant coefficient is the identity.
+	// We do this so that we never need to send an encoded Identity point, and thus consider it invalid
+	IsConstant bool
+	// Coefficients is a list of curve.Point representing the Coefficients of a polynomial over an elliptic curve.
+	Coefficients []curve.Point
+}
+
 // NewPolynomialExponent generates an Exponent polynomial F(X) = [secret + a₁•X + … + aₜ•Xᵗ]•G,
 // with coefficients in 𝔾, and degree t.
 func NewPolynomialExponent(polynomial *Polynomial) *Exponent {
@@ -150,6 +159,9 @@ func (p *Exponent) Constant() *curve.Point {
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
 func (p *Exponent) WriteTo(w io.Writer) (int64, error) {
+	if p == nil {
+		return 0, io.ErrUnexpectedEOF
+	}
 	total := int64(0)
 
 	// write the number of coefficients

@@ -1,10 +1,11 @@
 package hash
 
 import (
+	"errors"
 	"fmt"
 	"io"
-	"math/big"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/zeebo/blake3"
 )
@@ -52,7 +53,9 @@ func (hash *Hash) Sum() []byte {
 // Currently supported types:
 //
 //  - []byte
-//  - *big.Int
+//  - *safenum.Nat
+//  - *safenum.Int
+//  - *safenum.Modulus
 //  - hash.WriterToWithDomain
 //
 // This function will apply its own domain separation for the first two types.
@@ -62,13 +65,26 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 	for _, d := range data {
 		switch t := d.(type) {
 		case []byte:
-			toBeWritten = &BytesWithDomain{"[]byte", t}
-		case *big.Int:
 			if t == nil {
-				return fmt.Errorf("hash.Hash: write *big.Int: nil")
+				return errors.New("hash.WriteAny: nil []byte")
 			}
-			bytes, _ := t.GobEncode()
-			toBeWritten = &BytesWithDomain{"big.Int", bytes}
+			toBeWritten = &BytesWithDomain{"[]byte", t}
+		case *safenum.Nat:
+			if t == nil {
+				return fmt.Errorf("hash.Hash: write *safenum.Nat: nil")
+			}
+			toBeWritten = &BytesWithDomain{"safenum.Nat", t.Bytes()}
+		case *safenum.Int:
+			if t == nil {
+				return fmt.Errorf("hash.Hash: write *safenum.Int: nil")
+			}
+			bytes, _ := t.MarshalBinary()
+			toBeWritten = &BytesWithDomain{"safenum.Int", bytes}
+		case *safenum.Modulus:
+			if t == nil {
+				return fmt.Errorf("hash.Hash: write *safenum.Modulus: nil")
+			}
+			toBeWritten = &BytesWithDomain{"safenum.Modulus", t.Bytes()}
 		case WriterToWithDomain:
 			toBeWritten = t
 		default:

@@ -12,19 +12,31 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 )
 
-type (
-	Public struct {
-		// N = p*q
-		N *big.Int
-	}
-	Private struct {
-		// P, Q primes such that
-		// P, Q = 3 mod 4
-		P, Q *safenum.Nat
-		// Phi = ϕ(n) = (p-1)(q-1)
-		Phi *safenum.Nat
-	}
-)
+type Public struct {
+	// N = p*q
+	N *safenum.Modulus
+}
+
+type Private struct {
+	// P, Q primes such that
+	// P, Q ≡ 3 mod 4
+	P, Q *safenum.Nat
+	// Phi = ϕ(n) = (p-1)(q-1)
+	Phi *safenum.Nat
+}
+
+type Response struct {
+	// A, B s.t. y' = (-1)ᵃ wᵇ y
+	A, B bool
+	// X = y' ^ {1/4}
+	X *safenum.Nat
+	// Z = y^{N⁻¹ mod ϕ(N)}
+	Z *safenum.Nat
+}
+type Proof struct {
+	W         *safenum.Nat
+	Responses [params.StatParam]Response
+}
 
 var oneNat = new(safenum.Nat).SetUint64(1).Resize(1)
 
@@ -107,27 +119,20 @@ func makeQuadraticResidue(y, w, pHalf, qHalf *safenum.Nat, n, p, q *safenum.Modu
 }
 
 func (p *Proof) IsValid(public Public) bool {
-	if len(*p.X) != params.StatParam ||
-		len(p.A) != params.StatParam ||
-		len(p.B) != params.StatParam ||
-		len(*p.Z) != params.StatParam {
+	if p == nil {
+		return false
+	}
+	if big.Jacobi(p.W.Big(), public.N.Big()) != -1 {
 		return false
 	}
 
-	// W cannot be 0
-	if p.W.Cmp(big.NewInt(0)) != 1 {
+	if !arith.IsValidNatModN(public.N, p.W) {
 		return false
 	}
-	// W < N
-	if p.W.Cmp(public.N) != -1 {
-		return false
-	}
-
-	if !arith.IsValidModN(public.N, *p.Z...) {
-		return false
-	}
-	if !arith.IsValidModN(public.N, *p.X...) {
-		return false
+	for _, r := range p.Responses {
+		if !arith.IsValidNatModN(public.N, r.X, r.Z) {
+			return false
+		}
 	}
 
 	return true
@@ -152,71 +157,78 @@ func NewProof(pl *pool.Pool, hash *hash.Hash, public Public, private Private) *P
 	qHalf.Rsh(qHalf, 1, -1)
 	qMod := safenum.ModulusFromNat(q)
 	phiMod := safenum.ModulusFromNat(phi)
-	nNat := new(safenum.Nat).SetBig(n, n.BitLen())
-	nMod := safenum.ModulusFromNat(nNat)
+	nNat := n.Nat()
 	// W can be leaked so no need to make this sampling return a nat.
 	w := sample.QNR(rand.Reader, n)
-	wNat := new(safenum.Nat).SetBig(w, w.BitLen())
 
 	nInverse := new(safenum.Nat).ModInverse(nNat, phiMod)
 
-	Xs := make([]*big.Int, params.StatParam)
-	As := make([]bool, params.StatParam)
-	Bs := make([]bool, params.StatParam)
-	Zs := make([]*big.Int, params.StatParam)
+	var rs [params.StatParam]Response
 
-	ys := challenge(hash, n, w)
+	ys, _ := challenge(hash, n, w)
 
 	pl.Parallelize(params.StatParam, func(i int) interface{} {
-		y := new(safenum.Nat).SetBig(ys[i], ys[i].BitLen())
+		y := ys[i]
 
 		// Z = y^{n⁻¹ (mod n)}
-		z := new(safenum.Nat).Exp(y, nInverse, nMod)
+		z := new(safenum.Nat).Exp(y, nInverse, n)
 
-		a, b, yPrime := makeQuadraticResidue(y, wNat, pHalf, qHalf, nMod, pMod, qMod)
+		a, b, yPrime := makeQuadraticResidue(y, w, pHalf, qHalf, n, pMod, qMod)
 		// X = (y')¹/4
-		x := fourthRoot(yPrime, phi, nMod)
+		x := fourthRoot(yPrime, phi, n)
 
-		Xs[i], As[i], Bs[i], Zs[i] = x.Big(), a, b, z.Big()
+		rs[i] = Response{
+			A: a,
+			B: b,
+			X: x,
+			Z: z,
+		}
 
 		return nil
 	})
 
 	return &Proof{
-		W: w,
-		X: &Xs,
-		A: As,
-		B: Bs,
-		Z: &Zs,
+		W:         w,
+		Responses: rs,
 	}
 }
 
 func (p *Proof) Verify(pl *pool.Pool, hash *hash.Hash, public Public) bool {
-	n := public.N
+	n := public.N.Big()
+	nMod := public.N
 	// check if n is odd and prime
 	if n.Bit(0) == 0 || n.ProbablyPrime(20) {
 		return false
 	}
 
-	if !p.IsValid(public) {
+	w := p.W.Big()
+	if big.Jacobi(w, n) != -1 {
 		return false
 	}
 
-	if big.Jacobi(p.W, n) != -1 || p.W.Cmp(n) != -1 {
+	if !arith.IsValidBigModN(n, w) {
 		return false
 	}
 
 	// get [yᵢ] <- ℤₙ
-	ys := challenge(hash, n, p.W)
-
+	ys, err := challenge(hash, nMod, p.W)
+	if err != nil {
+		return false
+	}
 	four := big.NewInt(4)
 	verifications := pl.Parallelize(params.StatParam, func(i int) interface{} {
+		r := p.Responses[i]
 		var lhs, rhs big.Int
 		// get yᵢ
-		y := ys[i]
+		y := ys[i].Big()
 
-		x := (*p.X)[i]
-		z := (*p.Z)[i]
+		x := r.X.Big()
+		z := r.Z.Big()
+
+		// check co-primality
+		if !arith.IsValidBigModN(n, x, z) {
+			return false
+		}
 
 		{
 			// lhs = zⁿ mod n
@@ -232,10 +244,10 @@ func (p *Proof) Verify(pl *pool.Pool, hash *hash.Hash, public Public) bool {
 
 			// rhs = y' = (-1)ᵃ • wᵇ • y
 			rhs.Set(y)
-			if p.B[i] {
-				rhs.Mul(&rhs, p.W)
+			if r.B {
+				rhs.Mul(&rhs, w)
 			}
-			if p.A[i] {
+			if r.A {
 				rhs.Neg(&rhs)
 			}
 			rhs.Mod(&rhs, n)
@@ -255,13 +267,11 @@ func (p *Proof) Verify(pl *pool.Pool, hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, n, w *big.Int) []*big.Int {
-	_ = hash.WriteAny(n, w)
-	out := make([]*big.Int, params.StatParam)
-	nMod := safenum.ModulusFromNat(new(safenum.Nat).SetBig(n, n.BitLen()))
-	for i := range out {
-		out[i] = sample.ModN(hash.Digest(), nMod).Big()
+func challenge(hash *hash.Hash, n *safenum.Modulus, w *safenum.Nat) (es []*safenum.Nat, err error) {
+	err = hash.WriteAny(n, w)
+	es = make([]*safenum.Nat, params.StatParam)
+	for i := range es {
+		es[i] = sample.ModN(hash.Digest(), n)
 	}
-
-	return out
+	return
 }

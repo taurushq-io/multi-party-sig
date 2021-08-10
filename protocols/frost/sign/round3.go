@@ -36,11 +36,21 @@ type round3 struct {
 	Lambda map[party.ID]*curve.Scalar
 }
 
-// ProcessMessage implements round.Round.
-func (r *round3) ProcessMessage(l party.ID, content message.Content) error {
-	msg, ok := content.(*Sign3)
-	if !ok {
-		return fmt.Errorf("failed to convert message to Sign3: %v", msg)
+type Sign3 struct {
+	// Z_i is the response scalar computed by the sender of this message.
+	Z_i *curve.Scalar
+}
+
+// VerifyMessage implements round.Round.
+func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Content) error {
+	body, ok := content.(*Sign3)
+	if !ok || body == nil {
+		return message.ErrInvalidContent
+	}
+
+	// check nil
+	if body.Z_i == nil {
+		return message.ErrNilFields
 	}
 
 	// These steps come from Figure 3 of the Frost paper.
@@ -56,17 +66,24 @@ func (r *round3) ProcessMessage(l party.ID, content message.Content) error {
 	// we've already computed everything that step computes.
 
 	expected := curve.NewIdentityPoint()
-	expected.ScalarMult(r.Lambda[l], r.YShares[l])
+	expected.ScalarMult(r.Lambda[from], r.YShares[from])
 	expected.ScalarMult(r.c, expected)
-	expected.Add(r.RShares[l], expected)
+	expected.Add(r.RShares[from], expected)
 
-	actual := curve.NewIdentityPoint().ScalarBaseMult(msg.Z_i)
+	actual := curve.NewIdentityPoint().ScalarBaseMult(body.Z_i)
 
 	if !actual.Equal(expected) {
-		return fmt.Errorf("failed to verify response from %v", l)
+		return fmt.Errorf("failed to verify response from %v", from)
 	}
 
-	r.z[l] = msg.Z_i
+	return nil
+}
+
+// StoreMessage implements round.Round.
+func (r *round3) StoreMessage(from party.ID, content message.Content) error {
+	msg := content.(*Sign3)
+
+	r.z[from] = msg.Z_i
 
 	return nil
 }
@@ -112,11 +129,6 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 // MessageContent implements round.Round.
 func (r *round3) MessageContent() message.Content {
 	return &Sign3{}
-}
-
-// Validate implements message.Content.
-func (m *Sign3) Validate() error {
-	return nil
 }
 
 // RoundNumber implements message.Content.

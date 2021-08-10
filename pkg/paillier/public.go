@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/big"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
@@ -32,19 +31,13 @@ type PublicKey struct {
 }
 
 // N is the public modulus making up this key.
-func (pk *PublicKey) N() *big.Int {
-	return pk.n.Big()
+func (pk *PublicKey) N() *safenum.Modulus {
+	return pk.n
 }
 
-// NewPublicKey returns an initialized paillier.PublicKey and computes N, N² and (N-1)/2.
-// Validation is performed on n and an error is returned if it is not a valid modulus.
-// The input n is copied.
-func NewPublicKey(n *big.Int) (*PublicKey, error) {
-	if err := ValidateN(n); err != nil {
-		return nil, err
-	}
-
-	nNat := new(safenum.Nat).SetBig(n, n.BitLen())
+// NewPublicKey returns an initialized paillier.PublicKey and caches N, N² and (N-1)/2.
+func NewPublicKey(n *safenum.Modulus) *PublicKey {
+	nNat := n.Nat()
 	nSquared := new(safenum.Nat).Mul(nNat, nNat, -1)
 	nPlusOne := new(safenum.Nat).Add(nNat, oneNat, -1)
 	// Tightening is fine, since n is public
@@ -55,15 +48,19 @@ func NewPublicKey(n *big.Int) (*PublicKey, error) {
 		nNat:     nNat,
 		nSquared: safenum.ModulusFromNat(nSquared),
 		nPlusOne: nPlusOne,
-	}, nil
+	}
 }
 
-func ValidateN(n *big.Int) error {
+// ValidateN performs basic checks to make sure the modulus is valid:
+// - log₂(n) = params.BitsPaillier.
+// - n is odd.
+func ValidateN(n *safenum.Modulus) error {
 	// log₂(N) = BitsPaillier
-	if bits := n.BitLen(); bits != params.BitsPaillier {
-		return fmt.Errorf("paillier.publicKey: have: %d, need %d: %w", bits, params.BitsPaillier, ErrPaillierLength)
+	nBig := n.Big()
+	if bits := nBig.BitLen(); bits != params.BitsPaillier {
+		return fmt.Errorf("have: %d, need %d: %w", bits, params.BitsPaillier, ErrPaillierLength)
 	}
-	if n.Bit(0) != 1 {
+	if nBig.Bit(0) != 1 {
 		return ErrPaillierEven
 	}
 	return nil
@@ -90,18 +87,18 @@ func (pk PublicKey) EncWithNonce(m *safenum.Int, nonce *safenum.Nat) *Ciphertext
 	if m.CheckInRange(pk.n) != 1 {
 		panic("paillier.Encrypt: tried to encrypt message outside of range [-(N-1)/2, …, (N-1)/2]")
 	}
-	out := newCiphertext()
+	c := new(safenum.Nat)
 
 	// N + 1
-	out.C.SetNat(pk.nPlusOne)
+	c.SetNat(pk.nPlusOne)
 	// (N+1)ᵐ mod N²
-	out.C.ExpI(out.C.Nat, m, pk.nSquared)
+	c.ExpI(c, m, pk.nSquared)
 	// rho ^ N mod N²
 	rhoN := new(safenum.Nat).Exp(nonce, pk.nNat, pk.nSquared)
 	// (N+1)ᵐ rho ^ N
-	out.C.ModMul(out.C.Nat, rhoN, pk.nSquared)
+	c.ModMul(c, rhoN, pk.nSquared)
 
-	return out
+	return &Ciphertext{c: c}
 }
 
 // Equal returns true if pk ≡ other.
@@ -114,29 +111,22 @@ func (pk PublicKey) Equal(other *PublicKey) bool {
 // ct ∈ [1, …, N²-1] AND GCD(ct,N²) = 1.
 func (pk PublicKey) ValidateCiphertexts(cts ...*Ciphertext) bool {
 	for _, ct := range cts {
-		_, _, lt := ct.C.CmpMod(pk.nSquared)
+		_, _, lt := ct.c.CmpMod(pk.nSquared)
 		if lt != 1 {
 			return false
 		}
-		if ct.C.IsUnit(pk.nSquared) != 1 {
+		if ct.c.IsUnit(pk.nSquared) != 1 {
 			return false
 		}
 	}
 	return true
 }
 
-// Clone performs a deep copy of the public key.
-func (pk PublicKey) Clone() *PublicKey {
-	return &PublicKey{
-		n:        pk.n,
-		nNat:     pk.nNat.Clone(),
-		nSquared: pk.nSquared,
-		nPlusOne: pk.nPlusOne.Clone(),
-	}
-}
-
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
-func (pk PublicKey) WriteTo(w io.Writer) (int64, error) {
+func (pk *PublicKey) WriteTo(w io.Writer) (int64, error) {
+	if pk == nil {
+		return 0, io.ErrUnexpectedEOF
+	}
 	buf := pk.n.Bytes()
 	n, err := w.Write(buf)
 	return int64(n), err

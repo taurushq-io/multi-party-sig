@@ -1,8 +1,6 @@
 package sign
 
 import (
-	"errors"
-
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -28,26 +26,48 @@ type round4 struct {
 	ChiShare *curve.Scalar
 }
 
-// ProcessMessage implements round.Round.
+type Sign4 struct {
+	// DeltaShare = δⱼ
+	DeltaShare *curve.Scalar
+	// BigDeltaShare = Δⱼ = [kⱼ]•Γⱼ
+	BigDeltaShare *curve.Point
+	ProofLog      *zklogstar.Proof
+}
+
+// VerifyMessage implements round.Round.
 //
-// - Get Δⱼ, δⱼ, ϕ''ᵢⱼ
 // - Verify Π(log*)(ϕ''ᵢⱼ, Δⱼ, Γ).
-func (r *round4) ProcessMessage(j party.ID, content message.Content) error {
-	body := content.(*Sign4)
+func (r *round4) VerifyMessage(from party.ID, to party.ID, content message.Content) error {
+	body, ok := content.(*Sign4)
+	if !ok || body == nil {
+		return message.ErrInvalidContent
+	}
+
+	if body.DeltaShare == nil || body.BigDeltaShare == nil || body.ProofLog == nil {
+		return message.ErrNilContent
+	}
 
 	zkLogPublic := zklogstar.Public{
-		C:      r.K[j],
+		C:      r.K[from],
 		X:      body.BigDeltaShare,
 		G:      r.Gamma,
-		Prover: r.Paillier[j],
-		Aux:    r.Pedersen[r.SelfID()],
+		Prover: r.Paillier[from],
+		Aux:    r.Pedersen[to],
 	}
-	if !body.ProofLog.Verify(r.HashForID(j), zkLogPublic) {
+	if !body.ProofLog.Verify(r.HashForID(from), zkLogPublic) {
 		return ErrRound4ZKLog
 	}
 
-	r.BigDeltaShares[j] = body.BigDeltaShare
-	r.DeltaShares[j] = body.DeltaShare
+	return nil
+}
+
+// StoreMessage implements round.Round.
+//
+// - store Δⱼ, δⱼ.
+func (r *round4) StoreMessage(from party.ID, content message.Content) error {
+	body := content.(*Sign4)
+	r.BigDeltaShares[from] = body.BigDeltaShare
+	r.DeltaShares[from] = body.DeltaShare
 	return nil
 }
 
@@ -101,18 +121,6 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 // MessageContent implements round.Round.
 func (r *round4) MessageContent() message.Content { return &Sign4{} }
-
-// Validate implements message.Content.
-func (m *Sign4) Validate() error {
-	if m == nil {
-		return errors.New("sign.round4: message is nil")
-	}
-	if m.DeltaShare == nil || m.BigDeltaShare == nil || m.ProofLog == nil {
-		return errors.New("sign.round4: message contains nil fields")
-	}
-
-	return nil
-}
 
 // RoundNumber implements message.Content.
 func (m *Sign4) RoundNumber() types.RoundNumber { return 4 }

@@ -7,7 +7,6 @@ import (
 	"io"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v3"
-	"github.com/taurusgroup/multi-party-sig/internal/params"
 )
 
 // Point represents a secp256k1 elliptic curve point.
@@ -93,8 +92,8 @@ func NewIdentityPoint() *Point {
 }
 
 // IsIdentity returns true if the point is ∞.
-func (v Point) IsIdentity() bool {
-	return (v.p.X.IsZero() && v.p.Y.IsZero()) || v.p.Z.IsZero()
+func (v *Point) IsIdentity() bool {
+	return v == nil || (v.p.X.IsZero() && v.p.Y.IsZero()) || v.p.Z.IsZero()
 }
 
 // ToPublicKey returns an "official" ECDSA public key.
@@ -116,12 +115,15 @@ func (v *Point) XScalar() *Scalar {
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
 // It writes the full uncompressed point to w, ie 64 bytes.
-func (v Point) WriteTo(w io.Writer) (int64, error) {
-	buf := make([]byte, params.BytesPoint)
-	if _, err := v.MarshalTo(buf); err != nil {
+func (v *Point) WriteTo(w io.Writer) (int64, error) {
+	if v == nil {
+		return 0, io.ErrUnexpectedEOF
+	}
+	data, err := v.MarshalBinary()
+	if err != nil {
 		return 0, err
 	}
-	n, err := w.Write(buf)
+	n, err := w.Write(data)
 	return int64(n), err
 }
 

@@ -78,13 +78,9 @@ func StartSign(pl *pool.Pool, config *keygen.Config, signers []party.ID, message
 			// scale public key share
 			ECDSA[j] = curve.NewIdentityPoint().ScalarMult(lagrange[j], public.ECDSA)
 			// create Paillier key
-			if Paillier[j], err = paillier.NewPublicKey(public.N); err != nil {
-				return nil, nil, err
-			}
+			Paillier[j] = paillier.NewPublicKey(public.N)
 			// create Pedersen params
-			if Pedersen[j], err = pedersen.New(public.N, public.S, public.T); err != nil {
-				return nil, nil, err
-			}
+			Pedersen[j] = pedersen.New(public.N, public.S, public.T)
 			PublicKey.Add(PublicKey, ECDSA[j])
 		}
 

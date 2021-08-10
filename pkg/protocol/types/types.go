@@ -14,6 +14,9 @@ type ProtocolID string
 
 // WriteTo implements io.WriterTo interface.
 func (pid ProtocolID) WriteTo(w io.Writer) (int64, error) {
+	if pid == "" {
+		return 0, io.ErrUnexpectedEOF
+	}
 	n, err := w.Write([]byte(pid))
 	return int64(n), err
 }

@@ -29,6 +29,9 @@ func (id ID) Scalar() *curve.Scalar {
 //
 // This writes out the content of this ID, in a domain separated way.
 func (id ID) WriteTo(w io.Writer) (int64, error) {
+	if id == "" {
+		return 0, io.ErrUnexpectedEOF
+	}
 	n, err := w.Write([]byte(id))
 	return int64(n), err
 }

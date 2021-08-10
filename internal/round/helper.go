@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v3"
-	any "github.com/gogo/protobuf/types"
+	"github.com/fxamacker/cbor/v2"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
@@ -124,18 +124,18 @@ func (h *Helper) UpdateHashState(value hash.WriterToWithDomain) {
 // For "Send to all" behavior, the full list of parties can be given.
 // It panics if the content is not able to be marshalled.
 func (h *Helper) MarshalMessage(content message.Content, to ...party.ID) *message.Message {
-	c, err := any.MarshalAny(content)
-	if err == nil {
-		return &message.Message{
-			SSID:        h.ssid,
-			From:        h.selfID,
-			To:          to,
-			Protocol:    h.protocolID,
-			RoundNumber: content.RoundNumber(), // message is intended for the next round
-			Content:     c,
-		}
+	data, err := cbor.Marshal(content)
+	if err != nil {
+		panic(err)
 	}
-	panic("protocol: unable to marshal message content")
+	return &message.Message{
+		SSID:        h.ssid,
+		From:        h.selfID,
+		To:          to,
+		Protocol:    h.protocolID,
+		RoundNumber: content.RoundNumber(), // message is intended for the next round
+		Content:     data,
+	}
 }
 
 // SendMessage is a convenience function for all rounds that attempts to send the message to the channel.

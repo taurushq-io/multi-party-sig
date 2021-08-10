@@ -15,7 +15,6 @@ import (
 var (
 	ErrPrimeBadLength = errors.New("prime factor is not the right length")
 	ErrNotBlum        = errors.New("prime factor is not equivalent to 3 (mod 4)")
-	ErrNotPrime       = errors.New("supposed prime factor is not prime")
 	ErrNotSafePrime   = errors.New("supposed prime factor is not a safe prime")
 )
 
@@ -54,32 +53,32 @@ func (sk *SecretKey) Phi() *safenum.Nat {
 	return sk.phi
 }
 
+// KeyGen generates a new PublicKey and it's associated SecretKey.
 func KeyGen(pl *pool.Pool) (pk *PublicKey, sk *SecretKey) {
 	sk = NewSecretKey(pl)
 	pk = sk.PublicKey
 	return
 }
 
+// NewSecretKey generates primes p and q suitable for the scheme, and returns the initialized SecretKey.
 func NewSecretKey(pl *pool.Pool) *SecretKey {
+	// TODO maybe we could take the reader as argument?
 	return NewSecretKeyFromPrimes(sample.Paillier(rand.Reader, pl))
 }
 
+// NewSecretKeyFromPrimes generates a new SecretKey. Assumes that P and Q are prime.
 func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
-	// TODO validate primes here ?
-	n := new(safenum.Nat).Mul(P, Q, -1)
-	nMod := safenum.ModulusFromNat(n)
+	nNat := new(safenum.Nat).Mul(P, Q, -1)
+	n := safenum.ModulusFromNat(nNat)
 
 	pMinus1 := new(safenum.Nat).Sub(P, oneNat, -1)
 	qMinus1 := new(safenum.Nat).Sub(Q, oneNat, -1)
 
 	phi := new(safenum.Nat).Mul(pMinus1, qMinus1, -1)
 	// ϕ⁻¹ mod N
-	phiInv := new(safenum.Nat).ModInverse(phi, nMod)
+	phiInv := new(safenum.Nat).ModInverse(phi, n)
 
-	pk, err := NewPublicKey(n.Big())
-	if err != nil {
-		//todo handle error
-	}
+	pk := NewPublicKey(n)
 
 	return &SecretKey{
 		p:         P,
@@ -105,7 +104,7 @@ func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
 
 	result := new(safenum.Nat)
 	// r = c^Phi 						(mod N²)
-	result.Exp(ct.C.Nat, phi, nSquared)
+	result.Exp(ct.c, phi, nSquared)
 	// r = c^Phi - 1
 	result.Sub(result, oneNat, -1)
 	// r = [(c^Phi - 1)/N]
@@ -117,23 +116,17 @@ func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
 	return new(safenum.Int).SetModSymmetric(result, n), nil
 }
 
-func (sk *SecretKey) Clone() *SecretKey {
-	return &SecretKey{
-		p:         sk.p.Clone(),
-		q:         sk.q.Clone(),
-		phi:       sk.phi.Clone(),
-		phiInv:    sk.phiInv.Clone(),
-		PublicKey: sk.PublicKey.Clone(),
-	}
-}
-
 func (sk SecretKey) GeneratePedersen() (*pedersen.Parameters, *safenum.Nat) {
 	s, t, lambda := sample.Pedersen(rand.Reader, sk.phi, sk.PublicKey.n)
-	ped, _ := pedersen.New(sk.PublicKey.n.Big(), s.Big(), t.Big())
-	// TODO handle error ?
+	ped := pedersen.New(sk.PublicKey.n, s, t)
 	return ped, lambda
 }
 
+// ValidatePrime checks whether p is a suitable prime for Paillier.
+// Checks:
+// - log₂(p) ≡ params.BitsBlumPrime.
+// - p ≡ 3 (mod 4).
+// - q := (p-1)/2 is prime.
 func ValidatePrime(p *safenum.Nat) error {
 	// check bit lengths
 	const bitsWant = params.BitsBlumPrime
@@ -146,15 +139,10 @@ func ValidatePrime(p *safenum.Nat) error {
 	if p.Byte(0)&0b11 != 3 {
 		return ErrNotBlum
 	}
-	// Hopefully this doesn't leak too much information about p or q
-	// check prime
-	if !p.Big().ProbablyPrime(1) {
-		return ErrNotPrime
-	}
 
 	// check (p-1)/2 is prime
-	pMinus1Div2 := new(safenum.Nat).Sub(p, oneNat, -1)
-	pMinus1Div2.Rsh(p, 1, -1)
+	pMinus1Div2 := new(safenum.Nat).Rsh(p, 1, -1)
+
 	if !pMinus1Div2.Big().ProbablyPrime(1) {
 		return ErrNotSafePrime
 	}

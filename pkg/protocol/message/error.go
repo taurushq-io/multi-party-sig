@@ -4,17 +4,19 @@ package message
 type Error string
 
 const (
-	ErrMessageDuplicate          Error = "message was already handled"
-	ErrMessageUnknownSender      Error = "unknown sender"
-	ErrMessageNilContent         Error = "content is nil"
-	ErrMessageWrongSSID          Error = "SSID mismatch"
-	ErrMessageWrongProtocolID    Error = "wrong protocol ID"
-	ErrMessageWrongDestination   Error = "message is not intended for selfID"
-	ErrMessageInvalidRoundNumber Error = "round number is invalid for this protocol"
-	ErrMessageFirstRound         Error = "no message expected in first round"
-	ErrMessageLastRound          Error = "no message expected in output round"
-	ErrMessageInconsistentRound  Error = "given RoundNumber is inconsistent with content"
-	ErrMessageInvalidTo          Error = "msg.To is not valid"
+	ErrDuplicate          Error = "message was already handled"
+	ErrUnknownSender      Error = "unknown sender"
+	ErrNilContent         Error = "content is nil"
+	ErrWrongSSID          Error = "SSID mismatch"
+	ErrWrongProtocolID    Error = "wrong protocol ID"
+	ErrWrongDestination   Error = "message is not intended for selfID"
+	ErrInvalidRoundNumber Error = "round number is invalid for this protocol"
+	ErrFirstRound         Error = "no message expected in first round"
+	ErrLastRound          Error = "no message expected in output round"
+	ErrInconsistentRound  Error = "given RoundNumber is inconsistent with content"
+	ErrInvalidTo          Error = "msg.To is not valid"
+	ErrInvalidContent     Error = "content is not the right type"
+	ErrNilFields          Error = "message contained empty fields"
 )
 
 // Error implements error.

@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
@@ -42,11 +42,11 @@ func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundTy
 	close(out)
 
 	for msg := range out {
-		msgBytes, err := proto.Marshal(msg)
+		msgBytes, err := cbor.Marshal(msg)
 		require.NoError(t, err, "failed to marshal message")
 		for idJ, r := range rounds {
 			var m message.Message
-			require.NoError(t, proto.Unmarshal(msgBytes, &m), "failed to unmarshal message")
+			require.NoError(t, cbor.Unmarshal(msgBytes, &m), "failed to unmarshal message")
 			if m.From == idJ {
 				continue
 			}
@@ -54,7 +54,8 @@ func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundTy
 				content := r.MessageContent()
 				err = msg.UnmarshalContent(content)
 				require.NoError(t, err)
-				require.NoError(t, r.ProcessMessage(msg.From, content))
+				require.NoError(t, r.VerifyMessage(msg.From, idJ, content))
+				require.NoError(t, r.StoreMessage(msg.From, content))
 			}
 		}
 	}

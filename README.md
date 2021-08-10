@@ -182,25 +182,6 @@ r, s := signature.ToRS()
 ecdsa.Verify(refreshedConfig.PublicKey(), message, r, s)
 ```
 
-## Build
-
-`multi-party-sig` requires a custom version of `gogo` which enables the use of `*big.Int` in protobufs.
-This version can be compiled by applying the path from [trasc/casttypewith](https://github.com/trasc/protobuf)
-It can be installed using the following shell commands:
-
-```shell
-git clone https://github.com/gogo/protobuf $GOPATH/src/github.com/gogo/protobuf
-cd $GOPATH/src/github.com/gogo/protobuf
-git remote add trasc https://github.com/trasc/protobuf.git
-git fetch trasc
-git merge trasc/casttypewith
-cd protoc-gen-gogofaster
-go build
-cp protoc-gen-gogofaster $GOPATH/bin
-```
-
-Once installed, running `make` in the root will regenerate all `.proto` files.
-
 ## Intellectual property
 
 This code is copyright (c) Adrian Hamelink and Taurus SA, 2021, and under Apache 2.0 license.

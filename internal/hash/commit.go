@@ -16,6 +16,9 @@ type (
 
 // WriteTo implements the io.WriterTo interface for Commitment.
 func (c Commitment) WriteTo(w io.Writer) (int64, error) {
+	if c == nil {
+		return 0, io.ErrUnexpectedEOF
+	}
 	n, err := w.Write(c)
 	return int64(n), err
 }
@@ -34,6 +37,9 @@ func (c Commitment) Validate() error {
 
 // WriteTo implements the io.WriterTo interface for Decommitment.
 func (d Decommitment) WriteTo(w io.Writer) (int64, error) {
+	if d == nil {
+		return 0, io.ErrUnexpectedEOF
+	}
 	n, err := w.Write(d)
 	return int64(n), err
 }

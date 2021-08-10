@@ -12,44 +12,65 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
 )
 
-type (
-	Public struct {
-		// C = Enc₀(y;ρ)
-		C *paillier.Ciphertext
+type Public struct {
+	// C = Enc₀(y;ρ)
+	C *paillier.Ciphertext
 
-		// X = y (mod q)
-		X *curve.Scalar
+	// X = y (mod q)
+	X *curve.Scalar
 
-		// Prover = N₀
-		Prover *paillier.PublicKey
-		Aux    *pedersen.Parameters
+	// Prover = N₀
+	Prover *paillier.PublicKey
+	Aux    *pedersen.Parameters
+}
+
+type Private struct {
+	// Y = y
+	Y *safenum.Int
+
+	// Rho = ρ
+	Rho *safenum.Nat
+}
+
+type Commitment struct {
+	// S = sʸ tᵘ
+	S *safenum.Nat
+	// T = sᵃ tᵛ
+	T *safenum.Nat
+	// A = Enc₀(α; r)
+	A *paillier.Ciphertext
+	// Gamma = α (mod q)
+	Gamma *curve.Scalar
+}
+
+type Proof struct {
+	*Commitment
+	// Z1 = α + e•y
+	Z1 *safenum.Int
+	// Z2 = ν + e•μ
+	Z2 *safenum.Int
+	// W  = r ρ ᵉ (mod N₀)
+	W *safenum.Nat
+}
+
+func (p *Proof) IsValid(public Public) bool {
+	if p == nil {
+		return false
 	}
-	Private struct {
-		// Y = y
-		Y *safenum.Int
-
-		// Rho = ρ
-		Rho *safenum.Nat
-	}
-)
-
-func (p Proof) IsValid(public Public) bool {
 	if p.Gamma == nil || p.Gamma.IsZero() {
 		return false
 	}
 	if !public.Prover.ValidateCiphertexts(p.A) {
 		return false
 	}
-	if !arith.IsValidModN(public.Prover.N(), p.W) {
+	if !arith.IsValidNatModN(public.Prover.N(), p.W) {
 		return false
 	}
 	return true
 }
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
-	N0Big := public.Prover.N()
-	N0 := safenum.ModulusFromNat(new(safenum.Nat).SetBig(N0Big, N0Big.BitLen()))
-
+	N0 := public.Prover.N()
 	alpha := sample.IntervalLEps(rand.Reader)
 
 	mu := sample.IntervalLN(rand.Reader)
@@ -65,7 +86,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 		Gamma: gamma,
 	}
 
-	e := challenge(hash, public, commitment)
+	e, _ := challenge(hash, public, commitment)
 
 	// z₁ = e•y+α
 	z1 := new(safenum.Int).Mul(e, private.Y, -1)
@@ -79,9 +100,9 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 
 	return &Proof{
 		Commitment: commitment,
-		Z1:         z1.Big(),
-		Z2:         z2.Big(),
-		W:          w.Big(),
+		Z1:         z1,
+		Z2:         z2,
+		W:          w,
 	}
 }
 
@@ -90,18 +111,18 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 		return false
 	}
 
-	e := challenge(hash, public, p.Commitment)
-
-	if !public.Aux.Verify(p.Z1, p.Z2, p.T, p.S, e.Big()) {
+	e, err := challenge(hash, public, p.Commitment)
+	if err != nil {
 		return false
 	}
 
-	z1 := new(safenum.Int).SetBig(p.Z1, p.Z1.BitLen())
-	w := new(safenum.Nat).SetBig(p.W, p.W.BitLen())
+	if !public.Aux.Verify(p.Z1, p.Z2, e, p.T, p.S) {
+		return false
+	}
 
 	{
 		// lhs = Enc₀(z₁;w)
-		lhs := public.Prover.EncWithNonce(z1, w)
+		lhs := public.Prover.EncWithNonce(p.Z1, p.W)
 
 		// rhs = (e ⊙ C) ⊕ A
 		rhs := public.C.Clone().Mul(public.Prover, e).Add(public.Prover, p.A)
@@ -112,7 +133,7 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 
 	{
 		// lhs = z₁ mod q
-		lhs := curve.NewScalarBigInt(p.Z1)
+		lhs := curve.NewScalarInt(p.Z1)
 
 		// rhs = e•x + γ
 		rhs := curve.NewScalarInt(e)
@@ -125,10 +146,10 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment *Commitment) *safenum.Int {
-	_ = hash.WriteAny(public.Aux, public.Prover,
+func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safenum.Int, err error) {
+	err = hash.WriteAny(public.Aux, public.Prover,
 		public.C, public.X,
 		commitment.S, commitment.T, commitment.A, commitment.Gamma)
-
-	return sample.IntervalScalar(hash.Digest())
+	e = sample.IntervalScalar(hash.Digest())
+	return
 }

@@ -2,7 +2,6 @@ package sign
 
 import (
 	"crypto/ecdsa"
-	"errors"
 
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -33,16 +32,30 @@ type output struct {
 	R *curve.Scalar
 }
 
-// ProcessMessage implements round.Round.
-//
-// - σⱼ != 0.
-func (r *output) ProcessMessage(j party.ID, content message.Content) error {
-	body := content.(*SignOutput)
+type SignOutput struct {
+	SigmaShare *curve.Scalar
+}
 
-	if body.SigmaShare.IsZero() {
-		return ErrRoundOutputSigmaZero
+// VerifyMessage implements round.Round.
+func (r *output) VerifyMessage(_ party.ID, _ party.ID, content message.Content) error {
+	body, ok := content.(*SignOutput)
+	if !ok || body == nil {
+		return message.ErrInvalidContent
 	}
-	r.SigmaShares[j] = body.SigmaShare
+
+	if body.SigmaShare == nil || body.SigmaShare.IsZero() {
+		return message.ErrNilContent
+	}
+
+	return nil
+}
+
+// StoreMessage implements round.Round.
+//
+// - save σⱼ
+func (r *output) StoreMessage(from party.ID, content message.Content) error {
+	body := content.(*SignOutput)
+	r.SigmaShares[from] = body.SigmaShare
 	return nil
 }
 
@@ -76,16 +89,6 @@ func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {
 
 func (r *output) MessageContent() message.Content {
 	return &SignOutput{}
-}
-
-func (m *SignOutput) Validate() error {
-	if m == nil {
-		return errors.New("sign.output: message is nil")
-	}
-	if m.SigmaShare == nil {
-		return errors.New("sign.output: message contains nil fields")
-	}
-	return nil
 }
 
 func (m *SignOutput) RoundNumber() types.RoundNumber {

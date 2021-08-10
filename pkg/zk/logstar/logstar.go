@@ -12,49 +12,69 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
 )
 
-type (
-	Public struct {
-		// C = Enc₀(x;ρ)
-		// Encryption of x under the prover's key
-		C *paillier.Ciphertext
+type Public struct {
+	// C = Enc₀(x;ρ)
+	// Encryption of x under the prover's key
+	C *paillier.Ciphertext
 
-		// X = [x] G
-		// x "in the exponent"
-		X *curve.Point
+	// X = x⋅G
+	X *curve.Point
 
-		// G = Base point of the curve,
-		// If G = nil, the default base point is used
-		G *curve.Point
+	// G is the base point of the curve.
+	// If G = nil, the default base point is used.
+	G *curve.Point
 
-		Prover *paillier.PublicKey
-		Aux    *pedersen.Parameters
+	Prover *paillier.PublicKey
+	Aux    *pedersen.Parameters
+}
+
+type Private struct {
+	// X is the plaintext of C and the discrete log of X.
+	X *safenum.Int
+
+	// Rho = ρ is nonce used to encrypt C.
+	Rho *safenum.Nat
+}
+
+type Commitment struct {
+	// S = sˣ tᵘ (mod N)
+	S *safenum.Nat
+	// A = Enc₀(alpha; r)
+	A *paillier.Ciphertext
+	// Y = α⋅G
+	Y *curve.Point
+	// D = sᵃ tᵍ (mod N)
+	D *safenum.Nat
+}
+
+type Proof struct {
+	*Commitment
+	// Z1 = α + e x
+	Z1 *safenum.Int
+	// Z2 = r ρᵉ mod N
+	Z2 *safenum.Nat
+	// Z3 = γ + e μ
+	Z3 *safenum.Int
+}
+
+func (p *Proof) IsValid(public Public) bool {
+	if p == nil {
+		return false
 	}
-	Private struct {
-		// X is the plaintext of C and the dlog of X
-		X *safenum.Int
-
-		// Rho = ρ
-		// nonce of C
-		Rho *safenum.Nat
-	}
-)
-
-func (p Proof) IsValid(public Public) bool {
 	if !public.Prover.ValidateCiphertexts(p.A) {
 		return false
 	}
 	if p.Y.IsIdentity() {
 		return false
 	}
-	if !arith.IsValidModN(public.Prover.N(), p.Z2) {
+	if !arith.IsValidNatModN(public.Prover.N(), p.Z2) {
 		return false
 	}
 	return true
 }
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
-	NBig := public.Prover.N()
-	N := safenum.ModulusFromNat(new(safenum.Nat).SetBig(NBig, NBig.BitLen()))
+	N := public.Prover.N()
 
 	if public.G == nil {
 		public.G = curve.NewBasePoint()
@@ -67,17 +87,17 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 
 	commitment := &Commitment{
 		A: public.Prover.EncWithNonce(alpha, r),
-		Y: *curve.NewIdentityPoint().ScalarMult(curve.NewScalarInt(alpha), public.G),
+		Y: curve.NewIdentityPoint().ScalarMult(curve.NewScalarInt(alpha), public.G),
 		S: public.Aux.Commit(private.X, mu),
 		D: public.Aux.Commit(alpha, gamma),
 	}
 
-	e := challenge(hash, public, commitment)
+	e, _ := challenge(hash, public, commitment)
 
 	// z1 = α + e x,
 	z1 := new(safenum.Int).Mul(e, private.X, -1)
 	z1.Add(z1, alpha, -1)
-	// z2 = r ρᵉ mod Nₐ,
+	// z2 = r ρᵉ mod N,
 	z2 := new(safenum.Nat).ExpI(private.Rho, e, N)
 	z2.ModMul(z2, r, N)
 	// z3 = γ + e μ,
@@ -86,9 +106,9 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 
 	return &Proof{
 		Commitment: commitment,
-		Z1:         z1.Big(),
-		Z2:         z2.Big(),
-		Z3:         z3.Big(),
+		Z1:         z1,
+		Z2:         z2,
+		Z3:         z3,
 	}
 }
 
@@ -107,18 +127,18 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 
 	prover := public.Prover
 
-	e := challenge(hash, public, p.Commitment)
-
-	if !public.Aux.Verify(p.Z1, p.Z3, p.D, p.S, e.Big()) {
+	e, err := challenge(hash, public, p.Commitment)
+	if err != nil {
 		return false
 	}
 
-	z1 := new(safenum.Int).SetBig(p.Z1, p.Z1.BitLen())
-	z2 := new(safenum.Nat).SetBig(p.Z2, p.Z2.BitLen())
+	if !public.Aux.Verify(p.Z1, p.Z3, e, p.D, p.S) {
+		return false
+	}
 
 	{
 		// lhs = Enc(z₁;z₂)
-		lhs := prover.EncWithNonce(z1, z2)
+		lhs := prover.EncWithNonce(p.Z1, p.Z2)
 
 		// rhs = (e ⊙ C) ⊕ A
 		rhs := public.C.Clone().Mul(prover, e).Add(prover, p.A)
@@ -129,11 +149,11 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 
 	{
 		// lhs = [z₁]G
-		lhs := curve.NewIdentityPoint().ScalarMult(curve.NewScalarBigInt(p.Z1), public.G)
+		lhs := curve.NewIdentityPoint().ScalarMult(curve.NewScalarInt(p.Z1), public.G)
 
 		// rhs = Y + [e]X
 		eX := curve.NewIdentityPoint().ScalarMult(curve.NewScalarInt(e), public.X)
-		rhs := curve.NewIdentityPoint().Add(&p.Y, eX)
+		rhs := curve.NewIdentityPoint().Add(p.Y, eX)
 
 		if !lhs.Equal(rhs) {
 			return false
@@ -144,9 +164,9 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment *Commitment) *safenum.Int {
-	_ = hash.WriteAny(public.Aux, public.Prover, public.C, public.X, public.G,
+func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safenum.Int, err error) {
+	err = hash.WriteAny(public.Aux, public.Prover, public.C, public.X, public.G,
 		commitment.S, commitment.A, commitment.Y, commitment.D)
-
-	return sample.IntervalScalar(hash.Digest())
+	e = sample.IntervalScalar(hash.Digest())
+	return
 }

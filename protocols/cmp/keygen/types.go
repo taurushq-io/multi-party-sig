@@ -23,6 +23,9 @@ func (rid RID) XOR(otherRID RID) {
 
 // WriteTo implements io.WriterTo interface.
 func (rid RID) WriteTo(w io.Writer) (int64, error) {
+	if rid == nil {
+		return 0, io.ErrUnexpectedEOF
+	}
 	n, err := w.Write(rid[:])
 	return int64(n), err
 }

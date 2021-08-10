@@ -1,10 +1,6 @@
 package keygen
 
 import (
-	"errors"
-	"fmt"
-	"math/big"
-
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
@@ -40,8 +36,10 @@ type round2 struct {
 	// PaillierPublic[j] = Nⱼ
 	PaillierPublic map[party.ID]*paillier.PublicKey
 
-	// N[j], S[j], T[j]  = Nⱼ, sⱼ, tⱼ
-	N, S, T map[party.ID]*big.Int
+	// N[j] = Nⱼ
+	N map[party.ID]*safenum.Modulus
+	// S[j], T[j] = sⱼ, tⱼ
+	S, T map[party.ID]*safenum.Nat
 
 	// PaillierSecret = (pᵢ, qᵢ)
 	PaillierSecret *paillier.SecretKey
@@ -58,12 +56,29 @@ type round2 struct {
 	Decommitment hash.Decommitment // uᵢ
 }
 
-// ProcessMessage implements round.Round.
+type Keygen2 struct {
+	// Commitment = Vᵢ = H(ρᵢ, Fᵢ(X), Aᵢ, Nᵢ, sᵢ, tᵢ, uᵢ)
+	Commitment hash.Commitment
+}
+
+// VerifyMessage implements round.Round.
+func (r *round2) VerifyMessage(_ party.ID, _ party.ID, content message.Content) error {
+	body, ok := content.(*Keygen2)
+	if !ok || body == nil {
+		return message.ErrInvalidContent
+	}
+	if err := body.Commitment.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// StoreMessage implements round.Round.
 //
-// - store commitment Vⱼ.
-func (r *round2) ProcessMessage(j party.ID, content message.Content) error {
+// - save commitment Vⱼ.
+func (r *round2) StoreMessage(from party.ID, content message.Content) error {
 	body := content.(*Keygen2)
-	r.Commitments[j] = body.Commitment
+	r.Commitments[from] = body.Commitment
 	return nil
 }
 
@@ -106,17 +121,6 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 // MessageContent implements round.Round.
 func (r *round2) MessageContent() message.Content { return &Keygen2{} }
-
-// Validate implements message.Content.
-func (m *Keygen2) Validate() error {
-	if m == nil {
-		return errors.New("keygen.round2: message is nil")
-	}
-	if err := m.Commitment.Validate(); err != nil {
-		return fmt.Errorf("keygen.round2: %w", err)
-	}
-	return nil
-}
 
 // RoundNumber implements message.Content.
 func (m *Keygen2) RoundNumber() types.RoundNumber { return 2 }

@@ -18,7 +18,7 @@ func (q *queue) Store(msg *message.Message) error {
 
 	for _, existingMsg := range q.messages {
 		if existingMsg.From == msg.From && existingMsg.RoundNumber == msg.RoundNumber {
-			return message.ErrMessageDuplicate
+			return message.ErrDuplicate
 		}
 	}
 

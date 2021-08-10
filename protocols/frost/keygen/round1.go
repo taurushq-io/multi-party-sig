@@ -34,11 +34,14 @@ type round1 struct {
 	threshold int
 }
 
-// ProcessMessage implements round.Round.
+// VerifyMessage implements round.Round.
 //
 // Since this is the start of the protocol, we aren't expecting to have received
 // any messages yet, so we do nothing.
-func (r *round1) ProcessMessage(party.ID, message.Content) error { return nil }
+func (r *round1) VerifyMessage(party.ID, party.ID, message.Content) error { return nil }
+
+// StoreMessage implements round.Round.
+func (r *round1) StoreMessage(party.ID, message.Content) error { return nil }
 
 // Finalize implements round.Round.
 //
@@ -104,7 +107,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 		round1:               r,
 		f_i:                  f_i,
 		Phi:                  map[party.ID]*polynomial.Exponent{r.SelfID(): Phi_i},
-		ChainKey:             c_i,
+		ChainKeys:            map[party.ID][]byte{r.SelfID(): c_i},
 		ChainKeyDecommitment: decommitment,
 		ChainKeyCommitments:  make(map[party.ID]hash.Commitment),
 	}, nil

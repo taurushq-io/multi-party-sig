@@ -1,7 +1,6 @@
 package keygen
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
@@ -11,6 +10,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
+	sch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
 )
 
 // This round corresponds with steps 5 of Round 1, 1 of Round 2, Figure 1 in the Frost paper:
@@ -24,21 +24,36 @@ type round2 struct {
 	//
 	// Phi[l][k] corresponds to ϕₗₖ in the Frost paper.
 	Phi map[party.ID]*polynomial.Exponent
+	// ChainKeyDecommitment will be used to decommit our contribution to the chain key
+	ChainKeyDecommitment hash.Decommitment
+
 	// ChainKey will be the final bit of randomness everybody contributes to.
 	//
 	// This is an addition to FROST, which we include for key derivation
-	ChainKey []byte
-	// ChainKeyDecommitment will be used to decommit our contribution to the chain key
-	ChainKeyDecommitment hash.Decommitment
+	ChainKeys map[party.ID][]byte
 	// ChainKeyCommitments holds the commitments for the chain key contributions
 	ChainKeyCommitments map[party.ID]hash.Commitment
 }
 
-// ProcessMessage implements round.Round.
-func (r *round2) ProcessMessage(l party.ID, content message.Content) error {
-	msg, ok := content.(*Keygen2)
-	if !ok {
-		return fmt.Errorf("failed to convert message to Keygen2: %v", msg)
+type Keygen2 struct {
+	// Phi_i is the commitment to the polynomial that this participant generated.
+	Phi_i *polynomial.Exponent
+	// Sigma_i is the Schnorr proof of knowledge of the participant's secret
+	Sigma_i *sch.Proof
+	// Commitment = H(cᵢ, uᵢ)
+	Commitment hash.Commitment
+}
+
+// VerifyMessage implements round.Round.
+func (r *round2) VerifyMessage(from party.ID, _ party.ID, content message.Content) error {
+	body, ok := content.(*Keygen2)
+	if !ok || body == nil {
+		return message.ErrInvalidContent
+	}
+
+	// check nil
+	if body.Sigma_i == nil || body.Phi_i == nil {
+		return message.ErrNilFields
 	}
 
 	// These steps come from Figure 1, Round 1 of the Frost paper
@@ -55,13 +70,18 @@ func (r *round2) ProcessMessage(l party.ID, content message.Content) error {
 	// To see why this is correct, compare this verification with the proof we
 	// produced in the previous round. Note how we do the same hash cloning,
 	// but this time with the ID of the message sender.
-	if !msg.Sigma_i.Verify(r.Helper.HashForID(l), msg.Phi_i.Constant()) {
-		return fmt.Errorf("failed to verify Schnorr proof for party %s", l)
+	if !body.Sigma_i.Verify(r.Helper.HashForID(from), body.Phi_i.Constant()) {
+		return fmt.Errorf("failed to verify Schnorr proof for party %s", from)
 	}
 
-	r.Phi[l] = msg.Phi_i
-	r.ChainKeyCommitments[l] = msg.Commitment
+	return nil
+}
 
+// StoreMessage implements round.Round.
+func (r *round2) StoreMessage(from party.ID, content message.Content) error {
+	msg := content.(*Keygen2)
+	r.Phi[from] = msg.Phi_i
+	r.ChainKeyCommitments[from] = msg.Commitment
 	return nil
 }
 
@@ -75,7 +95,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	for _, l := range r.OtherPartyIDs() {
 		msg := r.MarshalMessage(&Keygen3{
 			F_li:         r.f_i.Evaluate(l.Scalar()),
-			C_l:          r.ChainKey,
+			C_l:          r.ChainKeys[r.SelfID()],
 			Decommitment: r.ChainKeyDecommitment,
 		}, l)
 		if err := r.SendMessage(msg, out); err != nil {
@@ -83,9 +103,11 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 		}
 	}
 
-	shareFrom := make(map[party.ID]*curve.Scalar)
-	shareFrom[r.SelfID()] = r.f_i.Evaluate(r.SelfID().Scalar())
-	return &round3{round2: r, shareFrom: shareFrom}, nil
+	selfShare := r.f_i.Evaluate(r.SelfID().Scalar())
+	return &round3{
+		round2:    r,
+		shareFrom: map[party.ID]*curve.Scalar{r.SelfID(): selfShare},
+	}, nil
 }
 
 // MessageContent implements round.Round.
@@ -93,17 +115,6 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 // Since this is the first round of the protocol, we expect to see a dummy First type.
 func (r *round2) MessageContent() message.Content {
 	return &Keygen2{}
-}
-
-// Validate implements message.Content.
-func (m *Keygen2) Validate() error {
-	if m == nil {
-		return errors.New("keygen.round2: message is nil")
-	}
-	if m.Sigma_i == nil || m.Phi_i == nil {
-		return errors.New("keygen.round2: a message field is nil")
-	}
-	return nil
 }
 
 // RoundNumber implements message.Content.
