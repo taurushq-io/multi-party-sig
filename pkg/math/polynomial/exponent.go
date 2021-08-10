@@ -11,6 +11,7 @@ import (
 
 // Exponent represent a polynomial F(X) whose coefficients belong to a group 𝔾.
 type Exponent struct {
+	group curve.Curve
 	// IsConstant indicates that the constant coefficient is the identity.
 	// We do this so that we never need to send an encoded Identity point, and thus consider it invalid
 	IsConstant bool
@@ -21,37 +22,36 @@ type Exponent struct {
 // NewPolynomialExponent generates an Exponent polynomial F(X) = [secret + a₁•X + … + aₜ•Xᵗ]•G,
 // with coefficients in 𝔾, and degree t.
 func NewPolynomialExponent(polynomial *Polynomial) *Exponent {
-	var p Exponent
-
-	p.Coefficients = make([]curve.Point, len(polynomial.coefficients))
-	for i := range polynomial.coefficients {
-		p.Coefficients[i].ScalarBaseMult(&polynomial.coefficients[i])
+	p := &Exponent{
+		group:        polynomial.group,
+		IsConstant:   polynomial.coefficients[0].IsZero(),
+		Coefficients: make([]curve.Point, 0, len(polynomial.coefficients)),
 	}
 
-	// This hack is needed so that we never send an encoded Identity point
-	isConstant := polynomial.Constant().IsZero()
-	if isConstant {
-		p.IsConstant = true
-		p.Coefficients = p.Coefficients[1:]
+	for i, c := range polynomial.coefficients {
+		if p.IsConstant && i == 0 {
+			continue
+		}
+		p.Coefficients = append(p.Coefficients, c.ActOnBase())
 	}
 
-	return &p
+	return p
 }
 
 // Evaluate returns F(x) = [secret + a₁•x + … + aₜ•xᵗ]•G.
-func (p *Exponent) Evaluate(x *curve.Scalar) *curve.Point {
-	result := curve.NewIdentityPoint()
+func (p *Exponent) Evaluate(x curve.Scalar) curve.Point {
+	result := p.group.NewPoint()
 
 	for i := len(p.Coefficients) - 1; i >= 0; i-- {
 		// Bₙ₋₁ = [x]Bₙ  + Aₙ₋₁
-		result.ScalarMult(x, result)
-		result.Add(result, &p.Coefficients[i])
+		result = x.Act(result)
+		result.Add(p.Coefficients[i])
 	}
 
 	if p.IsConstant {
 		// result is B₁
 		// we want B₀ = [x]B₁ + A₀ = [x]B₁
-		result.ScalarMult(x, result)
+		result = x.Act(result)
 	}
 
 	return result
@@ -59,25 +59,24 @@ func (p *Exponent) Evaluate(x *curve.Scalar) *curve.Point {
 
 // evaluateClassic evaluates a polynomial in a given variable index
 // We do the classic method, where we compute all powers of x.
-func (p *Exponent) evaluateClassic(x *curve.Scalar) *curve.Point {
-	var tmp curve.Point
+func (p *Exponent) evaluateClassic(x curve.Scalar) curve.Point {
+	tmp := p.group.NewPoint()
 
-	xPower := curve.NewScalarUInt32(1)
-	result := curve.NewIdentityPoint()
+	xPower := p.group.NewScalar().SetUInt32(1)
+	result := p.group.NewPoint()
 
 	if p.IsConstant {
 		// since we start at index 1 of the polynomial, x must be x and not 1
-		xPower.Multiply(xPower, x)
+		xPower.Mul(x)
 	}
 
 	for i := 0; i < len(p.Coefficients); i++ {
 		// tmp = [xⁱ]Aᵢ
-		tmp.ScalarMult(xPower, &p.Coefficients[i])
+		tmp = xPower.Act(p.Coefficients[i])
 		// result += [xⁱ]Aᵢ
-		result.Add(result, &tmp)
-
+		result.Add(tmp)
 		// x = xⁱ⁺¹
-		xPower.Multiply(xPower, x)
+		xPower.Mul(x)
 	}
 	return result
 }
@@ -91,6 +90,7 @@ func (p *Exponent) Degree() int {
 }
 
 func (p *Exponent) add(q *Exponent) error {
+	// TODO check if groups are equal
 	if len(p.Coefficients) != len(q.Coefficients) {
 		return errors.New("q is not the same length as p")
 	}
@@ -100,7 +100,7 @@ func (p *Exponent) add(q *Exponent) error {
 	}
 
 	for i := 0; i < len(p.Coefficients); i++ {
-		p.Coefficients[i].Add(&p.Coefficients[i], &q.Coefficients[i])
+		p.Coefficients[i].Add(q.Coefficients[i])
 	}
 
 	return nil
@@ -124,13 +124,15 @@ func Sum(polynomials []*Exponent) (*Exponent, error) {
 }
 
 func (p *Exponent) copy() *Exponent {
-	var q Exponent
-	q.Coefficients = make([]curve.Point, len(p.Coefficients))
-	for i := 0; i < len(p.Coefficients); i++ {
-		q.Coefficients[i].Set(&p.Coefficients[i])
+	q := &Exponent{
+		group:        p.group,
+		IsConstant:   p.IsConstant,
+		Coefficients: make([]curve.Point, 0, len(p.Coefficients)),
 	}
-	q.IsConstant = p.IsConstant
-	return &q
+	for i := 0; i < len(p.Coefficients); i++ {
+		q.Coefficients = append(q.Coefficients, p.group.NewPoint().Set(p.Coefficients[i]))
+	}
+	return q
 }
 
 // Equal returns true if p ≡ other.
@@ -142,7 +144,7 @@ func (p *Exponent) Equal(other Exponent) bool {
 		return false
 	}
 	for i := 0; i < len(p.Coefficients); i++ {
-		if !p.Coefficients[i].Equal(&other.Coefficients[i]) {
+		if !p.Coefficients[i].Equal(other.Coefficients[i]) {
 			return false
 		}
 	}
@@ -150,11 +152,12 @@ func (p *Exponent) Equal(other Exponent) bool {
 }
 
 // Constant returns the constant coefficient of the polynomial 'in the exponent'.
-func (p *Exponent) Constant() *curve.Point {
+func (p *Exponent) Constant() curve.Point {
+	c := p.group.NewPoint()
 	if p.IsConstant {
-		return curve.NewIdentityPoint()
+		return c
 	}
-	return &p.Coefficients[0]
+	return c.Set(p.Coefficients[0])
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
@@ -191,4 +194,8 @@ func (p *Exponent) WriteTo(w io.Writer) (int64, error) {
 // Domain implements hash.WriterToWithDomain, and separates this type within hash.Hash.
 func (*Exponent) Domain() string {
 	return "Exponent"
+}
+
+func EmptyExponent() *Exponent {
+	return &Exponent{Coefficients: []curve.Point{}}
 }

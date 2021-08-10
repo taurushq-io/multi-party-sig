@@ -13,19 +13,20 @@ import (
 )
 
 func TestExponent_Evaluate(t *testing.T) {
-	var lhs curve.Point
+	var group curve.Curve
+	lhs := group.NewPoint()
 	for x := 0; x < 5; x++ {
 		N := 1000
-		var secret *curve.Scalar
+		var secret curve.Scalar
 		if x%2 == 0 {
-			secret = sample.Scalar(rand.Reader)
+			secret = sample.Scalar(rand.Reader, group)
 		}
-		poly := NewPolynomial(N, secret)
+		poly := NewPolynomial(group, N, secret)
 		polyExp := NewPolynomialExponent(poly)
 
-		randomIndex := sample.Scalar(rand.Reader)
+		randomIndex := sample.Scalar(rand.Reader, group)
 
-		lhs.ScalarBaseMult(poly.Evaluate(randomIndex))
+		lhs = poly.Evaluate(randomIndex).ActOnBase()
 		rhs1 := polyExp.Evaluate(randomIndex)
 		rhs2 := polyExp.evaluateClassic(randomIndex)
 
@@ -36,41 +37,42 @@ func TestExponent_Evaluate(t *testing.T) {
 }
 
 func TestSum(t *testing.T) {
+	var group curve.Curve
 	N := 20
 	Deg := 10
 
-	randomIndex := sample.Scalar(rand.Reader)
+	randomIndex := sample.Scalar(rand.Reader, group)
 
 	// compute f1(x) + f2(x) + …
-	evaluationScalar := curve.NewScalar()
+	evaluationScalar := group.NewScalar()
 
 	// compute F1(x) + F2(x) + …
-	evaluationPartial := curve.NewIdentityPoint()
+	evaluationPartial := group.NewPoint()
 
 	polys := make([]*Polynomial, N)
 	polysExp := make([]*Exponent, N)
 	for i := range polys {
-		sec := sample.Scalar(rand.Reader)
-		polys[i] = NewPolynomial(Deg, sec)
+		sec := sample.Scalar(rand.Reader, group)
+		polys[i] = NewPolynomial(group, Deg, sec)
 		polysExp[i] = NewPolynomialExponent(polys[i])
 
-		evaluationScalar.Add(evaluationScalar, polys[i].Evaluate(randomIndex))
-		evaluationPartial.Add(evaluationPartial, polysExp[i].Evaluate(randomIndex))
+		evaluationScalar.Add(polys[i].Evaluate(randomIndex))
+		evaluationPartial.Add(polysExp[i].Evaluate(randomIndex))
 	}
 
 	// compute (F1 + F2 + …)(x)
 	summedExp, _ := Sum(polysExp)
 	evaluationSum := summedExp.Evaluate(randomIndex)
 
-	evaluationFromScalar := curve.NewIdentityPoint().ScalarBaseMult(evaluationScalar)
+	evaluationFromScalar := evaluationScalar.ActOnBase()
 	assert.True(t, evaluationSum.Equal(evaluationFromScalar))
 	assert.True(t, evaluationSum.Equal(evaluationPartial))
 }
 
 func TestMarshall(t *testing.T) {
-
-	sec := sample.Scalar(rand.Reader)
-	poly := NewPolynomial(10, sec)
+	var group curve.Curve
+	sec := sample.Scalar(rand.Reader, group)
+	poly := NewPolynomial(group, 10, sec)
 	polyExp := NewPolynomialExponent(poly)
 	out, err := cbor.Marshal(polyExp)
 	require.NoError(t, err, "failed to Marshal")

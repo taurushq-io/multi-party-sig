@@ -6,36 +6,36 @@ import (
 )
 
 // Lagrange returns the Lagrange coefficients at 0 for all parties in the interpolation domain.
-func Lagrange(interpolationDomain []party.ID) map[party.ID]*curve.Scalar {
-	return LagrangeFor(interpolationDomain, interpolationDomain...)
+func Lagrange(group curve.Curve, interpolationDomain []party.ID) map[party.ID]curve.Scalar {
+	return LagrangeFor(group, interpolationDomain, interpolationDomain...)
 }
 
 // LagrangeFor returns the Lagrange coefficients at 0 for all parties in the given subset.
-func LagrangeFor(interpolationDomain []party.ID, subset ...party.ID) map[party.ID]*curve.Scalar {
+func LagrangeFor(group curve.Curve, interpolationDomain []party.ID, subset ...party.ID) map[party.ID]curve.Scalar {
 	// numerator = x₀ * … * xₖ
-	scalars, numerator := getScalarsAndNumerator(interpolationDomain)
+	scalars, numerator := getScalarsAndNumerator(group, interpolationDomain)
 
-	coefficients := make(map[party.ID]*curve.Scalar, len(subset))
+	coefficients := make(map[party.ID]curve.Scalar, len(subset))
 	for _, j := range subset {
-		coefficients[j] = lagrange(scalars, numerator, j)
+		coefficients[j] = lagrange(group, scalars, numerator, j)
 	}
 	return coefficients
 }
 
 // LagrangeSingle returns the lagrange coefficient at 0 of the party with index j.
-func LagrangeSingle(interpolationDomain []party.ID, j party.ID) *curve.Scalar {
-	return LagrangeFor(interpolationDomain, j)[j]
+func LagrangeSingle(group curve.Curve, interpolationDomain []party.ID, j party.ID) curve.Scalar {
+	return LagrangeFor(group, interpolationDomain, j)[j]
 }
 
-// getScalarsAndNumerator returns the Scalars associated to the list of party.IDs
-func getScalarsAndNumerator(interpolationDomain []party.ID) (map[party.ID]*curve.Scalar, *curve.Scalar) {
+// getScalarsAndNumerator returns the Scalars associated to the list of party.IDs.
+func getScalarsAndNumerator(group curve.Curve, interpolationDomain []party.ID) (map[party.ID]curve.Scalar, curve.Scalar) {
 	// numerator = x₀ * … * xₖ
-	numerator := curve.NewScalarUInt32(1)
-	scalars := make(map[party.ID]*curve.Scalar, len(interpolationDomain))
+	numerator := group.NewScalar().SetUInt32(1)
+	scalars := make(map[party.ID]curve.Scalar, len(interpolationDomain))
 	for _, id := range interpolationDomain {
 		xi := id.Scalar()
 		scalars[id] = xi
-		numerator.Multiply(numerator, xi)
+		numerator.Mul(xi)
 	}
 	return scalars, numerator
 }
@@ -48,26 +48,26 @@ func getScalarsAndNumerator(interpolationDomain []party.ID) (map[party.ID]*curve
 //			                 x₀ ⋅⋅⋅ xₖ
 // lⱼ(0) =	--------------------------------------------------
 //			xⱼ⋅(x₀ - xⱼ)⋅⋅⋅(xⱼ₋₁ - xⱼ)⋅(xⱼ₊₁ - xⱼ)⋅⋅⋅(xₖ - xⱼ).
-func lagrange(interpolationDomain map[party.ID]*curve.Scalar, numerator *curve.Scalar, j party.ID) *curve.Scalar {
+func lagrange(group curve.Curve, interpolationDomain map[party.ID]curve.Scalar, numerator curve.Scalar, j party.ID) curve.Scalar {
 	xJ := interpolationDomain[j]
-	tmp := curve.NewScalar()
+	tmp := group.NewScalar()
 
 	// denominator = xⱼ⋅(xⱼ - x₀)⋅⋅⋅(xⱼ₋₁ - xⱼ)⋅(xⱼ₊₁ - xⱼ)⋅⋅⋅(xₖ - xⱼ)
-	denominator := curve.NewScalarUInt32(1)
+	denominator := group.NewScalar().SetUInt32(1)
 	for i, xI := range interpolationDomain {
 		if i == j {
 			// lⱼ *= xⱼ
-			denominator.Multiply(denominator, xJ)
+			denominator.Mul(xJ)
 			continue
 		}
 		// tmp = xᵢ - xⱼ
-		tmp.Subtract(xI, xJ)
+		tmp.Set(xJ).Negate().Add(xI)
 		// lⱼ *= xᵢ - xⱼ
-		denominator.Multiply(denominator, tmp)
+		denominator.Mul(tmp)
 	}
 
 	// lⱼ = numerator/denominator
-	lJ := denominator.Invert(denominator)
-	lJ.Multiply(lJ, numerator)
+	lJ := denominator.Invert()
+	lJ.Mul(numerator)
 	return lJ
 }

@@ -144,6 +144,10 @@ func (s *Secp256k1Scalar) SetInt(x *safenum.Int) Scalar {
 	return s
 }
 
+func (s *Secp256k1Scalar) SetUInt32(x uint32) Scalar {
+	return s
+}
+
 func (s *Secp256k1Scalar) Act(that Point) Point {
 	other := secp256k1CastPoint(that)
 	out := new(Secp256k1Point)
