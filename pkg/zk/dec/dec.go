@@ -17,7 +17,7 @@ type Public struct {
 	C *paillier.Ciphertext
 
 	// X = y (mod q)
-	X *curve.Scalar
+	X curve.Scalar
 
 	// Prover = N₀
 	Prover *paillier.PublicKey
@@ -40,7 +40,7 @@ type Commitment struct {
 	// A = Enc₀(α; r)
 	A *paillier.Ciphertext
 	// Gamma = α (mod q)
-	Gamma *curve.Scalar
+	Gamma curve.Scalar
 }
 
 type Proof struct {
@@ -69,7 +69,7 @@ func (p *Proof) IsValid(public Public) bool {
 	return true
 }
 
-func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
+func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private) *Proof {
 	N := public.Prover.N()
 	NModulus := public.Prover.Modulus()
 	alpha := sample.IntervalLEps(rand.Reader)
@@ -78,7 +78,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	nu := sample.IntervalLEpsN(rand.Reader)
 	r := sample.UnitModN(rand.Reader, N)
 
-	gamma := curve.NewScalarInt(alpha)
+	gamma := group.NewScalar().SetInt(alpha)
 
 	commitment := &Commitment{
 		S:     public.Aux.Commit(private.Y, mu),
@@ -107,7 +107,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	}
 }
 
-func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
+func (p *Proof) Verify(group curve.Curve, hash *hash.Hash, public Public) bool {
 	if !p.IsValid(public) {
 		return false
 	}
@@ -134,11 +134,10 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 
 	{
 		// lhs = z₁ mod q
-		lhs := curve.NewScalarInt(p.Z1)
+		lhs := group.NewScalar().SetInt(p.Z1)
 
 		// rhs = e•x + γ
-		rhs := curve.NewScalarInt(e)
-		rhs.MultiplyAdd(rhs, public.X, p.Gamma)
+		rhs := group.NewScalar().SetInt(e).Mul(public.X).Add(p.Gamma)
 		if !lhs.Equal(rhs) {
 			return false
 		}
@@ -153,4 +152,8 @@ func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safen
 		commitment.S, commitment.T, commitment.A, commitment.Gamma)
 	e = sample.IntervalScalar(hash.Digest())
 	return
+}
+
+func Empty(group curve.Curve) *Proof {
+	return &Proof{Commitment: &Commitment{Gamma: group.NewScalar()}}
 }

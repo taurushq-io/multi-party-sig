@@ -13,12 +13,13 @@ import (
 )
 
 func TestSchPass(t *testing.T) {
-	a := NewRandomness(rand.Reader)
-	x, X := sample.ScalarPointPair(rand.Reader)
+	var group curve.Curve
+	a := NewRandomness(rand.Reader, group)
+	x, X := sample.ScalarPointPair(rand.Reader, group)
 
-	proof := a.Prove(hash.New(), X, x)
-	assert.True(t, proof.Verify(hash.New(), X, a.Commitment()), "failed passing test")
-	assert.True(t, proof.Verify(hash.New(), X, a.Commitment()))
+	proof := a.Prove(group, hash.New(), X, x)
+	assert.True(t, proof.Verify(group, hash.New(), X, a.Commitment()), "failed passing test")
+	assert.True(t, proof.Verify(group, hash.New(), X, a.Commitment()))
 
 	out, err := cbor.Marshal(proof)
 	require.NoError(t, err, "failed to marshal proof")
@@ -29,13 +30,14 @@ func TestSchPass(t *testing.T) {
 	proof3 := &Response{}
 	require.NoError(t, cbor.Unmarshal(out2, proof3), "failed to unmarshal 2nd proof")
 
-	assert.True(t, proof3.Verify(hash.New(), X, a.Commitment()))
+	assert.True(t, proof3.Verify(group, hash.New(), X, a.Commitment()))
 
 }
 func TestSchFail(t *testing.T) {
-	a := NewRandomness(rand.Reader)
-	x, X := curve.NewScalar(), curve.NewIdentityPoint()
+	var group curve.Curve
+	a := NewRandomness(rand.Reader, group)
+	x, X := group.NewScalar(), group.NewPoint()
 
-	proof := a.Prove(hash.New(), X, x)
-	assert.False(t, proof.Verify(hash.New(), X, a.Commitment()), "proof should not accept identity point")
+	proof := a.Prove(group, hash.New(), X, x)
+	assert.False(t, proof.Verify(group, hash.New(), X, a.Commitment()), "proof should not accept identity point")
 }

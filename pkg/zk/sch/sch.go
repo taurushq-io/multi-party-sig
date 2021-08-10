@@ -11,18 +11,18 @@ import (
 
 // Randomness = a ← ℤₚ.
 type Randomness struct {
-	a          *curve.Scalar
+	a          curve.Scalar
 	commitment Commitment
 }
 
 // Commitment = randomness•G, where
 type Commitment struct {
-	C *curve.Point
+	C curve.Point
 }
 
 // Response = randomness + H(..., commitment, public)•secret (mod p).
 type Response struct {
-	Z *curve.Scalar
+	Z curve.Scalar
 }
 
 type Proof struct {
@@ -31,9 +31,9 @@ type Proof struct {
 }
 
 // NewProof generates a Schnorr proof of knowledge of exponent for public, using the Fiat-Shamir transform.
-func NewProof(hash *hash.Hash, public *curve.Point, private *curve.Scalar) *Proof {
-	a := NewRandomness(rand.Reader)
-	z := a.Prove(hash, public, private)
+func NewProof(group curve.Curve, hash *hash.Hash, public curve.Point, private curve.Scalar) *Proof {
+	a := NewRandomness(rand.Reader, group)
+	z := a.Prove(group, hash, public, private)
 	return &Proof{
 		C: *a.Commitment(),
 		Z: *z,
@@ -42,30 +42,31 @@ func NewProof(hash *hash.Hash, public *curve.Point, private *curve.Scalar) *Proo
 
 // NewRandomness creates a new a ∈ ℤₚ and the corresponding commitment C = a•G.
 // This can be used to run the proof in a non-interactive way.
-func NewRandomness(rand io.Reader) *Randomness {
-	a, c := sample.ScalarPointPair(rand)
+func NewRandomness(rand io.Reader, group curve.Curve) *Randomness {
+	a, c := sample.ScalarPointPair(rand, group)
 	return &Randomness{
 		a:          a,
 		commitment: Commitment{C: c},
 	}
 }
 
-func challenge(hash *hash.Hash, commitment *Commitment, public *curve.Point) (e *curve.Scalar, err error) {
+func challenge(group curve.Curve, hash *hash.Hash, commitment *Commitment, public curve.Point) (e curve.Scalar, err error) {
 	err = hash.WriteAny(commitment.C, public)
-	e = sample.Scalar(hash.Digest())
+	e = sample.Scalar(hash.Digest(), group)
 	return
 }
 
 // Prove creates a Response = Randomness + H(..., Commitment, public)•secret (mod p).
-func (r *Randomness) Prove(hash *hash.Hash, public *curve.Point, secret *curve.Scalar) *Response {
+func (r *Randomness) Prove(group curve.Curve, hash *hash.Hash, public curve.Point, secret curve.Scalar) *Response {
 	if public.IsIdentity() || secret.IsZero() {
 		return nil
 	}
-	z, err := challenge(hash, &r.commitment, public)
+	e, err := challenge(group, hash, &r.commitment, public)
 	if err != nil {
 		return nil
 	}
-	z.MultiplyAdd(z, secret, r.a)
+	es := e.Mul(secret)
+	z := es.Add(r.a)
 	return &Response{z}
 }
 
@@ -75,30 +76,29 @@ func (r *Randomness) Commitment() *Commitment {
 }
 
 // Verify checks that Response•G = Commitment + H(..., Commitment, public)•Public.
-func (z *Response) Verify(hash *hash.Hash, public *curve.Point, commitment *Commitment) bool {
+func (z *Response) Verify(group curve.Curve, hash *hash.Hash, public curve.Point, commitment *Commitment) bool {
 	if z == nil || !z.IsValid() || public.IsIdentity() {
 		return false
 	}
 
-	e, err := challenge(hash, commitment, public)
+	e, err := challenge(group, hash, commitment, public)
 	if err != nil {
 		return false
 	}
 
-	var lhs, rhs curve.Point
-	lhs.ScalarBaseMult(z.Z)
-	rhs.ScalarMult(e, public)
-	rhs.Add(&rhs, commitment.C)
+	lhs := z.Z.ActOnBase()
+	rhs := e.Act(public)
+	rhs = rhs.Add(commitment.C)
 
-	return lhs.Equal(&rhs)
+	return lhs.Equal(rhs)
 }
 
 // Verify checks that Proof.Response•G = Proof.Commitment + H(..., Proof.Commitment, Public)•Public.
-func (p *Proof) Verify(hash *hash.Hash, public *curve.Point) bool {
+func (p *Proof) Verify(group curve.Curve, hash *hash.Hash, public curve.Point) bool {
 	if !p.IsValid() {
 		return false
 	}
-	return p.Z.Verify(hash, public, &p.C)
+	return p.Z.Verify(group, hash, public, &p.C)
 }
 
 // WriteTo implements io.WriterTo.
@@ -130,4 +130,19 @@ func (p *Proof) IsValid() bool {
 		return false
 	}
 	return true
+}
+
+func EmptyProof(group curve.Curve) *Proof {
+	return &Proof{
+		C: Commitment{C: group.NewPoint()},
+		Z: Response{Z: group.NewScalar()},
+	}
+}
+
+func EmptyResponse(group curve.Curve) *Response {
+	return &Response{Z: group.NewScalar()}
+}
+
+func EmptyCommitment(group curve.Curve) *Commitment {
+	return &Commitment{C: group.NewPoint()}
 }

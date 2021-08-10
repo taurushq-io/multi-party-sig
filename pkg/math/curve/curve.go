@@ -27,6 +27,7 @@ type Scalar interface {
 	IsZero() bool
 	Set(Scalar) Scalar
 	SetNat(*safenum.Nat) Scalar
+	SetInt(*safenum.Int) Scalar
 	Act(Point) Point
 	ActOnBase() Point
 }
@@ -39,4 +40,5 @@ type Point interface {
 	Negate() Point
 	Set(Point) Point
 	Equal(Point) bool
+	IsIdentity() bool
 }

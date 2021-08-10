@@ -27,7 +27,7 @@ type Public struct {
 
 	// X = gˣ
 	// x is Alice's multiplicative share
-	X *curve.Point
+	X curve.Point
 
 	// Prover = N₁
 	// Verifier = N₀
@@ -56,7 +56,7 @@ type Commitment struct {
 	// A = (α ⊙ c ) ⊕ Enc(N0, beta, r)
 	A *paillier.Ciphertext
 	// Bₓ = α⋅G
-	Bx *curve.Point
+	Bx curve.Point
 	// By = Enc(N1, beta, ry)
 	By *paillier.Ciphertext
 	// E = sᵃ tᵍ (mod N)
@@ -107,7 +107,7 @@ func (p *Proof) IsValid(public Public) bool {
 	return true
 }
 
-func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
+func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private) *Proof {
 	N0 := public.Verifier.N()
 	N1 := public.Prover.N()
 	N0Modulus := public.Verifier.Modulus()
@@ -136,7 +136,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	T := public.Aux.Commit(private.Y, mu)
 	commitment := &Commitment{
 		A:  A,
-		Bx: curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarInt(alpha)),
+		Bx: group.NewScalar().SetInt(alpha).ActOnBase(),
 		By: prover.EncWithNonce(beta, rY),
 		E:  E,
 		S:  S,
@@ -176,7 +176,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	}
 }
 
-func (p Proof) Verify(hash *hash.Hash, public Public) bool {
+func (p Proof) Verify(group curve.Curve, hash *hash.Hash, public Public) bool {
 	if !p.IsValid(public) {
 		return false
 	}
@@ -221,11 +221,11 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	{
 
 		// lhs = [z₁]G
-		lhs := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarInt(p.Z1))
+		lhs := group.NewScalar().SetInt(p.Z1).ActOnBase()
 
 		// rhsPt = Bₓ + [e]X
-		rhs := curve.NewIdentityPoint().ScalarMult(curve.NewScalarInt(e), public.X)
-		rhs.Add(p.Bx, rhs)
+		rhs := group.NewScalar().SetInt(e).Act(public.X)
+		rhs.Add(p.Bx)
 		if !lhs.Equal(rhs) {
 			return false
 		}
@@ -254,4 +254,10 @@ func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safen
 
 	e = sample.IntervalScalar(hash.Digest())
 	return
+}
+
+func Empty(group curve.Curve) *Proof {
+	return &Proof{
+		Commitment: &Commitment{Bx: group.NewPoint()},
+	}
 }

@@ -140,6 +140,10 @@ func (s *Secp256k1Scalar) SetNat(x *safenum.Nat) Scalar {
 	return s
 }
 
+func (s *Secp256k1Scalar) SetInt(x *safenum.Int) Scalar {
+	return s
+}
+
 func (s *Secp256k1Scalar) Act(that Point) Point {
 	other := secp256k1CastPoint(that)
 	out := new(Secp256k1Point)
@@ -223,6 +227,10 @@ func (p *Secp256k1Point) Equal(that Point) bool {
 	p.value.ToAffine()
 	other.value.ToAffine()
 	return p.value.X.Equals(&other.value.X) && p.value.Y.Equals(&other.value.Y) && p.value.Z.Equals(&other.value.Z)
+}
+
+func (p *Secp256k1Point) IsIdentity() bool {
+	return p == nil || (p.value.X.IsZero() && p.value.Y.IsZero()) || p.value.Z.IsZero()
 }
 
 func (p *Secp256k1Point) HasEvenY() bool {
