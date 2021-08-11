@@ -8,6 +8,7 @@ import (
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/zeebo/blake3"
 )
 
@@ -92,6 +93,18 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 				return fmt.Errorf("hash.Hash: write *safenum.Modulus: nil")
 			}
 			toBeWritten = &BytesWithDomain{"safenum.Modulus", t.Bytes()}
+		case curve.Point:
+			data, err := t.MarshalBinary()
+			if err != nil {
+				return err
+			}
+			toBeWritten = &BytesWithDomain{"curve.Point", data}
+		case curve.Scalar:
+			data, err := t.MarshalBinary()
+			if err != nil {
+				return err
+			}
+			toBeWritten = &BytesWithDomain{"curve.Scalar", data}
 		case WriterToWithDomain:
 			toBeWritten = t
 		default:

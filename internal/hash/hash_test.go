@@ -30,6 +30,7 @@ func TestHash_WriteAny(t *testing.T) {
 	m := safenum.ModulusFromBytes(b.Bytes())
 
 	assert.NoError(t, testFunc(i, n, m))
-	assert.NoError(t, testFunc(curve.NewIdentityPoint().ScalarBaseMult(sample.Scalar(rand.Reader))))
+	assert.NoError(t, testFunc(sample.Scalar(rand.Reader, curve.Secp256k1{})))
+	assert.NoError(t, testFunc(sample.Scalar(rand.Reader, curve.Secp256k1{}).ActOnBase()))
 	assert.NoError(t, testFunc([]byte{1, 4, 6}))
 }
