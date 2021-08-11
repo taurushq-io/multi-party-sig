@@ -56,9 +56,40 @@ func curveFromName(name string) (Curve, error) {
 	}
 }
 
+func marshalPrefixed(name string, m encoding.BinaryMarshaler) ([]byte, error) {
+	nameBytes := []byte(name)
+	data, err := m.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	nameLen := uint32(len(nameBytes))
+	out := make([]byte, 4+len(nameBytes)+len(data))
+	binary.BigEndian.PutUint32(out, nameLen)
+	copy(out[4:], nameBytes)
+	copy(out[4+len(nameBytes):], data)
+
+	return out, nil
+}
+
+func unmarshalPrefixed(data []byte) (Curve, []byte, error) {
+	if len(data) < 4 {
+		return nil, nil, errors.New("unmarshalPrefixed: data too short")
+	}
+	nameLen := int(binary.BigEndian.Uint32(data))
+	if nameLen > len(data)+4 {
+		return nil, nil, errors.New("unmarshalPrefixed: data too short")
+	}
+	name := string(data[4 : 4+nameLen])
+	group, err := curveFromName(name)
+	if err != nil {
+		return nil, nil, err
+	}
+	return group, data[4+nameLen:], nil
+}
+
 type MarshallableScalar struct {
-	Scalar
-	group Curve
+	Scalar Scalar
+	group  Curve
 }
 
 func NewMarshallableScalar(s Scalar) *MarshallableScalar {
@@ -66,35 +97,43 @@ func NewMarshallableScalar(s Scalar) *MarshallableScalar {
 }
 
 func (m *MarshallableScalar) MarshalBinary() ([]byte, error) {
-	name := []byte(m.group.Name())
-	data, err := m.Scalar.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	nameLen := uint32(len(name))
-	out := make([]byte, 4+len(name)+len(data))
-	binary.BigEndian.PutUint32(out, nameLen)
-	copy(out[4:], name)
-	copy(out[4+len(name):], data)
-	return out, nil
+	return marshalPrefixed(m.group.Name(), m.Scalar)
 }
 
 func (m *MarshallableScalar) UnmarshalBinary(data []byte) error {
-	if len(data) < 4 {
-		return errors.New("MarshallableScalar.UnmarshalBinary: data too short")
-	}
-	nameLen := int(binary.BigEndian.Uint32(data))
-	if nameLen > len(data)+4 {
-		return errors.New("MarshallableScalar.UnmarshalBinary: data too short")
-	}
-	name := string(data[4 : 4+nameLen])
-	group, err := curveFromName(name)
+	group, scalarData, err := unmarshalPrefixed(data)
 	if err != nil {
 		return err
 	}
 	m.group = group
 	m.Scalar = group.NewScalar()
-	if err := m.Scalar.UnmarshalBinary(data[4+nameLen:]); err != nil {
+	if err := m.Scalar.UnmarshalBinary(scalarData); err != nil {
+		return err
+	}
+	return nil
+}
+
+type MarshallablePoint struct {
+	Point Point
+	group Curve
+}
+
+func NewMarshallablePoint(p Point) *MarshallablePoint {
+	return &MarshallablePoint{Point: p, group: p.Curve()}
+}
+
+func (m *MarshallablePoint) MarshalBinary() ([]byte, error) {
+	return marshalPrefixed(m.group.Name(), m.Point)
+}
+
+func (m *MarshallablePoint) UnmarshalBinary(data []byte) error {
+	group, scalarData, err := unmarshalPrefixed(data)
+	if err != nil {
+		return err
+	}
+	m.group = group
+	m.Point = group.NewPoint()
+	if err := m.Point.UnmarshalBinary(scalarData); err != nil {
 		return err
 	}
 	return nil
