@@ -140,10 +140,6 @@ func (s *Secp256k1Scalar) SetNat(x *safenum.Nat) Scalar {
 	return s
 }
 
-func (s *Secp256k1Scalar) SetInt(x *safenum.Int) Scalar {
-	return s
-}
-
 func (s *Secp256k1Scalar) SetUInt32(x uint32) Scalar {
 	return s
 }

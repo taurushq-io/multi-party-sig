@@ -27,7 +27,6 @@ type Scalar interface {
 	IsZero() bool
 	Set(Scalar) Scalar
 	SetNat(*safenum.Nat) Scalar
-	SetInt(*safenum.Int) Scalar
 	SetUInt32(uint322 uint32) Scalar
 	Act(Point) Point
 	ActOnBase() Point
