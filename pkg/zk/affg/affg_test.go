@@ -15,7 +15,8 @@ import (
 )
 
 func TestAffG(t *testing.T) {
-	var group curve.Curve
+	group := curve.Secp256k1{}
+
 	verifierPaillier := zk.VerifierPaillierPublic
 	verifierPedersen := zk.Pedersen
 	prover := zk.ProverPaillierPublic

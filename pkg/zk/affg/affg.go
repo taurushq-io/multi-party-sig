@@ -167,6 +167,7 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	wY.ModMul(wY, rY, N1)
 
 	return &Proof{
+		group:      group,
 		Commitment: commitment,
 		Z1:         z1,
 		Z2:         z2,

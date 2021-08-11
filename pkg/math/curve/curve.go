@@ -138,3 +138,11 @@ func (m *MarshallablePoint) UnmarshalBinary(data []byte) error {
 	}
 	return nil
 }
+
+func MakeInt(s Scalar) *safenum.Int {
+	bytes, err := s.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+	return new(safenum.Int).SetBytes(bytes)
+}
