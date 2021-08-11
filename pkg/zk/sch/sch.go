@@ -32,9 +32,10 @@ type Proof struct {
 }
 
 // NewProof generates a Schnorr proof of knowledge of exponent for public, using the Fiat-Shamir transform.
-func NewProof(group curve.Curve, hash *hash.Hash, public curve.Point, private curve.Scalar) *Proof {
+func NewProof(hash *hash.Hash, public curve.Point, private curve.Scalar) *Proof {
+	group := private.Curve()
 	a := NewRandomness(rand.Reader, group)
-	z := a.Prove(group, hash, public, private)
+	z := a.Prove(hash, public, private)
 	return &Proof{
 		C: *a.Commitment(),
 		Z: *z,
@@ -58,17 +59,18 @@ func challenge(group curve.Curve, hash *hash.Hash, commitment *Commitment, publi
 }
 
 // Prove creates a Response = Randomness + H(..., Commitment, public)•secret (mod p).
-func (r *Randomness) Prove(group curve.Curve, hash *hash.Hash, public curve.Point, secret curve.Scalar) *Response {
+func (r *Randomness) Prove(hash *hash.Hash, public curve.Point, secret curve.Scalar) *Response {
 	if public.IsIdentity() || secret.IsZero() {
 		return nil
 	}
+	group := secret.Curve()
 	e, err := challenge(group, hash, &r.commitment, public)
 	if err != nil {
 		return nil
 	}
 	es := e.Mul(secret)
 	z := es.Add(r.a)
-	return &Response{z}
+	return &Response{group: group, Z: z}
 }
 
 // Commitment returns the commitment C = a•G for the randomness a.

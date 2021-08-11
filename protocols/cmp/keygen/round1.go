@@ -30,18 +30,18 @@ type round1 struct {
 	// Contains the previous secret ECDSA key share which is being refreshed
 	// Keygen:  sk'ᵢ = 0
 	// Refresh: sk'ᵢ = sk'ᵢ
-	PreviousSecretECDSA *curve.Scalar
+	PreviousSecretECDSA curve.Scalar
 
 	// PreviousPublicKey = pk'
 	// Public key being refreshed.
 	// Keygen:  pk' = ∞
 	// Refresh: pk' = pk'
-	PreviousPublicKey *curve.Point
+	PreviousPublicKey curve.Point
 
 	// PreviousPublicSharesECDSA[j] = pk'ⱼ
 	// Keygen:  pk'ⱼ = ∞
 	// Refresh: pk'ⱼ = pk'ⱼ
-	PreviousPublicSharesECDSA map[party.ID]*curve.Point
+	PreviousPublicSharesECDSA map[party.ID]curve.Point
 
 	// PreviousChainKey contains the chain key, if we're refreshing
 	//
@@ -78,13 +78,13 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	SelfPedersenPublic, PedersenSecret := PaillierSecret.GeneratePedersen()
 
 	// save our own share already so we are consistent with what we receive from others
-	SelfShare := r.VSSSecret.Evaluate(r.SelfID().Scalar())
+	SelfShare := r.VSSSecret.Evaluate(r.SelfID().Scalar(r.Group()))
 
 	// set Fᵢ(X) = fᵢ(X)•G
 	SelfVSSPolynomial := polynomial.NewPolynomialExponent(r.VSSSecret)
 
 	// generate Schnorr randomness
-	SchnorrRand := zksch.NewRandomness(rand.Reader)
+	SchnorrRand := zksch.NewRandomness(rand.Reader, r.Group())
 
 	// Sample RIDᵢ
 	SelfRID := newRID()
@@ -116,7 +116,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 		Commitments:    map[party.ID]hash.Commitment{r.SelfID(): SelfCommitment},
 		RIDs:           map[party.ID]RID{r.SelfID(): SelfRID},
 		ChainKeys:      map[party.ID]RID{r.SelfID(): chainKey},
-		ShareReceived:  map[party.ID]*curve.Scalar{r.SelfID(): SelfShare},
+		ShareReceived:  map[party.ID]curve.Scalar{r.SelfID(): SelfShare},
 		PaillierPublic: map[party.ID]*paillier.PublicKey{r.SelfID(): SelfPaillierPublic},
 		N:              map[party.ID]*safenum.Modulus{r.SelfID(): SelfPedersenPublic.N()},
 		S:              map[party.ID]*safenum.Nat{r.SelfID(): SelfPedersenPublic.S()},
@@ -129,4 +129,4 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 }
 
 // MessageContent implements round.Round..
-func (r *round1) MessageContent() message.Content { return &message.First{} }
+func (round1) MessageContent() message.Content { return &message.First{} }

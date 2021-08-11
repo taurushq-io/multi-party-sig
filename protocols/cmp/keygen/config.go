@@ -20,7 +20,7 @@ import (
 // Public holds public information for a party
 type Public struct {
 	// ECDSA public key share
-	ECDSA *curve.Point
+	ECDSA curve.Point
 	// N = p•q, p ≡ q ≡ 3 mod 4
 	N *safenum.Modulus
 	// S = r² mod N
@@ -33,6 +33,8 @@ type Public struct {
 // It represents ssid = (sid, (N₁, s₁, t₁), …, (Nₙ, sₙ, tₙ))
 // where sid = (𝔾, t, n, P₁, …, Pₙ).
 type Config struct {
+	Group curve.Curve
+
 	ID party.ID
 
 	// Threshold is the integer t which defines the maximum number of corruptions tolerated for this config.
@@ -40,7 +42,7 @@ type Config struct {
 	Threshold uint32
 
 	// ECDSA is a party's share xᵢ of the secret ECDSA x
-	ECDSA *curve.Scalar
+	ECDSA curve.Scalar
 
 	// P, Q is the primes for N = P*Q used by Paillier and Pedersen
 	P, Q *safenum.Nat
@@ -55,17 +57,17 @@ type Config struct {
 }
 
 // PublicPoint returns the group's public ECC point.
-func (c Config) publicPoint() *curve.Point {
-	sum := curve.NewIdentityPoint()
-	tmp := curve.NewIdentityPoint()
+func (c Config) publicPoint() curve.Point {
+	sum := c.Group.NewPoint()
+	tmp := c.Group.NewPoint()
 	partyIDs := make([]party.ID, 0, len(c.Public))
 	for j := range c.Public {
 		partyIDs = append(partyIDs, j)
 	}
-	l := polynomial.Lagrange(partyIDs)
+	l := polynomial.Lagrange(c.Group, partyIDs)
 	for j, partyJ := range c.Public {
-		tmp.ScalarMult(l[j], partyJ.ECDSA)
-		sum.Add(sum, tmp)
+		tmp = l[j].Act(partyJ.ECDSA)
+		sum.Add(tmp)
 	}
 	return sum
 }
@@ -117,7 +119,7 @@ func (c Config) Validate() error {
 	}
 
 	// is the public ECDSA key equal
-	pk := curve.NewIdentityPoint().ScalarBaseMult(c.ECDSA)
+	pk := c.ECDSA.ActOnBase()
 	if !pk.Equal(public.ECDSA) {
 		return errors.New("config: ECDSA secret key share does not correspond to public share")
 	}
@@ -306,12 +308,12 @@ func (c *Config) DeriveChild(i uint32) (*Config, error) {
 	// for which it's sufficient to simply add it to each share. This means adding
 	// scalar * G to each verification share as well.
 
-	scalarG := curve.NewIdentityPoint().ScalarBaseMult(scalar)
+	scalarG := scalar.ActOnBase()
 
 	publics := make(map[party.ID]*Public, len(c.Public))
 	for k, v := range c.Public {
 		publics[k] = &Public{
-			ECDSA: curve.NewIdentityPoint().Add(scalarG, v.ECDSA),
+			ECDSA: c.Group.NewPoint().Set(v.ECDSA).Add(scalarG),
 			N:     v.N,
 			S:     v.S,
 			T:     v.T,
@@ -319,12 +321,13 @@ func (c *Config) DeriveChild(i uint32) (*Config, error) {
 	}
 
 	return &Config{
+		Group:     c.Group,
 		Threshold: c.Threshold,
 		Public:    publics,
 		RID:       c.RID,
 		ChainKey:  newChainKey,
 		ID:        c.ID,
-		ECDSA:     curve.NewScalar().Add(scalar, c.ECDSA),
+		ECDSA:     c.Group.NewScalar().Set(c.ECDSA).Add(scalar),
 		P:         c.P,
 		Q:         c.Q,
 	}, nil

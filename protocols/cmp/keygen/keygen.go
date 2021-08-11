@@ -43,7 +43,7 @@ func StartKeygen(pl *pool.Pool, partyIDs []party.ID, threshold int, selfID party
 			return nil, nil, fmt.Errorf("keygen.StartKeygen: %w", err)
 		}
 
-		PreviousPublicSharesECDSA := make(map[party.ID]*curve.Point, n)
+		PreviousPublicSharesECDSA := make(map[party.ID]curve.Point, n)
 		for _, idJ := range helper.PartyIDs() {
 			PreviousPublicSharesECDSA[idJ] = curve.NewIdentityPoint()
 		}
@@ -80,7 +80,7 @@ func StartRefresh(pl *pool.Pool, c *Config) protocol.StartFunc {
 			return nil, nil, fmt.Errorf("refresh.StartKeygen: %w", err)
 		}
 
-		PreviousPublicSharesECDSA := make(map[party.ID]*curve.Point, len(partyIDs))
+		PreviousPublicSharesECDSA := make(map[party.ID]curve.Point, len(partyIDs))
 		for _, j := range partyIDs {
 			// Set the public data to a clone of the current data
 			PreviousPublicSharesECDSA[j] = curve.NewIdentityPoint().Set(c.Public[j].ECDSA)

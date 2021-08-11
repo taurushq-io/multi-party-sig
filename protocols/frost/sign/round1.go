@@ -36,13 +36,13 @@ type round1 struct {
 	// security.
 	M messageHash
 	// Y is the public key we're signing for.
-	Y *curve.Point
+	Y curve.Point
 	// YShares are verification shares for each participant's fraction of the secret key
 	//
 	// YShares[i] corresponds with Yᵢ in the Frost paper.
-	YShares map[party.ID]*curve.Point
+	YShares map[party.ID]curve.Point
 	// s_i = sᵢ is our private secret share
-	s_i *curve.Scalar
+	s_i curve.Scalar
 }
 
 // VerifyMessage implements round.Round.
@@ -77,11 +77,11 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	_, _ = nonceHasher.Write(a)
 	nonceDigest := nonceHasher.Digest()
 
-	d_i := sample.ScalarUnit(nonceDigest)
-	e_i := sample.ScalarUnit(nonceDigest)
+	d_i := sample.ScalarUnit(nonceDigest, r.Group())
+	e_i := sample.ScalarUnit(nonceDigest, r.Group())
 
-	D_i := curve.NewIdentityPoint().ScalarBaseMult(d_i)
-	E_i := curve.NewIdentityPoint().ScalarBaseMult(e_i)
+	D_i := d_i.ActOnBase()
+	E_i := e_i.ActOnBase()
 
 	// Broadcast the commitments
 	msg := r.MarshalMessage(&Sign2{D_i: D_i, E_i: E_i})
@@ -92,14 +92,12 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 		round1: r,
 		d_i:    d_i,
 		e_i:    e_i,
-		D:      map[party.ID]*curve.Point{r.SelfID(): D_i},
-		E:      map[party.ID]*curve.Point{r.SelfID(): E_i},
+		D:      map[party.ID]curve.Point{r.SelfID(): D_i},
+		E:      map[party.ID]curve.Point{r.SelfID(): E_i},
 	}, nil
 }
 
 // MessageContent implements round.Round.
 //
 // Since this is the first round of the protocol, we expect to see a dummy First type.
-func (r *round1) MessageContent() message.Content {
-	return &message.First{}
-}
+func (round1) MessageContent() message.Content { return &message.First{} }

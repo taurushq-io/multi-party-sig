@@ -14,23 +14,23 @@ var _ round.Round = (*round4)(nil)
 type round4 struct {
 	*round3
 	// DeltaShares[j] = δⱼ
-	DeltaShares map[party.ID]*curve.Scalar
+	DeltaShares map[party.ID]curve.Scalar
 
 	// BigDeltaShares[j] = Δⱼ = [kⱼ]•Γⱼ
-	BigDeltaShares map[party.ID]*curve.Point
+	BigDeltaShares map[party.ID]curve.Point
 
 	// Gamma = ∑ᵢ Γᵢ
-	Gamma *curve.Point
+	Gamma curve.Point
 
 	// ChiShare = χᵢ
-	ChiShare *curve.Scalar
+	ChiShare curve.Scalar
 }
 
 type Sign4 struct {
 	// DeltaShare = δⱼ
-	DeltaShare *curve.Scalar
+	DeltaShare curve.Scalar
 	// BigDeltaShare = Δⱼ = [kⱼ]•Γⱼ
-	BigDeltaShare *curve.Point
+	BigDeltaShare curve.Point
 	ProofLog      *zklogstar.Proof
 }
 
@@ -80,29 +80,29 @@ func (r *round4) StoreMessage(from party.ID, content message.Content) error {
 func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// δ = ∑ⱼ δⱼ
 	// Δ = ∑ⱼ Δⱼ
-	Delta := curve.NewScalar()
-	BigDelta := curve.NewIdentityPoint()
+	Delta := r.Group().NewScalar()
+	BigDelta := r.Group().NewPoint()
 	for _, j := range r.PartyIDs() {
-		Delta.Add(Delta, r.DeltaShares[j])
-		BigDelta.Add(BigDelta, r.BigDeltaShares[j])
+		Delta.Add(r.DeltaShares[j])
+		BigDelta.Add(r.BigDeltaShares[j])
 	}
 
 	// Δ == [δ]G
-	deltaComputed := curve.NewIdentityPoint().ScalarBaseMult(Delta)
+	deltaComputed := Delta.ActOnBase()
 	if !deltaComputed.Equal(BigDelta) {
 		return nil, ErrRound4BigDelta
 	}
 
-	deltaInv := curve.NewScalar().Invert(Delta)                    // δ⁻¹
-	BigR := curve.NewIdentityPoint().ScalarMult(deltaInv, r.Gamma) // R = [δ⁻¹] Γ
-	R := BigR.XScalar()                                            // r = R|ₓ
+	deltaInv := r.Group().NewScalar().Set(Delta).Invert() // δ⁻¹
+	BigR := deltaInv.Act(r.Gamma)                         // R = [δ⁻¹] Γ
+	R := BigR.XScalar()                                   // r = R|ₓ
 
 	// km = Hash(m)⋅kᵢ
-	km := curve.NewScalar().SetHash(r.Message)
-	km.Multiply(km, r.KShare)
+	km := r.Group().NewScalar().SetHash(r.Message)
+	km.Mul(r.KShare)
 
 	// σᵢ = rχᵢ + kᵢm
-	SigmaShare := curve.NewScalar().MultiplyAdd(R, r.ChiShare, km)
+	SigmaShare := r.Group().NewScalar().Set(R).Mul(r.ChiShare).Add(km)
 
 	// Send to all
 	msg := r.MarshalMessage(&SignOutput{SigmaShare: SigmaShare}, r.OtherPartyIDs()...)
@@ -111,7 +111,7 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 	return &output{
 		round4:      r,
-		SigmaShares: map[party.ID]*curve.Scalar{r.SelfID(): SigmaShare},
+		SigmaShares: map[party.ID]curve.Scalar{r.SelfID(): SigmaShare},
 		Delta:       Delta,
 		BigDelta:    BigDelta,
 		BigR:        BigR,
@@ -120,7 +120,13 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *round4) MessageContent() message.Content { return &Sign4{} }
+func (r *round4) MessageContent() message.Content {
+	return &Sign4{
+		DeltaShare:    r.Group().NewScalar(),
+		BigDeltaShare: r.Group().NewPoint(),
+		ProofLog:      zklogstar.Empty(r.Group()),
+	}
+}
 
 // RoundNumber implements message.Content.
-func (m *Sign4) RoundNumber() types.RoundNumber { return 4 }
+func (Sign4) RoundNumber() types.RoundNumber { return 4 }

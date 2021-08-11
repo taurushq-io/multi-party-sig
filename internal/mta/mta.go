@@ -130,3 +130,9 @@ func (mta *MtA) VerifyAffG(h *hash.Hash,
 func (msg *Message) AlphaShare(receiverPaillier *paillier.SecretKey) (*safenum.Int, error) {
 	return receiverPaillier.Dec(msg.Dij)
 }
+
+func Empty(group curve.Curve) *Message {
+	return &Message{
+		Proof: zkaffg.Empty(group),
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/cronokirby/safenum"
+	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
@@ -19,7 +20,7 @@ func FakeData(N, T int, source io.Reader, pl *pool.Pool) map[party.ID]*Config {
 	f := polynomial.NewPolynomial(T, sample.Scalar(source))
 	one := new(safenum.Nat).SetUint64(1)
 
-	rid := newRID()
+	rid := make(RID, params.SecBytes)
 	_, _ = io.ReadFull(source, rid)
 
 	for _, pid := range partyIDs {

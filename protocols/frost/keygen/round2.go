@@ -94,7 +94,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 	for _, l := range r.OtherPartyIDs() {
 		msg := r.MarshalMessage(&Keygen3{
-			F_li:         r.f_i.Evaluate(l.Scalar()),
+			F_li:         r.f_i.Evaluate(l.Scalar(r.Group())),
 			C_l:          r.ChainKeys[r.SelfID()],
 			Decommitment: r.ChainKeyDecommitment,
 		}, l)
@@ -103,10 +103,10 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 		}
 	}
 
-	selfShare := r.f_i.Evaluate(r.SelfID().Scalar())
+	selfShare := r.f_i.Evaluate(r.SelfID().Scalar(r.Group()))
 	return &round3{
 		round2:    r,
-		shareFrom: map[party.ID]*curve.Scalar{r.SelfID(): selfShare},
+		shareFrom: map[party.ID]curve.Scalar{r.SelfID(): selfShare},
 	}, nil
 }
 
@@ -114,8 +114,12 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 //
 // Since this is the first round of the protocol, we expect to see a dummy First type.
 func (r *round2) MessageContent() message.Content {
-	return &Keygen2{}
+	return &Keygen2{
+		// TODO add
+		Phi_i:   polynomial.EmptyExponent(r.Group()),
+		Sigma_i: sch.EmptyProof(r.Group()),
+	}
 }
 
 // RoundNumber implements message.Content.
-func (m *Keygen2) RoundNumber() types.RoundNumber { return 2 }
+func (Keygen2) RoundNumber() types.RoundNumber { return 2 }

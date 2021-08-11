@@ -70,7 +70,7 @@ func StartSign(pl *pool.Pool, config *keygen.Config, signers []party.ID, message
 
 		// Scale public data
 		T := len(signerIDs)
-		ECDSA := make(map[party.ID]*curve.Point, T)
+		ECDSA := make(map[party.ID]curve.Point, T)
 		Paillier := make(map[party.ID]*paillier.PublicKey, T)
 		Pedersen := make(map[party.ID]*pedersen.Parameters, T)
 		PublicKey := curve.NewIdentityPoint()

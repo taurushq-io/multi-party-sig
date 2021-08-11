@@ -16,24 +16,24 @@ type output struct {
 	*round4
 
 	// SigmaShares[j] = σⱼ = m⋅kⱼ + χⱼ⋅R|ₓ
-	SigmaShares map[party.ID]*curve.Scalar
+	SigmaShares map[party.ID]curve.Scalar
 
 	// Delta = δ = ∑ⱼ δⱼ
 	// computed from received shares
-	Delta *curve.Scalar
+	Delta curve.Scalar
 
 	// BigDelta = Δ = ∑ⱼ Δⱼ
-	BigDelta *curve.Point
+	BigDelta curve.Point
 
 	// R = [δ⁻¹] Γ
-	BigR *curve.Point
+	BigR curve.Point
 
 	// R = R|ₓ
-	R *curve.Scalar
+	R curve.Scalar
 }
 
 type SignOutput struct {
-	SigmaShare *curve.Scalar
+	SigmaShare curve.Scalar
 }
 
 // VerifyMessage implements round.Round.
@@ -65,9 +65,9 @@ func (r *output) StoreMessage(from party.ID, content message.Content) error {
 // - verify signature.
 func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {
 	// compute σ = ∑ⱼ σⱼ
-	Sigma := curve.NewScalar()
+	Sigma := r.Group().NewScalar()
 	for _, j := range r.PartyIDs() {
-		Sigma.Add(Sigma, r.SigmaShares[j])
+		Sigma.Add(r.SigmaShares[j])
 	}
 
 	signature := &Signature{
@@ -88,9 +88,9 @@ func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {
 }
 
 func (r *output) MessageContent() message.Content {
-	return &SignOutput{}
+	return &SignOutput{SigmaShare: r.Group().NewScalar()}
 }
 
-func (m *SignOutput) RoundNumber() types.RoundNumber {
+func (SignOutput) RoundNumber() types.RoundNumber {
 	return 5
 }

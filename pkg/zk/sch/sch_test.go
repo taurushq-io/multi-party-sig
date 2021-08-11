@@ -17,7 +17,7 @@ func TestSchPass(t *testing.T) {
 	a := NewRandomness(rand.Reader, group)
 	x, X := sample.ScalarPointPair(rand.Reader, group)
 
-	proof := a.Prove(group, hash.New(), X, x)
+	proof := a.Prove(hash.New(), X, x)
 	assert.True(t, proof.Verify(hash.New(), X, a.Commitment()), "failed passing test")
 	assert.True(t, proof.Verify(hash.New(), X, a.Commitment()))
 
@@ -38,6 +38,6 @@ func TestSchFail(t *testing.T) {
 	a := NewRandomness(rand.Reader, group)
 	x, X := group.NewScalar(), group.NewPoint()
 
-	proof := a.Prove(group, hash.New(), X, x)
+	proof := a.Prove(hash.New(), X, x)
 	assert.False(t, proof.Verify(hash.New(), X, a.Commitment()), "proof should not accept identity point")
 }

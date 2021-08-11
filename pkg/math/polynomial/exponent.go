@@ -196,6 +196,7 @@ func (*Exponent) Domain() string {
 	return "Exponent"
 }
 
-func EmptyExponent() *Exponent {
+func EmptyExponent(group curve.Curve) *Exponent {
+	// TODO create custom marshaller
 	return &Exponent{Coefficients: []curve.MarshallablePoint{}}
 }
