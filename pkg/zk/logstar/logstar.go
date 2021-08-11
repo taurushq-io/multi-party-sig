@@ -75,6 +75,7 @@ func (p *Proof) IsValid(public Public) bool {
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	N := public.Prover.N()
+	NCRT := public.Prover.CRT()
 
 	if public.G == nil {
 		public.G = curve.NewBasePoint()
@@ -98,7 +99,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	z1 := new(safenum.Int).Mul(e, private.X, -1)
 	z1.Add(z1, alpha, -1)
 	// z2 = r ρᵉ mod N,
-	z2 := new(safenum.Nat).ExpI(private.Rho, e, N)
+	z2 := NCRT.ExpI(private.Rho, e)
 	z2.ModMul(z2, r, N)
 	// z3 = γ + e μ,
 	z3 := new(safenum.Int).Mul(e, mu, -1)

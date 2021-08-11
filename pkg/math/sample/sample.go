@@ -76,6 +76,7 @@ func Pedersen(rand io.Reader, phi *safenum.Nat, n *safenum.Modulus) (s, t, lambd
 	// t = τ² mod N
 	t = tau.ModMul(tau, tau, n)
 	// s = tˡ mod N
+	// TODO SPEED
 	s = new(safenum.Nat).Exp(t, lambda, n)
 
 	return

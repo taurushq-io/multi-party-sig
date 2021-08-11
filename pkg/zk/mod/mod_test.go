@@ -10,7 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/modulus"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
+	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 	"github.com/taurusgroup/multi-party-sig/pkg/zk"
 )
@@ -40,9 +42,9 @@ func TestMod(t *testing.T) {
 
 	assert.True(t, proof3.Verify(pl, hash.New(), public))
 
-	proof.W = new(safenum.Nat).SetUint64(0)
+	proof.W = big.NewInt(0)
 	for idx := range proof.Responses {
-		proof.Responses[idx].X = new(safenum.Nat).SetUint64(0)
+		proof.Responses[idx].X = big.NewInt(0)
 	}
 
 	assert.False(t, proof.Verify(pl, hash.New(), public), "proof should have failed")
@@ -59,10 +61,12 @@ func Test_set4thRoot(t *testing.T) {
 	y := new(safenum.Nat).SetUint64(502)
 	w := sample.QNR(rand.Reader, n)
 
+	nCRT := modulus.FromFactors(pMod.Nat(), qMod.Nat(), 1, 1)
+
 	a, b, x := makeQuadraticResidue(y, w, pHalf, qHalf, n, pMod, qMod)
 
-	root := fourthRoot(x, phi, n)
-
+	e := fourthRootExponent(phi)
+	root := nCRT.Exp(x, e)
 	if b {
 		y.ModMul(y, w, n)
 	}
@@ -73,4 +77,29 @@ func Test_set4thRoot(t *testing.T) {
 	assert.NotEqual(t, root, big.NewInt(1), "root cannot be 1")
 	root.Exp(root, new(safenum.Nat).SetUint64(4), n)
 	assert.True(t, root.Eq(y) == 1, "root^4 should be equal to y")
+}
+
+var p *Proof
+
+func BenchmarkCRT(b *testing.B) {
+	b.StopTimer()
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+
+	sk := paillier.NewSecretKey(pl)
+	ped, _ := sk.GeneratePedersen()
+
+	public := Public{
+		ped.N(),
+	}
+
+	private := Private{
+		Phi: sk.Phi(),
+		P:   sk.P(),
+		Q:   sk.Q(),
+	}
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		p = NewProof(nil, hash.New(), public, private)
+	}
 }

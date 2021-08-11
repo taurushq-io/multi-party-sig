@@ -27,6 +27,8 @@ func TestPrm(t *testing.T) {
 	proof := NewProof(pl, hash.New(), public, Private{
 		Lambda: lambda,
 		Phi:    sk.Phi(),
+		P:      sk.P(),
+		Q:      sk.Q(),
 	})
 	assert.True(t, proof.Verify(pl, hash.New(), public))
 
@@ -40,4 +42,32 @@ func TestPrm(t *testing.T) {
 	require.NoError(t, cbor.Unmarshal(out2, proof3), "failed to unmarshal 2nd proof")
 
 	assert.True(t, proof3.Verify(pl, hash.New(), public))
+}
+
+var p *Proof
+
+func BenchmarkCRT(b *testing.B) {
+	b.StopTimer()
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+
+	sk := paillier.NewSecretKey(pl)
+	ped, lambda := sk.GeneratePedersen()
+
+	public := Public{
+		ped.N(),
+		ped.S(),
+		ped.T(),
+	}
+
+	private := Private{
+		Lambda: lambda,
+		Phi:    sk.Phi(),
+		P:      sk.P(),
+		Q:      sk.Q(),
+	}
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		p = NewProof(nil, hash.New(), public, private)
+	}
 }

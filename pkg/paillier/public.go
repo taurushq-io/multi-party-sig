@@ -93,12 +93,9 @@ func (pk PublicKey) EncWithNonce(m *safenum.Int, nonce *safenum.Nat) *Ciphertext
 	if m.CheckInRange(pk.n) != 1 {
 		panic("paillier.Encrypt: tried to encrypt message outside of range [-(N-1)/2, …, (N-1)/2]")
 	}
-	c := new(safenum.Nat)
 
-	// N + 1
-	c.SetNat(pk.nPlusOne)
 	// (N+1)ᵐ mod N²
-	c.ExpI(c, m, pk.nSquared)
+	c := pk.nSquaredCRT.ExpI(pk.nPlusOne, m)
 	// rho ^ N mod N²
 	rhoN := pk.nSquaredCRT.Exp(nonce, pk.nNat)
 	// (N+1)ᵐ rho ^ N

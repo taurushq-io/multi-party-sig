@@ -173,6 +173,8 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	prm := zkprm.NewProof(r.Pool, h.Clone(), zkprm.Public{N: r.N[r.SelfID()], S: r.S[r.SelfID()], T: r.T[r.SelfID()]}, zkprm.Private{
 		Lambda: r.PedersenSecret,
 		Phi:    r.PaillierSecret.Phi(),
+		P:      r.PaillierSecret.P(),
+		Q:      r.PaillierSecret.Q(),
 	})
 
 	// create messages with encrypted shares

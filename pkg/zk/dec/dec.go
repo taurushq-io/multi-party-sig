@@ -71,6 +71,7 @@ func (p *Proof) IsValid(public Public) bool {
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	N0 := public.Prover.N()
+	N0CRT := public.Prover.CRT()
 	alpha := sample.IntervalLEps(rand.Reader)
 
 	mu := sample.IntervalLN(rand.Reader)
@@ -95,7 +96,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	z2 := new(safenum.Int).Mul(e, mu, -1)
 	z2.Add(z2, nu, -1)
 	// w = ρ^e•r mod N₀
-	w := new(safenum.Nat).ExpI(private.Rho, e, N0)
+	w := N0CRT.ExpI(private.Rho, e)
 	w.ModMul(w, r, N0)
 
 	return &Proof{

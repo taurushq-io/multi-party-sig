@@ -33,7 +33,7 @@ func (ct *Ciphertext) Mul(pk *PublicKey, k *safenum.Int) *Ciphertext {
 		return ct
 	}
 
-	ct.c.ExpI(ct.c, k, pk.nSquared)
+	ct.c = pk.nSquaredCRT.ExpI(ct.c, k)
 
 	return ct
 }

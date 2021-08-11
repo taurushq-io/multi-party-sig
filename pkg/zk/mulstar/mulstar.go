@@ -74,6 +74,7 @@ func (p *Proof) IsValid(public Public) bool {
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	N0 := public.Verifier.N()
+	N0CRT := public.Verifier.CRT()
 
 	verifier := public.Verifier
 
@@ -103,7 +104,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	z2 := new(safenum.Int).Mul(e, m, -1)
 	z2.Add(z2, gamma, -1)
 	// w = ρᵉ•r mod N₀
-	w := new(safenum.Nat).ExpI(private.Rho, e, N0)
+	w := N0CRT.ExpI(private.Rho, e)
 	w.ModMul(w, r, N0)
 
 	return &Proof{

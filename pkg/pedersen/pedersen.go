@@ -74,8 +74,8 @@ func (p Parameters) T() *safenum.Nat { return p.t }
 // in general. The commitment produced, on the other hand, hides their values,
 // and can be safely shared.
 func (p Parameters) Commit(x, y *safenum.Int) *safenum.Nat {
-	sx := new(safenum.Nat).ExpI(p.s, x, p.n)
-	ty := new(safenum.Nat).ExpI(p.t, y, p.n)
+	sx := p.crt.ExpI(p.s, x)
+	ty := p.crt.ExpI(p.t, y)
 
 	result := sx.ModMul(sx, ty, p.n)
 

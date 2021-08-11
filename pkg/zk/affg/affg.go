@@ -110,6 +110,8 @@ func (p *Proof) IsValid(public Public) bool {
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	N0 := public.Verifier.N()
 	N1 := public.Prover.N()
+	N0CRT := public.Verifier.CRT()
+	N1CRT := public.Prover.CRT()
 
 	verifier := public.Verifier
 	prover := public.Prover
@@ -157,10 +159,10 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	z4 := new(safenum.Int).Mul(e, mu, -1)
 	z4.Add(z4, delta, -1)
 	// (ρᵉ mod N₀)•r mod N₀
-	w := new(safenum.Nat).ExpI(private.Rho, e, N0)
+	w := N0CRT.ExpI(private.Rho, e)
 	w.ModMul(w, r, N0)
 	// ( (ρy)ᵉ mod N₁)•ry mod N₁
-	wY := new(safenum.Nat).ExpI(private.RhoY, e, N1)
+	wY := N1CRT.ExpI(private.RhoY, e)
 	wY.ModMul(wY, rY, N1)
 
 	return &Proof{
