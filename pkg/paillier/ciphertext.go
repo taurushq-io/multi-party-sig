@@ -59,7 +59,7 @@ func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *safenum.Nat) *safenum.Nat 
 		nonce = sample.UnitModN(rand.Reader, pk.n)
 	}
 	// c = c*r^N
-	tmp := new(safenum.Nat).Exp(nonce, pk.nNat, pk.nSquared)
+	tmp := pk.nSquaredCRT.Exp(nonce, pk.nNat)
 	ct.c.ModMul(ct.c, tmp, pk.nSquared)
 	return nonce
 }

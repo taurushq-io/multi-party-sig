@@ -8,6 +8,7 @@ import (
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/modulus"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 )
 
@@ -28,6 +29,9 @@ type PublicKey struct {
 	nSquared *safenum.Modulus
 	// nPlusOne = n + 1
 	nPlusOne *safenum.Nat
+
+	nCRT        *modulus.Modulus
+	nSquaredCRT *modulus.Modulus
 }
 
 // N is the public modulus making up this key.
@@ -38,16 +42,18 @@ func (pk *PublicKey) N() *safenum.Modulus {
 // NewPublicKey returns an initialized paillier.PublicKey and caches N, N² and (N-1)/2.
 func NewPublicKey(n *safenum.Modulus) *PublicKey {
 	nNat := n.Nat()
-	nSquared := new(safenum.Nat).Mul(nNat, nNat, -1)
+	nSquared := safenum.ModulusFromNat(new(safenum.Nat).Mul(nNat, nNat, -1))
 	nPlusOne := new(safenum.Nat).Add(nNat, oneNat, -1)
 	// Tightening is fine, since n is public
 	nPlusOne.Resize(nPlusOne.TrueLen())
 
 	return &PublicKey{
-		n:        safenum.ModulusFromNat(nNat),
-		nNat:     nNat,
-		nSquared: safenum.ModulusFromNat(nSquared),
-		nPlusOne: nPlusOne,
+		n:           safenum.ModulusFromNat(nNat),
+		nNat:        nNat,
+		nSquared:    nSquared,
+		nPlusOne:    nPlusOne,
+		nCRT:        modulus.FromN(n),
+		nSquaredCRT: modulus.FromN(nSquared),
 	}
 }
 
@@ -94,7 +100,7 @@ func (pk PublicKey) EncWithNonce(m *safenum.Int, nonce *safenum.Nat) *Ciphertext
 	// (N+1)ᵐ mod N²
 	c.ExpI(c, m, pk.nSquared)
 	// rho ^ N mod N²
-	rhoN := new(safenum.Nat).Exp(nonce, pk.nNat, pk.nSquared)
+	rhoN := pk.nSquaredCRT.Exp(nonce, pk.nNat)
 	// (N+1)ᵐ rho ^ N
 	c.ModMul(c, rhoN, pk.nSquared)
 
@@ -135,4 +141,8 @@ func (pk *PublicKey) WriteTo(w io.Writer) (int64, error) {
 // Domain implements hash.WriterToWithDomain, and separates this type within hash.Hash.
 func (PublicKey) Domain() string {
 	return "Paillier PublicKey"
+}
+
+func (pk *PublicKey) CRT() *modulus.Modulus {
+	return pk.nCRT
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/modulus"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
@@ -79,6 +80,8 @@ func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
 	phiInv := new(safenum.Nat).ModInverse(phi, n)
 
 	pk := NewPublicKey(n)
+	pk.nSquaredCRT = modulus.FromFactors(P, Q, 2, 2)
+	pk.nCRT = modulus.FromFactors(P, Q, 1, 1)
 
 	return &SecretKey{
 		p:         P,
@@ -93,7 +96,6 @@ func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
 // It returns an error if gcd(c, N²) != 1 or if c is not in [1, N²-1].
 func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
 	n := sk.PublicKey.n
-	nSquared := sk.PublicKey.nSquared
 
 	if !sk.PublicKey.ValidateCiphertexts(ct) {
 		return nil, errors.New("paillier: failed to decrypt invalid ciphertext")
@@ -102,9 +104,8 @@ func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
 	phi := sk.phi
 	phiInv := sk.phiInv
 
-	result := new(safenum.Nat)
 	// r = c^Phi 						(mod N²)
-	result.Exp(ct.c, phi, nSquared)
+	result := sk.PublicKey.nSquaredCRT.Exp(ct.c, phi)
 	// r = c^Phi - 1
 	result.Sub(result, oneNat, -1)
 	// r = [(c^Phi - 1)/N]
@@ -119,6 +120,7 @@ func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
 func (sk SecretKey) GeneratePedersen() (*pedersen.Parameters, *safenum.Nat) {
 	s, t, lambda := sample.Pedersen(rand.Reader, sk.phi, sk.PublicKey.n)
 	ped := pedersen.New(sk.PublicKey.n, s, t)
+	ped.SetCRT(sk.nCRT)
 	return ped, lambda
 }
 

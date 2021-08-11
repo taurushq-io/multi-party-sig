@@ -49,10 +49,12 @@ func StartSign(pl *pool.Pool, config *keygen.Config, signers []party.ID, message
 			return nil, nil, err
 		}
 
+		selfID := config.ID
+
 		helper, err := round.NewHelper(
 			protocolSignID,
 			protocolSignRounds,
-			config.ID,
+			selfID,
 			signerIDs,
 			// write the config, the signers and the message to this session.
 			config,
@@ -86,6 +88,9 @@ func StartSign(pl *pool.Pool, config *keygen.Config, signers []party.ID, message
 
 		// Scale own secret
 		SecretECDSA := curve.NewScalar().Multiply(lagrange[config.ID], config.ECDSA)
+		SecretPaillier := config.Paillier()
+		Paillier[selfID] = SecretPaillier.PublicKey
+		Pedersen[selfID].SetCRT(SecretPaillier.CRT())
 
 		return &round1{
 			Helper:         helper,

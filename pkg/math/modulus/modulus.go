@@ -1,79 +1,77 @@
 package modulus
 
 import (
-	"io"
-	"math/big"
-
 	"github.com/cronokirby/safenum"
 )
 
 type Modulus struct {
-	modulus *safenum.Modulus
-	bigInt  *big.Int
-	p, q    *safenum.Modulus
+	// n = p⋅q
+	n, p, q *safenum.Modulus
+	// pInvQ = pNat⁻¹ (mod q)
+	pNat, pInvQ *safenum.Nat
 }
 
-func FromBigIntN(n *big.Int) *Modulus {
-	nat := new(safenum.Nat).SetBig(n, n.BitLen())
+func FromN(n *safenum.Modulus) *Modulus {
 	return &Modulus{
-		modulus: safenum.ModulusFromNat(nat),
-		bigInt:  nat.Big(),
+		n: n,
 	}
 }
 
-func FromN(n *safenum.Nat) *Modulus {
-	return &Modulus{
-		modulus: safenum.ModulusFromNat(n),
-		bigInt:  n.Big(),
+func primePower(p *safenum.Nat, power int) *safenum.Nat {
+	pPower := new(safenum.Nat).SetNat(p)
+	for i := 0; i < power-1; i++ {
+		pPower.Mul(pPower, p, -1)
 	}
+	return pPower
 }
 
-func (m *Modulus) WriteTo(w io.Writer) (n int64, err error) {
-	var written int
-	b, _ := m.bigInt.GobEncode()
-	written, err = w.Write(b)
-	return int64(written), err
-}
-
-func (Modulus) Domain() string {
-	return "Modulus"
+func FromFactors(p, q *safenum.Nat, pPower, qPower int) *Modulus {
+	pNat := primePower(p, pPower)
+	qNat := primePower(q, qPower)
+	nNat := new(safenum.Nat).Mul(pNat, qNat, -1)
+	nMod := safenum.ModulusFromNat(nNat)
+	pMod := safenum.ModulusFromNat(pNat)
+	qMod := safenum.ModulusFromNat(qNat)
+	pInvQ := new(safenum.Nat).ModInverse(pNat, qMod)
+	return &Modulus{
+		n:     nMod,
+		p:     pMod,
+		q:     qMod,
+		pNat:  pNat,
+		pInvQ: pInvQ,
+	}
 }
 
 func (m *Modulus) Modulus() *safenum.Modulus {
-	return m.modulus
+	return m.n
 }
 
-func (m *Modulus) Big() *big.Int { return new(big.Int).Set(m.bigInt) }
-
-func (m *Modulus) Nat() *safenum.Nat { return m.modulus.Nat() }
-
-// ExpI is equivalent to z.ExpI(x, i, m)
-func (m *Modulus) ExpI(z, x *safenum.Nat, i *safenum.Int) *safenum.Nat {
-	panic("implement me")
-}
-
-// Exp is equivalent to z.Exp(x, y, m)
-func (m *Modulus) Exp(z, x, i *safenum.Nat) *safenum.Nat {
-	panic("implement me")
-}
-
-// ValidGroupElements checks that ints are all in the range [1,…,N-1] and co-prime to N.
-func (m *Modulus) ValidGroupElements(ints ...*big.Int) bool {
-	var gcd big.Int
-	one := big.NewInt(1)
-	for _, i := range ints {
-		if i == nil {
-			return false
-		}
-		if i.Sign() != 1 {
-			return false
-		}
-		if i.Cmp(m.bigInt) != -1 {
-			return false
-		}
-		if gcd.GCD(nil, nil, m.bigInt, i).Cmp(one) == 0 {
-			return true
-		}
+// ExpI is equivalent to ExpI(x, e, m) and returns xᵉ (mod m).
+func (m *Modulus) ExpI(x *safenum.Nat, e *safenum.Int) *safenum.Nat {
+	if m.hasFactorization() {
+		y := m.Exp(x, e.Abs())
+		inverted := new(safenum.Nat).ModInverse(y, m.n)
+		y.CondAssign(e.IsNegative(), inverted)
+		return y
 	}
-	return true
+	return new(safenum.Nat).ExpI(x, e, m.n)
+}
+
+// Exp is equivalent to z.Exp(x, e, m)
+func (m *Modulus) Exp(x, e *safenum.Nat) *safenum.Nat {
+	if m.hasFactorization() {
+		var xp, xq safenum.Nat
+		xp.Exp(x, e, m.p)
+		xq.Exp(x, e, m.q)
+		r := xq.ModSub(&xq, &xp, m.n)
+		r.ModMul(r, m.pInvQ, m.n)
+		r.ModMul(r, m.pNat, m.n)
+		r.ModAdd(r, &xp, m.n)
+		return r
+	}
+	return new(safenum.Nat).Exp(x, e, m.n)
+}
+
+func (m Modulus) hasFactorization() bool {
+	return m.p != nil && m.q != nil && m.pNat != nil && m.pInvQ != nil
 }
