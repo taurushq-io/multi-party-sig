@@ -40,6 +40,7 @@ type Point interface {
 	encoding.BinaryUnmarshaler
 	Curve() Curve
 	Add(Point) Point
+	Sub(Point) Point
 	Negate() Point
 	Set(Point) Point
 	Equal(Point) bool

@@ -48,10 +48,6 @@ func (Secp256k1) Order() *safenum.Modulus {
 }
 
 func (Secp256k1) LiftX(data []byte) (*Secp256k1Point, error) {
-	scalar := new(Secp256k1Scalar)
-	if err := scalar.UnmarshalBinary(data); err != nil {
-		return nil, err
-	}
 	out := new(Secp256k1Point)
 	out.value.Z.SetInt(1)
 	if out.value.X.SetByteSlice(data) {
@@ -187,6 +183,11 @@ func (*Secp256k1Point) Curve() Curve {
 	return Secp256k1{}
 }
 
+func (p *Secp256k1Point) XBytes() []byte {
+	p.value.ToAffine()
+	return p.value.X.Bytes()[:]
+}
+
 func (p *Secp256k1Point) MarshalBinary() ([]byte, error) {
 	out := make([]byte, 33)
 	// This will modify p, but still return an equivalent value
@@ -200,16 +201,13 @@ func (p *Secp256k1Point) MarshalBinary() ([]byte, error) {
 
 func (p *Secp256k1Point) UnmarshalBinary(data []byte) error {
 	if len(data) != 33 {
-		fmt.Println("bad length")
 		return fmt.Errorf("invalid length for secp256k1Point: %d", len(data))
 	}
 	p.value.Z.SetInt(1)
 	if p.value.X.SetByteSlice(data[1:]) {
-		fmt.Println("bad x")
 		return fmt.Errorf("secp256k1Point.UnmarshalBinary: x coordinate out of range")
 	}
 	if !secp256k1.DecompressY(&p.value.X, data[0] == 3, &p.value.Y) {
-		fmt.Println("bad x 2")
 		return fmt.Errorf("secp256k1Point.UnmarshalBinary: x coordinate not on curve")
 	}
 	return nil
@@ -221,6 +219,10 @@ func (p *Secp256k1Point) Add(that Point) Point {
 	out := new(Secp256k1Point)
 	secp256k1.AddNonConst(&p.value, &other.value, &out.value)
 	return out
+}
+
+func (p *Secp256k1Point) Sub(that Point) Point {
+	return p.Add(that.Negate())
 }
 
 func (p *Secp256k1Point) Set(that Point) Point {
@@ -235,7 +237,7 @@ func (p *Secp256k1Point) Negate() Point {
 	out.value.Set(&p.value)
 	out.value.Y.Negate(1)
 	out.value.Y.Normalize()
-	return nil
+	return out
 }
 
 func (p *Secp256k1Point) Equal(that Point) bool {
