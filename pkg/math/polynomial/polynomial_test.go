@@ -14,7 +14,8 @@ import (
 )
 
 func TestPolynomial_Constant(t *testing.T) {
-	var group curve.Curve
+	group := curve.Secp256k1{}
+
 	deg := 10
 	secret := sample.Scalar(rand.Reader, group)
 	poly := NewPolynomial(group, deg, secret)
@@ -22,11 +23,12 @@ func TestPolynomial_Constant(t *testing.T) {
 }
 
 func TestPolynomial_Evaluate(t *testing.T) {
-	var group curve.Curve
+	group := curve.Secp256k1{}
+
 	polynomial := &Polynomial{group, make([]curve.Scalar, 3)}
-	polynomial.coefficients[0].SetUInt32(1)
-	polynomial.coefficients[1].SetUInt32(0)
-	polynomial.coefficients[2].SetUInt32(1)
+	polynomial.coefficients[0] = group.NewScalar().SetNat(new(safenum.Nat).SetUint64(1))
+	polynomial.coefficients[1] = group.NewScalar()
+	polynomial.coefficients[2] = group.NewScalar().SetNat(new(safenum.Nat).SetUint64(1))
 
 	for index := 0; index < 100; index++ {
 		x := big.NewInt(int64(mrand.Uint32()))

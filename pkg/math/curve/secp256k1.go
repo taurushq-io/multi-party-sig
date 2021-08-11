@@ -1,6 +1,7 @@
 package curve
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -8,10 +9,27 @@ import (
 	"github.com/decred/dcrd/dcrec/secp256k1/v3"
 )
 
+var secp256k1BaseX, secp256k1BaseY secp256k1.FieldVal
+
+func init() {
+	Gx, _ := hex.DecodeString("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
+	Gy, _ := hex.DecodeString("483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8")
+	secp256k1BaseX.SetByteSlice(Gx)
+	secp256k1BaseY.SetByteSlice(Gy)
+}
+
 type Secp256k1 struct{}
 
 func (Secp256k1) NewPoint() Point {
 	return new(Secp256k1Point)
+}
+
+func (Secp256k1) NewBasePoint() Point {
+	out := new(Secp256k1Point)
+	out.value.X.Set(&secp256k1BaseX)
+	out.value.Y.Set(&secp256k1BaseY)
+	out.value.Z.SetInt(1)
+	return out
 }
 
 func (Secp256k1) NewScalar() Scalar {
@@ -186,13 +204,16 @@ func (p *Secp256k1Point) MarshalBinary() ([]byte, error) {
 
 func (p *Secp256k1Point) UnmarshalBinary(data []byte) error {
 	if len(data) != 33 {
+		fmt.Println("bad length")
 		return fmt.Errorf("invalid length for secp256k1Point: %d", len(data))
 	}
 	p.value.Z.SetInt(1)
 	if p.value.X.SetByteSlice(data[1:]) {
+		fmt.Println("bad x")
 		return fmt.Errorf("secp256k1Point.UnmarshalBinary: x coordinate out of range")
 	}
 	if !secp256k1.DecompressY(&p.value.X, data[0] == 3, &p.value.Y) {
+		fmt.Println("bad x 2")
 		return fmt.Errorf("secp256k1Point.UnmarshalBinary: x coordinate not on curve")
 	}
 	return nil

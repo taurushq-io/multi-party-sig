@@ -8,6 +8,7 @@ import (
 
 type Curve interface {
 	NewPoint() Point
+	NewBasePoint() Point
 	NewScalar() Scalar
 	Name() string
 	SafeScalarBytes() int

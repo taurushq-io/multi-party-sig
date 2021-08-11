@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
@@ -44,8 +45,7 @@ func (p *Exponent) Evaluate(x curve.Scalar) curve.Point {
 
 	for i := len(p.Coefficients) - 1; i >= 0; i-- {
 		// Bₙ₋₁ = [x]Bₙ  + Aₙ₋₁
-		result = x.Act(result)
-		result.Add(p.Coefficients[i])
+		result = x.Act(result).Add(p.Coefficients[i])
 	}
 
 	if p.IsConstant {
@@ -60,9 +60,9 @@ func (p *Exponent) Evaluate(x curve.Scalar) curve.Point {
 // evaluateClassic evaluates a polynomial in a given variable index
 // We do the classic method, where we compute all powers of x.
 func (p *Exponent) evaluateClassic(x curve.Scalar) curve.Point {
-	tmp := p.group.NewPoint()
+	var tmp curve.Point
 
-	xPower := p.group.NewScalar().SetUInt32(1)
+	xPower := p.group.NewScalar().SetNat(new(safenum.Nat).SetUint64(1))
 	result := p.group.NewPoint()
 
 	if p.IsConstant {
@@ -74,7 +74,7 @@ func (p *Exponent) evaluateClassic(x curve.Scalar) curve.Point {
 		// tmp = [xⁱ]Aᵢ
 		tmp = xPower.Act(p.Coefficients[i])
 		// result += [xⁱ]Aᵢ
-		result.Add(tmp)
+		result = result.Add(tmp)
 		// x = xⁱ⁺¹
 		xPower.Mul(x)
 	}
@@ -181,8 +181,9 @@ func (p *Exponent) WriteTo(w io.Writer) (int64, error) {
 
 	// write all coefficients
 	for _, c := range p.Coefficients {
-		n, err := c.WriteTo(w)
-		total += n
+		cBytes, _ := c.MarshalBinary()
+		n, err := w.Write(cBytes)
+		total += int64(n)
 		if err != nil {
 			return total, err
 		}

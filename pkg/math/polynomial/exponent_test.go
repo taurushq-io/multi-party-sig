@@ -13,11 +13,12 @@ import (
 )
 
 func TestExponent_Evaluate(t *testing.T) {
-	var group curve.Curve
-	lhs := group.NewPoint()
+	group := curve.Secp256k1{}
+
+	var lhs curve.Point
 	for x := 0; x < 5; x++ {
 		N := 1000
-		var secret curve.Scalar
+		secret := group.NewScalar()
 		if x%2 == 0 {
 			secret = sample.Scalar(rand.Reader, group)
 		}
@@ -30,14 +31,15 @@ func TestExponent_Evaluate(t *testing.T) {
 		rhs1 := polyExp.Evaluate(randomIndex)
 		rhs2 := polyExp.evaluateClassic(randomIndex)
 
-		assert.Truef(t, lhs.Equal(rhs1), fmt.Sprint("base eval differs from horner", x))
-		assert.Truef(t, lhs.Equal(rhs2), fmt.Sprint("base eval differs from classic", x))
-		assert.Truef(t, rhs1.Equal(rhs2), fmt.Sprint("horner differs from classic", x))
+		require.Truef(t, lhs.Equal(rhs1), fmt.Sprint("base eval differs from horner", x))
+		require.Truef(t, lhs.Equal(rhs2), fmt.Sprint("base eval differs from classic", x))
+		require.Truef(t, rhs1.Equal(rhs2), fmt.Sprint("horner differs from classic", x))
 	}
 }
 
 func TestSum(t *testing.T) {
-	var group curve.Curve
+	group := curve.Secp256k1{}
+
 	N := 20
 	Deg := 10
 
@@ -70,7 +72,8 @@ func TestSum(t *testing.T) {
 }
 
 func TestMarshall(t *testing.T) {
-	var group curve.Curve
+	group := curve.Secp256k1{}
+
 	sec := sample.Scalar(rand.Reader, group)
 	poly := NewPolynomial(group, 10, sec)
 	polyExp := NewPolynomialExponent(poly)
