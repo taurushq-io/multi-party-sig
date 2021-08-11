@@ -25,10 +25,10 @@ func TestPolynomial_Constant(t *testing.T) {
 func TestPolynomial_Evaluate(t *testing.T) {
 	group := curve.Secp256k1{}
 
-	polynomial := &Polynomial{group, make([]curve.Scalar, 3)}
-	polynomial.coefficients[0] = group.NewScalar().SetNat(new(safenum.Nat).SetUint64(1))
-	polynomial.coefficients[1] = group.NewScalar()
-	polynomial.coefficients[2] = group.NewScalar().SetNat(new(safenum.Nat).SetUint64(1))
+	polynomial := &Polynomial{group, make([]curve.MarshallableScalar, 3)}
+	polynomial.coefficients[0] = *curve.NewMarshallableScalar(group.NewScalar().SetNat(new(safenum.Nat).SetUint64(1)))
+	polynomial.coefficients[1] = *curve.NewMarshallableScalar(group.NewScalar())
+	polynomial.coefficients[2] = *curve.NewMarshallableScalar(group.NewScalar().SetNat(new(safenum.Nat).SetUint64(1)))
 
 	for index := 0; index < 100; index++ {
 		x := big.NewInt(int64(mrand.Uint32()))
