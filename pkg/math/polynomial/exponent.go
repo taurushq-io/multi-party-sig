@@ -90,7 +90,6 @@ func (p *Exponent) Degree() int {
 }
 
 func (p *Exponent) add(q *Exponent) error {
-	// TODO check if groups are equal
 	if len(p.Coefficients) != len(q.Coefficients) {
 		return errors.New("q is not the same length as p")
 	}
@@ -100,7 +99,7 @@ func (p *Exponent) add(q *Exponent) error {
 	}
 
 	for i := 0; i < len(p.Coefficients); i++ {
-		p.Coefficients[i].Add(q.Coefficients[i])
+		p.Coefficients[i] = p.Coefficients[i].Add(q.Coefficients[i])
 	}
 
 	return nil

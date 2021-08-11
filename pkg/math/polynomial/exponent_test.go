@@ -59,7 +59,7 @@ func TestSum(t *testing.T) {
 		polysExp[i] = NewPolynomialExponent(polys[i])
 
 		evaluationScalar.Add(polys[i].Evaluate(randomIndex))
-		evaluationPartial.Add(polysExp[i].Evaluate(randomIndex))
+		evaluationPartial = evaluationPartial.Add(polysExp[i].Evaluate(randomIndex))
 	}
 
 	// compute (F1 + F2 + …)(x)
