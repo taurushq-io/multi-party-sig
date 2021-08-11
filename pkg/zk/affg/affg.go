@@ -137,7 +137,7 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	T := public.Aux.Commit(private.Y, mu)
 	commitment := &Commitment{
 		A:  A,
-		Bx: group.NewScalar().SetInt(alpha).ActOnBase(),
+		Bx: group.NewScalar().SetNat(alpha.Mod(group.Order())).ActOnBase(),
 		By: prover.EncWithNonce(beta, rY),
 		E:  E,
 		S:  S,
@@ -221,10 +221,10 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 
 	{
 		// lhs = [z₁]G
-		lhs := p.group.NewScalar().SetInt(p.Z1).ActOnBase()
+		lhs := p.group.NewScalar().SetNat(p.Z1.Mod(p.group.Order())).ActOnBase()
 
 		// rhsPt = Bₓ + [e]X
-		rhs := p.group.NewScalar().SetInt(e).Act(public.X)
+		rhs := p.group.NewScalar().SetNat(e.Mod(p.group.Order())).Act(public.X)
 		rhs.Add(p.Bx)
 		if !lhs.Equal(rhs) {
 			return false

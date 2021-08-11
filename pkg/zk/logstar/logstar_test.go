@@ -22,7 +22,7 @@ func TestLogStar(t *testing.T) {
 
 	x := sample.IntervalL(rand.Reader)
 	C, rho := prover.Enc(x)
-	X := group.NewScalar().SetInt(x).Act(G)
+	X := group.NewScalar().SetNat(x.Mod(group.Order())).Act(G)
 	public := Public{
 		C:      C,
 		X:      X,

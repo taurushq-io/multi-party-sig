@@ -19,7 +19,7 @@ func TestDec(t *testing.T) {
 	prover := zk.ProverPaillierPublic
 
 	y := sample.IntervalL(rand.Reader)
-	x := group.NewScalar().SetInt(y)
+	x := group.NewScalar().SetNat(y.Mod(group.Order()))
 
 	C, rho := prover.Enc(y)
 

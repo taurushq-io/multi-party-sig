@@ -24,7 +24,7 @@ func TestAffG(t *testing.T) {
 	C, _ := verifierPaillier.Enc(c)
 
 	x := sample.IntervalL(rand.Reader)
-	X := group.NewScalar().SetInt(x).ActOnBase()
+	X := group.NewScalar().SetNat(x.Mod(group.Order())).ActOnBase()
 
 	y := sample.IntervalLPrime(rand.Reader)
 	Y, rhoY := prover.Enc(y)

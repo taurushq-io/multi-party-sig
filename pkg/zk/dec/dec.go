@@ -79,7 +79,7 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	nu := sample.IntervalLEpsN(rand.Reader)
 	r := sample.UnitModN(rand.Reader, N)
 
-	gamma := group.NewScalar().SetInt(alpha)
+	gamma := group.NewScalar().SetNat(alpha.Mod(group.Order()))
 
 	commitment := &Commitment{
 		S:     public.Aux.Commit(private.Y, mu),
@@ -135,10 +135,10 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 
 	{
 		// lhs = z₁ mod q
-		lhs := p.group.NewScalar().SetInt(p.Z1)
+		lhs := p.group.NewScalar().SetNat(p.Z1.Mod(p.group.Order()))
 
 		// rhs = e•x + γ
-		rhs := p.group.NewScalar().SetInt(e).Mul(public.X).Add(p.Gamma)
+		rhs := p.group.NewScalar().SetNat(e.Mod(p.group.Order())).Mul(public.X).Add(p.Gamma)
 		if !lhs.Equal(rhs) {
 			return false
 		}

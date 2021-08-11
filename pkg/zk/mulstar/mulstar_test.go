@@ -23,7 +23,7 @@ func TestMulG(t *testing.T) {
 	C, _ := verifierPaillier.Enc(c)
 
 	x := sample.IntervalL(rand.Reader)
-	X := group.NewScalar().SetInt(x).ActOnBase()
+	X := group.NewScalar().SetNat(x.Mod(group.Order())).ActOnBase()
 
 	D := C.Clone().Mul(verifierPaillier, x)
 	n := verifierPaillier.N()
