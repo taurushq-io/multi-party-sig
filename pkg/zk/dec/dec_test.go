@@ -14,7 +14,8 @@ import (
 )
 
 func TestDec(t *testing.T) {
-	var group curve.Curve
+	group := curve.Secp256k1{}
+
 	verifierPedersen := zk.Pedersen
 	prover := zk.ProverPaillierPublic
 
