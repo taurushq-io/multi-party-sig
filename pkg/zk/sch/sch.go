@@ -105,8 +105,13 @@ func (p *Proof) Verify(hash *hash.Hash, public curve.Point) bool {
 }
 
 // WriteTo implements io.WriterTo.
-func (c *Commitment) WriteTo(w io.Writer) (total int64, err error) {
-	return c.C.WriteTo(w)
+func (c *Commitment) WriteTo(w io.Writer) (int64, error) {
+	data, err := c.C.MarshalBinary()
+	if err != nil {
+		return 0, err
+	}
+	n, err := w.Write(data)
+	return int64(n), err
 }
 
 // Domain implements hash.WriterToWithDomain
