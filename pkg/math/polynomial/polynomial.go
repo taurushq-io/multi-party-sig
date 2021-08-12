@@ -10,7 +10,7 @@ import (
 // Polynomial represents f(X) = a₀ + a₁⋅X + … + aₜ⋅Xᵗ.
 type Polynomial struct {
 	group        curve.Curve
-	coefficients []curve.MarshallableScalar
+	coefficients []curve.Scalar
 }
 
 // NewPolynomial generates a Polynomial f(X) = secret + a₁⋅X + … + aₜ⋅Xᵗ,
@@ -18,17 +18,17 @@ type Polynomial struct {
 func NewPolynomial(group curve.Curve, degree int, constant curve.Scalar) *Polynomial {
 	polynomial := &Polynomial{
 		group:        group,
-		coefficients: make([]curve.MarshallableScalar, degree+1),
+		coefficients: make([]curve.Scalar, degree+1),
 	}
 
 	// if the constant is nil, we interpret it as 0.
 	if constant == nil {
 		constant = group.NewScalar()
 	}
-	polynomial.coefficients[0] = *curve.NewMarshallableScalar(constant)
+	polynomial.coefficients[0] = constant
 
 	for i := 1; i <= degree; i++ {
-		polynomial.coefficients[i] = *curve.NewMarshallableScalar(sample.Scalar(rand.Reader, group))
+		polynomial.coefficients[i] = sample.Scalar(rand.Reader, group)
 	}
 
 	return polynomial
@@ -45,14 +45,14 @@ func (p *Polynomial) Evaluate(index curve.Scalar) curve.Scalar {
 	// reverse order
 	for i := len(p.coefficients) - 1; i >= 0; i-- {
 		// bₙ₋₁ = bₙ * x + aₙ₋₁
-		result.Mul(index).Add(p.coefficients[i].Scalar)
+		result.Mul(index).Add(p.coefficients[i])
 	}
 	return result
 }
 
 // Constant returns a reference to the constant coefficient of the polynomial.
 func (p *Polynomial) Constant() curve.Scalar {
-	return p.group.NewScalar().Set(p.coefficients[0].Scalar)
+	return p.group.NewScalar().Set(p.coefficients[0])
 }
 
 // Degree is the highest power of the Polynomial.

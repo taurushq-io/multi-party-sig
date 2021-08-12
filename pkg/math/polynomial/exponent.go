@@ -31,7 +31,7 @@ type Exponent struct {
 func NewPolynomialExponent(polynomial *Polynomial) *Exponent {
 	p := &Exponent{
 		group:        polynomial.group,
-		IsConstant:   polynomial.coefficients[0].Scalar.IsZero(),
+		IsConstant:   polynomial.coefficients[0].IsZero(),
 		Coefficients: make([]curve.Point, 0, len(polynomial.coefficients)),
 	}
 
@@ -39,7 +39,7 @@ func NewPolynomialExponent(polynomial *Polynomial) *Exponent {
 		if p.IsConstant && i == 0 {
 			continue
 		}
-		p.Coefficients = append(p.Coefficients, c.Scalar.ActOnBase())
+		p.Coefficients = append(p.Coefficients, c.ActOnBase())
 	}
 
 	return p
