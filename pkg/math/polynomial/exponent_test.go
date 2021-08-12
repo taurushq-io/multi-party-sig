@@ -79,7 +79,7 @@ func TestMarshall(t *testing.T) {
 	polyExp := NewPolynomialExponent(poly)
 	out, err := cbor.Marshal(polyExp)
 	require.NoError(t, err, "failed to Marshal")
-	polyExp2 := &Exponent{}
+	polyExp2 := EmptyExponent(group)
 	err = cbor.Unmarshal(out, polyExp2)
 	require.NoError(t, err, "failed to Unmarshal")
 	assert.True(t, polyExp.Equal(*polyExp2), "should be the same")

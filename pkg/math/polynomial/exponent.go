@@ -11,6 +11,11 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
 
+type rawExponentData struct {
+	IsConstant   bool
+	Coefficients []curve.Point
+}
+
 // Exponent represent a polynomial F(X) whose coefficients belong to a group 𝔾.
 type Exponent struct {
 	group curve.Curve
@@ -212,16 +217,21 @@ func (e *Exponent) UnmarshalBinary(data []byte) error {
 	for i := 0; i < len(e.Coefficients); i++ {
 		e.Coefficients[i] = group.NewPoint()
 	}
-	if err := cbor.Unmarshal(data[4:], e); err != nil {
+	rawExponent := rawExponentData{Coefficients: e.Coefficients}
+	if err := cbor.Unmarshal(data[4:], &rawExponent); err != nil {
 		return err
 	}
-	// Not sure if this is necessary, but this makes sure that the group isn't mucked with
 	e.group = group
+	e.Coefficients = rawExponent.Coefficients
+	e.IsConstant = rawExponent.IsConstant
 	return nil
 }
 
 func (e *Exponent) MarshalBinary() ([]byte, error) {
-	data, err := cbor.Marshal(e)
+	data, err := cbor.Marshal(rawExponentData{
+		IsConstant:   e.IsConstant,
+		Coefficients: e.Coefficients,
+	})
 	if err != nil {
 		return nil, err
 	}
