@@ -14,7 +14,8 @@ import (
 )
 
 func TestLogStar(t *testing.T) {
-	var group curve.Curve
+	group := curve.Secp256k1{}
+
 	verifier := zk.Pedersen
 	prover := zk.ProverPaillierPublic
 
