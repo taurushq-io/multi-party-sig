@@ -13,7 +13,8 @@ import (
 )
 
 func TestSchPass(t *testing.T) {
-	var group curve.Curve
+	group := curve.Secp256k1{}
+
 	a := NewRandomness(rand.Reader, group)
 	x, X := sample.ScalarPointPair(rand.Reader, group)
 
@@ -34,7 +35,8 @@ func TestSchPass(t *testing.T) {
 
 }
 func TestSchFail(t *testing.T) {
-	var group curve.Curve
+	group := curve.Secp256k1{}
+
 	a := NewRandomness(rand.Reader, group)
 	x, X := group.NewScalar(), group.NewPoint()
 
