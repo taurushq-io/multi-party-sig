@@ -23,9 +23,8 @@ const (
 	protocolRounds types.RoundNumber = 6
 )
 
-func StartKeygen(pl *pool.Pool, partyIDs []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
+func StartKeygen(pl *pool.Pool, group curve.Curve, partyIDs []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
-		group := curve.Secp256k1{}
 
 		sortedIDs := party.NewIDSlice(partyIDs)
 
@@ -69,7 +68,7 @@ func StartKeygen(pl *pool.Pool, partyIDs []party.ID, threshold int, selfID party
 
 func StartRefresh(pl *pool.Pool, c *Config) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
-		group := curve.Secp256k1{}
+		group := c.Group
 
 		partyIDs := c.PartyIDs()
 		helper, err := round.NewHelper(

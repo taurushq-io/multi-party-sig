@@ -21,7 +21,7 @@ const (
 
 func startSignCommon(taproot bool, err error, result *keygen.Result, signers []party.ID, messageHash []byte) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
-		group := curve.Secp256k1{}
+		group := result.Group
 		// This is a bit of a hack, so that the Taproot can tell this function that the public key
 		// is invalid.
 		if err != nil {
@@ -94,6 +94,7 @@ func StartSign(result *keygen.Result, signers []party.ID, messageHash []byte) pr
 func StartSignTaproot(result *keygen.TaprootResult, signers []party.ID, messageHash []byte) protocol.StartFunc {
 	publicKey, err := curve.Secp256k1{}.LiftX(result.PublicKey)
 	normalResult := &keygen.Result{
+		Group:              curve.Secp256k1{},
 		ID:                 result.ID,
 		Threshold:          result.Threshold,
 		PrivateShare:       result.PrivateShare,

@@ -106,12 +106,13 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.ID
 }
 
 func TestKeygen(t *testing.T) {
+	group := curve.Secp256k1{}
 	N := 5
 	partyIDs := party.RandomIDs(N)
 
 	rounds := make(map[party.ID]round.Round, N)
 	for _, partyID := range partyIDs {
-		r, _, err := StartKeygen(partyIDs, N-1, partyID)()
+		r, _, err := StartKeygen(group, partyIDs, N-1, partyID)()
 		require.NoError(t, err, "round creation should not result in an error")
 		rounds[partyID] = r
 

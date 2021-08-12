@@ -33,7 +33,7 @@ var (
 
 func StartSign(pl *pool.Pool, config *keygen.Config, signers []party.ID, message []byte) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
-		group := curve.Secp256k1{}
+		group := config.Group
 
 		// this could be used to indicate a pre-signature later on
 		if len(message) == 0 {
