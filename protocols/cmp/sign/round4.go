@@ -84,7 +84,7 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	BigDelta := r.Group().NewPoint()
 	for _, j := range r.PartyIDs() {
 		Delta.Add(r.DeltaShares[j])
-		BigDelta.Add(r.BigDeltaShares[j])
+		BigDelta = BigDelta.Add(r.BigDeltaShares[j])
 	}
 
 	// Δ == [δ]G

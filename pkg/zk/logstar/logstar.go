@@ -79,7 +79,7 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	NModulus := public.Prover.Modulus()
 
 	if public.G == nil {
-		public.G = group.NewPoint()
+		public.G = group.NewBasePoint()
 	}
 
 	alpha := sample.IntervalLEps(rand.Reader)
@@ -121,7 +121,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	}
 
 	if public.G == nil {
-		public.G = p.group.NewPoint()
+		public.G = p.group.NewBasePoint()
 	}
 
 	if !arith.IsInIntervalLPrimeEps(p.Z1) {

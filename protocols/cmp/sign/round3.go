@@ -77,6 +77,7 @@ func (r *round3) VerifyMessage(from party.ID, to party.ID, content message.Conte
 		Aux:    r.Pedersen[to],
 	}
 	if !body.ProofLog.Verify(r.HashForID(from), zkLogPublic) {
+		fmt.Println("yeah")
 		return ErrRound3ZKLog
 	}
 
@@ -117,7 +118,7 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Γ = ∑ⱼ Γⱼ
 	Gamma := r.Group().NewPoint()
 	for _, BigGammaShare := range r.BigGammaShare {
-		Gamma.Add(BigGammaShare)
+		Gamma = Gamma.Add(BigGammaShare)
 	}
 
 	// Δᵢ = [kᵢ]Γ
