@@ -43,8 +43,8 @@ func startKeygenCommon(taproot bool, participants []party.ID, threshold int, sel
 			taprootFlag = 1
 		}
 		helper, err := round.NewHelper(
-			curve.Secp256k1{},
 			protocolID,
+			curve.Secp256k1{},
 			protocolRounds,
 			selfID,
 			sortedIDs,

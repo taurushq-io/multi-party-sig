@@ -59,6 +59,8 @@ func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundTy
 }
 
 func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.IDSlice) {
+	group := curve.Secp256k1{}
+
 	N := len(rounds)
 	results := make([]Result, 0, N)
 	for id, r := range rounds {
@@ -70,10 +72,10 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.ID
 		require.Equal(t, id, result.ID)
 	}
 
-	var publicKey *curve.Point
+	var publicKey curve.Point
 	var chainKey []byte
-	privateKey := curve.NewScalar()
-	lagrangeCoefficients := polynomial.Lagrange(parties)
+	privateKey := group.NewScalar()
+	lagrangeCoefficients := polynomial.Lagrange(group, parties)
 	for _, result := range results {
 		if publicKey != nil {
 			assert.True(t, publicKey.Equal(result.PublicKey))
@@ -83,21 +85,21 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.ID
 			assert.True(t, bytes.Equal(chainKey, result.ChainKey))
 		}
 		chainKey = result.ChainKey
-		privateKey.MultiplyAdd(lagrangeCoefficients[result.ID], result.PrivateShare, privateKey)
+		privateKey.Add(group.NewScalar().Set(lagrangeCoefficients[result.ID]).Mul(result.PrivateShare))
 	}
 
-	actualPublicKey := curve.NewIdentityPoint().ScalarBaseMult(privateKey)
+	actualPublicKey := privateKey.ActOnBase()
 
 	require.True(t, publicKey.Equal(actualPublicKey))
 
-	shares := make(map[party.ID]*curve.Scalar)
+	shares := make(map[party.ID]curve.Scalar)
 	for _, result := range results {
 		shares[result.ID] = result.PrivateShare
 	}
 
 	for _, result := range results {
 		for _, party := range parties {
-			expected := curve.NewIdentityPoint().ScalarBaseMult(shares[party])
+			expected := shares[party].ActOnBase()
 			require.True(t, result.VerificationShares[party].Equal(expected))
 		}
 	}
@@ -123,6 +125,8 @@ func TestKeygen(t *testing.T) {
 }
 
 func checkOutputTaproot(t *testing.T, rounds map[party.ID]round.Round, parties party.IDSlice) {
+	group := curve.Secp256k1{}
+
 	N := len(rounds)
 	results := make([]TaprootResult, 0, N)
 	for id, r := range rounds {
@@ -136,8 +140,8 @@ func checkOutputTaproot(t *testing.T, rounds map[party.ID]round.Round, parties p
 
 	var publicKey []byte
 	var chainKey []byte
-	privateKey := curve.NewScalar()
-	lagrangeCoefficients := polynomial.Lagrange(parties)
+	privateKey := group.NewScalar()
+	lagrangeCoefficients := polynomial.Lagrange(group, parties)
 	for _, result := range results {
 		if publicKey != nil {
 			assert.True(t, bytes.Equal(publicKey, result.PublicKey))
@@ -147,23 +151,23 @@ func checkOutputTaproot(t *testing.T, rounds map[party.ID]round.Round, parties p
 			assert.True(t, bytes.Equal(chainKey, result.ChainKey))
 		}
 		chainKey = result.ChainKey
-		privateKey.MultiplyAdd(lagrangeCoefficients[result.ID], result.PrivateShare, privateKey)
+		privateKey.Add(group.NewScalar().Set(lagrangeCoefficients[result.ID]).Mul(result.PrivateShare))
 	}
-	effectivePublic, err := curve.LiftX(publicKey)
+	effectivePublic, err := curve.Secp256k1{}.LiftX(publicKey)
 	require.NoError(t, err)
 
-	actualPublicKey := curve.NewIdentityPoint().ScalarBaseMult(privateKey)
+	actualPublicKey := privateKey.ActOnBase()
 
 	require.True(t, actualPublicKey.Equal(effectivePublic))
 
-	shares := make(map[party.ID]*curve.Scalar)
+	shares := make(map[party.ID]curve.Scalar)
 	for _, result := range results {
 		shares[result.ID] = result.PrivateShare
 	}
 
 	for _, result := range results {
 		for _, party := range parties {
-			expected := curve.NewIdentityPoint().ScalarBaseMult(shares[party])
+			expected := shares[party].ActOnBase()
 			assert.True(t, result.VerificationShares[party].Equal(expected))
 		}
 	}

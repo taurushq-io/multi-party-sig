@@ -53,8 +53,8 @@ func StartSign(pl *pool.Pool, config *keygen.Config, signers []party.ID, message
 		selfID := config.ID
 
 		helper, err := round.NewHelper(
-			group,
 			protocolSignID,
+			group,
 			protocolSignRounds,
 			selfID,
 			signerIDs,

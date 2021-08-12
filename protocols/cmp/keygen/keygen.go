@@ -34,8 +34,8 @@ func StartKeygen(pl *pool.Pool, partyIDs []party.ID, threshold int, selfID party
 			return nil, nil, fmt.Errorf("keygen.StartKeygen: threshold %d is not valid for number of parties %d", threshold, n)
 		}
 		helper, err := round.NewHelper(
-			group,
 			protocolKeygenID,
+			group,
 			protocolRounds,
 			selfID,
 			sortedIDs,
@@ -73,8 +73,8 @@ func StartRefresh(pl *pool.Pool, c *Config) protocol.StartFunc {
 
 		partyIDs := c.PartyIDs()
 		helper, err := round.NewHelper(
-			group,
 			protocolRefreshID,
+			group,
 			protocolRounds,
 			c.ID,
 			partyIDs,

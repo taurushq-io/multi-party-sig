@@ -19,7 +19,7 @@ func StartXOR(selfID party.ID, partyIDs party.IDSlice) protocol.StartFunc {
 		}
 
 		// create the helper with a description of the protocol
-		helper, err := round.NewHelper("example/xor", 2, selfID, partyIDs)
+		helper, err := round.NewHelper("example/xor", nil, 2, selfID, partyIDs)
 		if err != nil {
 			return nil, nil, fmt.Errorf("xor: %w", err)
 		}

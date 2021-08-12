@@ -36,7 +36,7 @@ type Helper struct {
 	mtx sync.Mutex
 }
 
-func NewHelper(group curve.Curve, protocolID types.ProtocolID, finalRoundNumber types.RoundNumber,
+func NewHelper(protocolID types.ProtocolID, group curve.Curve, finalRoundNumber types.RoundNumber,
 	selfID party.ID, partyIDs party.IDSlice,
 	auxInfo ...hash.WriterToWithDomain) (*Helper, error) {
 
