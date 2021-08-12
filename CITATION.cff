@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this software in your research, please cite it as below."
+authors:
+- family-names: "Hamelink"
+  given-names: "Adrian"
+  affiliation: "Taurus SA"
+- family-names: "Meier"
+  given-names: "Lúcás Críostóir"
+  affiliation: "Taurus SA"
+- family-names: "Aumasson"
+  given-names: "J.-P."
+  affiliation: "Taurus SA"
+title: "multi-party-sig"
+version: "v0.3.0-alpha-2021-08-09"
+date-released: "2021-06-12"
+url: "https://github.com/taurusgroup/multi-party-sig"
