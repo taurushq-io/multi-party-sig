@@ -135,7 +135,7 @@ func (p *Exponent) copy() *Exponent {
 		coefficients: make([]curve.Point, 0, len(p.coefficients)),
 	}
 	for i := 0; i < len(p.coefficients); i++ {
-		q.coefficients = append(q.coefficients, p.group.NewPoint().Set(p.coefficients[i]))
+		q.coefficients = append(q.coefficients, p.coefficients[i])
 	}
 	return q
 }
@@ -162,7 +162,7 @@ func (p *Exponent) Constant() curve.Point {
 	if p.IsConstant {
 		return c
 	}
-	return c.Set(p.coefficients[0])
+	return p.coefficients[0]
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.

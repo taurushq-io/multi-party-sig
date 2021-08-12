@@ -48,14 +48,14 @@ func (r *Result) Clone() *Result {
 	copy(chainKeyCopy, r.ChainKey)
 	verificationSharesCopy := make(map[party.ID]curve.Point)
 	for k, v := range r.VerificationShares {
-		verificationSharesCopy[k] = r.Group.NewPoint().Set(v)
+		verificationSharesCopy[k] = v
 	}
 	return &Result{
 		ID:                 r.ID,
 		Group:              r.Group,
 		Threshold:          r.Threshold,
 		PrivateShare:       r.Group.NewScalar().Set(r.PrivateShare),
-		PublicKey:          r.Group.NewPoint().Set(r.PublicKey),
+		PublicKey:          r.PublicKey,
 		ChainKey:           chainKeyCopy,
 		VerificationShares: verificationSharesCopy,
 	}
@@ -114,7 +114,7 @@ func (r *TaprootResult) Clone() *TaprootResult {
 	copy(chainKeyCopy, r.ChainKey)
 	verificationSharesCopy := make(map[party.ID]curve.Point)
 	for k, v := range r.VerificationShares {
-		verificationSharesCopy[k] = curve.Secp256k1{}.NewPoint().Set(v)
+		verificationSharesCopy[k] = v
 	}
 	return &TaprootResult{
 		ID:                 r.ID,
@@ -122,7 +122,7 @@ func (r *TaprootResult) Clone() *TaprootResult {
 		PrivateShare:       curve.Secp256k1{}.NewScalar().Set(r.PrivateShare),
 		PublicKey:          publicKeyCopy,
 		ChainKey:           chainKeyCopy,
-		VerificationShares: verificationSharesCopy,
+		VerificationShares: r.VerificationShares,
 	}
 }
 

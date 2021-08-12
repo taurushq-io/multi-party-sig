@@ -312,7 +312,7 @@ func (c *Config) DeriveChild(i uint32) (*Config, error) {
 	publics := make(map[party.ID]*Public, len(c.Public))
 	for k, v := range c.Public {
 		publics[k] = &Public{
-			ECDSA: c.Group.NewPoint().Set(v.ECDSA).Add(scalarG),
+			ECDSA: v.ECDSA.Add(scalarG),
 			N:     v.N,
 			S:     v.S,
 			T:     v.T,

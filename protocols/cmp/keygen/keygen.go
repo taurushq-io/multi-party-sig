@@ -85,11 +85,10 @@ func StartRefresh(pl *pool.Pool, c *Config) protocol.StartFunc {
 
 		PreviousPublicSharesECDSA := make(map[party.ID]curve.Point, len(partyIDs))
 		for _, j := range partyIDs {
-			// Set the public data to a clone of the current data
-			PreviousPublicSharesECDSA[j] = group.NewPoint().Set(c.Public[j].ECDSA)
+			PreviousPublicSharesECDSA[j] = c.Public[j].ECDSA
 		}
 		PreviousSecretECDSA := group.NewScalar().Set(c.ECDSA)
-		PreviousPublicKey := group.NewPoint().Set(c.PublicPoint())
+		PreviousPublicKey := c.PublicPoint()
 		// sample fᵢ(X) deg(fᵢ) = t, fᵢ(0) = 0
 		VSSSecret := polynomial.NewPolynomial(group, int(c.Threshold), nil)
 
