@@ -226,7 +226,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 
 		// rhsPt = Bₓ + [e]X
 		rhs := p.group.NewScalar().SetNat(e.Mod(p.group.Order())).Act(public.X)
-		rhs.Add(p.Bx)
+		rhs = rhs.Add(p.Bx)
 		if !lhs.Equal(rhs) {
 			return false
 		}
