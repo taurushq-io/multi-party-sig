@@ -52,6 +52,7 @@ func (r *Result) Clone() *Result {
 	}
 	return &Result{
 		ID:                 r.ID,
+		Group:              r.Group,
 		Threshold:          r.Threshold,
 		PrivateShare:       r.Group.NewScalar().Set(r.PrivateShare),
 		PublicKey:          r.Group.NewPoint().Set(r.PublicKey),

@@ -34,23 +34,25 @@ func (messageHash) Domain() string {
 // for a public key Y.
 type Signature struct {
 	// R is the commitment point.
-	R *curve.Point
+	R curve.Point
 	// z is the response scalar.
-	z *curve.Scalar
+	z curve.Scalar
 }
 
 // Verify checks if a signature equation actually holds.
 //
 // Note that m is the hash of a message, and not the message itself.
-func (sig Signature) Verify(public *curve.Point, m []byte) bool {
+func (sig Signature) Verify(public curve.Point, m []byte) bool {
+	group := public.Curve()
+
 	challengeHash := hash.New()
 	_ = challengeHash.WriteAny(sig.R, public, messageHash(m))
-	challenge := sample.Scalar(challengeHash.Digest())
+	challenge := sample.Scalar(challengeHash.Digest(), group)
 
-	expected := curve.NewIdentityPoint().ScalarMult(challenge, public)
-	expected.Add(expected, sig.R)
+	expected := challenge.Act(public)
+	expected = expected.Add(sig.R)
 
-	actual := curve.NewIdentityPoint().ScalarBaseMult(sig.z)
+	actual := sig.z.ActOnBase()
 
 	return expected.Equal(actual)
 }

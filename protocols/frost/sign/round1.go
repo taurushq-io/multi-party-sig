@@ -65,7 +65,10 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	//
 	// This protects against bad randomness, since a constant value for a is still unpredictable,
 	// and fault attacks against the hash function, because of the randomness.
-	s_iBytes := r.s_i.Bytes()
+	s_iBytes, err := r.s_i.MarshalBinary()
+	if err != nil {
+		return r, err
+	}
 
 	hashKey := make([]byte, 32)
 	blake3.DeriveKey(deriveHashKeyContext, s_iBytes[:], hashKey)

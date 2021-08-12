@@ -65,9 +65,7 @@ func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Conten
 	// Note that step 7.a is an artifact of having a signing authority. In our case,
 	// we've already computed everything that step computes.
 
-	expected := r.Lambda[from].Act(r.YShares[from])
-	expected = r.c.Act(expected)
-	expected.Add(r.RShares[from])
+	expected := r.c.Act(r.Lambda[from].Act(r.YShares[from])).Add(r.RShares[from])
 
 	actual := body.Z_i.ActOnBase()
 
@@ -100,11 +98,14 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 	// The format of our signature depends on using taproot, naturally
 	if r.taproot {
 		sig := taproot.Signature(make([]byte, 0, taproot.SignatureLen))
-		sig = append(sig, r.R.XBytes()[:]...)
-		zBytes := z.Bytes()
+		sig = append(sig, r.R.(*curve.Secp256k1Point).XBytes()...)
+		zBytes, err := z.MarshalBinary()
+		if err != nil {
+			return r, nil
+		}
 		sig = append(sig, zBytes[:]...)
 
-		taprootPub := taproot.PublicKey(r.Y.XBytes()[:])
+		taprootPub := taproot.PublicKey(r.Y.(*curve.Secp256k1Point).XBytes())
 
 		if !taprootPub.Verify(sig, r.M) {
 			return r, fmt.Errorf("generated signature failed to verify")

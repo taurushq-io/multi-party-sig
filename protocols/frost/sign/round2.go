@@ -3,6 +3,7 @@ package sign
 import (
 	"fmt"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -109,8 +110,8 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	RShares := make(map[party.ID]curve.Point)
 	for _, l := range r.PartyIDs() {
 		RShares[l] = rho[l].Act(r.E[l])
-		RShares[l].Add(r.D[l])
-		R.Add(RShares[l])
+		RShares[l] = RShares[l].Add(r.D[l])
+		R = R.Add(RShares[l])
 	}
 	var c curve.Scalar
 	if r.taproot {
@@ -118,7 +119,8 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 		// conditionally negating k = ∑ᵢ (dᵢ + (eᵢ ρᵢ)), which we can accomplish
 		// by negating our dᵢ, eᵢ, if necessary. This entails negating the RShares
 		// as well.
-		if !R.HasEvenY() {
+		RSecp := R.(*curve.Secp256k1Point)
+		if !RSecp.HasEvenY() {
 			r.d_i.Negate()
 			r.e_i.Negate()
 			for _, l := range r.PartyIDs() {
@@ -128,10 +130,10 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 		// BIP-340 adjustment: we need to calculate our hash as specified in:
 		// https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#default-signing
-		RBytes := R.XBytes()[:]
-		PBytes := r.Y.XBytes()[:]
+		RBytes := RSecp.XBytes()
+		PBytes := r.Y.(*curve.Secp256k1Point).XBytes()
 		cHash := taproot.TaggedHash("BIP0340/challenge", RBytes, PBytes, r.M)
-		c, _ = r.Group().NewScalar().SetBytes(cHash)
+		c = r.Group().NewScalar().SetNat(new(safenum.Nat).SetBytes(cHash))
 	} else {
 		cHash := hash.New()
 		_ = cHash.WriteAny(R, r.Y, r.M)
