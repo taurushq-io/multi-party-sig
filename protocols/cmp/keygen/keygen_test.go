@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
@@ -69,9 +70,9 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
 	}
 
 	firstConfig := newConfigs[0]
-	pk := firstConfig.PublicKey()
+	pk := firstConfig.PublicPoint()
 	for _, c := range newConfigs {
-		assert.Equal(t, pk, c.PublicKey(), "RID is different")
+		assert.True(t, pk.Equal(c.PublicPoint()), "RID is different")
 		assert.Equal(t, firstConfig.RID, c.RID, "RID is different")
 		assert.NoError(t, c.Validate(), "failed to validate new config")
 	}
@@ -101,10 +102,11 @@ func TestKeygen(t *testing.T) {
 func TestRefresh(t *testing.T) {
 	pl := pool.NewPool(0)
 	defer pl.TearDown()
+	group := curve.Secp256k1{}
 
 	N := 4
 	T := N - 1
-	configs := FakeData(N, T, mrand.New(mrand.NewSource(1)), pl)
+	configs := FakeData(group, N, T, mrand.New(mrand.NewSource(1)), pl)
 
 	parties := make(map[party.ID]round.Round, N)
 	for partyID, s := range configs {

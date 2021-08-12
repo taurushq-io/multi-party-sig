@@ -1,7 +1,6 @@
 package keygen
 
 import (
-	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"io"
@@ -57,24 +56,17 @@ type Config struct {
 }
 
 // PublicPoint returns the group's public ECC point.
-func (c Config) publicPoint() curve.Point {
+func (c Config) PublicPoint() curve.Point {
 	sum := c.Group.NewPoint()
-	tmp := c.Group.NewPoint()
 	partyIDs := make([]party.ID, 0, len(c.Public))
 	for j := range c.Public {
 		partyIDs = append(partyIDs, j)
 	}
 	l := polynomial.Lagrange(c.Group, partyIDs)
 	for j, partyJ := range c.Public {
-		tmp = l[j].Act(partyJ.ECDSA)
-		sum.Add(tmp)
+		sum = sum.Add(l[j].Act(partyJ.ECDSA))
 	}
 	return sum
-}
-
-// PublicKey returns the group's public ECDSA key.
-func (c Config) PublicKey() *ecdsa.PublicKey {
-	return c.publicPoint().ToPublicKey()
 }
 
 // Validate ensures that the data is consistent. In particular it verifies:
@@ -230,13 +222,17 @@ func (p *Public) WriteTo(w io.Writer) (total int64, err error) {
 		return 0, io.ErrUnexpectedEOF
 	}
 	// write ECDSA
-	total, err = p.ECDSA.WriteTo(w)
+	data, err := p.ECDSA.MarshalBinary()
+	if err != nil {
+		return 0, err
+	}
+	n, err := w.Write(data)
 	if err != nil {
 		return
 	}
+	total = int64(n)
 
 	buf := make([]byte, params.BytesIntModN)
-	var n int
 	// write N, S, T
 	for _, i := range []*safenum.Nat{p.N.Nat(), p.S, p.T} {
 		i.FillBytes(buf)
@@ -298,7 +294,10 @@ func validThreshold(t, n int) bool {
 //
 // See: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
 func (c *Config) DeriveChild(i uint32) (*Config, error) {
-	public := c.publicPoint()
+	public, ok := c.PublicPoint().(*curve.Secp256k1Point)
+	if !ok {
+		return nil, errors.New("DeriveChild must be called with secp256k1")
+	}
 	scalar, newChainKey, err := bip32.DeriveScalar(public, c.ChainKey, i)
 	if err != nil {
 		return nil, err

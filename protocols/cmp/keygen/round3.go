@@ -6,6 +6,7 @@ import (
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -175,7 +176,7 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 		// compute fᵢ(j)
 		share := r.VSSSecret.Evaluate(j.Scalar(r.Group()))
 		// Encrypt share
-		C, _ := r.PaillierPublic[j].Enc(share.Int())
+		C, _ := r.PaillierPublic[j].Enc(curve.MakeInt(share))
 
 		msg := r.MarshalMessage(&Keygen4{
 			Mod:   mod,

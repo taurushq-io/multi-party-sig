@@ -12,12 +12,12 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 )
 
-func FakeData(N, T int, source io.Reader, pl *pool.Pool) map[party.ID]*Config {
+func FakeData(group curve.Curve, N, T int, source io.Reader, pl *pool.Pool) map[party.ID]*Config {
 	partyIDs := party.RandomIDs(N)
 	configs := make(map[party.ID]*Config, N)
 	public := make(map[party.ID]*Public, N)
 
-	f := polynomial.NewPolynomial(T, sample.Scalar(source))
+	f := polynomial.NewPolynomial(group, T, sample.Scalar(source, group))
 	one := new(safenum.Nat).SetUint64(1)
 
 	rid := make(RID, params.SecBytes)
@@ -31,8 +31,10 @@ func FakeData(N, T int, source io.Reader, pl *pool.Pool) map[party.ID]*Config {
 		qMinus1 := new(safenum.Nat).Sub(q, one, -1)
 		phi := new(safenum.Nat).Mul(pMinus1, qMinus1, -1)
 		s, t, _ := sample.Pedersen(source, phi, n)
-		ecdsaSecret := f.Evaluate(pid.Scalar())
+
+		ecdsaSecret := f.Evaluate(pid.Scalar(group))
 		configs[pid] = &Config{
+			Group:     group,
 			Threshold: uint32(T),
 			Public:    public,
 			RID:       rid.Copy(),
@@ -41,7 +43,7 @@ func FakeData(N, T int, source io.Reader, pl *pool.Pool) map[party.ID]*Config {
 			P:         p,
 			Q:         q,
 		}
-		X := curve.NewIdentityPoint().ScalarBaseMult(ecdsaSecret)
+		X := ecdsaSecret.ActOnBase()
 		public[pid] = &Public{
 			ECDSA: X,
 			N:     n,

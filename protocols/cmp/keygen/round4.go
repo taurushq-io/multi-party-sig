@@ -2,6 +2,7 @@ package keygen
 
 import (
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -69,13 +70,13 @@ func (r *round4) StoreMessage(from party.ID, content message.Content) error {
 	if err != nil {
 		return err
 	}
-	Share := r.Group().NewScalar().SetInt(DecryptedShare)
-	if DecryptedShare.Eq(Share.Int()) != 1 {
+	Share := r.Group().NewScalar().SetNat(DecryptedShare.Mod(r.Group().Order()))
+	if DecryptedShare.Eq(curve.MakeInt(Share)) != 1 {
 		return ErrRound4Decrypt
 	}
 
 	// verify share with VSS
-	ExpectedPublicShare := r.VSSPolynomials[from].Evaluate(r.SelfID().Scalar()) // Fⱼ(i)
+	ExpectedPublicShare := r.VSSPolynomials[from].Evaluate(r.SelfID().Scalar(r.Group())) // Fⱼ(i)
 	PublicShare := Share.ActOnBase()
 	// X == Fⱼ(i)
 	if !PublicShare.Equal(ExpectedPublicShare) {
@@ -116,8 +117,8 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// compute the new public key share Xⱼ = F(j) (+X'ⱼ if doing a refresh)
 	PublicData := make(map[party.ID]*Public, len(r.PartyIDs()))
 	for _, j := range r.PartyIDs() {
-		PublicECDSAShare := ShamirPublicPolynomial.Evaluate(j.Scalar())
-		PublicECDSAShare.Add(r.PreviousPublicSharesECDSA[j])
+		PublicECDSAShare := ShamirPublicPolynomial.Evaluate(j.Scalar(r.Group()))
+		PublicECDSAShare = PublicECDSAShare.Add(r.PreviousPublicSharesECDSA[j])
 		PublicData[j] = &Public{
 			ECDSA: PublicECDSAShare,
 			N:     r.N[j],
@@ -127,6 +128,7 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 
 	UpdatedConfig := &Config{
+		Group:     r.Group(),
 		Threshold: uint32(r.Threshold),
 		Public:    PublicData,
 		RID:       r.RID.Copy(),
