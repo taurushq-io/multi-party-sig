@@ -109,6 +109,7 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	w.ModMul(w, r, N0)
 
 	return &Proof{
+		group:      group,
 		Commitment: commitment,
 		Z1:         z1,
 		Z2:         z2,
@@ -155,7 +156,7 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 
 		// rhs = [e]X + Bₓ
 		rhs := p.group.NewScalar().SetNat(e.Mod(p.group.Order())).Act(public.X)
-		rhs.Add(p.Bx)
+		rhs = rhs.Add(p.Bx)
 		if !lhs.Equal(rhs) {
 			return false
 		}
