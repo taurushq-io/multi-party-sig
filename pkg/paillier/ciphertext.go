@@ -21,7 +21,7 @@ func (ct *Ciphertext) Add(pk *PublicKey, ct2 *Ciphertext) *Ciphertext {
 		return ct
 	}
 
-	ct.c.ModMul(ct.c, ct2.c, pk.nSquared)
+	ct.c.ModMul(ct.c, ct2.c, pk.nSquared.Modulus)
 
 	return ct
 }
@@ -33,7 +33,7 @@ func (ct *Ciphertext) Mul(pk *PublicKey, k *safenum.Int) *Ciphertext {
 		return ct
 	}
 
-	ct.c = pk.nSquaredCRT.ExpI(ct.c, k)
+	ct.c = pk.nSquared.ExpI(ct.c, k)
 
 	return ct
 }
@@ -56,11 +56,11 @@ func (ct Ciphertext) Clone() *Ciphertext {
 // The receiver is updated, and the nonce update is returned.
 func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *safenum.Nat) *safenum.Nat {
 	if nonce == nil {
-		nonce = sample.UnitModN(rand.Reader, pk.n)
+		nonce = sample.UnitModN(rand.Reader, pk.n.Modulus)
 	}
 	// c = c*r^N
-	tmp := pk.nSquaredCRT.Exp(nonce, pk.nNat)
-	ct.c.ModMul(ct.c, tmp, pk.nSquared)
+	tmp := pk.nSquared.Exp(nonce, pk.nNat)
+	ct.c.ModMul(ct.c, tmp, pk.nSquared.Modulus)
 	return nonce
 }
 

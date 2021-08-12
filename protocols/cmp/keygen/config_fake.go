@@ -30,7 +30,6 @@ func FakeData(N, T int, source io.Reader, pl *pool.Pool) map[party.ID]*Config {
 		qMinus1 := new(safenum.Nat).Sub(q, one, -1)
 		phi := new(safenum.Nat).Mul(pMinus1, qMinus1, -1)
 		s, t, _ := sample.Pedersen(source, phi, n)
-
 		ecdsaSecret := f.Evaluate(pid.Scalar())
 		configs[pid] = &Config{
 			Threshold: uint32(T),

@@ -67,7 +67,7 @@ func (p *Proof) IsValid(public Public) bool {
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	N := public.Prover.N()
-	NCRT := public.Prover.CRT()
+	NModulus := public.Prover.Modulus()
 
 	prover := public.Prover
 
@@ -88,10 +88,10 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	z := new(safenum.Int).Mul(e, private.X, -1)
 	z.Add(z, alpha, -1)
 	// U = r⋅ρᵉ mod N
-	u := NCRT.ExpI(private.Rho, e)
+	u := NModulus.ExpI(private.Rho, e)
 	u.ModMul(u, r, N)
 	// V = s⋅ρₓᵉ mod N
-	v := NCRT.ExpI(private.RhoX, e)
+	v := NModulus.ExpI(private.RhoX, e)
 	v.ModMul(v, s, N)
 
 	return &Proof{

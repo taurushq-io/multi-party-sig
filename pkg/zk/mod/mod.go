@@ -8,7 +8,6 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/modulus"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 )
@@ -154,7 +153,7 @@ func (p *Proof) IsValid(public Public) bool {
 //  - R = [(xᵢ aᵢ, bᵢ), zᵢ] for i = 1, …, m
 func NewProof(pl *pool.Pool, hash *hash.Hash, public Public, private Private) *Proof {
 	n, p, q, phi := public.N, private.P, private.Q, private.Phi
-	nCRT := modulus.FromFactors(p, q, 1, 1)
+	nModulus := arith.ModulusFromFactors(p, q)
 	pHalf := new(safenum.Nat).Rsh(p, 1, -1)
 	pMod := safenum.ModulusFromNat(p)
 	qHalf := new(safenum.Nat).Rsh(q, 1, -1)
@@ -174,11 +173,11 @@ func NewProof(pl *pool.Pool, hash *hash.Hash, public Public, private Private) *P
 		y := ys[i]
 
 		// Z = y^{n⁻¹ (mod n)}
-		z := nCRT.Exp(y, nInverse)
+		z := nModulus.Exp(y, nInverse)
 
 		a, b, yPrime := makeQuadraticResidue(y, w, pHalf, qHalf, n, pMod, qMod)
 		// X = (y')¹/4
-		x := nCRT.Exp(yPrime, e)
+		x := nModulus.Exp(yPrime, e)
 
 		rs[i] = Response{
 			A: a,

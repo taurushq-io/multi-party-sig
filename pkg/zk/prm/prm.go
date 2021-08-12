@@ -9,7 +9,6 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/modulus"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
@@ -43,7 +42,7 @@ func NewProof(pl *pool.Pool, hash *hash.Hash, public Public, private Private) *P
 	lambda := private.Lambda
 	phi := safenum.ModulusFromNat(private.Phi)
 
-	n := modulus.FromFactors(private.P, private.Q, 1, 1)
+	n := arith.ModulusFromFactors(private.P, private.Q)
 
 	var (
 		as [params.StatParam]*safenum.Nat

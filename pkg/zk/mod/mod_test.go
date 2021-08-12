@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/modulus"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
@@ -61,7 +61,7 @@ func Test_set4thRoot(t *testing.T) {
 	y := new(safenum.Nat).SetUint64(502)
 	w := sample.QNR(rand.Reader, n)
 
-	nCRT := modulus.FromFactors(pMod.Nat(), qMod.Nat(), 1, 1)
+	nCRT := arith.ModulusFromFactors(pMod.Nat(), qMod.Nat())
 
 	a, b, x := makeQuadraticResidue(y, w, pHalf, qHalf, n, pMod, qMod)
 
@@ -79,7 +79,7 @@ func Test_set4thRoot(t *testing.T) {
 	assert.True(t, root.Eq(y) == 1, "root^4 should be equal to y")
 }
 
-var p *Proof
+var proof *Proof
 
 func BenchmarkCRT(b *testing.B) {
 	b.StopTimer()
@@ -100,6 +100,6 @@ func BenchmarkCRT(b *testing.B) {
 	}
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		p = NewProof(nil, hash.New(), public, private)
+		proof = NewProof(nil, hash.New(), public, private)
 	}
 }

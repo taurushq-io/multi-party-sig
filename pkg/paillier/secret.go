@@ -7,7 +7,7 @@ import (
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/modulus"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
@@ -69,33 +69,41 @@ func NewSecretKey(pl *pool.Pool) *SecretKey {
 
 // NewSecretKeyFromPrimes generates a new SecretKey. Assumes that P and Q are prime.
 func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
-	nNat := new(safenum.Nat).Mul(P, Q, -1)
-	n := safenum.ModulusFromNat(nNat)
+	n := arith.ModulusFromFactors(P, Q)
+
+	nNat := n.Nat()
+	nPlusOne := new(safenum.Nat).Add(nNat, oneNat, -1)
+	// Tightening is fine, since n is public
+	nPlusOne.Resize(nPlusOne.TrueLen())
 
 	pMinus1 := new(safenum.Nat).Sub(P, oneNat, -1)
 	qMinus1 := new(safenum.Nat).Sub(Q, oneNat, -1)
-
 	phi := new(safenum.Nat).Mul(pMinus1, qMinus1, -1)
 	// ϕ⁻¹ mod N
-	phiInv := new(safenum.Nat).ModInverse(phi, n)
+	phiInv := new(safenum.Nat).ModInverse(phi, n.Modulus)
 
-	pk := NewPublicKey(n)
-	pk.nSquaredCRT = modulus.FromFactors(P, Q, 2, 2)
-	pk.nCRT = modulus.FromFactors(P, Q, 1, 1)
+	pSquared := pMinus1.Mul(P, P, -1)
+	qSquared := qMinus1.Mul(Q, Q, -1)
+	nSquared := arith.ModulusFromFactors(pSquared, qSquared)
 
 	return &SecretKey{
-		p:         P,
-		q:         Q,
-		phi:       phi,
-		phiInv:    phiInv,
-		PublicKey: pk,
+		p:      P,
+		q:      Q,
+		phi:    phi,
+		phiInv: phiInv,
+		PublicKey: &PublicKey{
+			n:        n,
+			nSquared: nSquared,
+			nNat:     nNat,
+			nPlusOne: nPlusOne,
+		},
 	}
 }
 
 // Dec decrypts c and returns the plaintext m ∈ ± (N-2)/2.
 // It returns an error if gcd(c, N²) != 1 or if c is not in [1, N²-1].
 func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
-	n := sk.PublicKey.n
+	n := sk.PublicKey.n.Modulus
 
 	if !sk.PublicKey.ValidateCiphertexts(ct) {
 		return nil, errors.New("paillier: failed to decrypt invalid ciphertext")
@@ -105,7 +113,7 @@ func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
 	phiInv := sk.phiInv
 
 	// r = c^Phi 						(mod N²)
-	result := sk.PublicKey.nSquaredCRT.Exp(ct.c, phi)
+	result := sk.PublicKey.nSquared.Exp(ct.c, phi)
 	// r = c^Phi - 1
 	result.Sub(result, oneNat, -1)
 	// r = [(c^Phi - 1)/N]
@@ -118,9 +126,8 @@ func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
 }
 
 func (sk SecretKey) GeneratePedersen() (*pedersen.Parameters, *safenum.Nat) {
-	s, t, lambda := sample.Pedersen(rand.Reader, sk.phi, sk.PublicKey.n)
-	ped := pedersen.New(sk.PublicKey.n, s, t)
-	ped.SetCRT(sk.nCRT)
+	s, t, lambda := sample.Pedersen(rand.Reader, sk.phi, sk.n.Modulus)
+	ped := pedersen.New(sk.n, s, t)
 	return ped, lambda
 }
 

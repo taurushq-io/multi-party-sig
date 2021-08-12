@@ -8,7 +8,7 @@ import (
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/modulus"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 )
 
@@ -22,21 +22,19 @@ var oneNat = new(safenum.Nat).SetUint64(1)
 // PublicKey is a Paillier public key. It is represented by a modulus N.
 type PublicKey struct {
 	// n = p⋅q
-	n *safenum.Modulus
+	n *arith.Modulus
+	// nSquared = n²
+	nSquared *arith.Modulus
+
 	// These values are cached out of convenience, and performance
 	nNat *safenum.Nat
-	// nSquared = n²
-	nSquared *safenum.Modulus
 	// nPlusOne = n + 1
 	nPlusOne *safenum.Nat
-
-	nCRT        *modulus.Modulus
-	nSquaredCRT *modulus.Modulus
 }
 
 // N is the public modulus making up this key.
 func (pk *PublicKey) N() *safenum.Modulus {
-	return pk.n
+	return pk.n.Modulus
 }
 
 // NewPublicKey returns an initialized paillier.PublicKey and caches N, N² and (N-1)/2.
@@ -48,12 +46,10 @@ func NewPublicKey(n *safenum.Modulus) *PublicKey {
 	nPlusOne.Resize(nPlusOne.TrueLen())
 
 	return &PublicKey{
-		n:           safenum.ModulusFromNat(nNat),
-		nNat:        nNat,
-		nSquared:    nSquared,
-		nPlusOne:    nPlusOne,
-		nCRT:        modulus.FromN(n),
-		nSquaredCRT: modulus.FromN(nSquared),
+		n:        arith.ModulusFromN(n),
+		nSquared: arith.ModulusFromN(nSquared),
+		nNat:     nNat,
+		nPlusOne: nPlusOne,
 	}
 }
 
@@ -79,7 +75,7 @@ func ValidateN(n *safenum.Modulus) error {
 //
 // ct = (1+N)ᵐρᴺ (mod N²).
 func (pk PublicKey) Enc(m *safenum.Int) (*Ciphertext, *safenum.Nat) {
-	nonce := sample.UnitModN(rand.Reader, pk.n)
+	nonce := sample.UnitModN(rand.Reader, pk.n.Modulus)
 	return pk.EncWithNonce(m, nonce), nonce
 }
 
@@ -90,23 +86,23 @@ func (pk PublicKey) Enc(m *safenum.Int) (*Ciphertext, *safenum.Nat) {
 //
 // ct = (1+N)ᵐρᴺ (mod N²).
 func (pk PublicKey) EncWithNonce(m *safenum.Int, nonce *safenum.Nat) *Ciphertext {
-	if m.CheckInRange(pk.n) != 1 {
+	if m.CheckInRange(pk.n.Modulus) != 1 {
 		panic("paillier.Encrypt: tried to encrypt message outside of range [-(N-1)/2, …, (N-1)/2]")
 	}
 
 	// (N+1)ᵐ mod N²
-	c := pk.nSquaredCRT.ExpI(pk.nPlusOne, m)
+	c := pk.nSquared.ExpI(pk.nPlusOne, m)
 	// rho ^ N mod N²
-	rhoN := pk.nSquaredCRT.Exp(nonce, pk.nNat)
+	rhoN := pk.nSquared.Exp(nonce, pk.nNat)
 	// (N+1)ᵐ rho ^ N
-	c.ModMul(c, rhoN, pk.nSquared)
+	c.ModMul(c, rhoN, pk.nSquared.Modulus)
 
 	return &Ciphertext{c: c}
 }
 
 // Equal returns true if pk ≡ other.
 func (pk PublicKey) Equal(other *PublicKey) bool {
-	_, eq, _ := pk.n.Cmp(other.n)
+	_, eq, _ := pk.n.Cmp(other.n.Modulus)
 	return eq == 1
 }
 
@@ -114,11 +110,11 @@ func (pk PublicKey) Equal(other *PublicKey) bool {
 // ct ∈ [1, …, N²-1] AND GCD(ct,N²) = 1.
 func (pk PublicKey) ValidateCiphertexts(cts ...*Ciphertext) bool {
 	for _, ct := range cts {
-		_, _, lt := ct.c.CmpMod(pk.nSquared)
+		_, _, lt := ct.c.CmpMod(pk.nSquared.Modulus)
 		if lt != 1 {
 			return false
 		}
-		if ct.c.IsUnit(pk.nSquared) != 1 {
+		if ct.c.IsUnit(pk.nSquared.Modulus) != 1 {
 			return false
 		}
 	}
@@ -140,6 +136,8 @@ func (PublicKey) Domain() string {
 	return "Paillier PublicKey"
 }
 
-func (pk *PublicKey) CRT() *modulus.Modulus {
-	return pk.nCRT
+// Modulus returns an arith.Modulus which may allow for accelerated exponentiation when this
+// public key was generated from a secret key.
+func (pk *PublicKey) Modulus() *arith.Modulus {
+	return pk.n
 }

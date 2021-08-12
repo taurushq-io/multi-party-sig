@@ -62,7 +62,7 @@ func (p *Proof) IsValid(public Public) bool {
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	N := public.Prover.N()
-	NCRT := public.Prover.CRT()
+	NModulus := public.Prover.Modulus()
 
 	alpha := sample.IntervalLEps(rand.Reader)
 	r := sample.UnitModN(rand.Reader, N)
@@ -82,7 +82,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	z1 := new(safenum.Int).Mul(e, private.K, -1)
 	z1.Add(z1, alpha, -1)
 
-	z2 := NCRT.ExpI(private.Rho, e)
+	z2 := NModulus.ExpI(private.Rho, e)
 	z2.ModMul(z2, r, N)
 
 	z3 := new(safenum.Int).Mul(e, mu, -1)

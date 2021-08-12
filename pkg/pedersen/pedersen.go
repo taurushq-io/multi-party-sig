@@ -7,7 +7,6 @@ import (
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/modulus"
 )
 
 type Error string
@@ -23,19 +22,17 @@ func (e Error) Error() string {
 }
 
 type Parameters struct {
-	n    *safenum.Modulus
+	n    *arith.Modulus
 	s, t *safenum.Nat
-	crt  *modulus.Modulus
 }
 
 // New returns a new set of Pedersen parameters.
 // Assumes ValidateParameters(n, s, t) returns nil.
-func New(n *safenum.Modulus, s, t *safenum.Nat) *Parameters {
+func New(n *arith.Modulus, s, t *safenum.Nat) *Parameters {
 	return &Parameters{
-		n:   n,
-		s:   s,
-		t:   t,
-		crt: modulus.FromN(n),
+		s: s,
+		t: t,
+		n: n,
 	}
 }
 
@@ -60,7 +57,7 @@ func ValidateParameters(n *safenum.Modulus, s, t *safenum.Nat) error {
 }
 
 // N = p•q, p ≡ q ≡ 3 mod 4.
-func (p Parameters) N() *safenum.Modulus { return p.n }
+func (p Parameters) N() *safenum.Modulus { return p.n.Modulus }
 
 // S = r² mod N.
 func (p Parameters) S() *safenum.Nat { return p.s }
@@ -74,10 +71,10 @@ func (p Parameters) T() *safenum.Nat { return p.t }
 // in general. The commitment produced, on the other hand, hides their values,
 // and can be safely shared.
 func (p Parameters) Commit(x, y *safenum.Int) *safenum.Nat {
-	sx := p.crt.ExpI(p.s, x)
-	ty := p.crt.ExpI(p.t, y)
+	sx := p.n.ExpI(p.s, x)
+	ty := p.n.ExpI(p.t, y)
 
-	result := sx.ModMul(sx, ty, p.n)
+	result := sx.ModMul(sx, ty, p.n.Modulus)
 
 	return result
 }
@@ -87,20 +84,18 @@ func (p Parameters) Verify(a, b, e *safenum.Int, S, T *safenum.Nat) bool {
 	if a == nil || b == nil || S == nil || T == nil || e == nil {
 		return false
 	}
-	if !arith.IsValidNatModN(p.n, S, T) {
+	nMod := p.n.Modulus
+	if !arith.IsValidNatModN(nMod, S, T) {
 		return false
 	}
-	sa := p.crt.ExpI(p.s, a)      // sᵃ (mod N)
-	tb := p.crt.ExpI(p.t, b)      // tᵇ (mod N)
-	lhs := sa.ModMul(sa, tb, p.n) // lhs = sᵃ⋅tᵇ (mod N)
 
-	te := p.crt.ExpI(T, e)       // Tᵉ (mod N)
-	rhs := te.ModMul(te, S, p.n) // rhs = S⋅Tᵉ (mod N)
+	sa := p.n.ExpI(p.s, a)         // sᵃ (mod N)
+	tb := p.n.ExpI(p.t, b)         // tᵇ (mod N)
+	lhs := sa.ModMul(sa, tb, nMod) // lhs = sᵃ⋅tᵇ (mod N)
+
+	te := p.n.ExpI(T, e)          // Tᵉ (mod N)
+	rhs := te.ModMul(te, S, nMod) // rhs = S⋅Tᵉ (mod N)
 	return lhs.Eq(rhs) == 1
-}
-
-func (p *Parameters) SetCRT(m *modulus.Modulus) {
-	p.crt = m
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
