@@ -77,7 +77,6 @@ func (r *round3) VerifyMessage(from party.ID, to party.ID, content message.Conte
 		Aux:    r.Pedersen[to],
 	}
 	if !body.ProofLog.Verify(r.HashForID(from), zkLogPublic) {
-		fmt.Println("yeah")
 		return ErrRound3ZKLog
 	}
 
