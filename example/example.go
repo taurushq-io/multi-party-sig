@@ -1,7 +1,6 @@
 package example
 
 import (
-	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"sync"
@@ -84,10 +83,7 @@ func Sign(refreshResult *keygen.Result, m []byte, signers party.IDSlice, n Netwo
 		return err
 	}
 	signature := signResult.(*sign.Result).Signature
-	r, s := signature.ToRS()
-	if !ecdsa.Verify(refreshResult.Config.PublicKey(), m, r, s) {
-		return errors.New("signature failed to verify")
-	}
+	fmt.Println(signature)
 	return nil
 }
 

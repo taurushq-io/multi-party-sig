@@ -58,12 +58,12 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Γᵢ = [γᵢ]⋅G
 	GammaShare, BigGammaShare := sample.ScalarPointPair(rand.Reader, r.Group())
 	// Gᵢ = Encᵢ(γᵢ;νᵢ)
-	G, GNonce := r.Paillier[r.SelfID()].Enc(GammaShare.Int())
+	G, GNonce := r.Paillier[r.SelfID()].Enc(curve.MakeInt(GammaShare))
 
 	// kᵢ <- 𝔽,
 	KShare := sample.Scalar(rand.Reader, r.Group())
 	// Kᵢ = Encᵢ(kᵢ;ρᵢ)
-	K, KNonce := r.Paillier[r.SelfID()].Enc(KShare.Int())
+	K, KNonce := r.Paillier[r.SelfID()].Enc(curve.MakeInt(KShare))
 
 	otherIDs := r.OtherPartyIDs()
 	errors := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
@@ -73,7 +73,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 			Prover: r.Paillier[r.SelfID()],
 			Aux:    r.Pedersen[j],
 		}, zkenc.Private{
-			K:   KShare.Int(),
+			K:   curve.MakeInt(KShare),
 			Rho: KNonce,
 		})
 
@@ -99,7 +99,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 		K:             map[party.ID]*paillier.Ciphertext{r.SelfID(): K},
 		G:             map[party.ID]*paillier.Ciphertext{r.SelfID(): G},
 		BigGammaShare: map[party.ID]curve.Point{r.SelfID(): BigGammaShare},
-		GammaShare:    GammaShare.Int(),
+		GammaShare:    curve.MakeInt(GammaShare),
 		KShare:        KShare,
 		KNonce:        KNonce,
 		GNonce:        GNonce,

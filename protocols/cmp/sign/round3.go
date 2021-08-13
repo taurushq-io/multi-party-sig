@@ -121,14 +121,14 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 
 	// Δᵢ = [kᵢ]Γ
-	KShareInt := r.KShare.Int()
+	KShareInt := curve.MakeInt(r.KShare)
 	BigDeltaShare := r.KShare.Act(Gamma)
 
 	// δᵢ = γᵢ kᵢ
 	DeltaShare := new(safenum.Int).Mul(r.GammaShare, KShareInt, -1)
 
 	// χᵢ = xᵢ kᵢ
-	ChiShare := new(safenum.Int).Mul(r.SecretECDSA.Int(), KShareInt, -1)
+	ChiShare := new(safenum.Int).Mul(curve.MakeInt(r.SecretECDSA), KShareInt, -1)
 
 	for _, j := range r.OtherPartyIDs() {
 		//δᵢ += αᵢⱼ + βᵢⱼ
@@ -145,7 +145,7 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 		Rho: r.KNonce,
 	}
 
-	DeltaShareScalar := r.Group().NewScalar().SetInt(DeltaShare)
+	DeltaShareScalar := r.Group().NewScalar().SetNat(DeltaShare.Mod(r.Group().Order()))
 	otherIDs := r.OtherPartyIDs()
 	errors := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
 		j := otherIDs[i]
@@ -179,7 +179,7 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 		DeltaShares:    map[party.ID]curve.Scalar{r.SelfID(): DeltaShareScalar},
 		BigDeltaShares: map[party.ID]curve.Point{r.SelfID(): BigDeltaShare},
 		Gamma:          Gamma,
-		ChiShare:       r.Group().NewScalar().SetInt(ChiShare),
+		ChiShare:       r.Group().NewScalar().SetNat(ChiShare.Mod(r.Group().Order())),
 	}, nil
 }
 

@@ -112,7 +112,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 			r.GammaShare, r.K[j],
 			r.SecretPaillier, r.Paillier[j])
 		ChiMtA[j], ChiShareBeta[j] = mta.New(
-			r.SecretECDSA.Int(), r.K[j],
+			curve.MakeInt(r.SecretECDSA), r.K[j],
 			r.SecretPaillier, r.Paillier[j])
 
 		proofLog := zklogstar.NewProof(r.Group(), r.HashForID(r.SelfID()), zklogstar.Public{
@@ -122,11 +122,11 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 			Aux:    r.Pedersen[j],
 		}, zkPrivate)
 
-		DeltaMtAProof := DeltaMtA[j].ProofAffG(
+		DeltaMtAProof := DeltaMtA[j].ProofAffG(r.Group(),
 			r.HashForID(r.SelfID()), r.GammaShare, r.BigGammaShare[r.SelfID()], r.K[j], DeltaShareBeta[j],
 			r.SecretPaillier, r.Paillier[j], r.Pedersen[j])
-		ChiMtAProof := ChiMtA[j].ProofAffG(
-			r.HashForID(r.SelfID()), r.SecretECDSA.Int(), r.ECDSA[r.SelfID()], r.K[j], ChiShareBeta[j],
+		ChiMtAProof := ChiMtA[j].ProofAffG(r.Group(),
+			r.HashForID(r.SelfID()), curve.MakeInt(r.SecretECDSA), r.ECDSA[r.SelfID()], r.K[j], ChiShareBeta[j],
 			r.SecretPaillier, r.Paillier[j], r.Pedersen[j])
 
 		msg := r.MarshalMessage(&Sign3{

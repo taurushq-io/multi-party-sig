@@ -98,7 +98,7 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	R := BigR.XScalar()                                   // r = R|ₓ
 
 	// km = Hash(m)⋅kᵢ
-	km := r.Group().NewScalar().SetHash(r.Message)
+	km := curve.FromHash(r.Group(), r.Message)
 	km.Mul(r.KShare)
 
 	// σᵢ = rχᵢ + kᵢm

@@ -256,3 +256,10 @@ func (p *Secp256k1Point) HasEvenY() bool {
 	p.value.ToAffine()
 	return !p.value.Y.IsOdd()
 }
+
+func (p *Secp256k1Point) XScalar() Scalar {
+	out := new(Secp256k1Scalar)
+	p.value.ToAffine()
+	out.value.SetBytes(p.value.X.Bytes())
+	return out
+}

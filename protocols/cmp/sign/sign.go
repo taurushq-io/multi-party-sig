@@ -33,6 +33,7 @@ var (
 
 func StartSign(pl *pool.Pool, config *keygen.Config, signers []party.ID, message []byte) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
+		group := curve.Secp256k1{}
 
 		// this could be used to indicate a pre-signature later on
 		if len(message) == 0 {
@@ -52,6 +53,7 @@ func StartSign(pl *pool.Pool, config *keygen.Config, signers []party.ID, message
 		selfID := config.ID
 
 		helper, err := round.NewHelper(
+			group,
 			protocolSignID,
 			protocolSignRounds,
 			selfID,
@@ -73,15 +75,15 @@ func StartSign(pl *pool.Pool, config *keygen.Config, signers []party.ID, message
 		ECDSA := make(map[party.ID]curve.Point, T)
 		Paillier := make(map[party.ID]*paillier.PublicKey, T)
 		Pedersen := make(map[party.ID]*pedersen.Parameters, T)
-		PublicKey := curve.NewIdentityPoint()
-		lagrange := polynomial.Lagrange(signers)
+		PublicKey := group.NewPoint()
+		lagrange := polynomial.Lagrange(group, signers)
 		// Scale own secret
-		SecretECDSA := curve.NewScalar().Multiply(lagrange[config.ID], config.ECDSA)
+		SecretECDSA := group.NewScalar().Set(lagrange[config.ID]).Mul(config.ECDSA)
 		SecretPaillier := config.Paillier()
 		for _, j := range signerIDs {
 			public := config.Public[j]
 			// scale public key share
-			ECDSA[j] = curve.NewIdentityPoint().ScalarMult(lagrange[j], public.ECDSA)
+			ECDSA[j] = lagrange[j].Act(public.ECDSA)
 			// create Paillier key, but set ours to the one derived from the private key
 			// since it includes the CRT acceleration.
 			if j == selfID {
@@ -91,7 +93,7 @@ func StartSign(pl *pool.Pool, config *keygen.Config, signers []party.ID, message
 			}
 			// create Pedersen params
 			Pedersen[j] = pedersen.New(Paillier[j].Modulus(), public.S, public.T)
-			PublicKey.Add(PublicKey, ECDSA[j])
+			PublicKey = PublicKey.Add(ECDSA[j])
 		}
 
 		return &round1{

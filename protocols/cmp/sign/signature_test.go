@@ -8,16 +8,17 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 )
 
-func NewSignature(x *curve.Scalar, hash []byte, k *curve.Scalar) *Signature {
+func NewSignature(x curve.Scalar, hash []byte, k curve.Scalar) *Signature {
+	group := x.Curve()
+
 	if k == nil {
-		k = sample.Scalar(rand.Reader)
+		k = sample.Scalar(rand.Reader, group)
 	}
-	m := curve.NewScalar().SetHash(hash)
-	kInv := curve.NewScalar().Invert(k)
-	R := curve.NewIdentityPoint().ScalarBaseMult(kInv)
+	m := curve.FromHash(group, hash)
+	kInv := group.NewScalar().Set(k).Invert()
+	R := kInv.ActOnBase()
 	r := R.XScalar()
-	s := curve.NewScalar().MultiplyAdd(x, r, m)
-	s.Multiply(s, k)
+	s := r.Mul(x).Add(m).Mul(k)
 	return &Signature{
 		R: R,
 		S: s,
@@ -25,9 +26,11 @@ func NewSignature(x *curve.Scalar, hash []byte, k *curve.Scalar) *Signature {
 }
 
 func TestSignature_Verify(t *testing.T) {
+	group := curve.Secp256k1{}
+
 	m := []byte("hello")
-	x := sample.Scalar(rand.Reader)
-	X := curve.NewIdentityPoint().ScalarBaseMult(x)
+	x := sample.Scalar(rand.Reader, group)
+	X := x.ActOnBase()
 	sig := NewSignature(x, m, nil)
 	if !sig.Verify(X, m) {
 		t.Error("verify failed")

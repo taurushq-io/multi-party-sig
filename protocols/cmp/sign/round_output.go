@@ -1,8 +1,6 @@
 package sign
 
 import (
-	"crypto/ecdsa"
-
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -75,11 +73,6 @@ func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {
 		S: Sigma,
 	}
 
-	RInt, SInt := signature.ToRS()
-	// Verify signature using Go's ECDSA lib
-	if !ecdsa.Verify(r.PublicKey.ToPublicKey(), r.Message, RInt, SInt) {
-		return nil, ErrRoundOutputValidateSigFailedECDSA
-	}
 	if !signature.Verify(r.PublicKey, r.Message) {
 		return nil, ErrRoundOutputValidateSigFailed
 	}
