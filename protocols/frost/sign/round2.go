@@ -124,7 +124,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 			r.d_i.Negate()
 			r.e_i.Negate()
 			for _, l := range r.PartyIDs() {
-				RShares[l].Negate()
+				RShares[l] = RShares[l].Negate()
 			}
 		}
 
