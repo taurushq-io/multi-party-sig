@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
@@ -69,6 +70,12 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 				return errors.New("hash.WriteAny: nil []byte")
 			}
 			toBeWritten = &BytesWithDomain{"[]byte", t}
+		case *big.Int:
+			if t == nil {
+				return fmt.Errorf("hash.Hash: write *big.Int: nil")
+			}
+			bytes, _ := t.GobEncode()
+			toBeWritten = &BytesWithDomain{"big.Int", bytes}
 		case *safenum.Nat:
 			if t == nil {
 				return fmt.Errorf("hash.Hash: write *safenum.Nat: nil")
