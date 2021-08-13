@@ -15,7 +15,6 @@ func TestSignatureVerification(t *testing.T) {
 		steakHash := steak.Sum(nil)
 
 		sk, pk, err := GenKey(rand.Reader)
-
 		require.NoError(t, err)
 
 		sig1, err := sk.Sign(rand.Reader, steakHash)

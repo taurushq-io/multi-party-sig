@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
@@ -65,6 +66,7 @@ func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundTy
 func TestRound(t *testing.T) {
 	pl := pool.NewPool(0)
 	defer pl.TearDown()
+	group := curve.Secp256k1{}
 
 	N := 2
 	T := 1
@@ -73,7 +75,7 @@ func TestRound(t *testing.T) {
 	_, _ = rand.Read(rid)
 
 	t.Log("generating configs")
-	configs := keygen.FakeData(N, T, mrand.New(mrand.NewSource(1)), pl)
+	configs := keygen.FakeData(group, N, T, mrand.New(mrand.NewSource(1)), pl)
 	partyIDs := make([]party.ID, 0, T+1)
 	for id, config := range configs {
 		configs[id], _ = config.DeriveChild(0)

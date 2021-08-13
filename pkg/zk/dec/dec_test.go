@@ -14,11 +14,13 @@ import (
 )
 
 func TestDec(t *testing.T) {
+	group := curve.Secp256k1{}
+
 	verifierPedersen := zk.Pedersen
 	prover := zk.ProverPaillierPublic
 
 	y := sample.IntervalL(rand.Reader)
-	x := curve.NewScalarInt(y)
+	x := group.NewScalar().SetNat(y.Mod(group.Order()))
 
 	C, rho := prover.Enc(y)
 
@@ -33,16 +35,16 @@ func TestDec(t *testing.T) {
 		Rho: rho,
 	}
 
-	proof := NewProof(hash.New(), public, private)
+	proof := NewProof(group, hash.New(), public, private)
 	assert.True(t, proof.Verify(hash.New(), public))
 
 	out, err := cbor.Marshal(proof)
 	require.NoError(t, err, "failed to marshal proof")
-	proof2 := &Proof{}
+	proof2 := Empty(group)
 	require.NoError(t, cbor.Unmarshal(out, proof2), "failed to unmarshal proof")
 	out2, err := cbor.Marshal(proof2)
 	require.NoError(t, err, "failed to marshal 2nd proof")
-	proof3 := &Proof{}
+	proof3 := Empty(group)
 	require.NoError(t, cbor.Unmarshal(out2, proof3), "failed to unmarshal 2nd proof")
 
 	assert.True(t, proof3.Verify(hash.New(), public))

@@ -18,11 +18,11 @@ type Public struct {
 	C *paillier.Ciphertext
 
 	// X = x⋅G
-	X *curve.Point
+	X curve.Point
 
 	// G is the base point of the curve.
 	// If G = nil, the default base point is used.
-	G *curve.Point
+	G curve.Point
 
 	Prover *paillier.PublicKey
 	Aux    *pedersen.Parameters
@@ -42,12 +42,13 @@ type Commitment struct {
 	// A = Enc₀(alpha; r)
 	A *paillier.Ciphertext
 	// Y = α⋅G
-	Y *curve.Point
+	Y curve.Point
 	// D = sᵃ tᵍ (mod N)
 	D *safenum.Nat
 }
 
 type Proof struct {
+	group curve.Curve
 	*Commitment
 	// Z1 = α + e x
 	Z1 *safenum.Int
@@ -73,12 +74,12 @@ func (p *Proof) IsValid(public Public) bool {
 	return true
 }
 
-func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
+func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private) *Proof {
 	N := public.Prover.N()
 	NModulus := public.Prover.Modulus()
 
 	if public.G == nil {
-		public.G = curve.NewBasePoint()
+		public.G = group.NewBasePoint()
 	}
 
 	alpha := sample.IntervalLEps(rand.Reader)
@@ -88,7 +89,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 
 	commitment := &Commitment{
 		A: public.Prover.EncWithNonce(alpha, r),
-		Y: curve.NewIdentityPoint().ScalarMult(curve.NewScalarInt(alpha), public.G),
+		Y: group.NewScalar().SetNat(alpha.Mod(group.Order())).Act(public.G),
 		S: public.Aux.Commit(private.X, mu),
 		D: public.Aux.Commit(alpha, gamma),
 	}
@@ -106,6 +107,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	z3.Add(z3, gamma, -1)
 
 	return &Proof{
+		group:      group,
 		Commitment: commitment,
 		Z1:         z1,
 		Z2:         z2,
@@ -119,7 +121,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	}
 
 	if public.G == nil {
-		public.G = curve.NewBasePoint()
+		public.G = p.group.NewBasePoint()
 	}
 
 	if !arith.IsInIntervalLPrimeEps(p.Z1) {
@@ -150,11 +152,11 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 
 	{
 		// lhs = [z₁]G
-		lhs := curve.NewIdentityPoint().ScalarMult(curve.NewScalarInt(p.Z1), public.G)
+		lhs := p.group.NewScalar().SetNat(p.Z1.Mod(p.group.Order())).Act(public.G)
 
 		// rhs = Y + [e]X
-		eX := curve.NewIdentityPoint().ScalarMult(curve.NewScalarInt(e), public.X)
-		rhs := curve.NewIdentityPoint().Add(p.Y, eX)
+		rhs := p.group.NewScalar().SetNat(e.Mod(p.group.Order())).Act(public.X)
+		rhs = rhs.Add(p.Y)
 
 		if !lhs.Equal(rhs) {
 			return false
@@ -170,4 +172,11 @@ func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safen
 		commitment.S, commitment.A, commitment.Y, commitment.D)
 	e = sample.IntervalScalar(hash.Digest())
 	return
+}
+
+func Empty(group curve.Curve) *Proof {
+	return &Proof{
+		group:      group,
+		Commitment: &Commitment{Y: group.NewPoint()},
+	}
 }

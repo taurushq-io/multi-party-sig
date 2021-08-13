@@ -1,8 +1,6 @@
 package keygen
 
 import (
-	"errors"
-
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
@@ -31,23 +29,6 @@ type Keygen4 struct {
 	Prm *zkprm.Proof
 	// Share = Encᵢ(x) is the encryption of the receivers share
 	Share *paillier.Ciphertext
-}
-
-// Validate implements message.Content.
-func (m *Keygen4) Validate() error {
-	if m == nil {
-		return errors.New("keygen.round4: message is nil")
-	}
-	if m.Mod == nil {
-		return errors.New("keygen.round4: zkmod proof is nil")
-	}
-	if m.Prm == nil {
-		return errors.New("keygen.round4: zkprm proof is nil")
-	}
-	if m.Share == nil {
-		return errors.New("keygen.round4: Share proof is nil")
-	}
-	return nil
 }
 
 // VerifyMessage implements round.Round.
@@ -89,14 +70,14 @@ func (r *round4) StoreMessage(from party.ID, content message.Content) error {
 	if err != nil {
 		return err
 	}
-	Share := curve.NewScalarInt(DecryptedShare)
-	if DecryptedShare.Eq(Share.Int()) != 1 {
+	Share := r.Group().NewScalar().SetNat(DecryptedShare.Mod(r.Group().Order()))
+	if DecryptedShare.Eq(curve.MakeInt(Share)) != 1 {
 		return ErrRound4Decrypt
 	}
 
 	// verify share with VSS
-	ExpectedPublicShare := r.VSSPolynomials[from].Evaluate(r.SelfID().Scalar()) // Fⱼ(i)
-	PublicShare := curve.NewIdentityPoint().ScalarBaseMult(Share)
+	ExpectedPublicShare := r.VSSPolynomials[from].Evaluate(r.SelfID().Scalar(r.Group())) // Fⱼ(i)
+	PublicShare := Share.ActOnBase()
 	// X == Fⱼ(i)
 	if !PublicShare.Equal(ExpectedPublicShare) {
 		return ErrRound4VSS
@@ -116,9 +97,9 @@ func (r *round4) StoreMessage(from party.ID, content message.Content) error {
 // - create proof of knowledge of secret.
 func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// add all shares to our secret
-	UpdatedSecretECDSA := curve.NewScalar().Set(r.PreviousSecretECDSA)
+	UpdatedSecretECDSA := r.Group().NewScalar().Set(r.PreviousSecretECDSA)
 	for _, j := range r.PartyIDs() {
-		UpdatedSecretECDSA.Add(UpdatedSecretECDSA, r.ShareReceived[j])
+		UpdatedSecretECDSA.Add(r.ShareReceived[j])
 	}
 
 	// [F₁(X), …, Fₙ(X)]
@@ -136,8 +117,8 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// compute the new public key share Xⱼ = F(j) (+X'ⱼ if doing a refresh)
 	PublicData := make(map[party.ID]*Public, len(r.PartyIDs()))
 	for _, j := range r.PartyIDs() {
-		PublicECDSAShare := ShamirPublicPolynomial.Evaluate(j.Scalar())
-		PublicECDSAShare.Add(PublicECDSAShare, r.PreviousPublicSharesECDSA[j])
+		PublicECDSAShare := ShamirPublicPolynomial.Evaluate(j.Scalar(r.Group()))
+		PublicECDSAShare = PublicECDSAShare.Add(r.PreviousPublicSharesECDSA[j])
 		PublicData[j] = &Public{
 			ECDSA: PublicECDSAShare,
 			N:     r.N[j],
@@ -147,6 +128,7 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 
 	UpdatedConfig := &Config{
+		Group:     r.Group(),
 		Threshold: uint32(r.Threshold),
 		Public:    PublicData,
 		RID:       r.RID.Copy(),
@@ -178,7 +160,7 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *round4) MessageContent() message.Content { return &Keygen4{} }
+func (round4) MessageContent() message.Content { return &Keygen4{} }
 
 // RoundNumber implements message.Content.
-func (m *Keygen4) RoundNumber() types.RoundNumber { return 5 }
+func (Keygen4) RoundNumber() types.RoundNumber { return 5 }

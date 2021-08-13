@@ -7,7 +7,6 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -56,9 +55,9 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	//
 	// Note: I've adjusted the thresholds in this quote to reflect our convention
 	// that t + 1 participants are needed to create a signature.
-	a_i0 := sample.Scalar(rand.Reader)
-	a_i0_times_G := curve.NewIdentityPoint().ScalarBaseMult(a_i0)
-	f_i := polynomial.NewPolynomial(r.threshold, a_i0)
+	a_i0 := sample.Scalar(rand.Reader, r.Group())
+	a_i0_times_G := a_i0.ActOnBase()
+	f_i := polynomial.NewPolynomial(r.Group(), r.threshold, a_i0)
 
 	// 2. "Every Pᵢ computes a proof of knowledge to the corresponding secret aᵢ₀
 	// by calculating σᵢ = (Rᵢ, μᵢ), such that:
@@ -116,6 +115,4 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 // MessageContent implements round.Round.
 //
 // Since this is the first round of the protocol, we expect to see a dummy First type.
-func (r *round1) MessageContent() message.Content {
-	return &message.First{}
-}
+func (round1) MessageContent() message.Content { return &message.First{} }

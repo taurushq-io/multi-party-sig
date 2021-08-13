@@ -38,7 +38,7 @@ type round3 struct {
 type Sign3 struct {
 	// EchoHash = Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
 	EchoHash      []byte
-	BigGammaShare *curve.Point
+	BigGammaShare curve.Point
 	DeltaMtA      *mta.Message
 	ChiMtA        *mta.Message
 	ProofLog      *zklogstar.Proof
@@ -115,20 +115,20 @@ func (r *round3) StoreMessage(from party.ID, content message.Content) error {
 // - χᵢ = xᵢ kᵢ + ∑ⱼ χᵢⱼ.
 func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Γ = ∑ⱼ Γⱼ
-	Gamma := curve.NewIdentityPoint()
+	Gamma := r.Group().NewPoint()
 	for _, BigGammaShare := range r.BigGammaShare {
-		Gamma.Add(Gamma, BigGammaShare)
+		Gamma = Gamma.Add(BigGammaShare)
 	}
 
 	// Δᵢ = [kᵢ]Γ
-	KShareInt := r.KShare.Int()
-	BigDeltaShare := curve.NewIdentityPoint().ScalarMult(r.KShare, Gamma)
+	KShareInt := curve.MakeInt(r.KShare)
+	BigDeltaShare := r.KShare.Act(Gamma)
 
 	// δᵢ = γᵢ kᵢ
 	DeltaShare := new(safenum.Int).Mul(r.GammaShare, KShareInt, -1)
 
 	// χᵢ = xᵢ kᵢ
-	ChiShare := new(safenum.Int).Mul(r.SecretECDSA.Int(), KShareInt, -1)
+	ChiShare := new(safenum.Int).Mul(curve.MakeInt(r.SecretECDSA), KShareInt, -1)
 
 	for _, j := range r.OtherPartyIDs() {
 		//δᵢ += αᵢⱼ + βᵢⱼ
@@ -145,12 +145,12 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 		Rho: r.KNonce,
 	}
 
-	DeltaShareScalar := curve.NewScalarInt(DeltaShare)
+	DeltaShareScalar := r.Group().NewScalar().SetNat(DeltaShare.Mod(r.Group().Order()))
 	otherIDs := r.OtherPartyIDs()
 	errors := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
 		j := otherIDs[i]
 
-		proofLog := zklogstar.NewProof(r.HashForID(r.SelfID()), zklogstar.Public{
+		proofLog := zklogstar.NewProof(r.Group(), r.HashForID(r.SelfID()), zklogstar.Public{
 			C:      r.K[r.SelfID()],
 			X:      BigDeltaShare,
 			G:      Gamma,
@@ -176,15 +176,22 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 	return &round4{
 		round3:         r,
-		DeltaShares:    map[party.ID]*curve.Scalar{r.SelfID(): DeltaShareScalar},
-		BigDeltaShares: map[party.ID]*curve.Point{r.SelfID(): BigDeltaShare},
+		DeltaShares:    map[party.ID]curve.Scalar{r.SelfID(): DeltaShareScalar},
+		BigDeltaShares: map[party.ID]curve.Point{r.SelfID(): BigDeltaShare},
 		Gamma:          Gamma,
-		ChiShare:       curve.NewScalarInt(ChiShare),
+		ChiShare:       r.Group().NewScalar().SetNat(ChiShare.Mod(r.Group().Order())),
 	}, nil
 }
 
 // MessageContent implements round.Round.
-func (r *round3) MessageContent() message.Content { return &Sign3{} }
+func (r *round3) MessageContent() message.Content {
+	return &Sign3{
+		BigGammaShare: r.Group().NewPoint(),
+		ProofLog:      zklogstar.Empty(r.Group()),
+		DeltaMtA:      mta.Empty(r.Group()),
+		ChiMtA:        mta.Empty(r.Group()),
+	}
+}
 
 // RoundNumber implements message.Content.
-func (m *Sign3) RoundNumber() types.RoundNumber { return 3 }
+func (Sign3) RoundNumber() types.RoundNumber { return 3 }

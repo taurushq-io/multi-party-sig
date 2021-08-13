@@ -15,6 +15,8 @@ import (
 )
 
 func TestAffG(t *testing.T) {
+	group := curve.Secp256k1{}
+
 	verifierPaillier := zk.VerifierPaillierPublic
 	verifierPedersen := zk.Pedersen
 	prover := zk.ProverPaillierPublic
@@ -23,7 +25,7 @@ func TestAffG(t *testing.T) {
 	C, _ := verifierPaillier.Enc(c)
 
 	x := sample.IntervalL(rand.Reader)
-	X := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarInt(x))
+	X := group.NewScalar().SetNat(x.Mod(group.Order())).ActOnBase()
 
 	y := sample.IntervalLPrime(rand.Reader)
 	Y, rhoY := prover.Enc(y)
@@ -47,16 +49,16 @@ func TestAffG(t *testing.T) {
 		Rho:  rho,
 		RhoY: rhoY,
 	}
-	proof := NewProof(hash.New(), public, private)
+	proof := NewProof(group, hash.New(), public, private)
 	assert.True(t, proof.Verify(hash.New(), public))
 
 	out, err := cbor.Marshal(proof)
 	require.NoError(t, err, "failed to marshal proof")
-	proof2 := &Proof{}
+	proof2 := Empty(group)
 	require.NoError(t, cbor.Unmarshal(out, proof2), "failed to unmarshal proof")
 	out2, err := cbor.Marshal(proof2)
 	require.NoError(t, err, "failed to marshal 2nd proof")
-	proof3 := &Proof{}
+	proof3 := Empty(group)
 	require.NoError(t, cbor.Unmarshal(out2, proof3), "failed to unmarshal 2nd proof")
 
 	assert.True(t, proof3.Verify(hash.New(), public))

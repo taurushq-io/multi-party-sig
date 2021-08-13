@@ -19,26 +19,26 @@ import (
 type round3 struct {
 	*round2
 	// R is the group commitment, and the first part of the consortium signature
-	R *curve.Point
+	R curve.Point
 	// RShares is the fraction each participant contributes to the group commitment
 	//
 	// This corresponds to R_i in the Frost paper
-	RShares map[party.ID]*curve.Point
+	RShares map[party.ID]curve.Point
 	// c is the challenge, computed as H(R, Y, m).
-	c *curve.Scalar
+	c curve.Scalar
 	// z contains the response from each participant
 	//
 	// z[i] corresponds to zᵢ in the Frost paper
-	z map[party.ID]*curve.Scalar
+	z map[party.ID]curve.Scalar
 
 	// Lambda contains all Lagrange coefficients of the parties participating in this session.
 	// Lambda[l] = λₗ
-	Lambda map[party.ID]*curve.Scalar
+	Lambda map[party.ID]curve.Scalar
 }
 
 type Sign3 struct {
 	// Z_i is the response scalar computed by the sender of this message.
-	Z_i *curve.Scalar
+	Z_i curve.Scalar
 }
 
 // VerifyMessage implements round.Round.
@@ -65,12 +65,9 @@ func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Conten
 	// Note that step 7.a is an artifact of having a signing authority. In our case,
 	// we've already computed everything that step computes.
 
-	expected := curve.NewIdentityPoint()
-	expected.ScalarMult(r.Lambda[from], r.YShares[from])
-	expected.ScalarMult(r.c, expected)
-	expected.Add(r.RShares[from], expected)
+	expected := r.c.Act(r.Lambda[from].Act(r.YShares[from])).Add(r.RShares[from])
 
-	actual := curve.NewIdentityPoint().ScalarBaseMult(body.Z_i)
+	actual := body.Z_i.ActOnBase()
 
 	if !actual.Equal(expected) {
 		return fmt.Errorf("failed to verify response from %v", from)
@@ -93,19 +90,22 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 	// These steps come from Figure 3 of the Frost paper.
 
 	// 7.c "Compute the group's response z = ∑ᵢ zᵢ"
-	z := curve.NewScalar()
+	z := r.Group().NewScalar()
 	for _, z_l := range r.z {
-		z.Add(z, z_l)
+		z.Add(z_l)
 	}
 
 	// The format of our signature depends on using taproot, naturally
 	if r.taproot {
 		sig := taproot.Signature(make([]byte, 0, taproot.SignatureLen))
-		sig = append(sig, r.R.XBytes()[:]...)
-		zBytes := z.Bytes()
+		sig = append(sig, r.R.(*curve.Secp256k1Point).XBytes()...)
+		zBytes, err := z.MarshalBinary()
+		if err != nil {
+			return r, nil
+		}
 		sig = append(sig, zBytes[:]...)
 
-		taprootPub := taproot.PublicKey(r.Y.XBytes()[:])
+		taprootPub := taproot.PublicKey(r.Y.(*curve.Secp256k1Point).XBytes())
 
 		if !taprootPub.Verify(sig, r.M) {
 			return r, fmt.Errorf("generated signature failed to verify")
@@ -128,8 +128,8 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 
 // MessageContent implements round.Round.
 func (r *round3) MessageContent() message.Content {
-	return &Sign3{}
+	return &Sign3{Z_i: r.Group().NewScalar()}
 }
 
 // RoundNumber implements message.Content.
-func (m *Sign3) RoundNumber() types.RoundNumber { return 3 }
+func (Sign3) RoundNumber() types.RoundNumber { return 3 }

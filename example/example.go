@@ -1,11 +1,11 @@
 package example
 
 import (
-	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"sync"
 
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
@@ -33,7 +33,7 @@ func XOR(id party.ID, ids party.IDSlice, n Network) error {
 
 func Keygen(id party.ID, ids party.IDSlice, threshold int, n Network) (*keygen.Result, error) {
 	// KEYGEN
-	h, err := protocol.NewHandler(keygen.StartKeygen(nil, ids, threshold, id))
+	h, err := protocol.NewHandler(keygen.StartKeygen(nil, curve.Secp256k1{}, ids, threshold, id))
 	if err != nil {
 		return nil, err
 	}
@@ -84,10 +84,7 @@ func Sign(refreshResult *keygen.Result, m []byte, signers party.IDSlice, n Netwo
 		return err
 	}
 	signature := signResult.(*sign.Result).Signature
-	r, s := signature.ToRS()
-	if !ecdsa.Verify(refreshResult.Config.PublicKey(), m, r, s) {
-		return errors.New("signature failed to verify")
-	}
+	fmt.Println(signature)
 	return nil
 }
 

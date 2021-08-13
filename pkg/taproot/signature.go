@@ -49,12 +49,12 @@ type PublicKey []byte
 //
 // See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#public-key-generation
 func (s SecretKey) Public() (PublicKey, error) {
-	scalar, ok := curve.NewScalar().SetBytes(s)
-	if !ok || scalar.IsZero() {
+	scalar := new(curve.Secp256k1Scalar)
+	if err := scalar.UnmarshalBinary(s); err != nil || scalar.IsZero() {
 		return nil, fmt.Errorf("invalid secret key")
 	}
-	point := curve.NewIdentityPoint().ScalarBaseMult(scalar)
-	return PublicKey(point.XBytes()[:]), nil
+	point := scalar.ActOnBase().(*curve.Secp256k1Point)
+	return PublicKey(point.XBytes()), nil
 }
 
 // GenKey generates a new key-pair, from a source of randomness.
@@ -103,20 +103,20 @@ var signatureCounter uint64
 // or if the secret key is invalid.
 func (sk SecretKey) Sign(rand io.Reader, m []byte) (Signature, error) {
 	// See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#default-signing
-	d, ok := curve.NewScalar().SetBytes(sk)
-	if !ok || d.IsZero() {
+	d := new(curve.Secp256k1Scalar)
+	if err := d.UnmarshalBinary(sk); err != nil || d.IsZero() {
 		return nil, fmt.Errorf("invalid secret key")
 	}
 
-	P := curve.NewIdentityPoint().ScalarBaseMult(d)
-	PBytes := P.XBytes()[:]
+	P := d.ActOnBase().(*curve.Secp256k1Point)
+	PBytes := P.XBytes()
 
 	if !P.HasEvenY() {
-		d.Negate(d)
+		d.Negate()
 	}
 
 	a := make([]byte, 32)
-	k := curve.NewScalar()
+	k := new(curve.Secp256k1Scalar)
 	for k.IsZero() {
 		// Either read new random bytes into a, or increment a global counter.
 		//
@@ -132,7 +132,7 @@ func (sk SecretKey) Sign(rand io.Reader, m []byte) (Signature, error) {
 			binary.BigEndian.PutUint64(a, ctr)
 		}
 
-		t := d.Bytes()
+		t, _ := d.MarshalBinary()
 		aHash := TaggedHash("BIP0340/aux", a)
 		for i := 0; i < 32; i++ {
 			t[i] ^= aHash[i]
@@ -140,22 +140,26 @@ func (sk SecretKey) Sign(rand io.Reader, m []byte) (Signature, error) {
 
 		randHash := TaggedHash("BIP0340/nonce", t[:], PBytes, m)
 
-		k, _ = curve.NewScalar().SetBytes(randHash)
+		_ = k.UnmarshalBinary(randHash)
+		if k.IsZero() {
+			return nil, fmt.Errorf("invalid nonce")
+		}
 	}
 
-	R := curve.NewIdentityPoint().ScalarBaseMult(k)
+	R := k.ActOnBase().(*curve.Secp256k1Point)
 
 	if !R.HasEvenY() {
-		k.Negate(k)
+		k.Negate()
 	}
 
 	RBytes := R.XBytes()[:]
 
 	eHash := TaggedHash("BIP0340/challenge", RBytes, PBytes, m)
-	e, _ := curve.NewScalar().SetBytes(eHash)
+	e := new(curve.Secp256k1Scalar)
+	_ = e.UnmarshalBinary(eHash)
 
-	z := curve.NewScalar().MultiplyAdd(e, d, k)
-	zBytes := z.Bytes()
+	z := e.Mul(d).Add(k)
+	zBytes, _ := z.MarshalBinary()
 
 	sig := make([]byte, 0, SignatureLen)
 	sig = append(sig, RBytes...)
@@ -173,24 +177,26 @@ func (pk PublicKey) Verify(sig Signature, m []byte) bool {
 		return false
 	}
 
-	P, err := curve.LiftX(pk)
+	P, err := curve.Secp256k1{}.LiftX(pk)
 	if err != nil {
 		return false
 	}
-	s, ok := curve.NewScalar().SetBytes(sig[32:])
-	if !ok {
+	s := new(curve.Secp256k1Scalar)
+	if err := s.UnmarshalBinary(sig[32:]); err != nil {
 		return false
 	}
 	eHash := TaggedHash("BIP0340/challenge", sig[:32], pk, m)
-	e, _ := curve.NewScalar().SetBytes(eHash)
+	e := new(curve.Secp256k1Scalar)
+	_ = e.UnmarshalBinary(eHash)
 
-	R := curve.NewIdentityPoint().ScalarBaseMult(s)
-	R.Subtract(R, P.ScalarMult(e, P))
-	if R.IsIdentity() {
+	R := s.ActOnBase()
+	check2 := R.Sub(e.Act(P))
+	check := check2.(*curve.Secp256k1Point)
+	if check.IsIdentity() {
 		return false
 	}
-	if !R.HasEvenY() {
+	if !check.HasEvenY() {
 		return false
 	}
-	return bytes.Equal(R.XBytes()[:], sig[:32])
+	return bytes.Equal(check.XBytes(), sig[:32])
 }

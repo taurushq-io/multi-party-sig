@@ -24,12 +24,12 @@ type round2 struct {
 	G map[party.ID]*paillier.Ciphertext
 
 	// BigGammaShare[j] = Γⱼ = [γⱼ]•G
-	BigGammaShare map[party.ID]*curve.Point
+	BigGammaShare map[party.ID]curve.Point
 
 	// GammaShare = γᵢ <- 𝔽
 	GammaShare *safenum.Int
 	// KShare = kᵢ  <- 𝔽
-	KShare *curve.Scalar
+	KShare curve.Scalar
 
 	// KNonce = ρᵢ <- ℤₙ
 	// used to encrypt Kᵢ = Encᵢ(kᵢ)
@@ -103,7 +103,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	ChiMtA := map[party.ID]*mta.MtA{}
 	ChiShareBeta := map[party.ID]*safenum.Int{}
 
-	// Broadcast the message we created in round1
+	// Broadcast the message we created in Round1
 	otherIDs := r.OtherPartyIDs()
 	errors := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
 		j := otherIDs[i]
@@ -112,21 +112,21 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 			r.GammaShare, r.K[j],
 			r.SecretPaillier, r.Paillier[j])
 		ChiMtA[j], ChiShareBeta[j] = mta.New(
-			r.SecretECDSA.Int(), r.K[j],
+			curve.MakeInt(r.SecretECDSA), r.K[j],
 			r.SecretPaillier, r.Paillier[j])
 
-		proofLog := zklogstar.NewProof(r.HashForID(r.SelfID()), zklogstar.Public{
+		proofLog := zklogstar.NewProof(r.Group(), r.HashForID(r.SelfID()), zklogstar.Public{
 			C:      r.G[r.SelfID()],
 			X:      r.BigGammaShare[r.SelfID()],
 			Prover: r.Paillier[r.SelfID()],
 			Aux:    r.Pedersen[j],
 		}, zkPrivate)
 
-		DeltaMtAProof := DeltaMtA[j].ProofAffG(
+		DeltaMtAProof := DeltaMtA[j].ProofAffG(r.Group(),
 			r.HashForID(r.SelfID()), r.GammaShare, r.BigGammaShare[r.SelfID()], r.K[j], DeltaShareBeta[j],
 			r.SecretPaillier, r.Paillier[j], r.Pedersen[j])
-		ChiMtAProof := ChiMtA[j].ProofAffG(
-			r.HashForID(r.SelfID()), r.SecretECDSA.Int(), r.ECDSA[r.SelfID()], r.K[j], ChiShareBeta[j],
+		ChiMtAProof := ChiMtA[j].ProofAffG(r.Group(),
+			r.HashForID(r.SelfID()), curve.MakeInt(r.SecretECDSA), r.ECDSA[r.SelfID()], r.K[j], ChiShareBeta[j],
 			r.SecretPaillier, r.Paillier[j], r.Pedersen[j])
 
 		msg := r.MarshalMessage(&Sign3{
@@ -161,7 +161,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *round2) MessageContent() message.Content { return &Sign2{} }
+func (round2) MessageContent() message.Content { return &Sign2{} }
 
 // RoundNumber implements message.Content.
-func (m *Sign2) RoundNumber() types.RoundNumber { return 2 }
+func (Sign2) RoundNumber() types.RoundNumber { return 2 }

@@ -63,7 +63,7 @@ func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundTy
 	t.Logf("round %v done", expectedRoundType)
 }
 
-func checkOutput(t *testing.T, rounds map[party.ID]round.Round, public *curve.Point, m []byte) {
+func checkOutput(t *testing.T, rounds map[party.ID]round.Round, public curve.Point, m []byte) {
 	for _, r := range rounds {
 		resultRound, ok := r.(*round.Output)
 		assert.True(t, ok)
@@ -74,33 +74,36 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round, public *curve.Po
 }
 
 func TestSign(t *testing.T) {
+	group := curve.Secp256k1{}
+
 	N := 5
 	threshold := 2
 
 	partyIDs := party.RandomIDs(N)
 
-	secret := sample.Scalar(rand.Reader)
-	f := polynomial.NewPolynomial(threshold, secret)
-	publicKey := curve.NewIdentityPoint().ScalarBaseMult(secret)
+	secret := sample.Scalar(rand.Reader, group)
+	f := polynomial.NewPolynomial(group, threshold, secret)
+	publicKey := secret.ActOnBase()
 	steak := []byte{0xDE, 0xAD, 0xBE, 0xEF}
 	chainKey := make([]byte, params.SecBytes)
 	_, _ = rand.Read(chainKey)
 
-	privateShares := make(map[party.ID]*curve.Scalar, N)
+	privateShares := make(map[party.ID]curve.Scalar, N)
 	for _, id := range partyIDs {
-		privateShares[id] = f.Evaluate(id.Scalar())
+		privateShares[id] = f.Evaluate(id.Scalar(group))
 	}
 
-	verificationShares := make(map[party.ID]*curve.Point, N)
+	verificationShares := make(map[party.ID]curve.Point, N)
 	for _, id := range partyIDs {
-		verificationShares[id] = curve.NewIdentityPoint().ScalarBaseMult(privateShares[id])
+		verificationShares[id] = privateShares[id].ActOnBase()
 	}
 
-	var newPublicKey *curve.Point
+	var newPublicKey curve.Point
 	rounds := make(map[party.ID]round.Round, N)
 	for _, id := range partyIDs {
 		result := &keygen.Result{
 			ID:                 id,
+			Group:              group,
 			Threshold:          threshold,
 			PublicKey:          publicKey,
 			PrivateShare:       privateShares[id],
@@ -134,32 +137,33 @@ func checkOutputTaproot(t *testing.T, rounds map[party.ID]round.Round, public ta
 }
 
 func TestSignTaproot(t *testing.T) {
+	group := curve.Secp256k1{}
 	N := 5
 	threshold := 2
 
 	partyIDs := party.RandomIDs(N)
 
-	secret := sample.Scalar(rand.Reader)
-	publicPoint := curve.NewIdentityPoint().ScalarBaseMult(secret)
-	if !publicPoint.HasEvenY() {
-		secret.Negate(secret)
+	secret := sample.Scalar(rand.Reader, group)
+	publicPoint := secret.ActOnBase()
+	if !publicPoint.(*curve.Secp256k1Point).HasEvenY() {
+		secret.Negate()
 	}
-	f := polynomial.NewPolynomial(threshold, secret)
-	publicKey := taproot.PublicKey(publicPoint.XBytes()[:])
+	f := polynomial.NewPolynomial(group, threshold, secret)
+	publicKey := taproot.PublicKey(publicPoint.(*curve.Secp256k1Point).XBytes())
 	steakHash := sha256.New()
 	_, _ = steakHash.Write([]byte{0xDE, 0xAD, 0xBE, 0xEF})
 	steak := steakHash.Sum(nil)
 	chainKey := make([]byte, params.SecBytes)
 	_, _ = rand.Read(chainKey)
 
-	privateShares := make(map[party.ID]*curve.Scalar, N)
+	privateShares := make(map[party.ID]curve.Scalar, N)
 	for _, id := range partyIDs {
-		privateShares[id] = f.Evaluate(id.Scalar())
+		privateShares[id] = f.Evaluate(id.Scalar(group))
 	}
 
-	verificationShares := make(map[party.ID]*curve.Point, N)
+	verificationShares := make(map[party.ID]curve.Point, N)
 	for _, id := range partyIDs {
-		verificationShares[id] = curve.NewIdentityPoint().ScalarBaseMult(privateShares[id])
+		verificationShares[id] = privateShares[id].ActOnBase()
 	}
 
 	var newPublicKey []byte

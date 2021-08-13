@@ -3,6 +3,7 @@ package sign
 import (
 	"fmt"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -27,20 +28,20 @@ import (
 type round2 struct {
 	*round1
 	// d_i = dᵢ is the first nonce we've created.
-	d_i *curve.Scalar
+	d_i curve.Scalar
 	// e_i = eᵢ is the second nonce we've created.
-	e_i *curve.Scalar
+	e_i curve.Scalar
 	// D[i] = Dᵢ will contain all of the commitments created by each party, ourself included.
-	D map[party.ID]*curve.Point
+	D map[party.ID]curve.Point
 	// E[i] = Eᵢ will contain all of the commitments created by each party, ourself included.
-	E map[party.ID]*curve.Point
+	E map[party.ID]curve.Point
 }
 
 type Sign2 struct {
 	// D_i is the first commitment produced by the sender of this message.
-	D_i *curve.Point
+	D_i curve.Point
 	// E_i is the second commitment produced by the sender of this message.
-	E_i *curve.Point
+	E_i curve.Point
 }
 
 // VerifyMessage implements round.Round.
@@ -91,7 +92,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	//
 	// We also use a hash of the message, instead of the message directly.
 
-	rho := make(map[party.ID]*curve.Scalar)
+	rho := make(map[party.ID]curve.Scalar)
 	// This calculates H(m, B), allowing us to avoid re-hashing this data for
 	// each extra party l.
 	rhoPreHash := hash.New()
@@ -102,52 +103,52 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	for _, l := range r.PartyIDs() {
 		rhoHash := rhoPreHash.Clone()
 		_ = rhoHash.WriteAny(l)
-		rho[l] = sample.Scalar(rhoHash.Digest())
+		rho[l] = sample.Scalar(rhoHash.Digest(), r.Group())
 	}
 
-	R := curve.NewIdentityPoint()
-	RShares := make(map[party.ID]*curve.Point)
+	R := r.Group().NewPoint()
+	RShares := make(map[party.ID]curve.Point)
 	for _, l := range r.PartyIDs() {
-		RShares[l] = curve.NewIdentityPoint()
-		RShares[l].ScalarMult(rho[l], r.E[l])
-		RShares[l].Add(RShares[l], r.D[l])
-		R.Add(R, RShares[l])
+		RShares[l] = rho[l].Act(r.E[l])
+		RShares[l] = RShares[l].Add(r.D[l])
+		R = R.Add(RShares[l])
 	}
-	var c *curve.Scalar
+	var c curve.Scalar
 	if r.taproot {
 		// BIP-340 adjustment: We need R to have an even y coordinate. This means
 		// conditionally negating k = ∑ᵢ (dᵢ + (eᵢ ρᵢ)), which we can accomplish
 		// by negating our dᵢ, eᵢ, if necessary. This entails negating the RShares
 		// as well.
-		if !R.HasEvenY() {
-			r.d_i.Negate(r.d_i)
-			r.e_i.Negate(r.e_i)
+		RSecp := R.(*curve.Secp256k1Point)
+		if !RSecp.HasEvenY() {
+			r.d_i.Negate()
+			r.e_i.Negate()
 			for _, l := range r.PartyIDs() {
-				RShares[l].Negate(RShares[l])
+				RShares[l] = RShares[l].Negate()
 			}
 		}
 
 		// BIP-340 adjustment: we need to calculate our hash as specified in:
 		// https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#default-signing
-		RBytes := R.XBytes()[:]
-		PBytes := r.Y.XBytes()[:]
+		RBytes := RSecp.XBytes()
+		PBytes := r.Y.(*curve.Secp256k1Point).XBytes()
 		cHash := taproot.TaggedHash("BIP0340/challenge", RBytes, PBytes, r.M)
-		c, _ = curve.NewScalar().SetBytes(cHash)
+		c = r.Group().NewScalar().SetNat(new(safenum.Nat).SetBytes(cHash))
 	} else {
 		cHash := hash.New()
 		_ = cHash.WriteAny(R, r.Y, r.M)
-		c = sample.Scalar(cHash.Digest())
+		c = sample.Scalar(cHash.Digest(), r.Group())
 	}
 
 	// Lambdas[i] = λᵢ
-	Lambdas := polynomial.Lagrange(r.PartyIDs())
+	Lambdas := polynomial.Lagrange(r.Group(), r.PartyIDs())
 	// 5. "Each Pᵢ computes their response using their long-lived secret share sᵢ
 	// by computing zᵢ = dᵢ + (eᵢ ρᵢ) + λᵢ sᵢ c, using S to determine
 	// the ith lagrange coefficient λᵢ"
-	z_i := curve.NewScalar().Multiply(Lambdas[r.SelfID()], r.s_i)
-	z_i.Multiply(z_i, c)
-	z_i.Add(z_i, r.d_i)
-	z_i.MultiplyAdd(r.e_i, rho[r.SelfID()], z_i)
+	z_i := r.Group().NewScalar().Set(Lambdas[r.SelfID()]).Mul(r.s_i).Mul(c)
+	z_i.Add(r.d_i)
+	ed := r.Group().NewScalar().Set(rho[r.SelfID()]).Mul(r.e_i)
+	z_i.Add(ed)
 
 	// 6. "Each Pᵢ securely deletes ((dᵢ, Dᵢ), (eᵢ, Eᵢ)) from their local storage,
 	// and returns zᵢ to SA."
@@ -167,15 +168,18 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 		R:       R,
 		RShares: RShares,
 		c:       c,
-		z:       map[party.ID]*curve.Scalar{r.SelfID(): z_i},
+		z:       map[party.ID]curve.Scalar{r.SelfID(): z_i},
 		Lambda:  Lambdas,
 	}, nil
 }
 
 // MessageContent implements round.Round.
 func (r *round2) MessageContent() message.Content {
-	return &Sign2{}
+	return &Sign2{
+		D_i: r.Group().NewPoint(),
+		E_i: r.Group().NewPoint(),
+	}
 }
 
 // RoundNumber implements message.Content.
-func (m *Sign2) RoundNumber() types.RoundNumber { return 2 }
+func (Sign2) RoundNumber() types.RoundNumber { return 2 }

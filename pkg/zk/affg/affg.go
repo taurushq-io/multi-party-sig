@@ -27,7 +27,7 @@ type Public struct {
 
 	// X = gˣ
 	// x is Alice's multiplicative share
-	X *curve.Point
+	X curve.Point
 
 	// Prover = N₁
 	// Verifier = N₀
@@ -56,7 +56,7 @@ type Commitment struct {
 	// A = (α ⊙ c ) ⊕ Enc(N0, beta, r)
 	A *paillier.Ciphertext
 	// Bₓ = α⋅G
-	Bx *curve.Point
+	Bx curve.Point
 	// By = Enc(N1, beta, ry)
 	By *paillier.Ciphertext
 	// E = sᵃ tᵍ (mod N)
@@ -70,6 +70,7 @@ type Commitment struct {
 }
 
 type Proof struct {
+	group curve.Curve
 	*Commitment
 	// Z1 = Z₁ = α + e⋅x
 	Z1 *safenum.Int
@@ -107,7 +108,7 @@ func (p *Proof) IsValid(public Public) bool {
 	return true
 }
 
-func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
+func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private) *Proof {
 	N0 := public.Verifier.N()
 	N1 := public.Prover.N()
 	N0Modulus := public.Verifier.Modulus()
@@ -136,7 +137,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	T := public.Aux.Commit(private.Y, mu)
 	commitment := &Commitment{
 		A:  A,
-		Bx: curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarInt(alpha)),
+		Bx: group.NewScalar().SetNat(alpha.Mod(group.Order())).ActOnBase(),
 		By: prover.EncWithNonce(beta, rY),
 		E:  E,
 		S:  S,
@@ -166,6 +167,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	wY.ModMul(wY, rY, N1)
 
 	return &Proof{
+		group:      group,
 		Commitment: commitment,
 		Z1:         z1,
 		Z2:         z2,
@@ -219,13 +221,12 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	}
 
 	{
-
 		// lhs = [z₁]G
-		lhs := curve.NewIdentityPoint().ScalarBaseMult(curve.NewScalarInt(p.Z1))
+		lhs := p.group.NewScalar().SetNat(p.Z1.Mod(p.group.Order())).ActOnBase()
 
 		// rhsPt = Bₓ + [e]X
-		rhs := curve.NewIdentityPoint().ScalarMult(curve.NewScalarInt(e), public.X)
-		rhs.Add(p.Bx, rhs)
+		rhs := p.group.NewScalar().SetNat(e.Mod(p.group.Order())).Act(public.X)
+		rhs = rhs.Add(p.Bx)
 		if !lhs.Equal(rhs) {
 			return false
 		}
@@ -254,4 +255,11 @@ func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safen
 
 	e = sample.IntervalScalar(hash.Digest())
 	return
+}
+
+func Empty(group curve.Curve) *Proof {
+	return &Proof{
+		group:      group,
+		Commitment: &Commitment{Bx: group.NewPoint()},
+	}
 }

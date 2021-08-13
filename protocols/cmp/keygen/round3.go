@@ -6,6 +6,7 @@ import (
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -46,14 +47,9 @@ type Keygen3 struct {
 	// Decommitment = uᵢ decommitment bytes
 	Decommitment hash.Decommitment
 	// HashEcho = H(V₁, …, Vₙ)
-	// This is essentially an echo of all messages from Keygen2.
+	// This is essentially an echo of all Message2 from Round1.
 	// If one party received something different then everybody must abort.
 	HashEcho []byte
-}
-
-// Validate implements message.Content.
-func (m *Keygen3) Validate() error {
-	return nil
 }
 
 // VerifyMessage implements round.Round.
@@ -178,9 +174,9 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// create messages with encrypted shares
 	for _, j := range r.OtherPartyIDs() {
 		// compute fᵢ(j)
-		share := r.VSSSecret.Evaluate(j.Scalar())
+		share := r.VSSSecret.Evaluate(j.Scalar(r.Group()))
 		// Encrypt share
-		C, _ := r.PaillierPublic[j].Enc(share.Int())
+		C, _ := r.PaillierPublic[j].Enc(curve.MakeInt(share))
 
 		msg := r.MarshalMessage(&Keygen4{
 			Mod:   mod,
@@ -202,7 +198,12 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *round3) MessageContent() message.Content { return &Keygen3{} }
+func (r *round3) MessageContent() message.Content {
+	return &Keygen3{
+		VSSPolynomial:      polynomial.EmptyExponent(r.Group()),
+		SchnorrCommitments: zksch.EmptyCommitment(r.Group()),
+	}
+}
 
 // RoundNumber implements message.Content.
-func (m *Keygen3) RoundNumber() types.RoundNumber { return 4 }
+func (Keygen3) RoundNumber() types.RoundNumber { return 4 }

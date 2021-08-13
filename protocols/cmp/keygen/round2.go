@@ -31,7 +31,7 @@ type round2 struct {
 
 	// ShareReceived[j] = xʲᵢ
 	// share received from party j
-	ShareReceived map[party.ID]*curve.Scalar
+	ShareReceived map[party.ID]curve.Scalar
 
 	// PaillierPublic[j] = Nⱼ
 	PaillierPublic map[party.ID]*paillier.PublicKey
@@ -90,14 +90,14 @@ func (r *round2) StoreMessage(from party.ID, content message.Content) error {
 // - send all committed data.
 // - send Hash(ssid, V₁, …, Vₙ).
 func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
-	// Broadcast the message we created in round1
+	// Broadcast the message we created in Round1
 	h := r.Hash()
 	for _, j := range r.PartyIDs() {
 		_ = h.WriteAny(r.Commitments[j])
 	}
 	EchoHash := h.Sum()
 
-	// Send the message we created in round1 to all
+	// Send the message we created in Round1 to all
 	msg := r.MarshalMessage(&Keygen3{
 		RID:                r.RIDs[r.SelfID()],
 		C:                  r.ChainKeys[r.SelfID()],
@@ -120,7 +120,7 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *round2) MessageContent() message.Content { return &Keygen2{} }
+func (round2) MessageContent() message.Content { return &Keygen2{} }
 
 // RoundNumber implements message.Content.
-func (m *Keygen2) RoundNumber() types.RoundNumber { return 2 }
+func (Keygen2) RoundNumber() types.RoundNumber { return 2 }

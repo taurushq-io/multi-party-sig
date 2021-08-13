@@ -52,7 +52,11 @@ func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *output) MessageContent() message.Content { return &KeygenOutput{} }
+func (r *output) MessageContent() message.Content {
+	return &KeygenOutput{
+		SchnorrResponse: sch.EmptyResponse(r.Group()),
+	}
+}
 
 // RoundNumber implements message.Content.
-func (m *KeygenOutput) RoundNumber() types.RoundNumber { return 6 }
+func (KeygenOutput) RoundNumber() types.RoundNumber { return 6 }

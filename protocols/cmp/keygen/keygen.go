@@ -23,7 +23,7 @@ const (
 	protocolRounds types.RoundNumber = 6
 )
 
-func StartKeygen(pl *pool.Pool, partyIDs []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
+func StartKeygen(pl *pool.Pool, group curve.Curve, partyIDs []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
 
 		sortedIDs := party.NewIDSlice(partyIDs)
@@ -34,6 +34,7 @@ func StartKeygen(pl *pool.Pool, partyIDs []party.ID, threshold int, selfID party
 		}
 		helper, err := round.NewHelper(
 			protocolKeygenID,
+			group,
 			protocolRounds,
 			selfID,
 			sortedIDs,
@@ -43,14 +44,14 @@ func StartKeygen(pl *pool.Pool, partyIDs []party.ID, threshold int, selfID party
 			return nil, nil, fmt.Errorf("keygen.StartKeygen: %w", err)
 		}
 
-		PreviousPublicSharesECDSA := make(map[party.ID]*curve.Point, n)
+		PreviousPublicSharesECDSA := make(map[party.ID]curve.Point, n)
 		for _, idJ := range helper.PartyIDs() {
-			PreviousPublicSharesECDSA[idJ] = curve.NewIdentityPoint()
+			PreviousPublicSharesECDSA[idJ] = group.NewPoint()
 		}
-		PreviousSecretECDSA := curve.NewScalar()
-		PreviousPublicKey := curve.NewIdentityPoint()
+		PreviousSecretECDSA := group.NewScalar()
+		PreviousPublicKey := group.NewPoint()
 		// sample fᵢ(X) deg(fᵢ) = t, fᵢ(0) = secretᵢ
-		VSSSecret := polynomial.NewPolynomial(threshold, sample.Scalar(rand.Reader))
+		VSSSecret := polynomial.NewPolynomial(group, threshold, sample.Scalar(rand.Reader, group))
 
 		return &round1{
 			Helper:                    helper,
@@ -67,10 +68,12 @@ func StartKeygen(pl *pool.Pool, partyIDs []party.ID, threshold int, selfID party
 
 func StartRefresh(pl *pool.Pool, c *Config) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
+		group := c.Group
 
 		partyIDs := c.PartyIDs()
 		helper, err := round.NewHelper(
 			protocolRefreshID,
+			group,
 			protocolRounds,
 			c.ID,
 			partyIDs,
@@ -80,15 +83,14 @@ func StartRefresh(pl *pool.Pool, c *Config) protocol.StartFunc {
 			return nil, nil, fmt.Errorf("refresh.StartKeygen: %w", err)
 		}
 
-		PreviousPublicSharesECDSA := make(map[party.ID]*curve.Point, len(partyIDs))
+		PreviousPublicSharesECDSA := make(map[party.ID]curve.Point, len(partyIDs))
 		for _, j := range partyIDs {
-			// Set the public data to a clone of the current data
-			PreviousPublicSharesECDSA[j] = curve.NewIdentityPoint().Set(c.Public[j].ECDSA)
+			PreviousPublicSharesECDSA[j] = c.Public[j].ECDSA
 		}
-		PreviousSecretECDSA := curve.NewScalar().Set(c.ECDSA)
-		PreviousPublicKey := curve.FromPublicKey(c.PublicKey())
+		PreviousSecretECDSA := group.NewScalar().Set(c.ECDSA)
+		PreviousPublicKey := c.PublicPoint()
 		// sample fᵢ(X) deg(fᵢ) = t, fᵢ(0) = 0
-		VSSSecret := polynomial.NewPolynomial(int(c.Threshold), nil)
+		VSSSecret := polynomial.NewPolynomial(group, int(c.Threshold), nil)
 
 		return &round1{
 			Helper:                    helper,

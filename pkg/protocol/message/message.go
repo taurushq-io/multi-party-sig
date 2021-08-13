@@ -11,12 +11,12 @@ import (
 // First represents an empty message to be returned by Round.MessageContent() for the first round of a protocol.
 type First struct{}
 
-func (m *First) RoundNumber() types.RoundNumber { return 1 }
+func (First) RoundNumber() types.RoundNumber { return 1 }
 
 // Final represents an empty message, and can be returned by the first round of a protocol.
 type Final struct{}
 
-func (m *Final) RoundNumber() types.RoundNumber { return 0 }
+func (Final) RoundNumber() types.RoundNumber { return 0 }
 
 // Content represents a message body for a specific round.
 type Content interface {

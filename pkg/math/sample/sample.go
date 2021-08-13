@@ -83,20 +83,17 @@ func Pedersen(rand io.Reader, phi *safenum.Nat, n *safenum.Modulus) (s, t, lambd
 }
 
 // Scalar returns a new *curve.Scalar by reading bytes from rand.
-func Scalar(rand io.Reader) *curve.Scalar {
-	var s curve.Scalar
-	buffer := make([]byte, params.BytesScalar)
+func Scalar(rand io.Reader, group curve.Curve) curve.Scalar {
+	buffer := make([]byte, group.SafeScalarBytes())
 	mustReadBits(rand, buffer)
-	s.SetBytes(buffer)
-	return &s
+	n := new(safenum.Nat).SetBytes(buffer)
+	return group.NewScalar().SetNat(n)
 }
 
 // ScalarUnit returns a new *curve.Scalar by reading bytes from rand.
-func ScalarUnit(rand io.Reader) *curve.Scalar {
+func ScalarUnit(rand io.Reader, group curve.Curve) curve.Scalar {
 	for i := 0; i < maxIterations; i++ {
-		s := Scalar(rand)
-		// Note: This works since our curve has prime order, but you need a more
-		// sophisticated check in other situations.
+		s := Scalar(rand, group)
 		if !s.IsZero() {
 			return s
 		}
@@ -106,9 +103,7 @@ func ScalarUnit(rand io.Reader) *curve.Scalar {
 
 // ScalarPointPair returns a new *curve.Scalar/*curve.Point tuple (x,X) by reading bytes from rand.
 // The tuple satisfies X = x⋅G where G is the base point of the curve.
-func ScalarPointPair(rand io.Reader) (*curve.Scalar, *curve.Point) {
-	var p curve.Point
-	s := Scalar(rand)
-	p.ScalarBaseMult(s)
-	return s, &p
+func ScalarPointPair(rand io.Reader, group curve.Curve) (curve.Scalar, curve.Point) {
+	s := Scalar(rand, group)
+	return s, s.ActOnBase()
 }

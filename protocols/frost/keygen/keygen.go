@@ -7,6 +7,7 @@ import (
 
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
@@ -26,7 +27,7 @@ var (
 	_ round.Round = (*round3)(nil)
 )
 
-func startKeygenCommon(taproot bool, participants []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
+func startKeygenCommon(taproot bool, group curve.Curve, participants []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
 		// Negative thresholds obviously make no sense.
 		// We need threshold + 1 participants to sign, so if this number is larger
@@ -43,6 +44,7 @@ func startKeygenCommon(taproot bool, participants []party.ID, threshold int, sel
 		}
 		helper, err := round.NewHelper(
 			protocolID,
+			group,
 			protocolRounds,
 			selfID,
 			sortedIDs,
@@ -81,8 +83,8 @@ func startKeygenCommon(taproot bool, participants []party.ID, threshold int, sel
 //
 // This protocol corresponds to Figure 1 of the Frost paper:
 //   https://eprint.iacr.org/2020/852.pdf
-func StartKeygen(participants []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
-	return startKeygenCommon(false, participants, threshold, selfID)
+func StartKeygen(group curve.Curve, participants []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
+	return startKeygenCommon(false, group, participants, threshold, selfID)
 }
 
 // StartKeygenTaproot is like StartKeygen, but will make Taproot / BIP-340 compatible keys.
@@ -91,7 +93,7 @@ func StartKeygen(participants []party.ID, threshold int, selfID party.ID) protoc
 //
 // See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#specification
 func StartKeygenTaproot(participants []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
-	return startKeygenCommon(true, participants, threshold, selfID)
+	return startKeygenCommon(true, curve.Secp256k1{}, participants, threshold, selfID)
 }
 
 // Threshold

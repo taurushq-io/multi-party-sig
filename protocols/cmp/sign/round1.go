@@ -22,13 +22,13 @@ type round1 struct {
 	// Pool allows us to parallelize certain operations
 	Pool *pool.Pool
 
-	PublicKey *curve.Point
+	PublicKey curve.Point
 
-	SecretECDSA    *curve.Scalar
+	SecretECDSA    curve.Scalar
 	SecretPaillier *paillier.SecretKey
 	Paillier       map[party.ID]*paillier.PublicKey
 	Pedersen       map[party.ID]*pedersen.Parameters
-	ECDSA          map[party.ID]*curve.Point
+	ECDSA          map[party.ID]curve.Point
 
 	Message []byte
 }
@@ -56,14 +56,14 @@ func (r *round1) StoreMessage(party.ID, message.Content) error { return nil }
 func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// γᵢ <- 𝔽,
 	// Γᵢ = [γᵢ]⋅G
-	GammaShare, BigGammaShare := sample.ScalarPointPair(rand.Reader)
+	GammaShare, BigGammaShare := sample.ScalarPointPair(rand.Reader, r.Group())
 	// Gᵢ = Encᵢ(γᵢ;νᵢ)
-	G, GNonce := r.Paillier[r.SelfID()].Enc(GammaShare.Int())
+	G, GNonce := r.Paillier[r.SelfID()].Enc(curve.MakeInt(GammaShare))
 
 	// kᵢ <- 𝔽,
-	KShare := sample.Scalar(rand.Reader)
+	KShare := sample.Scalar(rand.Reader, r.Group())
 	// Kᵢ = Encᵢ(kᵢ;ρᵢ)
-	K, KNonce := r.Paillier[r.SelfID()].Enc(KShare.Int())
+	K, KNonce := r.Paillier[r.SelfID()].Enc(curve.MakeInt(KShare))
 
 	otherIDs := r.OtherPartyIDs()
 	errors := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
@@ -73,7 +73,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 			Prover: r.Paillier[r.SelfID()],
 			Aux:    r.Pedersen[j],
 		}, zkenc.Private{
-			K:   KShare.Int(),
+			K:   curve.MakeInt(KShare),
 			Rho: KNonce,
 		})
 
@@ -98,8 +98,8 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 		round1:        r,
 		K:             map[party.ID]*paillier.Ciphertext{r.SelfID(): K},
 		G:             map[party.ID]*paillier.Ciphertext{r.SelfID(): G},
-		BigGammaShare: map[party.ID]*curve.Point{r.SelfID(): BigGammaShare},
-		GammaShare:    GammaShare.Int(),
+		BigGammaShare: map[party.ID]curve.Point{r.SelfID(): BigGammaShare},
+		GammaShare:    curve.MakeInt(GammaShare),
 		KShare:        KShare,
 		KNonce:        KNonce,
 		GNonce:        GNonce,
@@ -107,4 +107,4 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *round1) MessageContent() message.Content { return &message.First{} }
+func (round1) MessageContent() message.Content { return &message.First{} }

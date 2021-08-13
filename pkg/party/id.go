@@ -3,6 +3,7 @@ package party
 import (
 	"io"
 
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
 
@@ -19,10 +20,8 @@ type ID string
 //
 // All of the IDs of our participants form a polynomial sharing of the secret
 // scalar value used for ECDSA.
-func (id ID) Scalar() *curve.Scalar {
-	out := new(curve.Scalar)
-	out.SetBytes([]byte(id))
-	return out
+func (id ID) Scalar(group curve.Curve) curve.Scalar {
+	return group.NewScalar().SetNat(new(safenum.Nat).SetBytes([]byte(id)))
 }
 
 // WriteTo makes ID implement the io.WriterTo interface.

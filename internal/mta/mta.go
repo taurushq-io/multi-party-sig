@@ -72,8 +72,8 @@ func New(senderSecretShare *safenum.Int, receiverEncryptedShare *paillier.Cipher
 // - senderSecretSharePoint = Aᵢ = aᵢ⋅G
 // - receiverEncryptedShare = Encⱼ(bⱼ)
 // The Message returned contains the encrypted share and a zk proof of correctness.
-func (mta *MtA) ProofAffG(h *hash.Hash,
-	senderSecretShare *safenum.Int, senderSecretSharePoint *curve.Point, receiverEncryptedShare *paillier.Ciphertext, beta *safenum.Int,
+func (mta *MtA) ProofAffG(group curve.Curve, h *hash.Hash,
+	senderSecretShare *safenum.Int, senderSecretSharePoint curve.Point, receiverEncryptedShare *paillier.Ciphertext, beta *safenum.Int,
 	sender *paillier.SecretKey, receiver *paillier.PublicKey, verifier *pedersen.Parameters) *Message {
 	zkPublic := zkaffg.Public{
 		C:        receiverEncryptedShare,
@@ -91,7 +91,7 @@ func (mta *MtA) ProofAffG(h *hash.Hash,
 		Rho:  mta.S,
 		RhoY: mta.R,
 	}
-	proof := zkaffg.NewProof(h, zkPublic, zkPrivate)
+	proof := zkaffg.NewProof(group, h, zkPublic, zkPrivate)
 
 	return &Message{
 		Dij:   mta.Dji,
@@ -104,7 +104,7 @@ func (mta *MtA) ProofAffG(h *hash.Hash,
 // - receiverEncryptedShare = Encᵢ(bᵢ)
 // - senderSharePoint = Aⱼ = aⱼ⋅G.
 func (mta *MtA) VerifyAffG(h *hash.Hash,
-	receiverEncryptedShare *paillier.Ciphertext, senderSharePoint *curve.Point, msg *Message,
+	receiverEncryptedShare *paillier.Ciphertext, senderSharePoint curve.Point, msg *Message,
 	sender *paillier.PublicKey, receiver *paillier.PublicKey, verifier *pedersen.Parameters) error {
 
 	if msg.Dij == nil || msg.Fij == nil || msg.Proof == nil {
@@ -129,4 +129,10 @@ func (mta *MtA) VerifyAffG(h *hash.Hash,
 // AlphaShare decrypts the appropriate field of the mta.Message given the receiver's private Paillier key.
 func (msg *Message) AlphaShare(receiverPaillier *paillier.SecretKey) (*safenum.Int, error) {
 	return receiverPaillier.Dec(msg.Dij)
+}
+
+func Empty(group curve.Curve) *Message {
+	return &Message{
+		Proof: zkaffg.Empty(group),
+	}
 }

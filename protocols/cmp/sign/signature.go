@@ -1,29 +1,24 @@
 package sign
 
 import (
-	"math/big"
-
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
 
 type Signature struct {
-	R *curve.Point
-	S *curve.Scalar
+	R curve.Point
+	S curve.Scalar
 }
 
 // Verify is a custom signature format using curve data.
-func (sig Signature) Verify(X *curve.Point, hash []byte) bool {
-	m := curve.NewScalar().SetHash(hash)
-	sInv := curve.NewScalar().Invert(sig.S)
-	mG := curve.NewIdentityPoint().ScalarBaseMult(m)
-	r := sig.R.XScalar()
-	rX := curve.NewIdentityPoint().ScalarMult(r, X)
-	R2 := curve.NewIdentityPoint().Add(mG, rX)
-	R2.ScalarMult(sInv, R2)
-	return R2.Equal(sig.R)
-}
+func (sig Signature) Verify(X curve.Point, hash []byte) bool {
+	group := X.Curve()
 
-// ToRS returns R, S such that ecdsa.Verify(pub,message, R, S) == true.
-func (sig Signature) ToRS() (*big.Int, *big.Int) {
-	return sig.R.XScalar().BigInt(), sig.S.BigInt()
+	m := curve.FromHash(group, hash)
+	sInv := group.NewScalar().Set(sig.S).Invert()
+	mG := m.ActOnBase()
+	r := sig.R.XScalar()
+	rX := r.Act(X)
+	R2 := mG.Add(rX)
+	R2 = sInv.Act(R2)
+	return R2.Equal(sig.R)
 }

@@ -21,12 +21,12 @@ type round3 struct {
 	// shareFrom is the secret share sent to us by a given party, including ourselves.
 	//
 	// shareFrom[l] corresponds to fₗ(i) in the Frost paper, with i our own ID.
-	shareFrom map[party.ID]*curve.Scalar
+	shareFrom map[party.ID]curve.Scalar
 }
 
 type Keygen3 struct {
 	// F_li is the secret share sent from party l to this party.
-	F_li *curve.Scalar
+	F_li curve.Scalar
 	// C_l is contribution to the chaining key for this party.
 	C_l []byte
 	// Decommitment = uᵢ decommitment bytes
@@ -66,8 +66,8 @@ func (r *round3) StoreMessage(from party.ID, content message.Content) error {
 	//   fₗ(i) * G =? ∑ₖ₌₀ᵗ (iᵏ mod q) * ϕₗₖ
 	//
 	// aborting if the check fails."
-	expected := curve.NewIdentityPoint().ScalarBaseMult(msg.F_li)
-	actual := r.Phi[from].Evaluate(r.SelfID().Scalar())
+	expected := msg.F_li.ActOnBase()
+	actual := r.Phi[from].Evaluate(r.SelfID().Scalar(r.Group()))
 	if !expected.Equal(actual) {
 		return fmt.Errorf("VSS failed to validate")
 	}
@@ -92,9 +92,9 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 	// 3. "Each P_i calculates their long-lived private signing share by computing
 	// sᵢ = ∑ₗ₌₁ⁿ fₗ(i), stores s_i securely, and deletes each fₗ(i)"
 
-	s_i := curve.NewScalar()
+	s_i := r.Group().NewScalar()
 	for l, f_li := range r.shareFrom {
-		s_i.Add(s_i, f_li)
+		s_i.Add(f_li)
 		// TODO: Maybe actually clear this in a better way
 		delete(r.shareFrom, l)
 	}
@@ -105,12 +105,12 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 	//
 	// Yᵢ = ∑ⱼ₌₁ⁿ ∑ₖ₌₀ᵗ (iᵏ mod q) * ϕⱼₖ."
 
-	Y := curve.NewIdentityPoint()
+	Y := r.Group().NewPoint()
 	for _, phi_j := range r.Phi {
-		Y.Add(Y, phi_j.Constant())
+		Y = Y.Add(phi_j.Constant())
 	}
 
-	VerificationShares := make(map[party.ID]*curve.Point)
+	VerificationShares := make(map[party.ID]curve.Point)
 	// This accomplishes the same sum as in the paper, by first summing
 	// together the exponent coefficients, and then evaluating.
 	exponents := make([]*polynomial.Exponent, 0, r.PartyIDs().Len())
@@ -122,7 +122,7 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 		panic(err)
 	}
 	for _, i := range r.PartyIDs() {
-		VerificationShares[i] = verificationExponent.Evaluate(i.Scalar())
+		VerificationShares[i] = verificationExponent.Evaluate(i.Scalar(r.Group()))
 	}
 
 	if r.taproot {
@@ -134,23 +134,25 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 		//
 		// We assume that everyone else does the same, so we negate all the verification
 		// shares.
-		if !Y.HasEvenY() {
-			s_i.Negate(s_i)
-			for _, y_i := range VerificationShares {
-				y_i.Negate(y_i)
+		YSecp := Y.(*curve.Secp256k1Point)
+		if !YSecp.HasEvenY() {
+			s_i.Negate()
+			for i, y_i := range VerificationShares {
+				VerificationShares[i] = y_i.Negate()
 			}
 		}
 		return &round.Output{Result: &TaprootResult{
 			ID:                 r.SelfID(),
 			Threshold:          r.threshold,
 			PrivateShare:       s_i,
-			PublicKey:          Y.XBytes()[:],
+			PublicKey:          YSecp.XBytes()[:],
 			VerificationShares: VerificationShares,
 		}}, nil
 	}
 
 	return &round.Output{Result: &Result{
 		ID:                 r.SelfID(),
+		Group:              r.Group(),
 		Threshold:          r.threshold,
 		PrivateShare:       s_i,
 		PublicKey:          Y,
@@ -162,8 +164,10 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 //
 // Since this is the first round of the protocol, we expect to see a dummy First type.
 func (r *round3) MessageContent() message.Content {
-	return &Keygen3{}
+	return &Keygen3{
+		F_li: r.Group().NewScalar(),
+	}
 }
 
 // RoundNumber implements message.Content.
-func (m *Keygen3) RoundNumber() types.RoundNumber { return 3 }
+func (Keygen3) RoundNumber() types.RoundNumber { return 3 }
