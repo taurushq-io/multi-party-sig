@@ -1,11 +1,5 @@
 # TODO
 
-## Elliptic curve backend
-
-Our implementation currently uses the `secp256k1` curve implementation from [decred/dcrd]("https://github.com/decred/dcrd/dcrec/secp256k1/v3").
-We are working on a better interface that would seamlessly support multiple curve types.
-One possibility we are exploring is the use of generics.
-
 ## Identifiable aborts
 
 In some instances, it may be possible for the user of the library to guarantee a reliable broadcast channel (trusted third party in star topology for example).
