@@ -19,18 +19,18 @@ type Public struct {
 	S, T *safenum.Nat
 }
 type Private struct {
-	Lambda, Phi *safenum.Nat
+	Lambda, Phi, P, Q *safenum.Nat
 }
 
 type Proof struct {
-	As, Zs [params.StatParam]*safenum.Nat
+	As, Zs [params.StatParam]*big.Int
 }
 
 func (p *Proof) IsValid(public Public) bool {
 	if p == nil {
 		return false
 	}
-	if !arith.IsValidNatModN(public.N, append(p.As[:], p.Zs[:]...)...) {
+	if !arith.IsValidBigModN(public.N.Big(), append(p.As[:], p.Zs[:]...)...) {
 		return false
 	}
 	return true
@@ -39,33 +39,36 @@ func (p *Proof) IsValid(public Public) bool {
 // NewProof generates a proof that:
 // s = t^lambda (mod N).
 func NewProof(pl *pool.Pool, hash *hash.Hash, public Public, private Private) *Proof {
-	n := public.N
 	lambda := private.Lambda
 	phi := safenum.ModulusFromNat(private.Phi)
 
-	var as, As, Zs [params.StatParam]*safenum.Nat
+	n := arith.ModulusFromFactors(private.P, private.Q)
 
+	var (
+		as [params.StatParam]*safenum.Nat
+		As [params.StatParam]*big.Int
+	)
 	lockedRand := pool.NewLockedReader(rand.Reader)
 	pl.Parallelize(params.StatParam, func(i int) interface{} {
-
 		// aᵢ ∈ mod ϕ(N)
 		as[i] = sample.ModN(lockedRand, phi)
 
 		// Aᵢ = tᵃ mod N
-		As[i] = new(safenum.Nat).Exp(public.T, as[i], n)
+		As[i] = n.Exp(public.T, as[i]).Big()
 
 		return nil
 	})
 
 	es, _ := challenge(hash, public, As)
 	// Modular addition is not expensive enough to warrant parallelizing
+	var Zs [params.StatParam]*big.Int
 	for i := 0; i < params.StatParam; i++ {
 		z := as[i]
 		// The challenge is public, so branching is ok
 		if es[i] {
 			z.ModAdd(z, lambda, phi)
 		}
-		Zs[i] = z
+		Zs[i] = z.Big()
 	}
 
 	return &Proof{
@@ -89,8 +92,8 @@ func (p *Proof) Verify(pl *pool.Pool, hash *hash.Hash, public Public) bool {
 	one := big.NewInt(1)
 	verifications := pl.Parallelize(params.StatParam, func(i int) interface{} {
 		var lhs, rhs big.Int
-		z := p.Zs[i].Big()
-		a := p.As[i].Big()
+		z := p.Zs[i]
+		a := p.As[i]
 
 		if !arith.IsValidBigModN(n, a, z) {
 			return false
@@ -123,7 +126,7 @@ func (p *Proof) Verify(pl *pool.Pool, hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, A [params.StatParam]*safenum.Nat) (es []bool, err error) {
+func challenge(hash *hash.Hash, public Public, A [params.StatParam]*big.Int) (es []bool, err error) {
 	err = hash.WriteAny(public.N, public.S, public.T)
 	for _, a := range A {
 		_ = hash.WriteAny(a)

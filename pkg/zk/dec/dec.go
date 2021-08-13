@@ -70,12 +70,13 @@ func (p *Proof) IsValid(public Public) bool {
 }
 
 func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
-	N0 := public.Prover.N()
+	N := public.Prover.N()
+	NModulus := public.Prover.Modulus()
 	alpha := sample.IntervalLEps(rand.Reader)
 
 	mu := sample.IntervalLN(rand.Reader)
 	nu := sample.IntervalLEpsN(rand.Reader)
-	r := sample.UnitModN(rand.Reader, N0)
+	r := sample.UnitModN(rand.Reader, N)
 
 	gamma := curve.NewScalarInt(alpha)
 
@@ -95,8 +96,8 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	z2 := new(safenum.Int).Mul(e, mu, -1)
 	z2.Add(z2, nu, -1)
 	// w = ρ^e•r mod N₀
-	w := new(safenum.Nat).ExpI(private.Rho, e, N0)
-	w.ModMul(w, r, N0)
+	w := NModulus.ExpI(private.Rho, e)
+	w.ModMul(w, r, N)
 
 	return &Proof{
 		Commitment: commitment,

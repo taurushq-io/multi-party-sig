@@ -110,11 +110,9 @@ func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Conten
 	if err := pedersen.ValidateParameters(body.N, body.S, body.T); err != nil {
 		return err
 	}
-	Pedersen := pedersen.New(body.N, body.S, body.T)
-
 	// Verify decommit
 	if !r.HashForID(from).Decommit(r.Commitments[from], body.Decommitment,
-		body.RID, body.C, VSSPolynomial, body.SchnorrCommitments, Pedersen) {
+		body.RID, body.C, VSSPolynomial, body.SchnorrCommitments, body.N, body.S, body.T) {
 		return ErrRound3Decommit
 	}
 
@@ -173,6 +171,8 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 	prm := zkprm.NewProof(r.Pool, h.Clone(), zkprm.Public{N: r.N[r.SelfID()], S: r.S[r.SelfID()], T: r.T[r.SelfID()]}, zkprm.Private{
 		Lambda: r.PedersenSecret,
 		Phi:    r.PaillierSecret.Phi(),
+		P:      r.PaillierSecret.P(),
+		Q:      r.PaillierSecret.Q(),
 	})
 
 	// create messages with encrypted shares

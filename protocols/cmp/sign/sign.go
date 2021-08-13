@@ -49,10 +49,12 @@ func StartSign(pl *pool.Pool, config *keygen.Config, signers []party.ID, message
 			return nil, nil, err
 		}
 
+		selfID := config.ID
+
 		helper, err := round.NewHelper(
 			protocolSignID,
 			protocolSignRounds,
-			config.ID,
+			selfID,
 			signerIDs,
 			// write the config, the signers and the message to this session.
 			config,
@@ -73,19 +75,24 @@ func StartSign(pl *pool.Pool, config *keygen.Config, signers []party.ID, message
 		Pedersen := make(map[party.ID]*pedersen.Parameters, T)
 		PublicKey := curve.NewIdentityPoint()
 		lagrange := polynomial.Lagrange(signers)
+		// Scale own secret
+		SecretECDSA := curve.NewScalar().Multiply(lagrange[config.ID], config.ECDSA)
+		SecretPaillier := config.Paillier()
 		for _, j := range signerIDs {
 			public := config.Public[j]
 			// scale public key share
 			ECDSA[j] = curve.NewIdentityPoint().ScalarMult(lagrange[j], public.ECDSA)
-			// create Paillier key
-			Paillier[j] = paillier.NewPublicKey(public.N)
+			// create Paillier key, but set ours to the one derived from the private key
+			// since it includes the CRT acceleration.
+			if j == selfID {
+				Paillier[j] = SecretPaillier.PublicKey
+			} else {
+				Paillier[j] = paillier.NewPublicKey(public.N)
+			}
 			// create Pedersen params
-			Pedersen[j] = pedersen.New(public.N, public.S, public.T)
+			Pedersen[j] = pedersen.New(Paillier[j].Modulus(), public.S, public.T)
 			PublicKey.Add(PublicKey, ECDSA[j])
 		}
-
-		// Scale own secret
-		SecretECDSA := curve.NewScalar().Multiply(lagrange[config.ID], config.ECDSA)
 
 		return &round1{
 			Helper:         helper,

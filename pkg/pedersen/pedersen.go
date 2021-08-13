@@ -22,17 +22,17 @@ func (e Error) Error() string {
 }
 
 type Parameters struct {
-	n    *safenum.Modulus
+	n    *arith.Modulus
 	s, t *safenum.Nat
 }
 
 // New returns a new set of Pedersen parameters.
 // Assumes ValidateParameters(n, s, t) returns nil.
-func New(n *safenum.Modulus, s, t *safenum.Nat) *Parameters {
+func New(n *arith.Modulus, s, t *safenum.Nat) *Parameters {
 	return &Parameters{
-		n: n,
 		s: s,
 		t: t,
+		n: n,
 	}
 }
 
@@ -57,7 +57,7 @@ func ValidateParameters(n *safenum.Modulus, s, t *safenum.Nat) error {
 }
 
 // N = p•q, p ≡ q ≡ 3 mod 4.
-func (p Parameters) N() *safenum.Modulus { return p.n }
+func (p Parameters) N() *safenum.Modulus { return p.n.Modulus }
 
 // S = r² mod N.
 func (p Parameters) S() *safenum.Nat { return p.s }
@@ -69,12 +69,12 @@ func (p Parameters) T() *safenum.Nat { return p.t }
 //
 // x and y are taken as safenum.Int, because we want to keep these values in secret,
 // in general. The commitment produced, on the other hand, hides their values,
-// and can be safely shared. This is why we produce a big.Int instead.
+// and can be safely shared.
 func (p Parameters) Commit(x, y *safenum.Int) *safenum.Nat {
-	sx := new(safenum.Nat).ExpI(p.s, x, p.n)
-	ty := new(safenum.Nat).ExpI(p.t, y, p.n)
+	sx := p.n.ExpI(p.s, x)
+	ty := p.n.ExpI(p.t, y)
 
-	result := sx.ModMul(sx, ty, p.n)
+	result := sx.ModMul(sx, ty, p.n.Modulus)
 
 	return result
 }
@@ -84,18 +84,17 @@ func (p Parameters) Verify(a, b, e *safenum.Int, S, T *safenum.Nat) bool {
 	if a == nil || b == nil || S == nil || T == nil || e == nil {
 		return false
 	}
-	if !arith.IsValidNatModN(p.n, S, T) {
+	nMod := p.n.Modulus
+	if !arith.IsValidNatModN(nMod, S, T) {
 		return false
 	}
 
-	lhs, rhs := new(safenum.Nat), new(safenum.Nat)
+	sa := p.n.ExpI(p.s, a)         // sᵃ (mod N)
+	tb := p.n.ExpI(p.t, b)         // tᵇ (mod N)
+	lhs := sa.ModMul(sa, tb, nMod) // lhs = sᵃ⋅tᵇ (mod N)
 
-	lhs.ExpI(p.s, a, p.n)     // lhs = sᵃ (mod N)
-	rhs.ExpI(p.t, b, p.n)     // rhs = tᵇ (mod N)
-	lhs.ModMul(lhs, rhs, p.n) // lhs *= rhs (mod N)
-
-	rhs.ExpI(T, e, p.n)     // rhs = Tᵉ (mod N)
-	rhs.ModMul(rhs, S, p.n) // rhs *= S (mod N)
+	te := p.n.ExpI(T, e)          // Tᵉ (mod N)
+	rhs := te.ModMul(te, S, nMod) // rhs = S⋅Tᵉ (mod N)
 	return lhs.Eq(rhs) == 1
 }
 
