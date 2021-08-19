@@ -1,4 +1,4 @@
-package example
+package main
 
 import (
 	"errors"
@@ -8,7 +8,6 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
 	"github.com/taurusgroup/multi-party-sig/protocols/cmp/keygen"
 	"github.com/taurusgroup/multi-party-sig/protocols/cmp/sign"
 	"github.com/taurusgroup/multi-party-sig/protocols/example/xor"
@@ -139,7 +138,7 @@ func handlerLoop(id party.ID, h *protocol.Handler, network Network) error {
 			err := h.Update(msg)
 
 			// a message.Error is not fatal and the message can be ignored
-			if messageError := new(message.Error); errors.As(err, &messageError) {
+			if messageError := new(protocol.Error); errors.As(err, &messageError) {
 				h.Log.Warn().Err(messageError).Msg("skipping message")
 			}
 
