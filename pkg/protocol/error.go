@@ -3,15 +3,15 @@ package protocol
 import (
 	"fmt"
 
+	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
 )
 
 // Error is a custom error for protocols which contains information about the responsible round in which it occurred,
 // and the party responsible.
 type Error struct {
 	// RoundNumber where the error occurred
-	RoundNumber types.RoundNumber
+	RoundNumber round.Number
 	// Culprit is empty if the identity of the misbehaving party cannot be known
 	Culprit party.ID
 	// Err is the underlying error
@@ -29,4 +29,23 @@ func (e Error) Error() string {
 // Unwrap implement errors.Wrapper.
 func (e Error) Unwrap() error {
 	return e.Err
+}
+
+// Error3 indicates that the message does not pass validation.
+type Error3 string
+
+const (
+	ErrDuplicate          Error3 = "message was already handled"
+	ErrUnknownSender      Error3 = "unknown sender"
+	ErrWrongSSID          Error3 = "SSID mismatch"
+	ErrWrongProtocolID    Error3 = "wrong protocol ID"
+	ErrWrongDestination   Error3 = "message is not intended for selfID"
+	ErrInvalidRoundNumber Error3 = "round number is invalid for this protocol"
+	ErrInconsistentRound  Error3 = "given round number is inconsistent with content"
+	ErrNilContent         Error3 = "content is empty"
+)
+
+// Error implements error.
+func (err Error3) Error() string {
+	return "message: " + string(err)
 }
