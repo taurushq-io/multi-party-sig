@@ -1,4 +1,4 @@
-package zkaffg
+package zkaffp
 
 import (
 	"crypto/rand"
@@ -6,7 +6,6 @@ import (
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
@@ -24,33 +23,37 @@ type Public struct {
 	// Original name: Y
 	Fp *paillier.Ciphertext
 
-	// Xp = gˣ
-	Xp curve.Point
+	// Xp = Encₚ(x;rₓ)
+	Xp *paillier.Ciphertext
 
-	// Prover = Nₚ
-	// Verifier = Nᵥ
+	// Prover = N₁
+	// Verifier = N₀
 	Prover, Verifier *paillier.PublicKey
 	Aux              *pedersen.Parameters
 }
 
 type Private struct {
-	// X = x
+	// X ∈ ± 2ˡ
 	X *safenum.Int
-	// Y = y
+	// Y ∈ ± 2ˡº
 	Y *safenum.Int
 	// S = s
 	// Original name: ρ
 	S *safenum.Nat
+	// Rx = rₓ
+	// Original name: ρx
+	Rx *safenum.Nat
 	// R = r
 	// Original name: ρy
 	R *safenum.Nat
 }
+
 type Commitment struct {
-	// A = (α ⊙ C) ⊕ Encᵥ(β, ρ)
+	// A = (α ⊙ Kv) ⊕ Enc₀(β; ρ)
 	A *paillier.Ciphertext
-	// Bₓ = α⋅G
-	Bx curve.Point
-	// By = Encₚ(β, ρy)
+	// Bx = Enc₁(α;ρₓ)
+	Bx *paillier.Ciphertext
+	// By = Enc₁(β;ρy)
 	By *paillier.Ciphertext
 	// E = sᵃ tᵍ (mod N)
 	E *safenum.Nat
@@ -63,19 +66,20 @@ type Commitment struct {
 }
 
 type Proof struct {
-	group curve.Curve
 	*Commitment
-	// Z1 = Z₁ = α + e⋅x
+	// Z1 = Z₁ = α+ex
 	Z1 *safenum.Int
-	// Z2 = Z₂ = β + e⋅y
+	// Z2 = Z₂ = β+ey
 	Z2 *safenum.Int
-	// Z3 = Z₃ = γ + e⋅m
+	// Z3 = Z₃ = γ+em
 	Z3 *safenum.Int
-	// Z4 = Z₄ = δ + e⋅μ
+	// Z4 = Z₄ = δ+eμ
 	Z4 *safenum.Int
 	// W = w = ρ⋅sᵉ (mod N₀)
 	W *safenum.Nat
-	// Wy = wy = ρy⋅rᵉ (mod N₁)
+	// Wx = wₓ = ρₓ⋅rₓᵉ (mod N₁)
+	Wx *safenum.Nat
+	// Wy = wy = ρy ⋅rᵉ (mod N₁)
 	Wy *safenum.Nat
 }
 
@@ -86,22 +90,19 @@ func (p *Proof) IsValid(public Public) bool {
 	if !public.Verifier.ValidateCiphertexts(p.A) {
 		return false
 	}
-	if !public.Prover.ValidateCiphertexts(p.By) {
+	if !public.Prover.ValidateCiphertexts(p.Bx, p.By) {
 		return false
 	}
-	if !arith.IsValidNatModN(public.Prover.N(), p.Wy) {
+	if !arith.IsValidNatModN(public.Prover.N(), p.Wx, p.Wy) {
 		return false
 	}
 	if !arith.IsValidNatModN(public.Verifier.N(), p.W) {
 		return false
 	}
-	if p.Bx.IsIdentity() {
-		return false
-	}
 	return true
 }
 
-func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private) *Proof {
+func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	N0 := public.Verifier.N()
 	N1 := public.Prover.N()
 	N0Modulus := public.Verifier.Modulus()
@@ -114,6 +115,7 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	beta := sample.IntervalLPrimeEps(rand.Reader)
 
 	rho := sample.UnitModN(rand.Reader, N0)
+	rhoX := sample.UnitModN(rand.Reader, N1)
 	rhoY := sample.UnitModN(rand.Reader, N1)
 
 	gamma := sample.IntervalLEpsN(rand.Reader)
@@ -130,7 +132,7 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	T := public.Aux.Commit(private.Y, mu)
 	commitment := &Commitment{
 		A:  A,
-		Bx: group.NewScalar().SetNat(alpha.Mod(group.Order())).ActOnBase(),
+		Bx: prover.EncWithNonce(alpha, rhoX),
 		By: prover.EncWithNonce(beta, rhoY),
 		E:  E,
 		S:  S,
@@ -152,21 +154,24 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	// e•μ+δ
 	z4 := new(safenum.Int).Mul(e, mu, -1)
 	z4.Add(z4, delta, -1)
-	// ρ⋅sᵉ mod N₀
+	// ρ⋅sᵉ (mod N₀)
 	w := N0Modulus.ExpI(private.S, e)
 	w.ModMul(w, rho, N0)
-	// ρy⋅rᵉ  mod N₁
+	// ρₓ⋅rₓᵉ (mod N₁)
+	wX := N1Modulus.ExpI(private.Rx, e)
+	wX.ModMul(wX, rhoX, N1)
+	// ρy⋅rᵉ (mod N₁)
 	wY := N1Modulus.ExpI(private.R, e)
 	wY.ModMul(wY, rhoY, N1)
 
 	return &Proof{
-		group:      group,
 		Commitment: commitment,
 		Z1:         z1,
 		Z2:         z2,
 		Z3:         z3,
 		Z4:         z4,
 		W:          w,
+		Wx:         wX,
 		Wy:         wY,
 	}
 }
@@ -191,50 +196,37 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 		return false
 	}
 
+	{
+		tmp := public.Kv.Clone().Mul(verifier, p.Z1)                 // tmp = z₁ ⊙ Kv
+		lhs := verifier.EncWithNonce(p.Z2, p.W).Add(verifier, tmp)   // lhs = Enc₀(z₂;w) ⊕ (z₁ ⊙ Kv)
+		rhs := public.Dv.Clone().Mul(verifier, e).Add(verifier, p.A) // rhs = (e ⊙ Dv) ⊕ A
+		if !lhs.Equal(rhs) {
+			return false
+		}
+	}
+
+	{
+		lhs := prover.EncWithNonce(p.Z1, p.Wx)                    // lhs = Enc₁(z₁; wₓ)
+		rhs := public.Xp.Clone().Mul(prover, e).Add(prover, p.Bx) // rhs = (e ⊙ Xp) ⊕ Bₓ
+		if !lhs.Equal(rhs) {
+			return false
+		}
+	}
+
+	{
+		lhs := prover.EncWithNonce(p.Z2, p.Wy)                    // lhs = Enc₁(z₂; wy)
+		rhs := public.Fp.Clone().Mul(prover, e).Add(prover, p.By) // rhs = (e ⊙ Fp) ⊕ By
+		if !lhs.Equal(rhs) {
+			return false
+		}
+	}
+
 	if !public.Aux.Verify(p.Z1, p.Z3, e, p.E, p.S) {
 		return false
 	}
 
 	if !public.Aux.Verify(p.Z2, p.Z4, e, p.F, p.T) {
 		return false
-	}
-
-	{
-		// tmp = z₁ ⊙ Kv
-		// lhs = Enc₀(z₂;w) ⊕ z₁ ⊙ Kv
-		tmp := public.Kv.Clone().Mul(verifier, p.Z1)
-		lhs := verifier.EncWithNonce(p.Z2, p.W).Add(verifier, tmp)
-
-		// rhs = (e ⊙ Dv) ⊕ A
-		rhs := public.Dv.Clone().Mul(verifier, e).Add(verifier, p.A)
-
-		if !lhs.Equal(rhs) {
-			return false
-		}
-	}
-
-	{
-		// lhs = [z₁]G
-		lhs := p.group.NewScalar().SetNat(p.Z1.Mod(p.group.Order())).ActOnBase()
-
-		// rhsPt = Bₓ + [e]Xp
-		rhs := p.group.NewScalar().SetNat(e.Mod(p.group.Order())).Act(public.Xp)
-		rhs = rhs.Add(p.Bx)
-		if !lhs.Equal(rhs) {
-			return false
-		}
-	}
-
-	{
-		// lhs = Enc₁(z₂; wy)
-		lhs := prover.EncWithNonce(p.Z2, p.Wy)
-
-		// rhs = (e ⊙ Fp) ⊕ By
-		rhs := public.Fp.Clone().Mul(prover, e).Add(prover, p.By)
-
-		if !lhs.Equal(rhs) {
-			return false
-		}
 	}
 
 	return true
@@ -248,11 +240,4 @@ func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safen
 
 	e = sample.IntervalScalar(hash.Digest())
 	return
-}
-
-func Empty(group curve.Curve) *Proof {
-	return &Proof{
-		group:      group,
-		Commitment: &Commitment{Bx: group.NewPoint()},
-	}
 }

@@ -1,10 +1,9 @@
-package zkaffg
+package zkencelg
 
 import (
 	"crypto/rand"
 	"testing"
 
-	"github.com/cronokirby/safenum"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,42 +13,38 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/zk"
 )
 
-func TestAffG(t *testing.T) {
+func TestEnc(t *testing.T) {
 	group := curve.Secp256k1{}
-
-	verifierPaillier := zk.VerifierPaillierPublic
-	verifierPedersen := zk.Pedersen
+	verifier := zk.Pedersen
 	prover := zk.ProverPaillierPublic
 
-	c := new(safenum.Int).SetUint64(12)
-	C, _ := verifierPaillier.Enc(c)
-
 	x := sample.IntervalL(rand.Reader)
-	X := group.NewScalar().SetNat(x.Mod(group.Order())).ActOnBase()
+	xScalar := group.NewScalar().SetNat(x.Mod(group.Order()))
 
-	y := sample.IntervalLPrime(rand.Reader)
-	Y, rhoY := prover.Enc(y)
+	a := sample.Scalar(rand.Reader, group)
+	b := sample.Scalar(rand.Reader, group)
+	abx := group.NewScalar().Set(a).Mul(b).Add(xScalar)
 
-	tmp := C.Clone().Mul(verifierPaillier, x)
-	D, rho := verifierPaillier.Enc(y)
-	D.Add(verifierPaillier, tmp)
+	A := a.ActOnBase()
+	B := b.ActOnBase()
+	X := abx.ActOnBase()
 
+	C, rho := prover.Enc(x)
 	public := Public{
-		Kv:       C,
-		Dv:       D,
-		Fp:       Y,
-		Xp:       X,
-		Prover:   prover,
-		Verifier: verifierPaillier,
-		Aux:      verifierPedersen,
+		C:      C,
+		A:      A,
+		B:      B,
+		X:      X,
+		Prover: prover,
+		Aux:    verifier,
 	}
-	private := Private{
-		X: x,
-		Y: y,
-		S: rho,
-		R: rhoY,
-	}
-	proof := NewProof(group, hash.New(), public, private)
+
+	proof := NewProof(group, hash.New(), public, Private{
+		X:   x,
+		Rho: rho,
+		A:   a,
+		B:   b,
+	})
 	assert.True(t, proof.Verify(hash.New(), public))
 
 	out, err := cbor.Marshal(proof)
@@ -62,5 +57,4 @@ func TestAffG(t *testing.T) {
 	require.NoError(t, cbor.Unmarshal(out2, proof3), "failed to unmarshal 2nd proof")
 
 	assert.True(t, proof3.Verify(hash.New(), public))
-
 }
