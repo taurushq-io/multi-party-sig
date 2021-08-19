@@ -64,7 +64,7 @@ func NewPreSignatures(group curve.Curve, N int) (x curve.Scalar, X curve.Point, 
 	return
 }
 
-func TestSignature_Verify(t *testing.T) {
+func TestPreSignature_Verify(t *testing.T) {
 	N := 5
 	group := curve.Secp256k1{}
 	message := []byte("HELLO WORLD")
@@ -81,7 +81,7 @@ func TestSignature_Verify(t *testing.T) {
 	}
 }
 
-func TestSignature_Fail(t *testing.T) {
+func TestPreSignature_Fail(t *testing.T) {
 	N := 5
 	group := curve.Secp256k1{}
 	message := []byte("HELLO WORLD")
