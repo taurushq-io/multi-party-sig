@@ -222,22 +222,25 @@ func (h *Handler) finishRound() error {
 		return h.abort(err, "")
 	}
 	close(out)
-	for msg := range out {
-		data, err := cbor.Marshal(msg.Content)
-		if err != nil {
-			//TODO
-			panic("g")
+	go func(out chan *round.Message, h *Handler, roundNumber round.Number) {
+		// TODO fix this hack
+		for msg := range out {
+			data, err := cbor.Marshal(msg.Content)
+			if err != nil {
+				//TODO
+				panic("g")
+			}
+			h.outChan <- &Message{
+				SSID:        h.info.SSID(),
+				From:        h.info.SelfID(),
+				To:          msg.To,
+				Protocol:    h.info.ProtocolID(),
+				RoundNumber: roundNumber,
+				Data:        data,
+				Signature:   nil, //TODO
+			}
 		}
-		h.outChan <- &Message{
-			SSID:        h.info.SSID(),
-			From:        h.info.SelfID(),
-			To:          msg.To,
-			Protocol:    h.info.ProtocolID(),
-			RoundNumber: nextRound.Number(),
-			Data:        data,
-			Signature:   nil, //TODO
-		}
-	}
+	}(out, h, nextRound.Number())
 
 	// a nil round indicates we have reached the final round
 	if finalRound, ok := nextRound.(*round.Output); ok {
