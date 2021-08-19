@@ -10,8 +10,6 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/taproot"
 )
 
@@ -37,7 +35,7 @@ type round2 struct {
 	E map[party.ID]curve.Point
 }
 
-type Sign2 struct {
+type message2 struct {
 	// D_i is the first commitment produced by the sender of this message.
 	D_i curve.Point
 	// E_i is the second commitment produced by the sender of this message.
@@ -45,10 +43,10 @@ type Sign2 struct {
 }
 
 // VerifyMessage implements round.Round.
-func (r *round2) VerifyMessage(_ party.ID, _ party.ID, content message.Content) error {
-	body, ok := content.(*Sign2)
+func (r *round2) VerifyMessage(msg round.Message) error {
+	body, ok := msg.Content.(*message2)
 	if !ok || body == nil {
-		return message.ErrInvalidContent
+		return round.ErrInvalidContent
 	}
 
 	// This section roughly follows Figure 3.
@@ -72,15 +70,15 @@ func (r *round2) VerifyMessage(_ party.ID, _ party.ID, content message.Content) 
 }
 
 // StoreMessage implements round.Round.
-func (r *round2) StoreMessage(from party.ID, content message.Content) error {
-	msg := content.(*Sign2)
-	r.D[from] = msg.D_i
-	r.E[from] = msg.E_i
+func (r *round2) StoreMessage(msg round.Message) error {
+	from, body := msg.From, msg.Content.(*message2)
+	r.D[from] = body.D_i
+	r.E[from] = body.E_i
 	return nil
 }
 
 // Finalize implements round.Round.
-func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
+func (r *round2) Finalize(out chan<- *round.Message) (round.Round, error) {
 	// This essentially follows parts of Figure 3.
 
 	// 4. "Each Pᵢ then computes the set of binding values ρₗ = H₁(l, m, B).
@@ -158,8 +156,8 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// TODO: Securely delete the nonces.
 
 	// Broadcast our response
-	msg := r.MarshalMessage(&Sign3{Z_i: z_i})
-	if err := r.SendMessage(msg, out); err != nil {
+	err := r.SendMessage(out, &message3{Z_i: z_i}, "")
+	if err != nil {
 		return r, err
 	}
 
@@ -174,12 +172,13 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *round2) MessageContent() message.Content {
-	return &Sign2{
-		D_i: r.Group().NewPoint(),
-		E_i: r.Group().NewPoint(),
-	}
-}
+func (round2) MessageContent() round.Content { return &message2{} }
 
-// RoundNumber implements message.Content.
-func (Sign2) RoundNumber() types.RoundNumber { return 2 }
+// Number implements round.Round.
+func (round2) Number() round.Number { return 2 }
+
+// Init implements round.Content.
+func (m *message2) Init(group curve.Curve) {
+	m.D_i = group.NewPoint()
+	m.E_i = group.NewPoint()
+}

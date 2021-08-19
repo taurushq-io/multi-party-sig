@@ -8,15 +8,14 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
 	"github.com/taurusgroup/multi-party-sig/protocols/frost/keygen"
 )
 
 const (
 	// Frost Sign with Threshold.
-	protocolID types.ProtocolID = "frost/sign-threshold"
+	protocolID = "frost/sign-threshold"
 	// This protocol has 3 concrete rounds.
-	protocolRounds types.RoundNumber = 3
+	protocolRounds round.Number = 3
 )
 
 func startSignCommon(taproot bool, err error, result *keygen.Result, signers []party.ID, messageHash []byte) protocol.StartFunc {

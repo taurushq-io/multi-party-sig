@@ -6,8 +6,6 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/taproot"
 )
 
@@ -36,21 +34,22 @@ type round3 struct {
 	Lambda map[party.ID]curve.Scalar
 }
 
-type Sign3 struct {
+type message3 struct {
 	// Z_i is the response scalar computed by the sender of this message.
 	Z_i curve.Scalar
 }
 
 // VerifyMessage implements round.Round.
-func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Content) error {
-	body, ok := content.(*Sign3)
+func (r *round3) VerifyMessage(msg round.Message) error {
+	from := msg.From
+	body, ok := msg.Content.(*message3)
 	if !ok || body == nil {
-		return message.ErrInvalidContent
+		return round.ErrInvalidContent
 	}
 
 	// check nil
 	if body.Z_i == nil {
-		return message.ErrNilFields
+		return round.ErrNilFields
 	}
 
 	// These steps come from Figure 3 of the Frost paper.
@@ -77,16 +76,16 @@ func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Conten
 }
 
 // StoreMessage implements round.Round.
-func (r *round3) StoreMessage(from party.ID, content message.Content) error {
-	msg := content.(*Sign3)
+func (r *round3) StoreMessage(msg round.Message) error {
+	from, body := msg.From, msg.Content.(*message3)
 
-	r.z[from] = msg.Z_i
+	r.z[from] = body.Z_i
 
 	return nil
 }
 
 // Finalize implements round.Round.
-func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
+func (r *round3) Finalize(chan<- *round.Message) (round.Round, error) {
 	// These steps come from Figure 3 of the Frost paper.
 
 	// 7.c "Compute the group's response z = ∑ᵢ zᵢ"
@@ -127,9 +126,12 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *round3) MessageContent() message.Content {
-	return &Sign3{Z_i: r.Group().NewScalar()}
-}
+func (round3) MessageContent() round.Content { return &message3{} }
 
-// RoundNumber implements message.Content.
-func (Sign3) RoundNumber() types.RoundNumber { return 3 }
+// Number implements round.Round.
+func (round3) Number() round.Number { return 3 }
+
+// Init implements round.Content.
+func (m *message3) Init(group curve.Curve) {
+	m.Z_i = group.NewScalar()
+}

@@ -7,7 +7,6 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
 	"github.com/zeebo/blake3"
 )
 
@@ -46,13 +45,13 @@ type round1 struct {
 }
 
 // VerifyMessage implements round.Round.
-func (r *round1) VerifyMessage(party.ID, party.ID, message.Content) error { return nil }
-func (r *round1) StoreMessage(party.ID, message.Content) error            { return nil }
+func (r *round1) VerifyMessage(round.Message) error { return nil }
+func (r *round1) StoreMessage(round.Message) error  { return nil }
 
 const deriveHashKeyContext = "github.com/taurusgroup/multi-party-sig/frost 2021-07-30T09:48+00:00 Derive hash Key"
 
 // Finalize implements round.Round.
-func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
+func (r *round1) Finalize(out chan<- *round.Message) (round.Round, error) {
 	// We can think of this as roughly implementing Figure 2. The idea is
 	// to generate two nonces (dᵢ, eᵢ) in Z/(q)ˣ, then two commitments
 	// Dᵢ = dᵢ * G, Eᵢ = eᵢ * G, and then broadcast them.
@@ -73,7 +72,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	hashKey := make([]byte, 32)
 	blake3.DeriveKey(deriveHashKeyContext, s_iBytes[:], hashKey)
 	nonceHasher, _ := blake3.NewKeyed(hashKey)
-	_, _ = nonceHasher.Write(r.SSID())
+	_, _ = nonceHasher.Write(r.Hash().Sum())
 	_, _ = nonceHasher.Write(r.M)
 	a := make([]byte, 32)
 	_, _ = rand.Read(a)
@@ -87,8 +86,8 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	E_i := e_i.ActOnBase()
 
 	// Broadcast the commitments
-	msg := r.MarshalMessage(&Sign2{D_i: D_i, E_i: E_i})
-	if err := r.SendMessage(msg, out); err != nil {
+	err = r.SendMessage(out, &message2{D_i: D_i, E_i: E_i}, "")
+	if err != nil {
 		return r, err
 	}
 	return &round2{
@@ -101,6 +100,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 }
 
 // MessageContent implements round.Round.
-//
-// Since this is the first round of the protocol, we expect to see a dummy First type.
-func (round1) MessageContent() message.Content { return &message.First{} }
+func (round1) MessageContent() round.Content { return nil }
+
+// Number implements round.Round.
+func (round1) Number() round.Number { return 1 }
