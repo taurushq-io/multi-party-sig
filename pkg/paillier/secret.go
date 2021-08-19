@@ -125,6 +125,24 @@ func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
 	return new(safenum.Int).SetModSymmetric(result, n), nil
 }
 
+// DecWithRandomness returns the underlying plaintext, as well as the randomness used.
+func (sk *SecretKey) DecWithRandomness(ct *Ciphertext) (*safenum.Int, *safenum.Nat, error) {
+	m, err := sk.Dec(ct)
+	if err != nil {
+		return nil, nil, err
+	}
+	mNeg := new(safenum.Int).SetInt(m).Neg(1)
+
+	// x = C(N+1)⁻ᵐ (mod N)
+	x := sk.n.ExpI(sk.nPlusOne, mNeg)
+	x.ModMul(x, ct.c, sk.n.Modulus)
+
+	// r = xⁿ⁻¹ (mod N)
+	nInverse := new(safenum.Nat).ModInverse(sk.nNat, safenum.ModulusFromNat(sk.phi))
+	r := sk.n.Exp(x, nInverse)
+	return m, r, nil
+}
+
 func (sk SecretKey) GeneratePedersen() (*pedersen.Parameters, *safenum.Nat) {
 	s, t, lambda := sample.Pedersen(rand.Reader, sk.phi, sk.n.Modulus)
 	ped := pedersen.New(sk.n, s, t)

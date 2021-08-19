@@ -92,7 +92,7 @@ func (pk PublicKey) EncWithNonce(m *safenum.Int, nonce *safenum.Nat) *Ciphertext
 
 	// (N+1)ᵐ mod N²
 	c := pk.nSquared.ExpI(pk.nPlusOne, m)
-	// rho ^ N mod N²
+	// ρᴺ mod N²
 	rhoN := pk.nSquared.Exp(nonce, pk.nNat)
 	// (N+1)ᵐ rho ^ N
 	c.ModMul(c, rhoN, pk.nSquared.Modulus)
@@ -110,6 +110,9 @@ func (pk PublicKey) Equal(other *PublicKey) bool {
 // ct ∈ [1, …, N²-1] AND GCD(ct,N²) = 1.
 func (pk PublicKey) ValidateCiphertexts(cts ...*Ciphertext) bool {
 	for _, ct := range cts {
+		if ct == nil {
+			return false
+		}
 		_, _, lt := ct.c.CmpMod(pk.nSquared.Modulus)
 		if lt != 1 {
 			return false
@@ -136,8 +139,14 @@ func (PublicKey) Domain() string {
 	return "Paillier PublicKey"
 }
 
-// Modulus returns an arith.Modulus which may allow for accelerated exponentiation when this
+// Modulus returns an arith.Modulus for N which may allow for accelerated exponentiation when this
 // public key was generated from a secret key.
 func (pk *PublicKey) Modulus() *arith.Modulus {
 	return pk.n
+}
+
+// ModulusSquared returns an arith.Modulus for N² which may allow for accelerated exponentiation when this
+// public key was generated from a secret key.
+func (pk *PublicKey) ModulusSquared() *arith.Modulus {
+	return pk.nSquared
 }
