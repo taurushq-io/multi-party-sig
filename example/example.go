@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/taurusgroup/multi-party-sig/pkg/ecdsa"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
@@ -30,7 +31,7 @@ func XOR(id party.ID, ids party.IDSlice, n Network) error {
 	return nil
 }
 
-func Keygen(id party.ID, ids party.IDSlice, threshold int, n Network) (*keygen.Result, error) {
+func Keygen(id party.ID, ids party.IDSlice, threshold int, n Network) (*keygen.Config, error) {
 	// KEYGEN
 	h, err := protocol.NewHandler(keygen.StartKeygen(nil, curve.Secp256k1{}, ids, threshold, id))
 	if err != nil {
@@ -45,11 +46,10 @@ func Keygen(id party.ID, ids party.IDSlice, threshold int, n Network) (*keygen.R
 		return nil, err
 	}
 
-	return r.(*keygen.Result), nil
+	return r.(*keygen.Config), nil
 }
 
-func Refresh(keygenResult *keygen.Result, n Network) (*keygen.Result, error) {
-	c := keygenResult.Config
+func Refresh(c *keygen.Config, n Network) (*keygen.Config, error) {
 	hRefresh, err := protocol.NewHandler(keygen.StartRefresh(nil, c))
 	if err != nil {
 		return nil, err
@@ -64,11 +64,10 @@ func Refresh(keygenResult *keygen.Result, n Network) (*keygen.Result, error) {
 		return nil, err
 	}
 
-	return r.(*keygen.Result), nil
+	return r.(*keygen.Config), nil
 }
 
-func Sign(refreshResult *keygen.Result, m []byte, signers party.IDSlice, n Network) error {
-	c := refreshResult.Config
+func Sign(c *keygen.Config, m []byte, signers party.IDSlice, n Network) error {
 	h, err := protocol.NewHandler(sign.StartSign(nil, c, signers, m))
 	if err != nil {
 		return err
@@ -82,7 +81,7 @@ func Sign(refreshResult *keygen.Result, m []byte, signers party.IDSlice, n Netwo
 	if err != nil {
 		return err
 	}
-	signature := signResult.(*sign.Result).Signature
+	signature := signResult.(*ecdsa.Signature)
 	fmt.Println(signature)
 	return nil
 }
@@ -97,13 +96,13 @@ func All(id party.ID, ids party.IDSlice, threshold int, message []byte, n Networ
 	}
 
 	// KEYGEN
-	keygenResult, err := Keygen(id, ids, threshold, n)
+	keygenConfig, err := Keygen(id, ids, threshold, n)
 	if err != nil {
 		return err
 	}
 
 	// REFRESH
-	refreshResult, err := Refresh(keygenResult, n)
+	refreshConfig, err := Refresh(keygenConfig, n)
 	if err != nil {
 		return err
 	}
@@ -113,7 +112,7 @@ func All(id party.ID, ids party.IDSlice, threshold int, message []byte, n Networ
 	if !signers.Contains(id) {
 		return nil
 	}
-	err = Sign(refreshResult, message, signers, n)
+	err = Sign(refreshConfig, message, signers, n)
 	if err != nil {
 		return err
 	}

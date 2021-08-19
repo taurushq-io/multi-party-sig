@@ -137,7 +137,7 @@ result, err := runProtocolHandler(keygenHandler)
 if err != nil {
     // investigate error
 }
-config := r.(*keygen.Result).Config
+config := r.(*keygen.Config)
 ```
 
 The [`config`](/protocols/cmp/keygen/config.proto) object contains all necessary data to create a signature.
@@ -156,7 +156,7 @@ result, err := runProtocolHandler(keygenHandler)
 if err != nil {
     // investigate error
 }
-refreshedConfig := r.(*keygen.Result).Config
+refreshedConfig := r.(*keygen.Config)
 ```
 
 ### Sign
@@ -176,10 +176,8 @@ result, err := runProtocolHandler(signHandler)
 if err != nil {
     // investigate error
 }
-signature := r.(*sign.Result).Signature
-// verify using standard ecdsa.
-r, s := signature.ToRS()
-ecdsa.Verify(refreshedConfig.PublicKey(), message, r, s)
+signature := r.(*ecdsa.Signature)
+signature.Verify(refreshedConfig.PublicPoint(), message)
 ```
 
 ## Intellectual property
