@@ -5,57 +5,18 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
 )
 
 var roundTypes = []reflect.Type{
 	reflect.TypeOf(&round1{}),
 	reflect.TypeOf(&round2{}),
 	reflect.TypeOf(&round3{}),
-}
-
-func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundType reflect.Type) {
-	N := len(rounds)
-	t.Logf("starting round %v", expectedRoundType)
-	// get the second set of  messages
-	out := make(chan *message.Message, N*N)
-	for idJ, r := range rounds {
-		require.EqualValues(t, expectedRoundType, reflect.TypeOf(r))
-		newRound, err := r.Finalize(out)
-		require.NoError(t, err, "failed to generate messages")
-		if newRound != nil {
-			rounds[idJ] = newRound
-		}
-	}
-	close(out)
-
-	for msg := range out {
-		msgBytes, err := cbor.Marshal(msg)
-		require.NoError(t, err, "failed to marshal message")
-		for idJ, r := range rounds {
-			var m message.Message
-			require.NoError(t, cbor.Unmarshal(msgBytes, &m), "failed to unmarshal message")
-			if m.From == idJ {
-				continue
-			}
-			if msg.IsFor(idJ) {
-				content := r.MessageContent()
-				err = msg.UnmarshalContent(content)
-				require.NoError(t, err)
-				require.NoError(t, r.VerifyMessage(msg.From, idJ, content))
-				require.NoError(t, r.StoreMessage(msg.From, content))
-			}
-		}
-	}
-
-	t.Logf("round %v done", expectedRoundType)
 }
 
 func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.IDSlice) {
@@ -115,13 +76,15 @@ func TestKeygen(t *testing.T) {
 		r, _, err := StartKeygen(group, partyIDs, N-1, partyID)()
 		require.NoError(t, err, "round creation should not result in an error")
 		rounds[partyID] = r
-
 	}
 
 	for _, roundType := range roundTypes {
-		processRound(t, rounds, roundType)
+		t.Logf("starting round %v", roundType)
+		if err := round.ProcessRounds(group, rounds); err != nil {
+			require.NoError(t, err, "failed to process round")
+		}
+		t.Logf("round %v done", roundType)
 	}
-
 	checkOutput(t, rounds, partyIDs)
 }
 
@@ -177,6 +140,7 @@ func checkOutputTaproot(t *testing.T, rounds map[party.ID]round.Round, parties p
 func TestKeygenTaproot(t *testing.T) {
 	N := 5
 	partyIDs := party.RandomIDs(N)
+	group := curve.Secp256k1{}
 
 	rounds := make(map[party.ID]round.Round, N)
 	for _, partyID := range partyIDs {
@@ -187,7 +151,11 @@ func TestKeygenTaproot(t *testing.T) {
 	}
 
 	for _, roundType := range roundTypes {
-		processRound(t, rounds, roundType)
+		t.Logf("starting round %v", roundType)
+		if err := round.ProcessRounds(group, rounds); err != nil {
+			require.NoError(t, err, "failed to process round")
+		}
+		t.Logf("round %v done", roundType)
 	}
 
 	checkOutputTaproot(t, rounds, partyIDs)

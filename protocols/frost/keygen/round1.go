@@ -10,7 +10,6 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
 	zksch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
 )
 
@@ -37,16 +36,16 @@ type round1 struct {
 //
 // Since this is the start of the protocol, we aren't expecting to have received
 // any messages yet, so we do nothing.
-func (r *round1) VerifyMessage(party.ID, party.ID, message.Content) error { return nil }
+func (r *round1) VerifyMessage(round.Message) error { return nil }
 
 // StoreMessage implements round.Round.
-func (r *round1) StoreMessage(party.ID, message.Content) error { return nil }
+func (r *round1) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round.
 //
 // The overall goal of this round is to generate a secret value, create a polynomial
 // sharing of that value, and then send commitments to these values.
-func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
+func (r *round1) Finalize(out chan<- *round.Message) (round.Round, error) {
 	// These steps come from Figure 1, Round 1 of the Frost paper.
 
 	// 1. "Every participant P_i samples t + 1 random values (aᵢ₀, ..., aᵢₜ)) <-$ Z/(q)
@@ -97,8 +96,8 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 
 	// 4. "Every Pᵢ broadcasts Φᵢ, σᵢ to all other participants
-	msg := r.MarshalMessage(&Keygen2{Phi_i, Sigma_i, commitment})
-	if err := r.SendMessage(msg, out); err != nil {
+	err = r.SendMessage(out, &message2{Phi_i, Sigma_i, commitment}, "")
+	if err != nil {
 		return r, err
 	}
 
@@ -113,6 +112,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 }
 
 // MessageContent implements round.Round.
-//
-// Since this is the first round of the protocol, we expect to see a dummy First type.
-func (round1) MessageContent() message.Content { return &message.First{} }
+func (round1) MessageContent() round.Content { return nil }
+
+// Number implements round.Round.
+func (round1) Number() round.Number { return 1 }

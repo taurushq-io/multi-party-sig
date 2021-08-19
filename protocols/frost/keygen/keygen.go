@@ -10,14 +10,13 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
 )
 
 const (
 	// Frost KeyGen with Threshold.
-	protocolID types.ProtocolID = "frost/keygen-threshold"
+	protocolID = "frost/keygen-threshold"
 	// This protocol has 3 concrete rounds.
-	protocolRounds types.RoundNumber = 3
+	protocolRounds round.Number = 3
 )
 
 // These assert that our rounds implement the round.Round interface.
