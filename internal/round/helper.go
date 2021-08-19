@@ -4,21 +4,18 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/fxamacker/cbor/v2"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
 )
 
 // Helper implements protocol.Info and can therefore be embedded in the first round of a protocol
 // in order to satisfy the Round interface.
 type Helper struct {
 	// protocolID is string identifier for this protocol
-	protocolID types.ProtocolID
+	protocolID string
 	// finalRoundNumber is the number of rounds before the output round.
-	finalRoundNumber types.RoundNumber
+	finalRoundNumber Number
 	// selfID is this party's ID.
 	selfID party.ID
 	// partyIDs is a sorted slice of participating parties in this protocol.
@@ -36,7 +33,7 @@ type Helper struct {
 	mtx sync.Mutex
 }
 
-func NewHelper(protocolID types.ProtocolID, group curve.Curve, finalRoundNumber types.RoundNumber,
+func NewHelper(protocolID string, group curve.Curve, finalRoundNumber Number,
 	selfID party.ID, partyIDs party.IDSlice,
 	auxInfo ...hash.WriterToWithDomain) (*Helper, error) {
 
@@ -68,9 +65,13 @@ func NewHelper(protocolID types.ProtocolID, group curve.Curve, finalRoundNumber 
 // Calling hash.Sum() on the resulting hash function returns the hash of the SSID.
 // It computes
 // - Hash(𝔾, n, P₁, …, Pₙ, auxInfo}.
-func hashFromSID(protocolID types.ProtocolID, group curve.Curve, partyIDs party.IDSlice, auxInfo ...hash.WriterToWithDomain) *hash.Hash {
+func hashFromSID(protocolID string, group curve.Curve, partyIDs party.IDSlice, auxInfo ...hash.WriterToWithDomain) *hash.Hash {
 	// sid = protocolID 𝔾, n, P₁, …, Pₙ
 	sid := []hash.WriterToWithDomain{
+		&hash.BytesWithDomain{
+			TheDomain: "Protocol ID",
+			Bytes:     []byte(protocolID),
+		},
 		&hash.BytesWithDomain{
 			TheDomain: "Group Name",
 			Bytes:     []byte(group.Name()),
@@ -107,28 +108,18 @@ func (h *Helper) UpdateHashState(value hash.WriterToWithDomain) {
 	_ = h.hash.WriteAny(value)
 }
 
-// MarshalMessage returns a message.Message for the given content with the appropriate headers.
+// SendMessage returns a message.Message for the given content with the appropriate headers.
 // If to is empty, then the message will be interpreted as "Broadcast".
 // For "Send to all" behavior, the full list of parties can be given.
 // It panics if the content is not able to be marshalled.
-func (h *Helper) MarshalMessage(content message.Content, to ...party.ID) *message.Message {
-	data, err := cbor.Marshal(content)
-	if err != nil {
-		panic(err)
-	}
-	return &message.Message{
-		SSID:        h.ssid,
-		From:        h.selfID,
-		To:          to,
-		Protocol:    h.protocolID,
-		RoundNumber: content.RoundNumber(), // message is intended for the next round
-		Content:     data,
-	}
-}
-
 // SendMessage is a convenience function for all rounds that attempts to send the message to the channel.
 // If the channel is full or closed, an error is returned.
-func (h *Helper) SendMessage(msg *message.Message, out chan<- *message.Message) error {
+func (h *Helper) SendMessage(out chan<- *Message, content Content, to party.ID) error {
+	msg := &Message{
+		From:    h.selfID,
+		To:      to,
+		Content: content,
+	}
 	select {
 	case out <- msg:
 		return nil
@@ -137,20 +128,20 @@ func (h *Helper) SendMessage(msg *message.Message, out chan<- *message.Message) 
 	}
 }
 
-// ProtocolID is string identifier for this protocol.
-func (h *Helper) ProtocolID() types.ProtocolID { return h.protocolID }
+// ProtocolID is a string identifier for this protocol.
+func (h *Helper) ProtocolID() string { return h.protocolID }
 
 // FinalRoundNumber is the number of rounds before the output round.
-func (h *Helper) FinalRoundNumber() types.RoundNumber { return h.finalRoundNumber }
+func (h *Helper) FinalRoundNumber() Number { return h.finalRoundNumber }
+
+// SSID the unique identifier for this protocol execution.
+func (h *Helper) SSID() []byte { return h.ssid }
 
 // SelfID is this party's ID.
 func (h *Helper) SelfID() party.ID { return h.selfID }
 
 // PartyIDs is a sorted slice of participating parties in this protocol.
 func (h *Helper) PartyIDs() party.IDSlice { return h.partyIDs }
-
-// SSID the unique identifier for this protocol execution.
-func (h *Helper) SSID() []byte { return h.ssid }
 
 // N returns the number of participants.
 func (h *Helper) N() int { return len(h.partyIDs) }
