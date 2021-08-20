@@ -69,8 +69,9 @@ func NewHelper(protocolID types.ProtocolID, group curve.Curve, finalRoundNumber 
 // It computes
 // - Hash(𝔾, n, P₁, …, Pₙ, auxInfo}.
 func hashFromSID(protocolID types.ProtocolID, group curve.Curve, partyIDs party.IDSlice, auxInfo ...hash.WriterToWithDomain) *hash.Hash {
-	// sid = protocolID 𝔾, n, P₁, …, Pₙ
+	// sid = H(protocolID, 𝔾, n, P₁, …, Pₙ)
 	sid := []hash.WriterToWithDomain{
+		protocolID,
 		&hash.BytesWithDomain{
 			TheDomain: "Group Name",
 			Bytes:     []byte(group.Name()),
