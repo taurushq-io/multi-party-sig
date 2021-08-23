@@ -2,16 +2,18 @@ package broadcast
 
 import (
 	"bytes"
+	"errors"
 
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
 
-type round2 struct {
+type Round2 struct {
 	round.Round
 	EchoHash []byte
 }
 
-type message2 struct {
+type Message2 struct {
 	round.Content
 
 	// EchoHash is a hash of all previous hashes of broadcast data.
@@ -19,13 +21,13 @@ type message2 struct {
 	EchoHash []byte
 }
 
-func (b *round2) VerifyMessage(msg round.Message) error {
-	body, ok := msg.Content.(*message2)
+func (b *Round2) VerifyMessage(msg round.Message) error {
+	body, ok := msg.Content.(*Message2)
 	if !ok || body == nil {
 		return round.ErrInvalidContent
 	}
 	if !bytes.Equal(body.EchoHash, b.EchoHash) {
-		panic("fs")
+		return errors.New("echo broadcast failed")
 	}
 	return b.Round.VerifyMessage(round.Message{
 		From:    msg.From,
@@ -34,8 +36,11 @@ func (b *round2) VerifyMessage(msg round.Message) error {
 	})
 }
 
-func (b *round2) StoreMessage(msg round.Message) error {
-	body := msg.Content.(*message2)
+func (b *Round2) StoreMessage(msg round.Message) error {
+	body, ok := msg.Content.(*Message2)
+	if !ok {
+		return round.ErrInvalidContent
+	}
 	return b.Round.StoreMessage(round.Message{
 		From:    msg.From,
 		To:      msg.To,
@@ -43,8 +48,12 @@ func (b *round2) StoreMessage(msg round.Message) error {
 	})
 }
 
-func (b *round2) MessageContent() round.Content {
-	return &message2{
+func (b *Round2) MessageContent() round.Content {
+	return &Message2{
 		Content: b.Round.MessageContent(),
 	}
+}
+
+func (b *Message2) Init(group curve.Curve) {
+	b.Content.Init(group)
 }

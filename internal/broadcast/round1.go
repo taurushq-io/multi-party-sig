@@ -10,13 +10,13 @@ import (
 
 var ErrDifferentContent = errors.New("broadcast: received message with different content")
 
-type round1 struct {
+type Round1 struct {
 	*round.Helper
 	round.Round
 	received map[party.ID][]byte
 }
 
-func (b *round1) VerifyMessage(msg round.Message) error {
+func (b *Round1) VerifyMessage(msg round.Message) error {
 	body, ok := msg.Content.(Broadcaster)
 	if !ok || body == nil {
 		return round.ErrInvalidContent
@@ -31,13 +31,13 @@ func (b *round1) VerifyMessage(msg round.Message) error {
 	return b.Round.VerifyMessage(msg)
 }
 
-func (b *round1) StoreMessage(msg round.Message) error {
+func (b *Round1) StoreMessage(msg round.Message) error {
 	from, body := msg.From, msg.Content.(Broadcaster)
 	b.received[from] = body.BroadcastData()
 	return b.Round.StoreMessage(msg)
 }
 
-func (b *round1) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (b *Round1) Finalize(out chan<- *round.Message) (round.Round, error) {
 	// Create a hash of all messages received
 	h := b.Hash()
 	for _, j := range b.PartyIDs() {
@@ -53,12 +53,12 @@ func (b *round1) Finalize(out chan<- *round.Message) (round.Round, error) {
 	}
 
 	for msg := range c {
-		msg.Content = &message2{
+		msg.Content = &Message2{
 			Content:  msg.Content,
 			EchoHash: EchoHash,
 		}
 		out <- msg
 	}
 
-	return &round2{Round: nextRound, EchoHash: EchoHash}, nil
+	return &Round2{Round: nextRound, EchoHash: EchoHash}, nil
 }

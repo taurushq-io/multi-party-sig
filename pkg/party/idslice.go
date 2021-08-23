@@ -3,7 +3,6 @@ package party
 import (
 	"encoding/binary"
 	"io"
-	"math/rand"
 	"sort"
 	"strings"
 )
@@ -113,20 +112,4 @@ func (partyIDs IDSlice) String() string {
 		ss[i] = string(id)
 	}
 	return strings.Join(ss, ", ")
-}
-
-// RandomIDs returns a slice of random IDs with 20 alphanumeric characters.
-func RandomIDs(n int) IDSlice {
-	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-	partyIDs := make(IDSlice, n)
-	for i := range partyIDs {
-		b := make([]byte, 20)
-		for j := range b {
-			b[j] = letters[rand.Intn(len(letters))]
-		}
-		partyIDs[i] = ID(b)
-	}
-	partyIDs.sort()
-	return partyIDs
 }

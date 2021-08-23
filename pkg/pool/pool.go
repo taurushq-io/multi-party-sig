@@ -35,6 +35,8 @@ type command struct {
 	search bool
 	// This counter indicates the number of results that still need to be produced.
 	ctr *int64
+	// This channel is used to signal that the counter was modified
+	ctrChanged chan<- struct{}
 	// This is the index we evaluate our function at, when not searching
 	i int
 	f func(int) interface{}
@@ -61,14 +63,14 @@ func workerSearch(results []interface{}, ctrChanged chan<- struct{}, f func(int)
 }
 
 // worker starts up a new worker, listening to commands, and producing results
-func worker(commands <-chan command, ctrChanged chan<- struct{}) {
+func worker(commands <-chan command) {
 	for c := range commands {
 		if c.search {
-			workerSearch(c.results, ctrChanged, c.f, c.ctr)
+			workerSearch(c.results, c.ctrChanged, c.f, c.ctr)
 		} else {
 			c.results[c.i] = c.f(c.i)
 			atomic.AddInt64(c.ctr, -1)
-			ctrChanged <- struct{}{}
+			c.ctrChanged <- struct{}{}
 		}
 	}
 }
@@ -85,8 +87,6 @@ type Pool struct {
 	//
 	// This effectively makes a work stealing pool.
 	commands chan command
-	// The channel used to signal a finished task
-	ctrChanged chan struct{}
 	// This holds the number of workers we've created
 	workerCount int
 }
@@ -103,10 +103,9 @@ func NewPool(count int) *Pool {
 
 	p.commands = make(chan command)
 	p.workerCount = count
-	p.ctrChanged = make(chan struct{})
 
 	for i := 0; i < count; i++ {
-		go worker(p.commands, p.ctrChanged)
+		go worker(p.commands)
 	}
 
 	return &p
@@ -131,22 +130,24 @@ func (p *Pool) Search(count int, f func() interface{}) []interface{} {
 	results := make([]interface{}, count)
 
 	ctr := int64(count)
+	ctrChanged := make(chan struct{})
 	cmd := command{
-		search:  true,
-		ctr:     &ctr,
-		f:       func(i int) interface{} { return f() },
-		results: results,
+		search:     true,
+		ctr:        &ctr,
+		ctrChanged: ctrChanged,
+		f:          func(i int) interface{} { return f() },
+		results:    results,
 	}
 	cmdI := 0
 	for cmdI < p.workerCount {
 		select {
 		case p.commands <- cmd:
 			cmdI++
-		case <-p.ctrChanged:
+		case <-ctrChanged:
 		}
 	}
 	for atomic.LoadInt64(&ctr) > 0 {
-		<-p.ctrChanged
+		<-ctrChanged
 	}
 
 	return results
@@ -163,14 +164,16 @@ func (p *Pool) Parallelize(count int, f func(int) interface{}) []interface{} {
 	results := make([]interface{}, count)
 
 	ctr := int64(count)
+	ctrChanged := make(chan struct{})
 	cmdI := 0
 	for cmdI < count {
 		cmd := command{
-			search:  false,
-			i:       cmdI,
-			ctr:     &ctr,
-			f:       f,
-			results: results,
+			search:     false,
+			i:          cmdI,
+			ctr:        &ctr,
+			ctrChanged: ctrChanged,
+			f:          f,
+			results:    results,
 		}
 		// We won't be able to send all the commands without blocking, so we make
 		// sure to interleave picking off the results of workers to free them up
@@ -178,11 +181,11 @@ func (p *Pool) Parallelize(count int, f func(int) interface{}) []interface{} {
 		select {
 		case p.commands <- cmd:
 			cmdI++
-		case <-p.ctrChanged:
+		case <-ctrChanged:
 		}
 	}
 	for atomic.LoadInt64(&ctr) > 0 {
-		<-p.ctrChanged
+		<-ctrChanged
 	}
 
 	return results

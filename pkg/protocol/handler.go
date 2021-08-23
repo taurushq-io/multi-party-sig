@@ -53,7 +53,7 @@ func NewHandler(create StartFunc) (*Handler, error) {
 		received: received,
 	}
 	h.Log = zerolog.New(zerolog.NewConsoleWriter()).Level(zerolog.InfoLevel).With().
-		Str("protocol", string(info.ProtocolID())).
+		Str("protocol", info.ProtocolID()).
 		Str("party", string(info.SelfID())).
 		Int("round", int(h.roundNumber())).
 		Stack().
@@ -222,25 +222,21 @@ func (h *Handler) finishRound() error {
 		return h.abort(err, "")
 	}
 	close(out)
-	go func(out chan *round.Message, h *Handler, roundNumber round.Number) {
-		// TODO fix this hack
-		for msg := range out {
-			data, err := cbor.Marshal(msg.Content)
-			if err != nil {
-				//TODO
-				panic("g")
-			}
-			h.outChan <- &Message{
-				SSID:        h.info.SSID(),
-				From:        h.info.SelfID(),
-				To:          msg.To,
-				Protocol:    h.info.ProtocolID(),
-				RoundNumber: roundNumber,
-				Data:        data,
-				Signature:   nil, //TODO
-			}
+	for msg := range out {
+		data, err := cbor.Marshal(msg.Content)
+		if err != nil {
+			panic("g")
 		}
-	}(out, h, nextRound.Number())
+		h.outChan <- &Message{
+			SSID:        h.info.SSID(),
+			From:        h.info.SelfID(),
+			To:          msg.To,
+			Protocol:    h.info.ProtocolID(),
+			RoundNumber: nextRound.Number(),
+			Data:        data,
+			Signature:   nil, //TODO
+		}
+	}
 
 	// a nil round indicates we have reached the final round
 	if finalRound, ok := nextRound.(*round.Output); ok {
@@ -264,14 +260,12 @@ func (h *Handler) finishRound() error {
 	h.Log.Info().Msg("round advanced")
 
 	// reset received state
-	newReceived := make(map[party.ID]bool, len(h.received))
 	for id := range h.received {
-		newReceived[id] = false
+		h.received[id] = false
 	}
-	h.received = newReceived
 
 	for _, msg := range h.queue.Get(h.roundNumber()) {
-		if err := h.handleMessage(msg); err != nil {
+		if err = h.handleMessage(msg); err != nil {
 			return err
 		}
 	}
