@@ -2,16 +2,19 @@ package keygen
 
 import (
 	"crypto/rand"
+	"errors"
 
 	"github.com/cronokirby/safenum"
+	"github.com/taurusgroup/multi-party-sig/internal/broadcast"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
 	zksch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
 )
 
@@ -56,10 +59,10 @@ type round1 struct {
 }
 
 // VerifyMessage implements round.Round.
-func (r *round1) VerifyMessage(party.ID, party.ID, message.Content) error { return nil }
+func (r *round1) VerifyMessage(round.Message) error { return nil }
 
 // StoreMessage implements round.Round.
-func (r *round1) StoreMessage(party.ID, message.Content) error { return nil }
+func (r *round1) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round
 //
@@ -71,11 +74,13 @@ func (r *round1) StoreMessage(party.ID, message.Content) error { return nil }
 // - sample ridᵢ <- {0,1}ᵏ
 // - sample cᵢ <- {0,1}ᵏ
 // - commit to message.
-func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
+func (r *round1) Finalize(out chan<- *round.Message) (round.Round, error) {
 	// generate Paillier and Pedersen
 	PaillierSecret := paillier.NewSecretKey(nil)
 	SelfPaillierPublic := PaillierSecret.PublicKey
 	SelfPedersenPublic, PedersenSecret := PaillierSecret.GeneratePedersen()
+
+	ElGamalSecret, ElGamalPublic := sample.ScalarPointPair(rand.Reader, r.Group())
 
 	// save our own share already so we are consistent with what we receive from others
 	SelfShare := r.VSSSecret.Evaluate(r.SelfID().Scalar(r.Group()))
@@ -87,46 +92,56 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	SchnorrRand := zksch.NewRandomness(rand.Reader, r.Group())
 
 	// Sample RIDᵢ
-	SelfRID := newRID()
-	if _, err := rand.Read(SelfRID[:]); err != nil {
-		return r, ErrRound1SampleRho
+	SelfRID, err := types.NewRID(rand.Reader)
+	if err != nil {
+		return r, errors.New("failed to sample Rho")
 	}
-	chainKey := newRID()
-	if _, err := rand.Read(chainKey[:]); err != nil {
-		return r, ErrRound1SampleC
+	chainKey, err := types.NewRID(rand.Reader)
+	if err != nil {
+		return r, errors.New("failed to sample c")
 	}
 
 	// commit to data in message 2
 	SelfCommitment, Decommitment, err := r.HashForID(r.SelfID()).Commit(
-		SelfRID, chainKey, SelfVSSPolynomial, SchnorrRand.Commitment(),
+		SelfRID, chainKey, SelfVSSPolynomial, SchnorrRand.Commitment(), ElGamalPublic,
 		SelfPedersenPublic.N(), SelfPedersenPublic.S(), SelfPedersenPublic.T())
 	if err != nil {
-		return r, ErrRound1Commit
+		return r, errors.New("failed to commit")
 	}
 
 	// should be broadcast but we don't need that here
-	msg := r.MarshalMessage(&Keygen2{Commitment: SelfCommitment}, r.OtherPartyIDs()...)
-	if err = r.SendMessage(msg, out); err != nil {
+	msg := &message2{Commitment: SelfCommitment}
+	err = r.SendMessage(out, msg, "")
+	if err != nil {
 		return r, err
 	}
 
-	return &round2{
+	nextRound := &round2{
 		round1:         r,
 		VSSPolynomials: map[party.ID]*polynomial.Exponent{r.SelfID(): SelfVSSPolynomial},
 		Commitments:    map[party.ID]hash.Commitment{r.SelfID(): SelfCommitment},
-		RIDs:           map[party.ID]RID{r.SelfID(): SelfRID},
-		ChainKeys:      map[party.ID]RID{r.SelfID(): chainKey},
+		RIDs:           map[party.ID]types.RID{r.SelfID(): SelfRID},
+		ChainKeys:      map[party.ID]types.RID{r.SelfID(): chainKey},
 		ShareReceived:  map[party.ID]curve.Scalar{r.SelfID(): SelfShare},
+		ElGamalPublic:  map[party.ID]curve.Point{r.SelfID(): ElGamalPublic},
 		PaillierPublic: map[party.ID]*paillier.PublicKey{r.SelfID(): SelfPaillierPublic},
 		N:              map[party.ID]*safenum.Modulus{r.SelfID(): SelfPedersenPublic.N()},
 		S:              map[party.ID]*safenum.Nat{r.SelfID(): SelfPedersenPublic.S()},
 		T:              map[party.ID]*safenum.Nat{r.SelfID(): SelfPedersenPublic.T()},
+		ElGamalSecret:  ElGamalSecret,
 		PaillierSecret: PaillierSecret,
 		PedersenSecret: PedersenSecret,
 		SchnorrRand:    SchnorrRand,
 		Decommitment:   Decommitment,
-	}, nil
+	}
+	return broadcast.New(r.Helper, nextRound, msg), nil
 }
 
-// MessageContent implements round.Round..
-func (round1) MessageContent() message.Content { return &message.First{} }
+// PreviousRound implements round.Round.
+func (round1) PreviousRound() round.Round { return nil }
+
+// MessageContent implements round.Round.
+func (round1) MessageContent() round.Content { return nil }
+
+// Number implements round.Round.
+func (round1) Number() round.Number { return 1 }

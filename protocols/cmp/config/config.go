@@ -1,4 +1,4 @@
-package keygen
+package config
 
 import (
 	"errors"
@@ -9,6 +9,7 @@ import (
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/bip32"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
+	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
@@ -20,6 +21,8 @@ import (
 type Public struct {
 	// ECDSA public key share
 	ECDSA curve.Point
+	// ElGamal is this party's public key for ElGamal encryption.
+	ElGamal curve.Point
 	// N = p•q, p ≡ q ≡ 3 mod 4
 	N *safenum.Modulus
 	// S = r² mod N
@@ -43,6 +46,8 @@ type Config struct {
 	// ECDSA is a party's share xᵢ of the secret ECDSA x
 	ECDSA curve.Scalar
 
+	ElGamal curve.Scalar
+
 	// P, Q is the primes for N = P*Q used by Paillier and Pedersen
 	P, Q *safenum.Nat
 
@@ -50,7 +55,7 @@ type Config struct {
 	Public map[party.ID]*Public
 
 	// RID is a 32 byte random identifier generated for this config
-	RID RID
+	RID types.RID
 	// ChainKey is the chaining key value associated with this public key
 	ChainKey []byte
 }
@@ -76,7 +81,7 @@ func (c Config) PublicPoint() curve.Point {
 func (c Config) Validate() error {
 	// verify number of parties w.r.t. threshold
 	// want 0 ⩽ threshold ⩽ n-1
-	if !validThreshold(int(c.Threshold), len(c.Public)) {
+	if !ValidThreshold(int(c.Threshold), len(c.Public)) {
 		return fmt.Errorf("config: threshold %d is invalid", c.Threshold)
 	}
 
@@ -108,6 +113,11 @@ func (c Config) Validate() error {
 	public := c.Public[c.ID]
 	if public == nil {
 		return errors.New("config: no public data for secret")
+	}
+
+	// check ElGamal
+	if ElGamalComputed := c.ElGamal.ActOnBase(); !ElGamalComputed.Equal(public.ElGamal) {
+		return errors.New("config: ElGamal secret key does not correspond to public key")
 	}
 
 	// is the public ECDSA key equal
@@ -172,7 +182,7 @@ func (c *Config) WriteTo(w io.Writer) (total int64, err error) {
 	var n int64
 
 	// write t
-	n, err = thresholdWrapper(c.Threshold).WriteTo(w)
+	n, err = types.ThresholdWrapper(c.Threshold).WriteTo(w)
 	total += n
 	if err != nil {
 		return
@@ -232,6 +242,17 @@ func (p *Public) WriteTo(w io.Writer) (total int64, err error) {
 	}
 	total = int64(n)
 
+	// write ElGamal
+	data, err = p.ElGamal.MarshalBinary()
+	if err != nil {
+		return 0, err
+	}
+	n, err = w.Write(data)
+	if err != nil {
+		return
+	}
+	total += int64(n)
+
 	buf := make([]byte, params.BytesIntModN)
 	// write N, S, T
 	for _, i := range []*safenum.Nat{p.N.Nat(), p.S, p.T} {
@@ -249,7 +270,7 @@ func (p *Public) WriteTo(w io.Writer) (total int64, err error) {
 // a valid subset of the original parties of size > t,
 // and includes self.
 func (c *Config) CanSign(signers party.IDSlice) bool {
-	if !validThreshold(int(c.Threshold), len(signers)) {
+	if !ValidThreshold(int(c.Threshold), len(signers)) {
 		return false
 	}
 
@@ -273,7 +294,7 @@ func (c *Config) CanSign(signers party.IDSlice) bool {
 	return true
 }
 
-func validThreshold(t, n int) bool {
+func ValidThreshold(t, n int) bool {
 	if t < 0 || t > math.MaxUint32 {
 		return false
 	}
@@ -312,10 +333,11 @@ func (c *Config) DeriveChild(i uint32) (*Config, error) {
 	publics := make(map[party.ID]*Public, len(c.Public))
 	for k, v := range c.Public {
 		publics[k] = &Public{
-			ECDSA: v.ECDSA.Add(scalarG),
-			N:     v.N,
-			S:     v.S,
-			T:     v.T,
+			ECDSA:   v.ECDSA.Add(scalarG),
+			ElGamal: v.ElGamal,
+			N:       v.N,
+			S:       v.S,
+			T:       v.T,
 		}
 	}
 
@@ -327,6 +349,7 @@ func (c *Config) DeriveChild(i uint32) (*Config, error) {
 		ChainKey:  newChainKey,
 		ID:        c.ID,
 		ECDSA:     c.Group.NewScalar().Set(c.ECDSA).Add(scalar),
+		ElGamal:   c.ElGamal,
 		P:         c.P,
 		Q:         c.Q,
 	}, nil

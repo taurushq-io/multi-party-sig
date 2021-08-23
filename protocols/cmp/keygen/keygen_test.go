@@ -1,21 +1,18 @@
 package keygen
 
 import (
-	"fmt"
 	mrand "math/rand"
 	"reflect"
-	"sync"
 	"testing"
 
-	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/internal/test"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
+	"github.com/taurusgroup/multi-party-sig/protocols/cmp/config"
 )
 
 var roundTypes = []reflect.Type{
@@ -23,50 +20,18 @@ var roundTypes = []reflect.Type{
 	reflect.TypeOf(&round2{}),
 	reflect.TypeOf(&round3{}),
 	reflect.TypeOf(&round4{}),
-	reflect.TypeOf(&output{}),
+	reflect.TypeOf(&round5{}),
 }
 
-func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundType reflect.Type) {
-	N := len(rounds)
-	t.Logf("starting round %v", expectedRoundType)
-	// get the second set of  messages
-	out := make(chan *message.Message, N*N)
-	for idJ, r := range rounds {
-		require.EqualValues(t, expectedRoundType, reflect.TypeOf(r))
-		newRound, err := r.Finalize(out)
-		require.NoError(t, err, "failed to generate messages")
-		if newRound != nil {
-			rounds[idJ] = newRound
-		}
-	}
-	close(out)
-
-	for msg := range out {
-		msgBytes, err := cbor.Marshal(msg)
-		require.NoError(t, err, "failed to marshal message")
-		for idJ, r := range rounds {
-			var m message.Message
-			require.NoError(t, cbor.Unmarshal(msgBytes, &m), "failed to unmarshal message")
-			if m.IsFor(idJ) {
-				content := r.MessageContent()
-				err = msg.UnmarshalContent(content)
-				require.NoError(t, err)
-				require.NoError(t, r.VerifyMessage(msg.From, idJ, content))
-				require.NoError(t, r.StoreMessage(msg.From, content))
-			}
-		}
-	}
-
-	t.Logf("round %v done", expectedRoundType)
-}
+var group = curve.Secp256k1{}
 
 func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
 	N := len(rounds)
-	newConfigs := make([]*Config, 0, N)
+	newConfigs := make([]*config.Config, 0, N)
 	for _, r := range rounds {
 		resultRound := r.(*round.Output)
-		result := resultRound.Result.(*Result)
-		newConfigs = append(newConfigs, result.Config)
+		c := resultRound.Result.(*config.Config)
+		newConfigs = append(newConfigs, c)
 	}
 
 	firstConfig := newConfigs[0]
@@ -81,21 +46,23 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
 func TestKeygen(t *testing.T) {
 	pl := pool.NewPool(0)
 	defer pl.TearDown()
-	group := curve.Secp256k1{}
 
 	N := 2
-	partyIDs := party.RandomIDs(N)
+	partyIDs := test.PartyIDs(N)
 
 	rounds := make(map[party.ID]round.Round, N)
 	for _, partyID := range partyIDs {
 		r, _, err := StartKeygen(pl, group, partyIDs, N-1, partyID)()
 		require.NoError(t, err, "round creation should not result in an error")
 		rounds[partyID] = r
-
 	}
 
 	for _, roundType := range roundTypes {
-		processRound(t, rounds, roundType)
+		t.Logf("starting round %v", roundType)
+		if err, _ := test.Rounds(group, rounds, "", nil); err != nil {
+			require.NoError(t, err, "failed to process round")
+		}
+		t.Logf("round %v done", roundType)
 	}
 	checkOutput(t, rounds)
 }
@@ -103,98 +70,101 @@ func TestKeygen(t *testing.T) {
 func TestRefresh(t *testing.T) {
 	pl := pool.NewPool(0)
 	defer pl.TearDown()
-	group := curve.Secp256k1{}
 
 	N := 4
 	T := N - 1
-	configs := FakeData(group, N, T, mrand.New(mrand.NewSource(1)), pl)
+	configs := test.GenerateConfig(group, N, T, mrand.New(mrand.NewSource(1)), pl)
 
-	parties := make(map[party.ID]round.Round, N)
+	rounds := make(map[party.ID]round.Round, N)
 	for partyID, s := range configs {
 		r, _, err := StartRefresh(pl, s)()
 		require.NoError(t, err, "round creation should not result in an error")
-		parties[partyID] = r
+		rounds[partyID] = r
 
 	}
 
 	for _, roundType := range roundTypes {
-		processRound(t, parties, roundType)
+		t.Logf("starting round %v", roundType)
+		if err, _ := test.Rounds(group, rounds, "", nil); err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("round %v done", roundType)
 	}
-	checkOutput(t, parties)
+	checkOutput(t, rounds)
 }
 
-func TestProtocol(t *testing.T) {
-	pl := pool.NewPool(0)
-	defer pl.TearDown()
-	group := curve.Secp256k1{}
-
-	ids := party.IDSlice{"a", "b"}
-	threshold := 1
-	ps := map[party.ID]*protocol.Handler{}
-
-	handleMessage := func(msg *message.Message) {
-		if msg == nil {
-			return
-		}
-		for id, p := range ps {
-			if msg.From == id {
-				continue
-			}
-			if len(msg.To) == 0 || party.IDSlice(msg.To).Contains(id) {
-				err := p.Update(msg)
-				assert.NoError(t, err)
-			}
-		}
-	}
-
-	wg := new(sync.WaitGroup)
-	getMessages := func(p *protocol.Handler) {
-		for msg := range p.Listen() {
-			handleMessage(msg)
-		}
-		fmt.Println("done")
-		wg.Done()
-	}
-
-	for _, id := range ids {
-		p, err := protocol.NewHandler(StartKeygen(pl, group, ids, threshold, id))
-		require.NoError(t, err)
-		ps[id] = p
-	}
-	for _, p := range ps {
-		wg.Add(1)
-		go getMessages(p)
-	}
-	wg.Wait()
-
-	for _, p := range ps {
-		r, err := p.Result()
-		assert.NoError(t, err)
-		assert.IsType(t, &Result{}, r)
-		res := r.(*Result)
-		assert.NoError(t, res.Config.Validate())
-	}
-
-	newPs := map[party.ID]*protocol.Handler{}
-	for id, p := range ps {
-		r, _ := p.Result()
-		res := r.(*Result)
-		p2, err := protocol.NewHandler(StartRefresh(pl, res.Config))
-		require.NoError(t, err)
-		newPs[id] = p2
-	}
-	ps = newPs
-	for _, p := range ps {
-		wg.Add(1)
-		go getMessages(p)
-	}
-	wg.Wait()
-
-	for _, p := range ps {
-		r, err := p.Result()
-		assert.NoError(t, err)
-		assert.IsType(t, &Result{}, r)
-		res := r.(*Result)
-		assert.NoError(t, res.Config.Validate())
-	}
-}
+//func handleMessage(msg *protocol.Message, handlers map[party.ID]*protocol.Handler) error {
+//	if msg == nil {
+//		return nil
+//	}
+//	for id, h := range handlers {
+//		if msg.IsFor(id) {
+//			err := h.Update(msg)
+//			if err != nil {
+//				return err
+//			}
+//		}
+//	}
+//	return nil
+//}
+//
+//func TestProtocol(t *testing.T) {
+//	pl := pool.NewPool(0)
+//	defer pl.TearDown()
+//
+//	ids := party.IDSlice{"a", "b", "c"}
+//	threshold := 1
+//	ps := map[party.ID]*protocol.Handler{}
+//
+//	wg := new(sync.WaitGroup)
+//
+//	for _, id := range ids {
+//		p, err := protocol.NewHandler(StartKeygen(pl, group, ids, threshold, id))
+//		require.NoError(t, err)
+//		ps[id] = p
+//	}
+//	for _, p := range ps {
+//		wg.Add(1)
+//		go func() {
+//			for msg := range p.Listen() {
+//				if err := handleMessage(msg, ps); err != nil {
+//					t.Fatal(err)
+//				}
+//			}
+//			fmt.Println("done")
+//			wg.Done()
+//		}()
+//	}
+//	wg.Wait()
+//
+//	for _, p := range ps {
+//		r, err := p.Result()
+//		assert.NoError(t, err)
+//		assert.IsType(t, &Result{}, r)
+//		res := r.(*Result)
+//		assert.NoError(t, res.Config.Validate())
+//	}
+//
+//	newPs := map[party.ID]*protocol.Handler{}
+//	for id, p := range ps {
+//		r, _ := p.Result()
+//		res := r.(*Result)
+//		p2, err := protocol.NewHandler(StartRefresh(pl, res.Config))
+//		require.NoError(t, err)
+//		newPs[id] = p2
+//	}
+//	ps = newPs
+//	for _, p := range ps {
+//		wg.Add(1)
+//		go getMessages(p)
+//	}
+//	wg.Wait()
+//
+//	for _, p := range ps {
+//		r, err := p.Result()
+//		assert.NoError(t, err)
+//		assert.IsType(t, &Result{}, r)
+//		res := r.(*Result)
+//		assert.NoError(t, res.Config.Validate())
+//	}
+//}

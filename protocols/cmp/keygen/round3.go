@@ -1,18 +1,17 @@
 package keygen
 
 import (
-	"bytes"
+	"errors"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
 	zkmod "github.com/taurusgroup/multi-party-sig/pkg/zk/mod"
 	zkprm "github.com/taurusgroup/multi-party-sig/pkg/zk/prm"
 	zksch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
@@ -22,22 +21,20 @@ var _ round.Round = (*round3)(nil)
 
 type round3 struct {
 	*round2
-	// EchoHash = Hash(SSID, commitment₁, …, commitmentₙ)
-	EchoHash []byte
-
 	// SchnorrCommitments[j] = Aⱼ
 	// Commitment for proof of knowledge in the last round
 	SchnorrCommitments map[party.ID]*zksch.Commitment // Aⱼ
 }
 
-type Keygen3 struct {
+type message3 struct {
 	// RID = RIDᵢ
-	RID RID
-	C   RID
+	RID types.RID
+	C   types.RID
 	// VSSPolynomial = Fᵢ(X) VSSPolynomial
 	VSSPolynomial *polynomial.Exponent
 	// SchnorrCommitments = Aᵢ Schnorr commitment for the final confirmation
 	SchnorrCommitments *zksch.Commitment
+	ElGamalPublic      curve.Point
 	// N Paillier and Pedersen N = p•q, p ≡ q ≡ 3 mod 4
 	N *safenum.Modulus
 	// S = r² mod N
@@ -46,15 +43,10 @@ type Keygen3 struct {
 	T *safenum.Nat
 	// Decommitment = uᵢ decommitment bytes
 	Decommitment hash.Decommitment
-	// HashEcho = H(V₁, …, Vₙ)
-	// This is essentially an echo of all Message2 from Round1.
-	// If one party received something different then everybody must abort.
-	HashEcho []byte
 }
 
 // VerifyMessage implements round.Round.
 //
-// - verify Hash(SSID, V₁, …, Vₙ) against received hash.
 // - verify length of Schnorr commitments
 // - verify degree of VSS polynomial Fⱼ "in-the-exponent"
 //   - if keygen, verify Fⱼ(0) != ∞
@@ -62,15 +54,16 @@ type Keygen3 struct {
 // - validate Paillier
 // - validate Pedersen
 // - validate commitments.
-func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Content) error {
-	body, ok := content.(*Keygen3)
+func (r *round3) VerifyMessage(msg round.Message) error {
+	from := msg.From
+	body, ok := msg.Content.(*message3)
 	if !ok || body == nil {
-		return message.ErrInvalidContent
+		return round.ErrInvalidContent
 	}
 
 	// check nil
 	if body.N == nil || body.S == nil || body.T == nil || body.VSSPolynomial == nil {
-		return message.ErrNilFields
+		return round.ErrNilFields
 	}
 	// check RID length
 	if err := body.RID.Validate(); err != nil {
@@ -80,21 +73,17 @@ func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Conten
 	if err := body.Decommitment.Validate(); err != nil {
 		return err
 	}
-	// check echo hash
-	if !bytes.Equal(body.HashEcho, r.EchoHash) {
-		return ErrRound3EchoHash
-	}
 
 	// Save all X, VSSCommitments
 	VSSPolynomial := body.VSSPolynomial
 	// check that the constant coefficient is 0
 	// if refresh then the polynomial is constant
 	if !(r.VSSSecret.Constant().IsZero() == VSSPolynomial.IsConstant) {
-		return ErrRound3VSSConstant
+		return errors.New("vss polynomial has incorrect constant")
 	}
 	// check deg(Fⱼ) = t
 	if VSSPolynomial.Degree() != r.Threshold {
-		return ErrRound3VSSDegree
+		return errors.New("vss polynomial has incorrect degree")
 	}
 
 	// Set Paillier
@@ -108,8 +97,8 @@ func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Conten
 	}
 	// Verify decommit
 	if !r.HashForID(from).Decommit(r.Commitments[from], body.Decommitment,
-		body.RID, body.C, VSSPolynomial, body.SchnorrCommitments, body.N, body.S, body.T) {
-		return ErrRound3Decommit
+		body.RID, body.C, VSSPolynomial, body.SchnorrCommitments, body.ElGamalPublic, body.N, body.S, body.T) {
+		return errors.New("failed to decommit")
 	}
 
 	return nil
@@ -117,8 +106,8 @@ func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Conten
 
 // StoreMessage implements round.Round.
 // - store ridⱼ, Cⱼ, Nⱼ, Sⱼ, Tⱼ, Fⱼ(X), Aⱼ.
-func (r *round3) StoreMessage(from party.ID, content message.Content) error {
-	body := content.(*Keygen3)
+func (r *round3) StoreMessage(msg round.Message) error {
+	from, body := msg.From, msg.Content.(*message3)
 	r.RIDs[from] = body.RID
 	r.ChainKeys[from] = body.RID
 	r.N[from] = body.N
@@ -127,6 +116,7 @@ func (r *round3) StoreMessage(from party.ID, content message.Content) error {
 	r.PaillierPublic[from] = paillier.NewPublicKey(body.N)
 	r.VSSPolynomials[from] = body.VSSPolynomial
 	r.SchnorrCommitments[from] = body.SchnorrCommitments
+	r.ElGamalPublic[from] = body.ElGamalPublic
 	return nil
 }
 
@@ -139,13 +129,13 @@ func (r *round3) StoreMessage(from party.ID, content message.Content) error {
 //   - if refresh skip constant coefficient
 //
 // - send proofs and encryption of share for Pⱼ.
-func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
+func (r *round3) Finalize(out chan<- *round.Message) (round.Round, error) {
 	// RID = ⊕ⱼ RIDⱼ
 	// c = ⊕ⱼ cⱼ
-	rid := newRID()
+	rid := types.EmptyRID()
 	chainKey := r.PreviousChainKey
 	if chainKey == nil {
-		chainKeyRID := newRID()
+		chainKeyRID := types.EmptyRID()
 		for _, j := range r.PartyIDs() {
 			rid.XOR(r.RIDs[j])
 			chainKeyRID.XOR(r.ChainKeys[j])
@@ -178,12 +168,12 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 		// Encrypt share
 		C, _ := r.PaillierPublic[j].Enc(curve.MakeInt(share))
 
-		msg := r.MarshalMessage(&Keygen4{
+		err := r.SendMessage(out, &message4{
 			Mod:   mod,
 			Prm:   prm,
 			Share: C,
 		}, j)
-		if err := r.SendMessage(msg, out); err != nil {
+		if err != nil {
 			return r, err
 		}
 	}
@@ -198,12 +188,14 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *round3) MessageContent() message.Content {
-	return &Keygen3{
-		VSSPolynomial:      polynomial.EmptyExponent(r.Group()),
-		SchnorrCommitments: zksch.EmptyCommitment(r.Group()),
-	}
-}
+func (round3) MessageContent() round.Content { return &message3{} }
 
-// RoundNumber implements message.Content.
-func (Keygen3) RoundNumber() types.RoundNumber { return 4 }
+// Number implements round.Round.
+func (round3) Number() round.Number { return 3 }
+
+// Init implements round.Content.
+func (m *message3) Init(group curve.Curve) {
+	m.VSSPolynomial = polynomial.EmptyExponent(group)
+	m.SchnorrCommitments = zksch.EmptyCommitment(group)
+	m.ElGamalPublic = group.NewPoint()
+}
