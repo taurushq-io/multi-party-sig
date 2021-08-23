@@ -119,6 +119,11 @@ func (c Config) Validate() error {
 		return errors.New("config: no public data for secret")
 	}
 
+	// verify ECDSA
+	if !c.ECDSA.ActOnBase().Equal(public.ECDSA) {
+		return errors.New("config: ECDSA private key share does not correspond with public key share")
+	}
+
 	// check ElGamal
 	if ElGamalComputed := c.ElGamal.ActOnBase(); !ElGamalComputed.Equal(public.ElGamal) {
 		return errors.New("config: ElGamal secret key does not correspond to public key")
@@ -131,9 +136,8 @@ func (c Config) Validate() error {
 	}
 
 	n := new(safenum.Nat).Mul(c.P, c.Q, -1)
-	nMod := safenum.ModulusFromNat(n)
 	// is our public key for paillier the same?
-	if _, eq, _ := nMod.Cmp(public.N); eq == 0 {
+	if public.N.Nat().Eq(n) != 1 {
 		return errors.New("config: P•Q ≠ N")
 	}
 
