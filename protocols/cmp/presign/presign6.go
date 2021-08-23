@@ -132,8 +132,10 @@ func (r *presign6) Finalize(out chan<- *round.Message) (round.Round, error) {
 	})
 
 	err := r.SendMessage(out, &message7{
-		S:     S,
-		Proof: proof,
+		S:              S,
+		Proof:          proof,
+		DecommitmentID: r.DecommitmentID,
+		PresignatureID: r.PresignatureID[r.SelfID()],
 	}, "")
 	if err != nil {
 		return r, err.(error)

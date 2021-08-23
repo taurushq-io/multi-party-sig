@@ -9,6 +9,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/mta"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -43,6 +44,13 @@ type presign2 struct {
 	ElGamalKNonce elgamal.Nonce
 	// ElGamalK[j] = Zⱼ
 	ElGamalK map[party.ID]*elgamal.Ciphertext
+
+	// PresignatureID[j] = idⱼ
+	PresignatureID map[party.ID]types.RID
+	// CommitmentID[j] = Com(idⱼ)
+	CommitmentID map[party.ID]hash.Commitment
+	// DecommitmentID is the decommitment string for idᵢ
+	DecommitmentID hash.Decommitment
 }
 
 type broadcast2 struct {
@@ -52,6 +60,8 @@ type broadcast2 struct {
 	G *paillier.Ciphertext
 	// Z = Zᵢ
 	Z *elgamal.Ciphertext
+	// CommitmentID is a commitment Pᵢ's contribution to the final presignature ID.
+	CommitmentID hash.Commitment
 }
 
 type message2 struct {
@@ -71,6 +81,10 @@ func (r *presign2) VerifyMessage(msg round.Message) error {
 
 	if !r.Paillier[from].ValidateCiphertexts(body.K, body.G) || !body.Z.Valid() || body.Proof == nil {
 		return round.ErrNilFields
+	}
+
+	if err := body.CommitmentID.Validate(); err != nil {
+		return err
 	}
 
 	if !body.Proof.Verify(r.HashForID(from), zkencelg.Public{
@@ -94,6 +108,7 @@ func (r *presign2) StoreMessage(msg round.Message) error {
 	r.K[from] = body.K
 	r.G[from] = body.G
 	r.ElGamalK[from] = body.Z
+	r.CommitmentID[from] = body.CommitmentID
 	return nil
 }
 
@@ -194,5 +209,5 @@ func (m *message2) Init(group curve.Curve) {
 
 // BroadcastData implements broadcast.Broadcaster.
 func (m broadcast2) BroadcastData() []byte {
-	return hash.New(m.K, m.G).Sum()
+	return hash.New(m.K, m.G, m.Z, m.CommitmentID).Sum()
 }

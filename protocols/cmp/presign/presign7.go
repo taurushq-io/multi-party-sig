@@ -3,7 +3,9 @@ package presign
 import (
 	"errors"
 
+	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/ecdsa"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -30,8 +32,10 @@ type presign7 struct {
 
 type message7 struct {
 	// S = Sᵢ
-	S     curve.Point
-	Proof *zkelog.Proof
+	S              curve.Point
+	Proof          *zkelog.Proof
+	DecommitmentID hash.Decommitment
+	PresignatureID types.RID
 }
 
 // VerifyMessage implements round.Round.
@@ -44,6 +48,16 @@ func (r *presign7) VerifyMessage(msg round.Message) error {
 
 	if body.S.IsIdentity() {
 		return round.ErrNilFields
+	}
+
+	if err := body.DecommitmentID.Validate(); err != nil {
+		return err
+	}
+	if err := body.PresignatureID.Validate(); err != nil {
+		return err
+	}
+	if !r.HashForID(from).Decommit(r.CommitmentID[from], body.DecommitmentID, body.PresignatureID) {
+		return errors.New("failed to decommit presignature ID")
 	}
 
 	if !body.Proof.Verify(r.HashForID(from), zkelog.Public{
@@ -64,6 +78,7 @@ func (r *presign7) VerifyMessage(msg round.Message) error {
 func (r *presign7) StoreMessage(msg round.Message) error {
 	from, body := msg.From, msg.Content.(*message7)
 	r.S[from] = body.S
+	r.PresignatureID[from] = body.PresignatureID
 	return nil
 }
 
@@ -75,6 +90,11 @@ func (r *presign7) Finalize(out chan<- *round.Message) (round.Round, error) {
 	PublicKeyComputed := r.Group().NewPoint()
 	for _, Sj := range r.S {
 		PublicKeyComputed = PublicKeyComputed.Add(Sj)
+	}
+
+	presignatureID := types.EmptyRID()
+	for _, id := range r.PresignatureID {
+		presignatureID.XOR(id)
 	}
 
 	// ∑ⱼ Sⱼ ?= X
@@ -116,6 +136,7 @@ func (r *presign7) Finalize(out chan<- *round.Message) (round.Round, error) {
 	}
 
 	preSignature := &ecdsa.PreSignature{
+		ID:       presignatureID,
 		Group:    r.Group(),
 		R:        r.R,
 		RBar:     r.RBar,

@@ -2,6 +2,7 @@ package ecdsa
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -86,8 +87,7 @@ func (sig *PreSignature) Validate() error {
 		return errors.New("presignature: R is identity")
 	}
 	if err := sig.ID.Validate(); err != nil {
-		// TODO
-		//return fmt.Errorf("presignature: %w", err)
+		return fmt.Errorf("presignature: %w", err)
 	}
 	if sig.ChiShare.IsZero() || sig.KShare.IsZero() {
 		return errors.New("ChiShare or KShare is invalid")

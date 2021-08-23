@@ -5,7 +5,9 @@ import (
 
 	"github.com/taurusgroup/multi-party-sig/internal/broadcast"
 	"github.com/taurusgroup/multi-party-sig/internal/elgamal"
+	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
@@ -80,11 +82,21 @@ func (r *presign1) Finalize(out chan<- *round.Message) (round.Round, error) {
 	// Zᵢ = (bᵢ⋅G, kᵢ⋅G+bᵢ⋅Yᵢ), bᵢ
 	ElGamalK, ElGamalNonce := elgamal.Encrypt(r.ElGamal[r.SelfID()], KShare)
 
+	presignatureID, err := types.NewRID(rand.Reader)
+	if err != nil {
+		return r, err
+	}
+	commitmentID, decommitmentID, err := r.HashForID(r.SelfID()).Commit(presignatureID)
+	if err != nil {
+		return r, err
+	}
+
 	otherIDs := r.OtherPartyIDs()
 	broadcastMsg := broadcast2{
-		K: K,
-		G: G,
-		Z: ElGamalK,
+		K:            K,
+		G:            G,
+		Z:            ElGamalK,
+		CommitmentID: commitmentID,
 	}
 	errors := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
 		j := otherIDs[i]
@@ -118,15 +130,18 @@ func (r *presign1) Finalize(out chan<- *round.Message) (round.Round, error) {
 	}
 
 	nextRound := &presign2{
-		presign1:      r,
-		K:             map[party.ID]*paillier.Ciphertext{r.SelfID(): K},
-		G:             map[party.ID]*paillier.Ciphertext{r.SelfID(): G},
-		GammaShare:    curve.MakeInt(GammaShare),
-		KShare:        KShare,
-		KNonce:        KNonce,
-		GNonce:        GNonce,
-		ElGamalKNonce: ElGamalNonce,
-		ElGamalK:      map[party.ID]*elgamal.Ciphertext{r.SelfID(): ElGamalK},
+		presign1:       r,
+		K:              map[party.ID]*paillier.Ciphertext{r.SelfID(): K},
+		G:              map[party.ID]*paillier.Ciphertext{r.SelfID(): G},
+		GammaShare:     curve.MakeInt(GammaShare),
+		KShare:         KShare,
+		KNonce:         KNonce,
+		GNonce:         GNonce,
+		ElGamalKNonce:  ElGamalNonce,
+		ElGamalK:       map[party.ID]*elgamal.Ciphertext{r.SelfID(): ElGamalK},
+		PresignatureID: map[party.ID]types.RID{r.SelfID(): presignatureID},
+		CommitmentID:   map[party.ID]hash.Commitment{},
+		DecommitmentID: decommitmentID,
 	}
 	return broadcast.New(r.Helper, nextRound, broadcastMsg), nil
 }
