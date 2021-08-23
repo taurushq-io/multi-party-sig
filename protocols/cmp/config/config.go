@@ -43,9 +43,10 @@ type Config struct {
 	// Threshold + 1 is the minimum number of parties' shares required to reconstruct the secret/sign a message.
 	Threshold uint32
 
-	// ECDSA is a party's share xᵢ of the secret ECDSA x
+	// ECDSA is this party's share xᵢ of the secret ECDSA x
 	ECDSA curve.Scalar
 
+	// ElGamal is this party's yᵢ used for ElGamal.
 	ElGamal curve.Scalar
 
 	// P, Q is the primes for N = P*Q used by Paillier and Pedersen
@@ -57,7 +58,7 @@ type Config struct {
 	// RID is a 32 byte random identifier generated for this config
 	RID types.RID
 	// ChainKey is the chaining key value associated with this public key
-	ChainKey []byte
+	ChainKey types.RID
 }
 
 // PublicPoint returns the group's public ECC point.
