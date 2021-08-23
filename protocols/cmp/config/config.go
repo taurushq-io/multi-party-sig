@@ -312,6 +312,25 @@ func ValidThreshold(t, n int) bool {
 	return true
 }
 
+func (p *Public) Equal(other *Public) bool {
+	if !p.ECDSA.Equal(other.ECDSA) {
+		return false
+	}
+	if !p.ElGamal.Equal(other.ElGamal) {
+		return false
+	}
+	if p.N.Nat().Eq(other.N.Nat()) != 1 {
+		return false
+	}
+	if p.S.Eq(other.S) != 1 {
+		return false
+	}
+	if p.T.Eq(other.T) != 1 {
+		return false
+	}
+	return true
+}
+
 // DeriveChild derives a sharing of the ith child of the consortium signing key.
 //
 // This function uses unhardened derivation, deriving a key without including the

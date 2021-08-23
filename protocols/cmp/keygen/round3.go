@@ -113,7 +113,7 @@ func (r *round3) VerifyMessage(msg round.Message) error {
 func (r *round3) StoreMessage(msg round.Message) error {
 	from, body := msg.From, msg.Content.(*message3)
 	r.RIDs[from] = body.RID
-	r.ChainKeys[from] = body.RID
+	r.ChainKeys[from] = body.C
 	r.N[from] = body.N
 	r.S[from] = body.S
 	r.T[from] = body.T
@@ -134,18 +134,20 @@ func (r *round3) StoreMessage(msg round.Message) error {
 //
 // - send proofs and encryption of share for Pⱼ.
 func (r *round3) Finalize(out chan<- *round.Message) (round.Round, error) {
-	// RID = ⊕ⱼ RIDⱼ
 	// c = ⊕ⱼ cⱼ
-	rid := types.EmptyRID()
 	chainKey := r.PreviousChainKey
 	if chainKey == nil {
-		chainKeyRID := types.EmptyRID()
+		chainKey = types.EmptyRID()
 		for _, j := range r.PartyIDs() {
-			rid.XOR(r.RIDs[j])
-			chainKeyRID.XOR(r.ChainKeys[j])
+			chainKey.XOR(r.ChainKeys[j])
 		}
-		chainKey = chainKeyRID
 	}
+	// RID = ⊕ⱼ RIDⱼ
+	rid := types.EmptyRID()
+	for _, j := range r.PartyIDs() {
+		rid.XOR(r.RIDs[j])
+	}
+
 	// temporary hash which does not modify the state
 	h := r.Hash()
 	_ = h.WriteAny(rid, r.SelfID())

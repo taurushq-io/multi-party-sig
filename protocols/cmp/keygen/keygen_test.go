@@ -20,7 +20,9 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
 	N := len(rounds)
 	newConfigs := make([]*config.Config, 0, N)
 	for _, r := range rounds {
+		require.IsType(t, &round.Output{}, r)
 		resultRound := r.(*round.Output)
+		require.IsType(t, &config.Config{}, resultRound.Result)
 		c := resultRound.Result.(*config.Config)
 		newConfigs = append(newConfigs, c)
 	}
@@ -30,6 +32,10 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
 	for _, c := range newConfigs {
 		assert.True(t, pk.Equal(c.PublicPoint()), "RID is different")
 		assert.Equal(t, firstConfig.RID, c.RID, "RID is different")
+		assert.EqualValues(t, firstConfig.ChainKey, c.ChainKey, "ChainKey is different")
+		for id, p := range firstConfig.Public {
+			assert.True(t, p.Equal(c.Public[id]), "public is not equal")
+		}
 		assert.NoError(t, c.Validate(), "failed to validate new config")
 	}
 }
