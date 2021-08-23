@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
-	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -86,8 +86,8 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Round, error) {
 	Phi_i := polynomial.NewPolynomialExponent(f_i)
 
 	// c_i is our contribution to the chaining key
-	c_i := make([]byte, params.SecBytes)
-	if _, err := rand.Read(c_i[:]); err != nil {
+	c_i, err := types.NewRID(rand.Reader)
+	if err != nil {
 		return r, fmt.Errorf("failed to sample ChainKey")
 	}
 	commitment, decommitment, err := r.HashForID(r.SelfID()).Commit(c_i)
@@ -105,7 +105,7 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Round, error) {
 		round1:               r,
 		f_i:                  f_i,
 		Phi:                  map[party.ID]*polynomial.Exponent{r.SelfID(): Phi_i},
-		ChainKeys:            map[party.ID][]byte{r.SelfID(): c_i},
+		ChainKeys:            map[party.ID]types.RID{r.SelfID(): c_i},
 		ChainKeyDecommitment: decommitment,
 		ChainKeyCommitments:  make(map[party.ID]hash.Commitment),
 	}, nil

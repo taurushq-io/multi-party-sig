@@ -5,6 +5,7 @@ import (
 
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -28,7 +29,7 @@ type round2 struct {
 	// ChainKey will be the final bit of randomness everybody contributes to.
 	//
 	// This is an addition to FROST, which we include for key derivation
-	ChainKeys map[party.ID][]byte
+	ChainKeys map[party.ID]types.RID
 	// ChainKeyCommitments holds the commitments for the chain key contributions
 	ChainKeyCommitments map[party.ID]hash.Commitment
 }

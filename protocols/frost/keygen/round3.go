@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
-	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -26,7 +26,7 @@ type message3 struct {
 	// F_li is the secret share sent from party l to this party.
 	F_li curve.Scalar
 	// C_l is contribution to the chaining key for this party.
-	C_l []byte
+	C_l types.RID
 	// Decommitment = uᵢ decommitment bytes
 	Decommitment hash.Decommitment
 }
@@ -79,11 +79,9 @@ func (r *round3) StoreMessage(msg round.Message) error {
 
 // Finalize implements round.Round.
 func (r *round3) Finalize(chan<- *round.Message) (round.Round, error) {
-	ChainKey := make([]byte, params.SecBytes)
+	ChainKey := types.EmptyRID()
 	for _, j := range r.PartyIDs() {
-		for b := range ChainKey {
-			ChainKey[b] ^= r.ChainKeys[j][b]
-		}
+		ChainKey.XOR(r.ChainKeys[j])
 	}
 
 	// These steps come from Figure 1, Round 2 of the Frost paper
