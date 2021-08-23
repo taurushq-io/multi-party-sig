@@ -1,4 +1,4 @@
-package xor
+package example
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
+	"github.com/taurusgroup/multi-party-sig/protocols/example/xor"
 )
 
 // StartXOR is a function that creates the first round with all necessary information to create a protocol.Handler.
@@ -23,7 +24,7 @@ func StartXOR(selfID party.ID, partyIDs party.IDSlice) protocol.StartFunc {
 		if err != nil {
 			return nil, nil, fmt.Errorf("xor: %w", err)
 		}
-		r := &Round1{
+		r := &xor.Round1{
 			Helper: helper,
 		}
 		return r, helper, nil
