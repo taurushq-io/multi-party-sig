@@ -1,16 +1,17 @@
 package sign
 
 import (
+	"errors"
+
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/ecdsa"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
 )
 
-var _ round.Round = (*output)(nil)
+var _ round.Round = (*round5)(nil)
 
-type output struct {
+type round5 struct {
 	*round4
 
 	// SigmaShares[j] = σⱼ = m⋅kⱼ + χⱼ⋅R|ₓ
@@ -30,19 +31,19 @@ type output struct {
 	R curve.Scalar
 }
 
-type SignOutput struct {
+type message5 struct {
 	SigmaShare curve.Scalar
 }
 
 // VerifyMessage implements round.Round.
-func (r *output) VerifyMessage(_ party.ID, _ party.ID, content message.Content) error {
-	body, ok := content.(*SignOutput)
+func (r *round5) VerifyMessage(msg round.Message) error {
+	body, ok := msg.Content.(*message5)
 	if !ok || body == nil {
-		return message.ErrInvalidContent
+		return round.ErrInvalidContent
 	}
 
 	if body.SigmaShare == nil || body.SigmaShare.IsZero() {
-		return message.ErrNilContent
+		return round.ErrNilFields
 	}
 
 	return nil
@@ -51,8 +52,8 @@ func (r *output) VerifyMessage(_ party.ID, _ party.ID, content message.Content) 
 // StoreMessage implements round.Round.
 //
 // - save σⱼ
-func (r *output) StoreMessage(from party.ID, content message.Content) error {
-	body := content.(*SignOutput)
+func (r *round5) StoreMessage(msg round.Message) error {
+	from, body := msg.From, msg.Content.(*message5)
 	r.SigmaShares[from] = body.SigmaShare
 	return nil
 }
@@ -61,29 +62,32 @@ func (r *output) StoreMessage(from party.ID, content message.Content) error {
 //
 // - compute σ = ∑ⱼ σⱼ
 // - verify signature.
-func (r *output) Finalize(chan<- *message.Message) (round.Round, error) {
+func (r *round5) Finalize(chan<- *round.Message) (round.Round, error) {
 	// compute σ = ∑ⱼ σⱼ
 	Sigma := r.Group().NewScalar()
 	for _, j := range r.PartyIDs() {
 		Sigma.Add(r.SigmaShares[j])
 	}
 
-	signature := &Signature{
+	signature := &ecdsa.Signature{
 		R: r.BigR,
 		S: Sigma,
 	}
 
 	if !signature.Verify(r.PublicKey, r.Message) {
-		return nil, ErrRoundOutputValidateSigFailed
+		return nil, errors.New("failed to validate signature")
 	}
 
-	return &round.Output{Result: &Result{signature}}, nil
+	return &round.Output{Result: signature}, nil
 }
 
-func (r *output) MessageContent() message.Content {
-	return &SignOutput{SigmaShare: r.Group().NewScalar()}
-}
+// MessageContent implements round.Round.
+func (round5) MessageContent() round.Content { return &message5{} }
 
-func (SignOutput) RoundNumber() types.RoundNumber {
-	return 5
+// Number implements round.Round.
+func (round5) Number() round.Number { return 5 }
+
+// Init implements round.Content.
+func (m *message5) Init(group curve.Curve) {
+	m.SigmaShare = group.NewScalar()
 }

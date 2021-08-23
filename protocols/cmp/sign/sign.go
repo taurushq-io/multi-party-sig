@@ -13,25 +13,16 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
-	"github.com/taurusgroup/multi-party-sig/protocols/cmp/keygen"
+	"github.com/taurusgroup/multi-party-sig/protocols/cmp/config"
 )
 
 // protocolSignID for the "3 round" variant using echo broadcast.
 const (
-	protocolSignID     types.ProtocolID  = "cmp/sign-3-round-echo"
-	protocolSignRounds types.RoundNumber = 5
+	protocolSignID                  = "cmp/sign"
+	protocolSignRounds round.Number = 5
 )
 
-var (
-	_ round.Round = (*round1)(nil)
-	_ round.Round = (*round2)(nil)
-	_ round.Round = (*round3)(nil)
-	_ round.Round = (*round4)(nil)
-	_ round.Round = (*output)(nil)
-)
-
-func StartSign(pl *pool.Pool, config *keygen.Config, signers []party.ID, message []byte) protocol.StartFunc {
+func StartSign(pl *pool.Pool, config *config.Config, signers []party.ID, message []byte) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
 		group := config.Group
 

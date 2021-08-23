@@ -1,16 +1,15 @@
 package sign
 
 import (
-	"bytes"
+	"errors"
 	"fmt"
 
 	"github.com/cronokirby/safenum"
-	mta "github.com/taurusgroup/multi-party-sig/internal/mta"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
+	zkaffg "github.com/taurusgroup/multi-party-sig/pkg/zk/affg"
 	zklogstar "github.com/taurusgroup/multi-party-sig/pkg/zk/logstar"
 )
 
@@ -19,65 +18,72 @@ var _ round.Round = (*round3)(nil)
 type round3 struct {
 	*round2
 
-	DeltaMtA, ChiMtA map[party.ID]*mta.MtA
-
 	// DeltaShareAlpha[j] = αᵢⱼ
 	DeltaShareAlpha map[party.ID]*safenum.Int
 	// DeltaShareBeta[j] = βᵢⱼ
 	DeltaShareBeta map[party.ID]*safenum.Int
 	// ChiShareAlpha[j] = α̂ᵢⱼ
 	ChiShareAlpha map[party.ID]*safenum.Int
-	// ChiShareBeta[j] =  ̂βᵢⱼ
+	// ChiShareBeta[j] = β̂ᵢⱼ
 	ChiShareBeta map[party.ID]*safenum.Int
-
-	// EchoHash = Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
-	// part of the echo of the first message
-	EchoHash []byte
 }
 
-type Sign3 struct {
-	// EchoHash = Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
-	EchoHash      []byte
-	BigGammaShare curve.Point
-	DeltaMtA      *mta.Message
-	ChiMtA        *mta.Message
+type message3 struct {
+	BigGammaShare curve.Point          // BigGammaShare = Γⱼ
+	DeltaD        *paillier.Ciphertext // DeltaD = Dᵢⱼ
+	DeltaF        *paillier.Ciphertext // DeltaF = Fᵢⱼ
+	DeltaProof    *zkaffg.Proof
+	ChiD          *paillier.Ciphertext // DeltaD = D̂_{ij}
+	ChiF          *paillier.Ciphertext // ChiF = F̂ᵢⱼ
+	ChiProof      *zkaffg.Proof
 	ProofLog      *zklogstar.Proof
 }
 
 // VerifyMessage implements round.Round.
 //
-// - verify Hash(ssid, K₁, G₁, …, Kₙ, Gₙ)
 // - verify zkproofs affg (2x) zklog*.
-func (r *round3) VerifyMessage(from party.ID, to party.ID, content message.Content) error {
-	body, ok := content.(*Sign3)
+func (r *round3) VerifyMessage(msg round.Message) error {
+	from, to := msg.From, msg.To
+	body, ok := msg.Content.(*message3)
 	if !ok || body == nil {
-		return message.ErrInvalidContent
+		return round.ErrInvalidContent
 	}
 
-	if body.BigGammaShare == nil || body.DeltaMtA == nil || body.ChiMtA == nil || body.ProofLog == nil {
-		return message.ErrNilContent
+	if body.BigGammaShare.IsIdentity() {
+		return round.ErrNilFields
 	}
 
-	if !bytes.Equal(body.EchoHash, r.EchoHash) {
-		return ErrRound3EchoHash
+	if !body.DeltaProof.Verify(r.HashForID(from), zkaffg.Public{
+		Kv:       r.K[to],
+		Dv:       body.DeltaD,
+		Fp:       body.DeltaF,
+		Xp:       body.BigGammaShare,
+		Prover:   r.Paillier[from],
+		Verifier: r.Paillier[to],
+		Aux:      r.Pedersen[to],
+	}) {
+		return errors.New("failed to validate affg proof for Delta MtA")
 	}
 
-	if err := r.DeltaMtA[from].VerifyAffG(r.HashForID(from), r.K[to], body.BigGammaShare, body.DeltaMtA, r.Paillier[from], r.Paillier[to], r.Pedersen[to]); err != nil {
-		return fmt.Errorf("delta MtA: %w", ErrRound3ZKAffGDeltaMtA)
+	if !body.ChiProof.Verify(r.HashForID(from), zkaffg.Public{
+		Kv:       r.K[to],
+		Dv:       body.ChiD,
+		Fp:       body.ChiF,
+		Xp:       r.ECDSA[from],
+		Prover:   r.Paillier[from],
+		Verifier: r.Paillier[to],
+		Aux:      r.Pedersen[to],
+	}) {
+		return errors.New("failed to validate affg proof for Chi MtA")
 	}
 
-	if err := r.ChiMtA[from].VerifyAffG(r.HashForID(from), r.K[to], r.ECDSA[from], body.ChiMtA, r.Paillier[from], r.Paillier[to], r.Pedersen[to]); err != nil {
-		return fmt.Errorf("chi MtA: %w", ErrRound3ZKAffGChiMtA)
-	}
-
-	zkLogPublic := zklogstar.Public{
+	if !body.ProofLog.Verify(r.HashForID(from), zklogstar.Public{
 		C:      r.G[from],
 		X:      body.BigGammaShare,
 		Prover: r.Paillier[from],
 		Aux:    r.Pedersen[to],
-	}
-	if !body.ProofLog.Verify(r.HashForID(from), zkLogPublic) {
-		return ErrRound3ZKLog
+	}) {
+		return errors.New("failed to validate log proof")
 	}
 
 	return nil
@@ -87,22 +93,24 @@ func (r *round3) VerifyMessage(from party.ID, to party.ID, content message.Conte
 //
 // - Decrypt MtA shares,
 // - save Γⱼ, αᵢⱼ, α̂ᵢⱼ.
-func (r *round3) StoreMessage(from party.ID, content message.Content) error {
-	body := content.(*Sign3)
+func (r *round3) StoreMessage(msg round.Message) error {
+	from, body := msg.From, msg.Content.(*message3)
 
 	r.BigGammaShare[from] = body.BigGammaShare
 
-	ChiShareAlpha, err := body.ChiMtA.AlphaShare(r.SecretPaillier)
+	// αᵢⱼ
+	DeltaShareAlpha, err := r.SecretPaillier.Dec(body.DeltaD)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to decrypt alpha share for delta: %w", err)
 	}
-	DeltaShareAlpha, err := body.DeltaMtA.AlphaShare(r.SecretPaillier)
+	// α̂ᵢⱼ
+	ChiShareAlpha, err := r.SecretPaillier.Dec(body.ChiD)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to decrypt alpha share for chi: %w", err)
 	}
 
-	r.ChiShareAlpha[from] = ChiShareAlpha
 	r.DeltaShareAlpha[from] = DeltaShareAlpha
+	r.ChiShareAlpha[from] = ChiShareAlpha
 
 	return nil
 }
@@ -113,7 +121,7 @@ func (r *round3) StoreMessage(from party.ID, content message.Content) error {
 // - Δᵢ = [kᵢ]Γ
 // - δᵢ = γᵢ kᵢ + ∑ⱼ δᵢⱼ
 // - χᵢ = xᵢ kᵢ + ∑ⱼ χᵢⱼ.
-func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
+func (r *round3) Finalize(out chan<- *round.Message) (round.Round, error) {
 	// Γ = ∑ⱼ Γⱼ
 	Gamma := r.Group().NewPoint()
 	for _, BigGammaShare := range r.BigGammaShare {
@@ -147,7 +155,7 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 
 	DeltaShareScalar := r.Group().NewScalar().SetNat(DeltaShare.Mod(r.Group().Order()))
 	otherIDs := r.OtherPartyIDs()
-	errors := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
+	errs := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
 		j := otherIDs[i]
 
 		proofLog := zklogstar.NewProof(r.Group(), r.HashForID(r.SelfID()), zklogstar.Public{
@@ -158,17 +166,17 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 			Aux:    r.Pedersen[j],
 		}, zkPrivate)
 
-		msg := r.MarshalMessage(&Sign4{
+		err := r.SendMessage(out, &message4{
 			DeltaShare:    DeltaShareScalar,
 			BigDeltaShare: BigDeltaShare,
 			ProofLog:      proofLog,
 		}, j)
-		if err := r.SendMessage(msg, out); err != nil {
+		if err != nil {
 			return err
 		}
 		return nil
 	})
-	for _, err := range errors {
+	for _, err := range errs {
 		if err != nil {
 			return r, err.(error)
 		}
@@ -184,14 +192,15 @@ func (r *round3) Finalize(out chan<- *message.Message) (round.Round, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *round3) MessageContent() message.Content {
-	return &Sign3{
-		BigGammaShare: r.Group().NewPoint(),
-		ProofLog:      zklogstar.Empty(r.Group()),
-		DeltaMtA:      mta.Empty(r.Group()),
-		ChiMtA:        mta.Empty(r.Group()),
-	}
-}
+func (round3) MessageContent() round.Content { return &message3{} }
 
-// RoundNumber implements message.Content.
-func (Sign3) RoundNumber() types.RoundNumber { return 3 }
+// Number implements round.Round.
+func (round3) Number() round.Number { return 3 }
+
+// Init implements round.Content.
+func (m *message3) Init(group curve.Curve) {
+	m.BigGammaShare = group.NewPoint()
+	m.ProofLog = zklogstar.Empty(group)
+	m.DeltaProof = zkaffg.Empty(group)
+	m.ChiProof = zkaffg.Empty(group)
+}
