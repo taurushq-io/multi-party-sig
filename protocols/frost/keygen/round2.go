@@ -56,6 +56,10 @@ func (r *round2) VerifyMessage(msg round.Message) error {
 		return round.ErrNilFields
 	}
 
+	if err := body.Commitment.Validate(); err != nil {
+		return fmt.Errorf("commitment: %w", err)
+	}
+
 	// These steps come from Figure 1, Round 1 of the Frost paper
 
 	// 5. "Upon receiving ϕₗ, σₗ from participants 1 ⩽ l ⩽ n, participant

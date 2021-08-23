@@ -2,6 +2,7 @@ package keygen
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
@@ -67,7 +68,10 @@ func (r *round3) VerifyMessage(msg round.Message) error {
 	}
 	// check RID length
 	if err := body.RID.Validate(); err != nil {
-		return err
+		return fmt.Errorf("rid: %w", err)
+	}
+	if err := body.C.Validate(); err != nil {
+		return fmt.Errorf("chainkey: %w", err)
 	}
 	// check decommitment
 	if err := body.Decommitment.Validate(); err != nil {

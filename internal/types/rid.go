@@ -1,6 +1,7 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -45,7 +46,12 @@ func (rid RID) Validate() error {
 	if l := len(rid); l != params.SecBytes {
 		return fmt.Errorf("rid: incorrect length (got %d, expected %d)", l, params.SecBytes)
 	}
-	return nil
+	for _, b := range rid {
+		if b != 0 {
+			return nil
+		}
+	}
+	return errors.New("rid: rid is 0")
 }
 
 func (rid RID) Copy() RID {

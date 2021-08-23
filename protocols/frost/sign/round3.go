@@ -100,7 +100,7 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Round, error) {
 		sig = append(sig, r.R.(*curve.Secp256k1Point).XBytes()...)
 		zBytes, err := z.MarshalBinary()
 		if err != nil {
-			return r, nil
+			return r, err
 		}
 		sig = append(sig, zBytes[:]...)
 

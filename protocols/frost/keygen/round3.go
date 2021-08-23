@@ -44,6 +44,10 @@ func (r *round3) VerifyMessage(msg round.Message) error {
 		return round.ErrNilFields
 	}
 
+	if err := body.C_l.Validate(); err != nil {
+		return err
+	}
+
 	// Verify that the commitment to the chain key contribution matches, and then xor
 	// it into the accumulated chain key so far.
 	if !r.HashForID(from).Decommit(r.ChainKeyCommitments[from], body.Decommitment, body.C_l) {

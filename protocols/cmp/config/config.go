@@ -85,6 +85,10 @@ func (c Config) Validate() error {
 		return fmt.Errorf("config: threshold %d is invalid", c.Threshold)
 	}
 
+	if err := c.RID.Validate(); err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
+
 	if c.ECDSA == nil || c.P == nil || c.Q == nil {
 		return errors.New("config: one or more field is empty")
 	}
