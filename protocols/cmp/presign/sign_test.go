@@ -1,10 +1,8 @@
 package presign
 
 import (
-	"fmt"
 	mrand "math/rand"
 	"reflect"
-	"sync"
 	"testing"
 
 	"github.com/cronokirby/safenum"
@@ -16,7 +14,6 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
 	"github.com/taurusgroup/multi-party-sig/protocols/cmp/config"
 	"golang.org/x/crypto/sha3"
 )
@@ -59,7 +56,7 @@ func TestRound(t *testing.T) {
 	var err error
 	rounds := make(map[party.ID]round.Round, N)
 	for id, c := range configs {
-		rounds[id], _, err = StartSign(pl, c, partyIDs, messageHash)()
+		rounds[id], _, err = StartPresign(pl, c, partyIDs, messageHash)()
 		require.NoError(t, err, "round creation should not result in an error")
 	}
 
@@ -235,7 +232,7 @@ func TestRoundFail(t *testing.T) {
 		t.Run(reflect.TypeOf(testCase).String(), func(t *testing.T) {
 			rounds := make(map[party.ID]round.Round, N)
 			for id, c := range configs {
-				rounds[id], _, _ = StartSign(pl, c, partyIDs, messageHash[:])()
+				rounds[id], _, _ = StartPresign(pl, c, partyIDs, messageHash[:])()
 			}
 			for {
 				err, done := test.Rounds(group, rounds, culprit, testCase)
@@ -248,52 +245,5 @@ func TestRoundFail(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestProtocol(t *testing.T) {
-	pl := pool.NewPool(0)
-	defer pl.TearDown()
-
-	ps := map[party.ID]*protocol.Handler{}
-
-	handleMessage := func(msg *protocol.Message) {
-		if msg == nil {
-			return
-		}
-		for id, p := range ps {
-			if msg.IsFor(id) {
-				err := p.Update(msg)
-				assert.NoError(t, err)
-			}
-		}
-	}
-
-	wg := new(sync.WaitGroup)
-	getMessages := func(p *protocol.Handler) {
-		for msg := range p.Listen() {
-			handleMessage(msg)
-		}
-		fmt.Println("done")
-		wg.Done()
-	}
-
-	for id, c := range configs {
-		p, err := protocol.NewHandler(StartSign(pl, configs[id], c.PartyIDs(), messageHash))
-		require.NoError(t, err)
-		ps[id] = p
-	}
-	for _, p := range ps {
-		wg.Add(1)
-		go getMessages(p)
-	}
-	wg.Wait()
-
-	for id, p := range ps {
-		r, err := p.Result()
-		assert.NoError(t, err)
-		assert.IsType(t, &ecdsa.Signature{}, r)
-		signature := r.(*ecdsa.Signature)
-		assert.True(t, signature.Verify(configs[id].PublicPoint(), messageHash))
 	}
 }
