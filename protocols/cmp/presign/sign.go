@@ -27,7 +27,7 @@ const (
 )
 
 func StartPresign(pl *pool.Pool, c *config.Config, signers []party.ID, message []byte) protocol.StartFunc {
-	return func() (round.Round, protocol.Info, error) {
+	return func() (round.Round, *round.Info, error) {
 		group := c.Group
 
 		// this could be used to indicate a pre-signature later on
@@ -111,12 +111,12 @@ func StartPresign(pl *pool.Pool, c *config.Config, signers []party.ID, message [
 			Paillier:       Paillier,
 			Pedersen:       Pedersen,
 			Message:        message,
-		}, helper, nil
+		}, helper.Info(), nil
 	}
 }
 
 func StartPresignOnline(c *config.Config, preSignature *ecdsa.PreSignature, message []byte) protocol.StartFunc {
-	return func() (round.Round, protocol.Info, error) {
+	return func() (round.Round, *round.Info, error) {
 		group := preSignature.Group
 
 		// this could be used to indicate a pre-signature later on
@@ -166,6 +166,6 @@ func StartPresignOnline(c *config.Config, preSignature *ecdsa.PreSignature, mess
 			PublicKey:    c.PublicPoint(),
 			Message:      message,
 			PreSignature: preSignature,
-		}, helper, nil
+		}, helper.Info(), nil
 	}
 }

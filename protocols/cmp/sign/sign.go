@@ -23,7 +23,7 @@ const (
 )
 
 func StartSign(pl *pool.Pool, config *config.Config, signers []party.ID, message []byte) protocol.StartFunc {
-	return func() (round.Round, protocol.Info, error) {
+	return func() (round.Round, *round.Info, error) {
 		group := config.Group
 
 		// this could be used to indicate a pre-signature later on
@@ -97,6 +97,6 @@ func StartSign(pl *pool.Pool, config *config.Config, signers []party.ID, message
 			Pedersen:       Pedersen,
 			ECDSA:          ECDSA,
 			Message:        message,
-		}, helper, nil
+		}, helper.Info(), nil
 	}
 }

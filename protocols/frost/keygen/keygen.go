@@ -25,7 +25,7 @@ var (
 )
 
 func StartKeygenCommon(taproot bool, group curve.Curve, participants []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
-	return func() (round.Round, protocol.Info, error) {
+	return func() (round.Round, *round.Info, error) {
 		// Negative thresholds obviously make no sense.
 		// We need threshold + 1 participants to sign, so if this number is larger
 		// then the set of all participants, we can't ever generate signatures,
@@ -56,6 +56,6 @@ func StartKeygenCommon(taproot bool, group curve.Curve, participants []party.ID,
 			Helper:    helper,
 			taproot:   taproot,
 			threshold: threshold,
-		}, helper, nil
+		}, helper.Info(), nil
 	}
 }

@@ -135,15 +135,6 @@ func (h *Helper) SendMessage(out chan<- *Message, content Content, to party.ID) 
 	}
 }
 
-// ProtocolID is a string identifier for this protocol.
-func (h *Helper) ProtocolID() string { return h.protocolID }
-
-// FinalRoundNumber is the number of rounds before the output round.
-func (h *Helper) FinalRoundNumber() Number { return h.finalRoundNumber }
-
-// SSID the unique identifier for this protocol execution.
-func (h *Helper) SSID() []byte { return h.ssid }
-
 // SelfID is this party's ID.
 func (h *Helper) SelfID() party.ID { return h.selfID }
 
@@ -158,3 +149,14 @@ func (h *Helper) OtherPartyIDs() party.IDSlice { return h.partyIDs.Remove(h.self
 
 // Group returns the curve used for this protocol.
 func (h *Helper) Group() curve.Curve { return h.group }
+
+func (h *Helper) Info() *Info {
+	return &Info{
+		ProtocolID:       h.protocolID,
+		FinalRoundNumber: h.finalRoundNumber,
+		SSID:             h.Hash().Sum(),
+		SelfID:           h.selfID,
+		PartyIDs:         h.partyIDs.Copy(),
+		Group:            h.group,
+	}
+}

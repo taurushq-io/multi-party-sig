@@ -18,7 +18,7 @@ const (
 )
 
 func StartSignCommon(taproot bool, err error, result *keygen.Result, signers []party.ID, messageHash []byte) protocol.StartFunc {
-	return func() (round.Round, protocol.Info, error) {
+	return func() (round.Round, *round.Info, error) {
 		group := result.Group
 		// This is a bit of a hack, so that the Taproot can tell this function that the public key
 		// is invalid.
@@ -56,6 +56,6 @@ func StartSignCommon(taproot bool, err error, result *keygen.Result, signers []p
 			Y:       result.PublicKey,
 			YShares: result.VerificationShares,
 			s_i:     result.PrivateShare,
-		}, helper, nil
+		}, helper.Info(), nil
 	}
 }

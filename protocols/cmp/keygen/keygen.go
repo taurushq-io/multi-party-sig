@@ -44,10 +44,10 @@ func StartRefresh(pl *pool.Pool, c *config.Config) protocol.StartFunc {
 }
 
 func Start(pl *pool.Pool, protocolID string, group curve.Curve, id party.ID, partyIDs party.IDSlice, threshold int,
-	PublicPoint curve.Point, PublicSharesECDSA map[party.ID]curve.Point, SecretShareECDSA curve.Scalar, chainKey []byte,
+	PublicPoint curve.Point, PublicSharesECDSA map[party.ID]curve.Point, SecretShareECDSA curve.Scalar, chainKey types.RID,
 	thresholdOrConfig hash.WriterToWithDomain,
 ) protocol.StartFunc {
-	return func() (round.Round, protocol.Info, error) {
+	return func() (round.Round, *round.Info, error) {
 		if !config.ValidThreshold(threshold, len(partyIDs)) {
 			return nil, nil, fmt.Errorf("keygen.StartKeygen: threshold %d is not valid for number of parties %d", threshold, len(partyIDs))
 		}
@@ -82,6 +82,6 @@ func Start(pl *pool.Pool, protocolID string, group curve.Curve, id party.ID, par
 			PreviousPublicSharesECDSA: PublicSharesECDSA,
 			PreviousChainKey:          chainKey,
 			VSSSecret:                 VSSSecret,
-		}, helper, nil
+		}, helper.Info(), nil
 	}
 }
