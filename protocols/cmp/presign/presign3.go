@@ -60,7 +60,7 @@ func (r *presign3) VerifyMessage(msg round.Message) error {
 		return round.ErrInvalidContent
 	}
 
-	if !body.DeltaProof.Verify(r.HashForID(from), zkaffp.Public{
+	if !body.DeltaProof.Verify(r.Group(), r.HashForID(from), zkaffp.Public{
 		Kv:       r.K[to],
 		Dv:       body.broadcast3.DeltaCiphertext[to],
 		Fp:       body.DeltaF,

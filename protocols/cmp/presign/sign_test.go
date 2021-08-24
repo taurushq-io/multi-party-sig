@@ -49,7 +49,7 @@ func TestRound(t *testing.T) {
 
 	rounds := make([]round.Session, 0, N)
 	for _, c := range configs {
-		r, err := StartPresign(c, partyIDs, messageHash)(nil, pl)
+		r, err := StartPresign(c, partyIDs, messageHash, pl)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
 		rounds = append(rounds, r)
 	}

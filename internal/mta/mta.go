@@ -56,12 +56,12 @@ func ProveAffG(group curve.Curve, h *hash.Hash,
 // - D = (aⱼ ⊙ Bᵢ) ⊕ encᵢ(-β, s)
 // - F = encⱼ(-β, r)
 // - Proof = zkaffp proof of correct encryption.
-func ProveAffP(h *hash.Hash,
+func ProveAffP(group curve.Curve, h *hash.Hash,
 	senderSecretShare *safenum.Int, senderEncryptedShare *paillier.Ciphertext, senderEncryptedShareNonce *safenum.Nat,
 	receiverEncryptedShare *paillier.Ciphertext,
 	sender *paillier.SecretKey, receiver *paillier.PublicKey, verifier *pedersen.Parameters) (Beta *safenum.Int, D, F *paillier.Ciphertext, Proof *zkaffp.Proof) {
 	D, F, S, R, BetaNeg := newMta(senderSecretShare, receiverEncryptedShare, sender, receiver)
-	Proof = zkaffp.NewProof(h, zkaffp.Public{
+	Proof = zkaffp.NewProof(group, h, zkaffp.Public{
 		Kv:       receiverEncryptedShare,
 		Dv:       D,
 		Fp:       F,

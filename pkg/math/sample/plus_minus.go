@@ -5,6 +5,7 @@ import (
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
 
 func sampleNeg(rand io.Reader, bits int) *safenum.Int {
@@ -48,6 +49,6 @@ func IntervalLEpsN(rand io.Reader) *safenum.Int {
 }
 
 // IntervalScalar returns an integer in the range ±q, with q the size of a Scalar.
-func IntervalScalar(rand io.Reader) *safenum.Int {
-	return sampleNeg(rand, params.BytesScalar*8)
+func IntervalScalar(rand io.Reader, group curve.Curve) *safenum.Int {
+	return sampleNeg(rand, group.ScalarBits())
 }

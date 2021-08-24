@@ -100,7 +100,7 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 		T: public.Aux.Commit(alpha, gamma),
 	}
 
-	e, _ := challenge(hash, public, commitment)
+	e, _ := challenge(hash, group, public, commitment)
 
 	z1 := new(safenum.Int).Mul(e, private.X, -1)
 	z1.Add(z1, alpha, -1)
@@ -134,7 +134,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 		return false
 	}
 
-	e, err := challenge(hash, public, p.Commitment)
+	e, err := challenge(hash, p.group, public, p.Commitment)
 	if err != nil {
 		return false
 	}
@@ -175,10 +175,10 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safenum.Int, err error) {
+func challenge(hash *hash.Hash, group curve.Curve, public Public, commitment *Commitment) (e *safenum.Int, err error) {
 	err = hash.WriteAny(public.Aux, public.Prover, public.C, public.A, public.B, public.X,
 		commitment.S, commitment.D, commitment.Y, commitment.Z, commitment.T)
-	e = sample.IntervalScalar(hash.Digest())
+	e = sample.IntervalScalar(hash.Digest(), group)
 	return
 }
 

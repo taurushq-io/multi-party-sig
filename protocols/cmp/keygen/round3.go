@@ -153,19 +153,19 @@ func (r *round3) Finalize(out chan<- *round.Message) (round.Session, error) {
 	_ = h.WriteAny(rid, r.SelfID())
 
 	// Prove N is a blum prime with zkmod
-	mod := zkmod.NewProof(r.Pool, h.Clone(), zkmod.Public{N: r.NModulus[r.SelfID()]}, zkmod.Private{
+	mod := zkmod.NewProof(h.Clone(), zkmod.Private{
 		P:   r.PaillierSecret.P(),
 		Q:   r.PaillierSecret.Q(),
 		Phi: r.PaillierSecret.Phi(),
-	})
+	}, zkmod.Public{N: r.NModulus[r.SelfID()]}, r.Pool)
 
 	// prove s, t are correct as aux parameters with zkprm
-	prm := zkprm.NewProof(r.Pool, h.Clone(), zkprm.Public{N: r.NModulus[r.SelfID()], S: r.S[r.SelfID()], T: r.T[r.SelfID()]}, zkprm.Private{
+	prm := zkprm.NewProof(zkprm.Private{
 		Lambda: r.PedersenSecret,
 		Phi:    r.PaillierSecret.Phi(),
 		P:      r.PaillierSecret.P(),
 		Q:      r.PaillierSecret.Q(),
-	})
+	}, h.Clone(), zkprm.Public{N: r.NModulus[r.SelfID()], S: r.S[r.SelfID()], T: r.T[r.SelfID()]}, r.Pool)
 
 	// create messages with encrypted shares
 	for _, j := range r.OtherPartyIDs() {

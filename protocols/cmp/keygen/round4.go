@@ -48,12 +48,12 @@ func (r *round4) VerifyMessage(msg round.Message) error {
 	}
 
 	// verify zkmod
-	if !body.Mod.Verify(r.Pool, r.HashForID(from), zkmod.Public{N: r.NModulus[from]}) {
+	if !body.Mod.Verify(zkmod.Public{N: r.NModulus[from]}, r.HashForID(from), r.Pool) {
 		return errors.New("failed to validate mod proof")
 	}
 
 	// verify zkprm
-	if !body.Prm.Verify(r.Pool, r.HashForID(from), zkprm.Public{N: r.NModulus[from], S: r.S[from], T: r.T[from]}) {
+	if !body.Prm.Verify(zkprm.Public{N: r.NModulus[from], S: r.S[from], T: r.T[from]}, r.HashForID(from), r.Pool) {
 		return errors.New("failed to validate prm proof")
 	}
 

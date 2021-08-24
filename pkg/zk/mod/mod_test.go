@@ -24,12 +24,12 @@ func TestMod(t *testing.T) {
 	p, q := zk.ProverPaillierSecret.P(), zk.ProverPaillierSecret.Q()
 	sk := zk.ProverPaillierSecret
 	public := Public{N: sk.PublicKey.N()}
-	proof := NewProof(pl, hash.New(), public, Private{
+	proof := NewProof(hash.New(), Private{
 		P:   p,
 		Q:   q,
 		Phi: sk.Phi(),
-	})
-	assert.True(t, proof.Verify(pl, hash.New(), public))
+	}, public, pl)
+	assert.True(t, proof.Verify(public, hash.New(), pl))
 
 	out, err := cbor.Marshal(proof)
 	require.NoError(t, err, "failed to marshal proof")
@@ -40,14 +40,14 @@ func TestMod(t *testing.T) {
 	proof3 := &Proof{}
 	require.NoError(t, cbor.Unmarshal(out2, proof3), "failed to unmarshal 2nd proof")
 
-	assert.True(t, proof3.Verify(pl, hash.New(), public))
+	assert.True(t, proof3.Verify(public, hash.New(), pl))
 
 	proof.W = big.NewInt(0)
 	for idx := range proof.Responses {
 		proof.Responses[idx].X = big.NewInt(0)
 	}
 
-	assert.False(t, proof.Verify(pl, hash.New(), public), "proof should have failed")
+	assert.False(t, proof.Verify(public, hash.New(), pl), "proof should have failed")
 }
 
 func Test_set4thRoot(t *testing.T) {
@@ -100,6 +100,6 @@ func BenchmarkCRT(b *testing.B) {
 	}
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		proof = NewProof(nil, hash.New(), public, private)
+		proof = NewProof(hash.New(), private, public, nil)
 	}
 }

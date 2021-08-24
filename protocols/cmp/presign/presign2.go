@@ -132,7 +132,7 @@ func (r *presign2) Finalize(out chan<- *round.Message) (round.Session, error) {
 	mtaOuts := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
 		j := otherIDs[i]
 
-		DeltaBeta, DeltaD, DeltaF, DeltaProof := mta.ProveAffP(r.HashForID(r.SelfID()),
+		DeltaBeta, DeltaD, DeltaF, DeltaProof := mta.ProveAffP(r.Group(), r.HashForID(r.SelfID()),
 			r.GammaShare, r.G[r.SelfID()], r.GNonce, r.K[j],
 			r.SecretPaillier, r.Paillier[j], r.Pedersen[j])
 

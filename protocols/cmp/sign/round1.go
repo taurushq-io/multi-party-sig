@@ -65,7 +65,7 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	broadcastMsg := broadcast2{K: K, G: G}
 	errors := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
 		j := otherIDs[i]
-		proof := zkenc.NewProof(r.HashForID(r.SelfID()), zkenc.Public{
+		proof := zkenc.NewProof(r.Group(), r.HashForID(r.SelfID()), zkenc.Public{
 			K:      K,
 			Prover: r.Paillier[r.SelfID()],
 			Aux:    r.Pedersen[j],

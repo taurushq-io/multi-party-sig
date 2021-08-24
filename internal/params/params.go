@@ -1,7 +1,5 @@
 package params
 
-import "github.com/decred/dcrd/dcrec/secp256k1/v3"
-
 const (
 	SecParam  = 256
 	SecBytes  = SecParam / 8
@@ -30,7 +28,4 @@ const (
 
 	BytesPaillier   = BitsPaillier / 8  // = 256
 	BytesCiphertext = 2 * BytesPaillier // = 512
-
-	BytesPoint  = secp256k1.PubKeyBytesLenCompressed
-	BytesScalar = 32
 )

@@ -9,11 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/zk"
 )
 
 func TestAffG(t *testing.T) {
+	group := curve.Secp256k1{}
 	verifierPaillier := zk.VerifierPaillierPublic
 	verifierPedersen := zk.Pedersen
 	prover := zk.ProverPaillierPublic
@@ -47,8 +49,8 @@ func TestAffG(t *testing.T) {
 		Rx: rhoX,
 		R:  rhoY,
 	}
-	proof := NewProof(hash.New(), public, private)
-	assert.True(t, proof.Verify(hash.New(), public))
+	proof := NewProof(group, hash.New(), public, private)
+	assert.True(t, proof.Verify(group, hash.New(), public))
 
 	out, err := cbor.Marshal(proof)
 	require.NoError(t, err, "failed to marshal proof")
@@ -59,6 +61,6 @@ func TestAffG(t *testing.T) {
 	proof3 := &Proof{}
 	require.NoError(t, cbor.Unmarshal(out2, proof3), "failed to unmarshal 2nd proof")
 
-	assert.True(t, proof3.Verify(hash.New(), public))
+	assert.True(t, proof3.Verify(group, hash.New(), public))
 
 }

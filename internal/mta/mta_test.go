@@ -82,10 +82,10 @@ func Test_newMtA(t *testing.T) {
 	{
 		Ai, nonceI := ski.Enc(ai)
 		Aj, nonceJ := skj.Enc(aj)
-		betaI, Di, Fi, proofI := ProveAffP(hash.New(), ai, Ai, nonceI, Bj, ski, paillierJ, zk.Pedersen)
-		betaJ, Dj, Fj, proofJ := ProveAffP(hash.New(), aj, Aj, nonceJ, Bi, skj, paillierI, zk.Pedersen)
+		betaI, Di, Fi, proofI := ProveAffP(group, hash.New(), ai, Ai, nonceI, Bj, ski, paillierJ, zk.Pedersen)
+		betaJ, Dj, Fj, proofJ := ProveAffP(group, hash.New(), aj, Aj, nonceJ, Bi, skj, paillierI, zk.Pedersen)
 
-		assert.True(t, proofI.Verify(hash.New(), zkaffp.Public{
+		assert.True(t, proofI.Verify(group, hash.New(), zkaffp.Public{
 			Kv:       Bj,
 			Dv:       Di,
 			Fp:       Fi,
@@ -94,7 +94,7 @@ func Test_newMtA(t *testing.T) {
 			Verifier: paillierJ,
 			Aux:      zk.Pedersen,
 		}))
-		assert.True(t, proofJ.Verify(hash.New(), zkaffp.Public{
+		assert.True(t, proofJ.Verify(group, hash.New(), zkaffp.Public{
 			Kv:       Bi,
 			Dv:       Dj,
 			Fp:       Fj,

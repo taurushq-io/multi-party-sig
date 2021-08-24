@@ -38,7 +38,7 @@ func (p *Proof) IsValid(public Public) bool {
 
 // NewProof generates a proof that:
 // s = t^lambda (mod N).
-func NewProof(pl *pool.Pool, hash *hash.Hash, public Public, private Private) *Proof {
+func NewProof(private Private, hash *hash.Hash, public Public, pl *pool.Pool) *Proof {
 	lambda := private.Lambda
 	phi := safenum.ModulusFromNat(private.Phi)
 
@@ -77,7 +77,7 @@ func NewProof(pl *pool.Pool, hash *hash.Hash, public Public, private Private) *P
 	}
 }
 
-func (p *Proof) Verify(pl *pool.Pool, hash *hash.Hash, public Public) bool {
+func (p *Proof) Verify(public Public, hash *hash.Hash, pl *pool.Pool) bool {
 	if err := pedersen.ValidateParameters(public.N, public.S, public.T); err != nil {
 		return false
 	}

@@ -64,7 +64,7 @@ func (r *round2) VerifyMessage(msg round.Message) error {
 		return round.ErrNilFields
 	}
 
-	if !body.ProofEnc.Verify(r.HashForID(from), zkenc.Public{
+	if !body.ProofEnc.Verify(r.Group(), r.HashForID(from), zkenc.Public{
 		K:      body.K,
 		Prover: r.Paillier[from],
 		Aux:    r.Pedersen[to],

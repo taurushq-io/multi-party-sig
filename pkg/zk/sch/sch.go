@@ -52,7 +52,7 @@ func NewRandomness(rand io.Reader, group curve.Curve) *Randomness {
 	}
 }
 
-func challenge(group curve.Curve, hash *hash.Hash, commitment *Commitment, public curve.Point) (e curve.Scalar, err error) {
+func challenge(hash *hash.Hash, group curve.Curve, commitment *Commitment, public curve.Point) (e curve.Scalar, err error) {
 	err = hash.WriteAny(commitment.C, public)
 	e = sample.Scalar(hash.Digest(), group)
 	return
@@ -64,7 +64,7 @@ func (r *Randomness) Prove(hash *hash.Hash, public curve.Point, secret curve.Sca
 		return nil
 	}
 	group := secret.Curve()
-	e, err := challenge(group, hash, &r.commitment, public)
+	e, err := challenge(hash, group, &r.commitment, public)
 	if err != nil {
 		return nil
 	}
@@ -84,7 +84,7 @@ func (z *Response) Verify(hash *hash.Hash, public curve.Point, commitment *Commi
 		return false
 	}
 
-	e, err := challenge(z.group, hash, commitment, public)
+	e, err := challenge(hash, z.group, commitment, public)
 	if err != nil {
 		return false
 	}
