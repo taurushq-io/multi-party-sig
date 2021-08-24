@@ -7,7 +7,6 @@ import (
 
 	"github.com/cronokirby/safenum"
 	"github.com/fxamacker/cbor/v2"
-	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
 
@@ -167,34 +166,12 @@ func (p *Exponent) Constant() curve.Point {
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
 func (p *Exponent) WriteTo(w io.Writer) (int64, error) {
-	if p == nil {
-		return 0, io.ErrUnexpectedEOF
+	data, err := p.MarshalBinary()
+	if err != nil {
+		return 0, err
 	}
-	total := int64(0)
-
-	// write the number of coefficients
-	_ = binary.Write(w, binary.BigEndian, uint32(p.Degree()))
-
-	if p.IsConstant {
-		// write only zeros
-		n0, err := w.Write(make([]byte, params.BytesPoint))
-		total += int64(n0)
-		if err != nil {
-			return total, err
-		}
-	}
-
-	// write all coefficients
-	for _, c := range p.coefficients {
-		cBytes, _ := c.MarshalBinary()
-		n, err := w.Write(cBytes)
-		total += int64(n)
-		if err != nil {
-			return total, err
-		}
-	}
-
-	return total, nil
+	total, err := w.Write(data)
+	return int64(total), err
 }
 
 // Domain implements hash.WriterToWithDomain, and separates this type within hash.Hash.
