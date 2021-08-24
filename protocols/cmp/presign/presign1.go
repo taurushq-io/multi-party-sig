@@ -67,7 +67,7 @@ func (r *presign1) StoreMessage(round.Message) error { return nil }
 //
 // In the next round, we send a hash of all the {Kⱼ,Gⱼ}ⱼ.
 // In two rounds, we compare the hashes received and if they are different then we abort.
-func (r *presign1) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *presign1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// γᵢ <- 𝔽,
 	GammaShare := sample.Scalar(rand.Reader, r.Group())
 	// Gᵢ = Encᵢ(γᵢ;νᵢ)
@@ -143,7 +143,7 @@ func (r *presign1) Finalize(out chan<- *round.Message) (round.Round, error) {
 		CommitmentID:   map[party.ID]hash.Commitment{},
 		DecommitmentID: decommitmentID,
 	}
-	return broadcast.New(r.Helper, nextRound, broadcastMsg), nil
+	return broadcast.New(nextRound, broadcastMsg), nil
 }
 
 // MessageContent implements round.Round.

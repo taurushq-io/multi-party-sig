@@ -51,7 +51,7 @@ func (r *round1) StoreMessage(round.Message) error  { return nil }
 const deriveHashKeyContext = "github.com/taurusgroup/multi-party-sig/frost 2021-07-30T09:48+00:00 Derive hash Key"
 
 // Finalize implements round.Round.
-func (r *round1) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// We can think of this as roughly implementing Figure 2. The idea is
 	// to generate two nonces (dᵢ, eᵢ) in Z/(q)ˣ, then two commitments
 	// Dᵢ = dᵢ * G, Eᵢ = eᵢ * G, and then broadcast them.

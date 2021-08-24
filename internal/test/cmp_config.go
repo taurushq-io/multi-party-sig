@@ -13,7 +13,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/protocols/cmp/config"
 )
 
-func GenerateConfig(group curve.Curve, N, T int, source io.Reader, pl *pool.Pool) map[party.ID]*config.Config {
+func GenerateConfig(group curve.Curve, N, T int, source io.Reader, pl *pool.Pool) (map[party.ID]*config.Config, party.IDSlice) {
 	partyIDs := PartyIDs(N)
 	configs := make(map[party.ID]*config.Config, N)
 	public := make(map[party.ID]*config.Public, N)
@@ -40,7 +40,7 @@ func GenerateConfig(group curve.Curve, N, T int, source io.Reader, pl *pool.Pool
 		ecdsaSecret := f.Evaluate(pid.Scalar(group))
 		configs[pid] = &config.Config{
 			Group:     group,
-			Threshold: uint32(T),
+			Threshold: T,
 			Public:    public,
 			RID:       rid.Copy(),
 			ID:        pid,
@@ -58,5 +58,5 @@ func GenerateConfig(group curve.Curve, N, T int, source io.Reader, pl *pool.Pool
 			T:       t,
 		}
 	}
-	return configs
+	return configs, partyIDs
 }

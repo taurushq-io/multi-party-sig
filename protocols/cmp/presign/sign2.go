@@ -45,15 +45,15 @@ func (r *sign2) StoreMessage(msg round.Message) error {
 //
 // - verify (r,s)
 // - if not, find culprit.
-func (r *sign2) Finalize(chan<- *round.Message) (round.Round, error) {
+func (r *sign2) Finalize(chan<- *round.Message) (round.Session, error) {
 	s := r.PreSignature.Signature(r.SigmaShares)
 
 	if s.Verify(r.PublicKey, r.Message) {
-		return &round.Output{Result: s}, nil
+		return r.ResultRound(s), nil
 	}
 
 	culprits := r.PreSignature.VerifySignatureShares(r.SigmaShares, r.Message)
-	return &round.Output{Result: AbortResult{Culprits: culprits}}, nil
+	return r.ResultRound(AbortResult{Culprits: culprits}), nil
 }
 
 // MessageContent implements round.Round.

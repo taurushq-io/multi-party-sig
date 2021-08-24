@@ -82,7 +82,7 @@ func (r *round3) StoreMessage(msg round.Message) error {
 }
 
 // Finalize implements round.Round.
-func (r *round3) Finalize(chan<- *round.Message) (round.Round, error) {
+func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 	ChainKey := types.EmptyRID()
 	for _, j := range r.PartyIDs() {
 		ChainKey.XOR(r.ChainKeys[j])
@@ -142,23 +142,23 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Round, error) {
 				VerificationShares[i] = y_i.Negate()
 			}
 		}
-		return &round.Output{Result: &TaprootResult{
+		return r.ResultRound(&TaprootResult{
 			ID:                 r.SelfID(),
 			Threshold:          r.threshold,
 			PrivateShare:       s_i,
 			PublicKey:          YSecp.XBytes()[:],
 			VerificationShares: VerificationShares,
-		}}, nil
+		}), nil
 	}
 
-	return &round.Output{Result: &Result{
+	return r.ResultRound(&Result{
 		ID:                 r.SelfID(),
 		Group:              r.Group(),
 		Threshold:          r.threshold,
 		PrivateShare:       s_i,
 		PublicKey:          Y,
 		VerificationShares: VerificationShares,
-	}}, nil
+	}), nil
 }
 
 // RoundNumber implements message.Content.

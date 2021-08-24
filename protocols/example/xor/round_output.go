@@ -43,7 +43,7 @@ func (r *Round2) StoreMessage(msg round.Message) error {
 }
 
 // Finalize does not send any messages, but computes the output resulting from the received messages.
-func (r *Round2) Finalize(chan<- *round.Message) (round.Round, error) {
+func (r *Round2) Finalize(chan<- *round.Message) (round.Session, error) {
 	resultXOR := types.EmptyRID()
 	for _, received := range r.received {
 		resultXOR.XOR(received)

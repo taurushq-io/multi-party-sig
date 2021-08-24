@@ -62,7 +62,7 @@ func (r *presign5) StoreMessage(msg round.Message) error {
 //
 // - compute Γ = ∑ⱼ Γⱼ
 // - compute Δᵢ = kᵢ⋅Γ.
-func (r *presign5) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *presign5) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// Γ = ∑ⱼ Γⱼ
 	Gamma := r.Group().NewPoint()
 	for _, GammaJ := range r.BigGammaShare {

@@ -87,7 +87,7 @@ func (r *round2) StoreMessage(msg round.Message) error {
 // Finalize implements round.Round
 //
 // - compute Hash(ssid, K₁, G₁, …, Kₙ, Gₙ).
-func (r *round2) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 	otherIDs := r.OtherPartyIDs()
 	type mtaOut struct {
 		err       error

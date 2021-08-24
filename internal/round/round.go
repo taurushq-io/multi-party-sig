@@ -20,12 +20,13 @@ type Round interface {
 	// In the last round, Finalize should return
 	//   &round.Final{result}, nil
 	// where result is the output of the protocol.
-	Finalize(out chan<- *Message) (Round, error)
+	Finalize(out chan<- *Message) (Session, error)
 
 	// MessageContent returns an uninitialized message.Content for this round.
 	//
 	// The first round of a protocol should return nil.
 	MessageContent() Content
 
+	// Number returns the current round number.
 	Number() Number
 }

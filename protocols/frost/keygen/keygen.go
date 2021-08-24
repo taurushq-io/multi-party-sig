@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
@@ -12,7 +11,8 @@ import (
 
 const (
 	// Frost KeyGen with Threshold.
-	protocolID = "frost/keygen-threshold"
+	protocolID        = "frost/keygen-threshold"
+	protocolIDTaproot = "frost/keygen-threshold-taproot"
 	// This protocol has 3 concrete rounds.
 	protocolRounds round.Number = 3
 )
@@ -25,37 +25,29 @@ var (
 )
 
 func StartKeygenCommon(taproot bool, group curve.Curve, participants []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
-	return func() (round.Round, *round.Info, error) {
-		// Negative thresholds obviously make no sense.
-		// We need threshold + 1 participants to sign, so if this number is larger
-		// then the set of all participants, we can't ever generate signatures,
-		// so the threshold makes no sense either.
-		if threshold < 0 || threshold >= len(participants) {
-			return nil, nil, fmt.Errorf("keygen.StartKeygen: invalid threshold: %d", threshold)
+	return func(sessionID []byte) (round.Session, error) {
+		info := round.Info{
+			FinalRoundNumber: protocolRounds,
+			SelfID:           selfID,
+			PartyIDs:         participants,
+			Threshold:        threshold,
+			Group:            group,
 		}
-
-		sortedIDs := party.NewIDSlice(participants)
-
-		protocolString := protocolID
 		if taproot {
-			protocolString += "-taproot"
+			info.ProtocolID = protocolID
+		} else {
+			info.ProtocolID = protocolIDTaproot
 		}
-		helper, err := round.NewHelper(
-			protocolString,
-			group,
-			protocolRounds,
-			selfID,
-			sortedIDs,
-			types.ThresholdWrapper(threshold),
-		)
+
+		helper, err := round.NewSession(info, sessionID, nil)
 		if err != nil {
-			return nil, nil, fmt.Errorf("keygen.StartKeygen: %w", err)
+			return nil, fmt.Errorf("keygen.StartKeygen: %w", err)
 		}
 
 		return &round1{
 			Helper:    helper,
 			taproot:   taproot,
 			threshold: threshold,
-		}, helper.Info(), nil
+		}, nil
 	}
 }

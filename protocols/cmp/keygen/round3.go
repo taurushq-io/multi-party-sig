@@ -86,7 +86,7 @@ func (r *round3) VerifyMessage(msg round.Message) error {
 		return errors.New("vss polynomial has incorrect constant")
 	}
 	// check deg(Fⱼ) = t
-	if VSSPolynomial.Degree() != r.Threshold {
+	if VSSPolynomial.Degree() != r.Threshold() {
 		return errors.New("vss polynomial has incorrect degree")
 	}
 
@@ -114,7 +114,7 @@ func (r *round3) StoreMessage(msg round.Message) error {
 	from, body := msg.From, msg.Content.(*message3)
 	r.RIDs[from] = body.RID
 	r.ChainKeys[from] = body.C
-	r.N[from] = body.N
+	r.NModulus[from] = body.N
 	r.S[from] = body.S
 	r.T[from] = body.T
 	r.PaillierPublic[from] = paillier.NewPublicKey(body.N)
@@ -133,7 +133,7 @@ func (r *round3) StoreMessage(msg round.Message) error {
 //   - if refresh skip constant coefficient
 //
 // - send proofs and encryption of share for Pⱼ.
-func (r *round3) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *round3) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// c = ⊕ⱼ cⱼ
 	chainKey := r.PreviousChainKey
 	if chainKey == nil {
@@ -153,14 +153,14 @@ func (r *round3) Finalize(out chan<- *round.Message) (round.Round, error) {
 	_ = h.WriteAny(rid, r.SelfID())
 
 	// Prove N is a blum prime with zkmod
-	mod := zkmod.NewProof(r.Pool, h.Clone(), zkmod.Public{N: r.N[r.SelfID()]}, zkmod.Private{
+	mod := zkmod.NewProof(r.Pool, h.Clone(), zkmod.Public{N: r.NModulus[r.SelfID()]}, zkmod.Private{
 		P:   r.PaillierSecret.P(),
 		Q:   r.PaillierSecret.Q(),
 		Phi: r.PaillierSecret.Phi(),
 	})
 
 	// prove s, t are correct as aux parameters with zkprm
-	prm := zkprm.NewProof(r.Pool, h.Clone(), zkprm.Public{N: r.N[r.SelfID()], S: r.S[r.SelfID()], T: r.T[r.SelfID()]}, zkprm.Private{
+	prm := zkprm.NewProof(r.Pool, h.Clone(), zkprm.Public{N: r.NModulus[r.SelfID()], S: r.S[r.SelfID()], T: r.T[r.SelfID()]}, zkprm.Private{
 		Lambda: r.PedersenSecret,
 		Phi:    r.PaillierSecret.Phi(),
 		P:      r.PaillierSecret.P(),

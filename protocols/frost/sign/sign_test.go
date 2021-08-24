@@ -18,7 +18,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/protocols/frost/keygen"
 )
 
-func checkOutput(t *testing.T, rounds map[party.ID]round.Round, public curve.Point, m []byte) {
+func checkOutput(t *testing.T, rounds []round.Session, public curve.Point, m []byte) {
 	for _, r := range rounds {
 		require.IsType(t, &round.Output{}, r, "expected result round")
 		resultRound := r.(*round.Output)
@@ -54,7 +54,7 @@ func TestSign(t *testing.T) {
 	}
 
 	var newPublicKey curve.Point
-	rounds := make(map[party.ID]round.Round, N)
+	rounds := make([]round.Session, 0, N)
 	for _, id := range partyIDs {
 		result := &keygen.Result{
 			ID:                 id,
@@ -69,13 +69,13 @@ func TestSign(t *testing.T) {
 		if newPublicKey == nil {
 			newPublicKey = result.PublicKey
 		}
-		r, _, err := StartSignCommon(false, nil, result, partyIDs, steak)()
+		r, err := StartSignCommon(false, result, partyIDs, steak)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
-		rounds[id] = r
+		rounds = append(rounds, r)
 	}
 
 	for {
-		err, done := test.Rounds(group, rounds, "", nil)
+		err, done := test.Rounds(group, rounds, nil)
 		require.NoError(t, err, "failed to process round")
 		if done {
 			break
@@ -85,7 +85,7 @@ func TestSign(t *testing.T) {
 	checkOutput(t, rounds, newPublicKey, steak)
 }
 
-func checkOutputTaproot(t *testing.T, rounds map[party.ID]round.Round, public taproot.PublicKey, m []byte) {
+func checkOutputTaproot(t *testing.T, rounds []round.Session, public taproot.PublicKey, m []byte) {
 	for _, r := range rounds {
 		require.IsType(t, &round.Output{}, r, "expected result round")
 		resultRound := r.(*round.Output)
@@ -126,7 +126,7 @@ func TestSignTaproot(t *testing.T) {
 	}
 
 	var newPublicKey []byte
-	rounds := make(map[party.ID]round.Round, N)
+	rounds := make([]round.Session, 0, N)
 	for _, id := range partyIDs {
 		result := &keygen.TaprootResult{
 			ID:                 id,
@@ -149,13 +149,13 @@ func TestSignTaproot(t *testing.T) {
 			PublicKey:          tapRootPublicKey,
 			VerificationShares: result.VerificationShares,
 		}
-		r, _, err := StartSignCommon(true, nil, normalResult, partyIDs, steak)()
+		r, err := StartSignCommon(true, normalResult, partyIDs, steak)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
-		rounds[id] = r
+		rounds = append(rounds, r)
 	}
 
 	for {
-		err, done := test.Rounds(group, rounds, "", nil)
+		err, done := test.Rounds(group, rounds, nil)
 		require.NoError(t, err, "failed to process round")
 		if done {
 			break

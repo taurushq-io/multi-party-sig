@@ -47,8 +47,8 @@ func (r *round5) VerifyMessage(msg round.Message) error {
 func (r *round5) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round.
-func (r *round5) Finalize(chan<- *round.Message) (round.Round, error) {
-	return &round.Output{Result: r.UpdatedConfig}, nil
+func (r *round5) Finalize(chan<- *round.Message) (round.Session, error) {
+	return r.ResultRound(r.UpdatedConfig), nil
 }
 
 // MessageContent implements round.Round.

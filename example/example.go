@@ -19,7 +19,7 @@ import (
 )
 
 func XOR(id party.ID, ids party.IDSlice, n *test.Network) error {
-	h, err := protocol.NewHandler(example.StartXOR(id, ids))
+	h, err := protocol.NewHandler(example.StartXOR(id, ids), nil)
 	if err != nil {
 		return err
 	}
@@ -36,7 +36,7 @@ func XOR(id party.ID, ids party.IDSlice, n *test.Network) error {
 }
 
 func CMPKeygen(id party.ID, ids party.IDSlice, threshold int, n *test.Network, pl *pool.Pool) (*cmp.Config, error) {
-	h, err := protocol.NewHandler(cmp.StartKeygen(pl, curve.Secp256k1{}, ids, threshold, id))
+	h, err := protocol.NewHandler(cmp.StartKeygen(curve.Secp256k1{}, ids, threshold, id, pl), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func CMPKeygen(id party.ID, ids party.IDSlice, threshold int, n *test.Network, p
 }
 
 func CMPRefresh(c *cmp.Config, n *test.Network, pl *pool.Pool) (*cmp.Config, error) {
-	hRefresh, err := protocol.NewHandler(cmp.StartRefresh(pl, c))
+	hRefresh, err := protocol.NewHandler(cmp.StartRefresh(c, pl), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func CMPRefresh(c *cmp.Config, n *test.Network, pl *pool.Pool) (*cmp.Config, err
 }
 
 func CMPSign(c *cmp.Config, m []byte, signers party.IDSlice, n *test.Network, pl *pool.Pool) error {
-	h, err := protocol.NewHandler(cmp.StartSign(pl, c, signers, m))
+	h, err := protocol.NewHandler(cmp.StartSign(c, signers, m, pl), nil)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func CMPSign(c *cmp.Config, m []byte, signers party.IDSlice, n *test.Network, pl
 }
 
 func CMPPreSign(c *cmp.Config, signers party.IDSlice, n *test.Network, pl *pool.Pool) (*ecdsa.PreSignature, error) {
-	h, err := protocol.NewHandler(cmp.StartPresign(pl, c, signers))
+	h, err := protocol.NewHandler(cmp.StartPresign(c, signers, pl), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -113,8 +113,8 @@ func CMPPreSign(c *cmp.Config, signers party.IDSlice, n *test.Network, pl *pool.
 	return preSignature, nil
 }
 
-func CMPPreSignOnline(c *cmp.Config, preSignature *ecdsa.PreSignature, m []byte, n *test.Network) error {
-	h, err := protocol.NewHandler(cmp.StartPresignOnline(c, preSignature, m))
+func CMPPreSignOnline(c *cmp.Config, preSignature *ecdsa.PreSignature, m []byte, n *test.Network, pl *pool.Pool) error {
+	h, err := protocol.NewHandler(cmp.StartPresignOnline(c, preSignature, m, pl), nil)
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func CMPPreSignOnline(c *cmp.Config, preSignature *ecdsa.PreSignature, m []byte,
 }
 
 func FrostKeygen(id party.ID, ids party.IDSlice, threshold int, n *test.Network) (*frost.Config, error) {
-	h, err := protocol.NewHandler(frost.StartKeygen(curve.Secp256k1{}, ids, threshold, id))
+	h, err := protocol.NewHandler(frost.StartKeygen(curve.Secp256k1{}, ids, threshold, id), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func FrostKeygen(id party.ID, ids party.IDSlice, threshold int, n *test.Network)
 }
 
 func FrostSign(c *frost.Config, id party.ID, m []byte, signers party.IDSlice, n *test.Network) error {
-	h, err := protocol.NewHandler(frost.StartSign(c, signers, m))
+	h, err := protocol.NewHandler(frost.StartSign(c, signers, m), nil)
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func FrostSign(c *frost.Config, id party.ID, m []byte, signers party.IDSlice, n 
 }
 
 func FrostKeygenTaproot(id party.ID, ids party.IDSlice, threshold int, n *test.Network) (*frost.TaprootConfig, error) {
-	h, err := protocol.NewHandler(frost.StartKeygenTaproot(ids, threshold, id))
+	h, err := protocol.NewHandler(frost.StartKeygenTaproot(ids, threshold, id), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func FrostKeygenTaproot(id party.ID, ids party.IDSlice, threshold int, n *test.N
 	return r.(*frost.TaprootConfig), nil
 }
 func FrostSignTaproot(c *frost.TaprootConfig, id party.ID, m []byte, signers party.IDSlice, n *test.Network) error {
-	h, err := protocol.NewHandler(frost.StartSignTaproot(c, signers, m))
+	h, err := protocol.NewHandler(frost.StartSignTaproot(c, signers, m), nil)
 	if err != nil {
 		return err
 	}
@@ -261,7 +261,7 @@ func All(id party.ID, ids party.IDSlice, threshold int, message []byte, n *test.
 	}
 
 	// CMP PRESIGN ONLINE
-	err = CMPPreSignOnline(refreshConfig, preSignature, message, n)
+	err = CMPPreSignOnline(refreshConfig, preSignature, message, n, pl)
 	if err != nil {
 		return err
 	}
@@ -284,6 +284,7 @@ func All(id party.ID, ids party.IDSlice, threshold int, message []byte, n *test.
 func main() {
 	pl := pool.NewPool(0)
 	defer pl.TearDown()
+
 	ids := party.IDSlice{"a", "b", "c", "d", "e", "f"}
 	threshold := 4
 	messageToSign := []byte("hello")

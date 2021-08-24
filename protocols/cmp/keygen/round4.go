@@ -48,12 +48,12 @@ func (r *round4) VerifyMessage(msg round.Message) error {
 	}
 
 	// verify zkmod
-	if !body.Mod.Verify(r.Pool, r.HashForID(from), zkmod.Public{N: r.N[from]}) {
+	if !body.Mod.Verify(r.Pool, r.HashForID(from), zkmod.Public{N: r.NModulus[from]}) {
 		return errors.New("failed to validate mod proof")
 	}
 
 	// verify zkprm
-	if !body.Prm.Verify(r.Pool, r.HashForID(from), zkprm.Public{N: r.N[from], S: r.S[from], T: r.T[from]}) {
+	if !body.Prm.Verify(r.Pool, r.HashForID(from), zkprm.Public{N: r.NModulus[from], S: r.S[from], T: r.T[from]}) {
 		return errors.New("failed to validate prm proof")
 	}
 
@@ -98,9 +98,12 @@ func (r *round4) StoreMessage(msg round.Message) error {
 // - validate Config
 // - write new ssid hash to old hash state
 // - create proof of knowledge of secret.
-func (r *round4) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *round4) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// add all shares to our secret
-	UpdatedSecretECDSA := r.Group().NewScalar().Set(r.PreviousSecretECDSA)
+	UpdatedSecretECDSA := r.Group().NewScalar()
+	if r.PreviousSecretECDSA != nil {
+		UpdatedSecretECDSA.Set(r.PreviousSecretECDSA)
+	}
 	for _, j := range r.PartyIDs() {
 		UpdatedSecretECDSA.Add(r.ShareReceived[j])
 	}
@@ -121,11 +124,13 @@ func (r *round4) Finalize(out chan<- *round.Message) (round.Round, error) {
 	PublicData := make(map[party.ID]*config.Public, len(r.PartyIDs()))
 	for _, j := range r.PartyIDs() {
 		PublicECDSAShare := ShamirPublicPolynomial.Evaluate(j.Scalar(r.Group()))
-		PublicECDSAShare = PublicECDSAShare.Add(r.PreviousPublicSharesECDSA[j])
+		if r.PreviousPublicSharesECDSA != nil {
+			PublicECDSAShare = PublicECDSAShare.Add(r.PreviousPublicSharesECDSA[j])
+		}
 		PublicData[j] = &config.Public{
 			ECDSA:   PublicECDSAShare,
 			ElGamal: r.ElGamalPublic[j],
-			N:       r.N[j],
+			N:       r.NModulus[j],
 			S:       r.S[j],
 			T:       r.T[j],
 		}
@@ -133,7 +138,7 @@ func (r *round4) Finalize(out chan<- *round.Message) (round.Round, error) {
 
 	UpdatedConfig := &config.Config{
 		Group:     r.Group(),
-		Threshold: uint32(r.Threshold),
+		Threshold: r.Threshold(),
 		Public:    PublicData,
 		RID:       r.RID.Copy(),
 		ChainKey:  r.ChainKey,

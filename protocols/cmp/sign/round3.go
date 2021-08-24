@@ -121,7 +121,7 @@ func (r *round3) StoreMessage(msg round.Message) error {
 // - Δᵢ = [kᵢ]Γ
 // - δᵢ = γᵢ kᵢ + ∑ⱼ δᵢⱼ
 // - χᵢ = xᵢ kᵢ + ∑ⱼ χᵢⱼ.
-func (r *round3) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *round3) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// Γ = ∑ⱼ Γⱼ
 	Gamma := r.Group().NewPoint()
 	for _, BigGammaShare := range r.BigGammaShare {

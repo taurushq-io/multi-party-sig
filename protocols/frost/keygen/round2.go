@@ -89,7 +89,7 @@ func (r *round2) StoreMessage(msg round.Message) error {
 	return nil
 }
 
-func (r *round2) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// These steps come from Figure 1, Round 2 of the Frost paper
 
 	// 1. "Each P_i securely sends to each other participant Pₗ a secret share

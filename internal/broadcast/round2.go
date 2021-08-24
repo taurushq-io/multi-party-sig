@@ -9,7 +9,7 @@ import (
 )
 
 type Round2 struct {
-	round.Round
+	round.Session
 	EchoHash []byte
 }
 
@@ -29,7 +29,7 @@ func (b *Round2) VerifyMessage(msg round.Message) error {
 	if !bytes.Equal(body.EchoHash, b.EchoHash) {
 		return errors.New("echo broadcast failed")
 	}
-	return b.Round.VerifyMessage(round.Message{
+	return b.Session.VerifyMessage(round.Message{
 		From:    msg.From,
 		To:      msg.To,
 		Content: body.Content,
@@ -41,7 +41,7 @@ func (b *Round2) StoreMessage(msg round.Message) error {
 	if !ok {
 		return round.ErrInvalidContent
 	}
-	return b.Round.StoreMessage(round.Message{
+	return b.Session.StoreMessage(round.Message{
 		From:    msg.From,
 		To:      msg.To,
 		Content: body.Content,
@@ -50,7 +50,7 @@ func (b *Round2) StoreMessage(msg round.Message) error {
 
 func (b *Round2) MessageContent() round.Content {
 	return &Message2{
-		Content: b.Round.MessageContent(),
+		Content: b.Session.MessageContent(),
 	}
 }
 

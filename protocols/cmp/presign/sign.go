@@ -6,6 +6,7 @@ import (
 
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/ecdsa"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
@@ -26,53 +27,38 @@ const (
 	protocolFullRounds    round.Number = 8
 )
 
-func StartPresign(pl *pool.Pool, c *config.Config, signers []party.ID, message []byte) protocol.StartFunc {
-	return func() (round.Round, *round.Info, error) {
-		group := c.Group
-
-		// this could be used to indicate a pre-signature later on
-		var (
-			rounds     round.Number
-			protocolID string
-		)
-		if len(message) == 0 {
-			rounds = protocolOfflineRounds
-			protocolID = protocolOfflineID
-		} else {
-			rounds = protocolFullRounds
-			protocolID = protocolFullID
-		}
-
-		signerIDs := party.NewIDSlice(signers)
-		if !c.CanSign(signerIDs) {
-			return nil, nil, errors.New("sign.Create: signers is not a valid signing subset")
-		}
-
+func StartPresign(c *config.Config, signers []party.ID, message []byte, pl *pool.Pool) protocol.StartFunc {
+	return func(sessionID []byte) (round.Session, error) {
 		// validate config
 		if err := c.Validate(); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
-		helper, err := round.NewHelper(
-			protocolID,
-			group,
-			rounds,
-			c.ID,
-			signerIDs,
-			// write the config, the signers and the message to this session.
-			c,
-			signerIDs,
-			hash.BytesWithDomain{
-				TheDomain: "Signature Message",
-				Bytes:     message,
-			},
-		)
+		info := round.Info{
+			SelfID:    c.ID,
+			PartyIDs:  signers,
+			Threshold: c.Threshold,
+			Group:     c.Group,
+		}
+		if len(message) == 0 {
+			info.FinalRoundNumber = protocolOfflineRounds
+			info.ProtocolID = protocolOfflineID
+		} else {
+			info.FinalRoundNumber = protocolFullRounds
+			info.ProtocolID = protocolFullID
+		}
+
+		helper, err := round.NewSession(info, sessionID, pl, c, types.MessageWrapper(message))
 		if err != nil {
-			return nil, nil, fmt.Errorf("sign.Create: %w", err)
+			return nil, fmt.Errorf("sign.Create: %w", err)
 		}
 
+		if !c.CanSign(helper.PartyIDs()) {
+			return nil, errors.New("sign.Create: signers is not a valid signing subset")
+		}
 		// Scale public data
-		T := len(signerIDs)
+		T := helper.N()
+		group := c.Group
 		ECDSA := make(map[party.ID]curve.Point, T)
 		ElGamal := make(map[party.ID]curve.Point, T)
 		Paillier := make(map[party.ID]*paillier.PublicKey, T)
@@ -82,7 +68,7 @@ func StartPresign(pl *pool.Pool, c *config.Config, signers []party.ID, message [
 		// Scale own secret
 		SecretECDSA := group.NewScalar().Set(lagrange[c.ID]).Mul(c.ECDSA)
 		SecretPaillier := c.Paillier()
-		for _, j := range signerIDs {
+		for _, j := range helper.PartyIDs() {
 			public := c.Public[j]
 			// scale public key share
 			ECDSA[j] = lagrange[j].Act(public.ECDSA)
@@ -111,54 +97,54 @@ func StartPresign(pl *pool.Pool, c *config.Config, signers []party.ID, message [
 			Paillier:       Paillier,
 			Pedersen:       Pedersen,
 			Message:        message,
-		}, helper.Info(), nil
+		}, nil
 	}
 }
 
-func StartPresignOnline(c *config.Config, preSignature *ecdsa.PreSignature, message []byte) protocol.StartFunc {
-	return func() (round.Round, *round.Info, error) {
-		group := preSignature.Group
-
+func StartPresignOnline(c *config.Config, preSignature *ecdsa.PreSignature, message []byte, pl *pool.Pool) protocol.StartFunc {
+	return func(sessionID []byte) (round.Session, error) {
 		// this could be used to indicate a pre-signature later on
 		if len(message) == 0 {
-			return nil, nil, errors.New("sign.Create: message is nil")
+			return nil, errors.New("sign.Create: message is nil")
 		}
 
 		if err := preSignature.Validate(); err != nil {
-			return nil, nil, err
+			return nil, fmt.Errorf("sign.Create: %w", err)
 		}
 
 		signers := preSignature.SignerIDs()
 
 		if !c.CanSign(signers) {
-			return nil, nil, errors.New("sign.Create: signers is not a valid signing subset")
+			return nil, errors.New("sign.Create: signers is not a valid signing subset")
 		}
 
 		// validate config
 		if err := c.Validate(); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
-		helper, err := round.NewHelper(
-			protocolOnlineID,
-			group,
-			protocolOnlineRounds,
-			c.ID,
-			signers,
-			// write the config, the signers, presignature ID, and the message to this session.
+		info := round.Info{
+			ProtocolID:       protocolOnlineID,
+			FinalRoundNumber: protocolOnlineRounds,
+			SelfID:           c.ID,
+			PartyIDs:         signers,
+			Threshold:        c.Threshold,
+			Group:            c.Group,
+		}
+
+		helper, err := round.NewSession(
+			info,
+			sessionID,
+			pl,
 			c,
-			signers,
 			hash.BytesWithDomain{
 				TheDomain: "PreSignatureID",
 				Bytes:     preSignature.ID,
 			},
-			hash.BytesWithDomain{
-				TheDomain: "Signature Message",
-				Bytes:     message,
-			},
+			types.MessageWrapper(message),
 		)
 		if err != nil {
-			return nil, nil, fmt.Errorf("sign.Create: %w", err)
+			return nil, fmt.Errorf("sign.Create: %w", err)
 		}
 
 		return &sign1{
@@ -166,6 +152,6 @@ func StartPresignOnline(c *config.Config, preSignature *ecdsa.PreSignature, mess
 			PublicKey:    c.PublicPoint(),
 			Message:      message,
 			PreSignature: preSignature,
-		}, helper.Info(), nil
+		}, nil
 	}
 }

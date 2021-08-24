@@ -74,7 +74,7 @@ func (r *abort2) StoreMessage(msg round.Message) error {
 }
 
 // Finalize implements round.Round
-func (r *abort2) Finalize(chan<- *round.Message) (round.Round, error) {
+func (r *abort2) Finalize(chan<- *round.Message) (round.Session, error) {
 	var culprits []party.ID
 	for _, j := range r.OtherPartyIDs() {
 		// M = Ŷⱼ + kⱼ⋅Xⱼ

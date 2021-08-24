@@ -67,7 +67,7 @@ func (r *presign6) StoreMessage(msg round.Message) error {
 // - compute R = [δ⁻¹] Γ,
 // - compute Sᵢ = χᵢ⋅R,
 // - compute {R̄ⱼ = δ⁻¹⋅Δⱼ}ⱼ.
-func (r *presign6) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *presign6) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// δ = ∑ⱼ δⱼ
 	Delta := r.Group().NewScalar()
 	for _, DeltaJ := range r.DeltaShares {

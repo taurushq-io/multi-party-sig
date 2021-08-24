@@ -1,6 +1,7 @@
 package frost
 
 import (
+	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
@@ -65,7 +66,7 @@ func StartKeygenTaproot(participants []party.ID, threshold int, selfID party.ID)
 //
 // Differences stemming from this change are commented throughout the protocol.
 func StartSign(config *Config, signers []party.ID, messageHash []byte) protocol.StartFunc {
-	return sign.StartSignCommon(false, nil, config, signers, messageHash)
+	return sign.StartSignCommon(false, config, signers, messageHash)
 }
 
 // StartSignTaproot is like StartSign, but will generate a Taproot / BIP-340 compatible signature.
@@ -75,6 +76,11 @@ func StartSign(config *Config, signers []party.ID, messageHash []byte) protocol.
 // See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki
 func StartSignTaproot(config *TaprootConfig, signers []party.ID, messageHash []byte) protocol.StartFunc {
 	publicKey, err := curve.Secp256k1{}.LiftX(config.PublicKey)
+	if err != nil {
+		return func([]byte) (round.Session, error) {
+			return nil, err
+		}
+	}
 	normalResult := &keygen.Result{
 		Group:              curve.Secp256k1{},
 		ID:                 config.ID,
@@ -83,5 +89,5 @@ func StartSignTaproot(config *TaprootConfig, signers []party.ID, messageHash []b
 		PublicKey:          publicKey,
 		VerificationShares: config.VerificationShares,
 	}
-	return sign.StartSignCommon(true, err, normalResult, signers, messageHash)
+	return sign.StartSignCommon(true, normalResult, signers, messageHash)
 }

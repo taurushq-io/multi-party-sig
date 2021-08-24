@@ -60,7 +60,7 @@ func (r *presign4) StoreMessage(msg round.Message) error {
 //
 // - set Γᵢ = γᵢ⋅G.
 // - prove zklogstar.
-func (r *presign4) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *presign4) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// Γᵢ = γᵢ⋅G
 	BigGammaShare := r.Group().NewScalar().SetNat(r.GammaShare.Mod(r.Group().Order())).ActOnBase()
 

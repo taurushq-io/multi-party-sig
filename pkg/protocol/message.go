@@ -22,7 +22,6 @@ type Message struct {
 	RoundNumber round.Number
 	// Data is the actual content consumed by the round.
 	Data []byte
-
 	// Signature TODO
 	Signature []byte
 }

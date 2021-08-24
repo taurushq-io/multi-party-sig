@@ -10,13 +10,12 @@ type Broadcaster interface {
 	BroadcastData() []byte
 }
 
-func New(helper *round.Helper, nextRound round.Round, msg Broadcaster) round.Round {
-	if helper.N() == 2 {
+func New(nextRound round.Session, msg Broadcaster) round.Session {
+	if nextRound.N() == 2 {
 		return nextRound
 	}
 	return &Round1{
-		Helper:   helper,
-		Round:    nextRound,
-		received: map[party.ID][]byte{helper.SelfID(): msg.BroadcastData()},
+		Session:  nextRound,
+		received: map[party.ID][]byte{nextRound.SelfID(): msg.BroadcastData()},
 	}
 }

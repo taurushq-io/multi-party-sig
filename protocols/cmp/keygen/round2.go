@@ -36,8 +36,8 @@ type round2 struct {
 	// PaillierPublic[j] = Nⱼ
 	PaillierPublic map[party.ID]*paillier.PublicKey
 
-	// N[j] = Nⱼ
-	N map[party.ID]*safenum.Modulus
+	// NModulus[j] = Nⱼ
+	NModulus map[party.ID]*safenum.Modulus
 	// S[j], T[j] = sⱼ, tⱼ
 	S, T map[party.ID]*safenum.Nat
 
@@ -87,7 +87,7 @@ func (r *round2) StoreMessage(msg round.Message) error {
 // Finalize implements round.Round
 //
 // - send all committed data.
-func (r *round2) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// Send the message we created in Round1 to all
 	err := r.SendMessage(out, &message3{
 		RID:                r.RIDs[r.SelfID()],
@@ -95,7 +95,7 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Round, error) {
 		VSSPolynomial:      r.VSSPolynomials[r.SelfID()],
 		SchnorrCommitments: r.SchnorrRand.Commitment(),
 		ElGamalPublic:      r.ElGamalPublic[r.SelfID()],
-		N:                  r.N[r.SelfID()],
+		N:                  r.NModulus[r.SelfID()],
 		S:                  r.S[r.SelfID()],
 		T:                  r.T[r.SelfID()],
 		Decommitment:       r.Decommitment,

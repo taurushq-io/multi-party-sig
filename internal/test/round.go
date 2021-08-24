@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"reflect"
-	"sync"
 
 	"github.com/fxamacker/cbor/v2"
 	"github.com/taurusgroup/multi-party-sig/internal/broadcast"
@@ -15,63 +14,59 @@ import (
 )
 
 type Rule interface {
-	ModifyBefore(rPrevious round.Round)
-	ModifyAfter(rNext round.Round)
-	ModifyContent(rNext round.Round, to party.ID, content round.Content)
+	ModifyBefore(rPrevious round.Session)
+	ModifyAfter(rNext round.Session)
+	ModifyContent(rNext round.Session, to party.ID, content round.Content)
 }
 
-func Rounds(group curve.Curve, rounds map[party.ID]round.Round, culprit party.ID, rule Rule) (error, bool) {
+func Rounds(group curve.Curve, rounds []round.Session, rule Rule) (error, bool) {
 	N := len(rounds)
-	var errGroup errgroup.Group
 
-	roundType, err := checkAllRoundsSame(rounds, culprit)
+	roundType, err := checkAllRoundsSame(rounds)
 	if err != nil {
 		return err, false
 	}
 	log.Println(roundType, "finalizing")
-	mtx := new(sync.Mutex)
 	// get the second set of  messages
+	errGroup := new(errgroup.Group)
 	out := make(chan *round.Message, N*N)
 	for id := range rounds {
-		f := func(id party.ID, rounds map[party.ID]round.Round) func() error {
-			return func() (err error) {
-				var rNew, rNewReal round.Round
-				r := rounds[id]
+		idx := id
+		r := rounds[idx]
+		errGroup.Go(func() error {
+			var rNew, rNewReal round.Session
+			if rule != nil {
 				rReal := getRound(r)
-				if id == culprit {
-					rule.ModifyBefore(rReal)
-					outFake := make(chan *round.Message, N)
-					rNew, err = r.Finalize(outFake)
-					close(outFake)
-					rule.ModifyAfter(rReal)
-					rNewReal = getRound(rNew)
-					for msg := range outFake {
-						rule.ModifyContent(rNewReal, msg.To, getContent(msg.Content))
-						out <- msg
-					}
-				} else {
-					rNew, err = r.Finalize(out)
+				rule.ModifyBefore(rReal)
+				outFake := make(chan *round.Message, N)
+				rNew, err = r.Finalize(outFake)
+				close(outFake)
+				rNewReal = getRound(rNew)
+				rule.ModifyAfter(rNewReal)
+				for msg := range outFake {
+					rule.ModifyContent(rNewReal, msg.To, getContent(msg.Content))
+					out <- msg
 				}
-				if err != nil {
-					return err
-				}
-
-				if rNew != nil {
-					mtx.Lock()
-					rounds[id] = rNew
-					mtx.Unlock()
-				}
-				return nil
+			} else {
+				rNew, err = r.Finalize(out)
 			}
-		}
-		errGroup.Go(f(id, rounds))
+
+			if err != nil {
+				return err
+			}
+
+			if rNew != nil {
+				rounds[idx] = rNew
+			}
+			return nil
+		})
 	}
 	if err = errGroup.Wait(); err != nil {
 		return err, false
 	}
 	close(out)
 
-	roundType, err = checkAllRoundsSame(rounds, culprit)
+	roundType, err = checkAllRoundsSame(rounds)
 	if err != nil {
 		return err, false
 	}
@@ -81,56 +76,45 @@ func Rounds(group curve.Curve, rounds map[party.ID]round.Round, culprit party.ID
 
 	log.Println(roundType, "verifying")
 
+	var msgBytes []byte
 	for msg := range out {
-		msgBytes, err := cbor.Marshal(msg)
+		msgBytes, err = cbor.Marshal(msg)
 		if err != nil {
 			return err, false
 		}
-		for id := range rounds {
-			f := func(id party.ID, msgBytes []byte) func() error {
-				return func() (err error) {
-					r := rounds[id]
-					var m round.Message
-					m.Content = r.MessageContent()
-					m.Content.Init(group)
-					if err = cbor.Unmarshal(msgBytes, &m); err != nil {
+		for idx := range rounds {
+			r := rounds[idx]
+			errGroup.Go(func() error {
+				var m round.Message
+
+				m.Content = r.MessageContent()
+				m.Content.Init(group)
+				err = cbor.Unmarshal(msgBytes, &m)
+				if err != nil {
+					return err
+				}
+				if m.From != r.SelfID() && (m.To == "" || m.To == r.SelfID()) {
+					if err = r.VerifyMessage(m); err != nil {
 						return err
 					}
-					if m.From != id && (m.To == "" || m.To == id) {
-						err = r.VerifyMessage(m)
-						if err != nil && id != culprit {
-							return err
-						}
-						mtx.Lock()
-						err = r.StoreMessage(m)
-						mtx.Unlock()
-						if err != nil && id != culprit {
-							return err
-						}
+					if err = r.StoreMessage(m); err != nil {
+						return err
 					}
-					return nil
 				}
-			}
-			errGroup.Go(f(id, msgBytes))
+				return nil
+			})
+		}
+		if err = errGroup.Wait(); err != nil {
+			return err, false
 		}
 	}
 
-	return errGroup.Wait(), false
+	return nil, false
 }
 
-func getAnyRound(rounds map[party.ID]round.Round) round.Round {
-	for _, r := range rounds {
-		return r
-	}
-	return nil
-}
-
-func checkAllRoundsSame(rounds map[party.ID]round.Round, culprit party.ID) (reflect.Type, error) {
+func checkAllRoundsSame(rounds []round.Session) (reflect.Type, error) {
 	var t reflect.Type
-	for id, r := range rounds {
-		if id == culprit {
-			continue
-		}
+	for _, r := range rounds {
 		rReal := getRound(r)
 		t2 := reflect.TypeOf(rReal)
 		if t == nil {
@@ -142,12 +126,12 @@ func checkAllRoundsSame(rounds map[party.ID]round.Round, culprit party.ID) (refl
 	return t, nil
 }
 
-func getRound(outerRound round.Round) round.Round {
+func getRound(outerRound round.Session) round.Session {
 	switch r := outerRound.(type) {
 	case *broadcast.Round1:
-		return getRound(r.Round)
+		return getRound(r.Session)
 	case *broadcast.Round2:
-		return getRound(r.Round)
+		return getRound(r.Session)
 	default:
 		return r
 	}

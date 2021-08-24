@@ -120,7 +120,7 @@ func (r *presign3) StoreMessage(msg round.Message) error {
 // - δᵢ = γᵢ kᵢ + ∑ⱼ αᵢⱼ + βᵢⱼ
 // - χᵢ = xᵢ kᵢ + ∑ⱼ α̂ᵢⱼ + β̂ᵢⱼ
 // - Ẑⱼ, b̂ⱼ
-func (r *presign3) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *presign3) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// δᵢ = γᵢ kᵢ
 	KShareInt := curve.MakeInt(r.KShare)
 	DeltaShare := new(safenum.Int).Mul(r.GammaShare, KShareInt, -1)

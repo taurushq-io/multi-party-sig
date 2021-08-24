@@ -25,7 +25,7 @@ func (r *sign1) VerifyMessage(round.Message) error { return nil }
 // StoreMessage implements round.Round.
 func (r *sign1) StoreMessage(round.Message) error { return nil }
 
-func (r *sign1) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *sign1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// σᵢ = kᵢm+rχᵢ (mod q)
 	SigmaShare := r.PreSignature.SignatureShare(r.Message)
 

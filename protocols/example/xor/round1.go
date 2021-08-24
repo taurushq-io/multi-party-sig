@@ -20,7 +20,7 @@ func (r *Round1) VerifyMessage(round.Message) error { return nil }
 func (r *Round1) StoreMessage(round.Message) error { return nil }
 
 // Finalize uses the out channel to communicate messages to other parties.
-func (r *Round1) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *Round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	xor, err := types.NewRID(rand.Reader)
 	if err != nil {
 		// return the round since we did not actually abort due to malicious behaviour.

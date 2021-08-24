@@ -13,51 +13,51 @@ import (
 )
 
 // StartFunc is function that creates the first round of a protocol.
-// It returns the first round, as well as Info containing static information about the protocol.
+// It returns the first round initialized with the session information.
 // If the creation fails (likely due to misconfiguration), and error is returned.
-type StartFunc func() (round.Round, *round.Info, error)
+//
+// An optional sessionID can be provided, which should unique among all protocol executions.
+type StartFunc func(sessionID []byte) (round.Session, error)
 
 // Handler represents an execution of a given protocol.
 // It provides a simple interface for the user to receive/deliver protocol messages.
 type Handler struct {
-	*round.Info
-	queue *queue
-	mtx   sync.Mutex
-
 	Log zerolog.Logger
 
 	done bool
 
 	outChan  chan *Message
-	r        round.Round
+	r        round.Session
 	result   interface{}
 	err      error
 	received map[party.ID]bool
+
+	queue *queue
+	mtx   sync.Mutex
 }
 
 // NewHandler expects a StartFunc for the desired protocol. It returns a handler that the user can interact with.
-func NewHandler(create StartFunc) (*Handler, error) {
-	r, info, err := create()
+func NewHandler(create StartFunc, sessionID []byte) (*Handler, error) {
+	r, err := create(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("protocol: failed to create round: %w", err)
 	}
-	N := len(info.PartyIDs)
+	N := r.N()
 	received := make(map[party.ID]bool, N)
-	for _, id := range info.PartyIDs {
-		if id != info.SelfID {
+	for _, id := range r.PartyIDs() {
+		if id != r.SelfID() {
 			received[id] = false
 		}
 	}
 	h := &Handler{
-		Info:     info,
 		queue:    &queue{},
 		outChan:  make(chan *Message, 2*N),
 		r:        r,
 		received: received,
 	}
 	h.Log = zerolog.New(zerolog.NewConsoleWriter()).Level(zerolog.InfoLevel).With().
-		Str("protocol", info.ProtocolID).
-		Str("party", string(info.SelfID)).
+		Str("protocol", r.ProtocolID()).
+		Str("party", string(r.SelfID())).
 		Int("round", int(h.roundNumber())).
 		Stack().
 		Logger()
@@ -143,22 +143,22 @@ func (h *Handler) validate(msg *Message) error {
 	if msg.RoundNumber <= 1 {
 		return ErrInvalidRoundNumber
 	}
-	if !msg.IsFor(h.SelfID) {
+	if !msg.IsFor(h.r.SelfID()) {
 		return ErrWrongDestination
 	}
 
 	// check SSID
-	if !bytes.Equal(h.SSID, msg.SSID) {
+	if !bytes.Equal(h.r.SSID(), msg.SSID) {
 		return ErrWrongSSID
 	}
 
 	// check protocol ID
-	if msg.Protocol != h.ProtocolID {
+	if msg.Protocol != h.r.ProtocolID() {
 		return ErrWrongProtocolID
 	}
 
 	// check if message for unexpected round
-	if msg.RoundNumber > h.FinalRoundNumber {
+	if msg.RoundNumber > h.r.FinalRoundNumber() {
 		return ErrInvalidRoundNumber
 	}
 
@@ -189,7 +189,7 @@ func (h *Handler) handleMessage(msg *Message) error {
 
 	// unmarshal message
 	content := h.r.MessageContent()
-	content.Init(h.Group)
+	content.Init(h.r.Group())
 	if msg.RoundNumber != h.r.Number() {
 		return ErrInconsistentRound
 	}
@@ -216,7 +216,7 @@ func (h *Handler) handleMessage(msg *Message) error {
 }
 
 func (h *Handler) finishRound() error {
-	out := make(chan *round.Message, len(h.PartyIDs))
+	out := make(chan *round.Message, h.r.N())
 	// get new messages
 	nextRound, err := h.r.Finalize(out)
 	if err != nil {
@@ -230,10 +230,10 @@ func (h *Handler) finishRound() error {
 			panic("g")
 		}
 		h.outChan <- &Message{
-			SSID:        h.SSID,
-			From:        h.SelfID,
+			SSID:        h.r.SSID(),
+			From:        h.r.SelfID(),
 			To:          msg.To,
-			Protocol:    h.ProtocolID,
+			Protocol:    h.r.ProtocolID(),
 			RoundNumber: nextRound.Number(),
 			Data:        data,
 			Signature:   nil, //TODO

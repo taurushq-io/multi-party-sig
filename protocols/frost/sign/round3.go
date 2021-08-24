@@ -85,7 +85,7 @@ func (r *round3) StoreMessage(msg round.Message) error {
 }
 
 // Finalize implements round.Round.
-func (r *round3) Finalize(chan<- *round.Message) (round.Round, error) {
+func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 	// These steps come from Figure 3 of the Frost paper.
 
 	// 7.c "Compute the group's response z = ∑ᵢ zᵢ"

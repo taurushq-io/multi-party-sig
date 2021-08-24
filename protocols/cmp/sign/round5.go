@@ -62,7 +62,7 @@ func (r *round5) StoreMessage(msg round.Message) error {
 //
 // - compute σ = ∑ⱼ σⱼ
 // - verify signature.
-func (r *round5) Finalize(chan<- *round.Message) (round.Round, error) {
+func (r *round5) Finalize(chan<- *round.Message) (round.Session, error) {
 	// compute σ = ∑ⱼ σⱼ
 	Sigma := r.Group().NewScalar()
 	for _, j := range r.PartyIDs() {

@@ -78,7 +78,7 @@ func (r *round4) StoreMessage(msg round.Message) error {
 // - set Δ = ∑ⱼ Δⱼ
 // - verify Δ = [δ]G
 // - compute σᵢ = rχᵢ + kᵢm.
-func (r *round4) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *round4) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// δ = ∑ⱼ δⱼ
 	// Δ = ∑ⱼ Δⱼ
 	Delta := r.Group().NewScalar()

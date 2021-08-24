@@ -1,6 +1,8 @@
 package cmp
 
 import (
+	"crypto/rand"
+	"math"
 	"sync"
 	"testing"
 
@@ -16,7 +18,7 @@ import (
 
 func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte, pl *pool.Pool, n *test.Network, wg *sync.WaitGroup) {
 	defer wg.Done()
-	h, err := protocol.NewHandler(StartKeygen(pl, curve.Secp256k1{}, ids, threshold, id))
+	h, err := protocol.NewHandler(StartKeygen(curve.Secp256k1{}, ids, threshold, id, pl), nil)
 	require.NoError(t, err)
 	require.NoError(t, test.HandlerLoop(id, h, n))
 	r, err := h.Result()
@@ -24,7 +26,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	require.IsType(t, &Config{}, r)
 	c := r.(*Config)
 
-	h, err = protocol.NewHandler(StartRefresh(pl, c))
+	h, err = protocol.NewHandler(StartRefresh(c, pl), nil)
 	require.NoError(t, err)
 	require.NoError(t, test.HandlerLoop(c.ID, h, n))
 
@@ -33,7 +35,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	require.IsType(t, &Config{}, r)
 	c = r.(*Config)
 
-	h, err = protocol.NewHandler(StartSign(pl, c, ids, message))
+	h, err = protocol.NewHandler(StartSign(c, ids, message, pl), nil)
 	require.NoError(t, err)
 	require.NoError(t, test.HandlerLoop(c.ID, h, n))
 
@@ -43,7 +45,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	signature := signResult.(*ecdsa.Signature)
 	assert.True(t, signature.Verify(c.PublicPoint(), message))
 
-	h, err = protocol.NewHandler(StartPresign(pl, c, ids))
+	h, err = protocol.NewHandler(StartPresign(c, ids, pl), nil)
 	require.NoError(t, err)
 
 	require.NoError(t, test.HandlerLoop(c.ID, h, n))
@@ -54,7 +56,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	preSignature := signResult.(*ecdsa.PreSignature)
 	assert.NoError(t, preSignature.Validate())
 
-	h, err = protocol.NewHandler(StartPresignOnline(c, preSignature, message))
+	h, err = protocol.NewHandler(StartPresignOnline(c, preSignature, message, pl), nil)
 	require.NoError(t, err)
 	require.NoError(t, test.HandlerLoop(c.ID, h, n))
 
@@ -66,7 +68,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 }
 
 func TestCMP(t *testing.T) {
-	N := 5
+	N := 3
 	T := N - 1
 	message := []byte("hello")
 
@@ -83,4 +85,80 @@ func TestCMP(t *testing.T) {
 		go do(t, id, partyIDs, T, message, pl, n, &wg)
 	}
 	wg.Wait()
+}
+
+func TestStart(t *testing.T) {
+	group := curve.Secp256k1{}
+	N := 5
+	T := 3
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+	configs, partyIDs := test.GenerateConfig(group, N, T, rand.Reader, pl)
+
+	m := []byte("HELLO")
+	selfID := partyIDs[0]
+	c := configs[selfID]
+	tests := []struct {
+		name      string
+		partyIDs  []party.ID
+		threshold int
+	}{
+		{
+			"N threshold",
+			partyIDs,
+			N,
+		},
+		{
+			"T threshold",
+			partyIDs[:T],
+			N,
+		},
+		{
+			"-1 threshold",
+			partyIDs,
+			-1,
+		},
+		{
+			"max threshold",
+			partyIDs,
+			math.MaxUint32,
+		},
+		{
+			"max threshold -1",
+			partyIDs,
+			math.MaxUint32 - 1,
+		},
+		{
+			"no self",
+			partyIDs[1:],
+			T,
+		},
+		{
+			"duplicate self",
+			append(partyIDs, selfID),
+			T,
+		},
+		{
+			"duplicate other",
+			append(partyIDs, partyIDs[1]),
+			T,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c.Threshold = tt.threshold
+			var err error
+			_, err = StartKeygen(group, tt.partyIDs, tt.threshold, selfID, pl)(nil)
+			t.Log(err)
+			assert.Error(t, err)
+
+			_, err = StartSign(c, tt.partyIDs, m, pl)(nil)
+			t.Log(err)
+			assert.Error(t, err)
+
+			_, err = StartPresign(c, tt.partyIDs, pl)(nil)
+			t.Log(err)
+			assert.Error(t, err)
+		})
+	}
 }

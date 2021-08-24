@@ -14,7 +14,6 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 	zksch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
 )
 
@@ -23,26 +22,14 @@ var _ round.Round = (*round1)(nil)
 type round1 struct {
 	*round.Helper
 
-	// Pool is used to parallelize operations
-	Pool *pool.Pool
-
-	// Threshold is the integer t which defines the maximum number of corruptions tolerated for this config.
-	Threshold int
-
 	// PreviousSecretECDSA = sk'ᵢ
 	// Contains the previous secret ECDSA key share which is being refreshed
-	// Keygen:  sk'ᵢ = 0
+	// Keygen:  sk'ᵢ = nil
 	// Refresh: sk'ᵢ = sk'ᵢ
 	PreviousSecretECDSA curve.Scalar
 
-	// PreviousPublicKey = pk'
-	// Public key being refreshed.
-	// Keygen:  pk' = ∞
-	// Refresh: pk' = pk'
-	PreviousPublicKey curve.Point
-
 	// PreviousPublicSharesECDSA[j] = pk'ⱼ
-	// Keygen:  pk'ⱼ = ∞
+	// Keygen:  pk'ⱼ = nil
 	// Refresh: pk'ⱼ = pk'ⱼ
 	PreviousPublicSharesECDSA map[party.ID]curve.Point
 
@@ -74,7 +61,7 @@ func (r *round1) StoreMessage(round.Message) error { return nil }
 // - sample ridᵢ <- {0,1}ᵏ
 // - sample cᵢ <- {0,1}ᵏ
 // - commit to message.
-func (r *round1) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// generate Paillier and Pedersen
 	PaillierSecret := paillier.NewSecretKey(nil)
 	SelfPaillierPublic := PaillierSecret.PublicKey
@@ -125,7 +112,7 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Round, error) {
 		ShareReceived:  map[party.ID]curve.Scalar{r.SelfID(): SelfShare},
 		ElGamalPublic:  map[party.ID]curve.Point{r.SelfID(): ElGamalPublic},
 		PaillierPublic: map[party.ID]*paillier.PublicKey{r.SelfID(): SelfPaillierPublic},
-		N:              map[party.ID]*safenum.Modulus{r.SelfID(): SelfPedersenPublic.N()},
+		NModulus:       map[party.ID]*safenum.Modulus{r.SelfID(): SelfPedersenPublic.N()},
 		S:              map[party.ID]*safenum.Nat{r.SelfID(): SelfPedersenPublic.S()},
 		T:              map[party.ID]*safenum.Nat{r.SelfID(): SelfPedersenPublic.T()},
 		ElGamalSecret:  ElGamalSecret,
@@ -134,7 +121,7 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Round, error) {
 		SchnorrRand:    SchnorrRand,
 		Decommitment:   Decommitment,
 	}
-	return broadcast.New(r.Helper, nextRound, msg), nil
+	return broadcast.New(nextRound, msg), nil
 }
 
 // PreviousRound implements round.Round.

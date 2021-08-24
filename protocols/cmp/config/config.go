@@ -41,7 +41,7 @@ type Config struct {
 
 	// Threshold is the integer t which defines the maximum number of corruptions tolerated for this config.
 	// Threshold + 1 is the minimum number of parties' shares required to reconstruct the secret/sign a message.
-	Threshold uint32
+	Threshold int
 
 	// ECDSA is this party's share xᵢ of the secret ECDSA x
 	ECDSA curve.Scalar
@@ -279,7 +279,7 @@ func (p *Public) WriteTo(w io.Writer) (total int64, err error) {
 // a valid subset of the original parties of size > t,
 // and includes self.
 func (c *Config) CanSign(signers party.IDSlice) bool {
-	if !ValidThreshold(int(c.Threshold), len(signers)) {
+	if !ValidThreshold(c.Threshold, len(signers)) {
 		return false
 	}
 

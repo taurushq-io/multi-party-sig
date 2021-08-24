@@ -10,7 +10,6 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/test"
 	"github.com/taurusgroup/multi-party-sig/pkg/ecdsa"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 	"golang.org/x/crypto/sha3"
 )
@@ -24,32 +23,26 @@ func TestRound(t *testing.T) {
 	T := N - 1
 
 	t.Log("generating configs")
-	configs := test.GenerateConfig(group, N, T, mrand.New(mrand.NewSource(1)), pl)
+	configs, partyIDs := test.GenerateConfig(group, N, T, mrand.New(mrand.NewSource(1)), pl)
 	t.Log("done generating configs")
 
-	partyIDs := make([]party.ID, 0, T+1)
-	for id := range configs {
-		partyIDs = append(partyIDs, id)
-		if len(partyIDs) == T+1 {
-			break
-		}
-	}
+	partyIDs = partyIDs[:T+1]
 	publicPoint := configs[partyIDs[0]].PublicPoint()
 
 	messageToSign := []byte("hello")
 	messageHash := make([]byte, 64)
 	sha3.ShakeSum128(messageHash, messageToSign)
 
-	rounds := make(map[party.ID]round.Round, N)
+	rounds := make([]round.Session, 0, N)
 	for _, partyID := range partyIDs {
 		c := configs[partyID]
-		r, _, err := StartSign(pl, c, partyIDs, messageHash)()
+		r, err := StartSign(c, partyIDs, messageHash, pl)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
-		rounds[partyID] = r
+		rounds = append(rounds, r)
 	}
 
 	for {
-		err, done := test.Rounds(group, rounds, "", nil)
+		err, done := test.Rounds(group, rounds, nil)
 		require.NoError(t, err, "failed to process round")
 		if done {
 			break

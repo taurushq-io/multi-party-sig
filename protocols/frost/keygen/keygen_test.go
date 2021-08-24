@@ -12,18 +12,18 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 )
 
-func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.IDSlice) {
+func checkOutput(t *testing.T, rounds []round.Session, parties party.IDSlice) {
 	group := curve.Secp256k1{}
 
 	N := len(rounds)
 	results := make([]Result, 0, N)
-	for id, r := range rounds {
+	for _, r := range rounds {
 		resultRound, ok := r.(*round.Output)
 		require.True(t, ok)
 		result, ok := resultRound.Result.(*Result)
 		require.True(t, ok)
 		results = append(results, *result)
-		require.Equal(t, id, result.ID)
+		require.Equal(t, r.SelfID(), result.ID)
 	}
 
 	var publicKey curve.Point
@@ -64,15 +64,15 @@ func TestKeygen(t *testing.T) {
 	N := 5
 	partyIDs := test.PartyIDs(N)
 
-	rounds := make(map[party.ID]round.Round, N)
+	rounds := make([]round.Session, 0, N)
 	for _, partyID := range partyIDs {
-		r, _, err := StartKeygenCommon(false, group, partyIDs, N-1, partyID)()
+		r, err := StartKeygenCommon(false, group, partyIDs, N-1, partyID)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
-		rounds[partyID] = r
+		rounds = append(rounds, r)
 	}
 
 	for {
-		err, done := test.Rounds(group, rounds, "", nil)
+		err, done := test.Rounds(group, rounds, nil)
 		require.NoError(t, err, "failed to process round")
 		if done {
 			break
@@ -82,18 +82,18 @@ func TestKeygen(t *testing.T) {
 	checkOutput(t, rounds, partyIDs)
 }
 
-func checkOutputTaproot(t *testing.T, rounds map[party.ID]round.Round, parties party.IDSlice) {
+func checkOutputTaproot(t *testing.T, rounds []round.Session, parties party.IDSlice) {
 	group := curve.Secp256k1{}
 
 	N := len(rounds)
 	results := make([]TaprootResult, 0, N)
-	for id, r := range rounds {
+	for _, r := range rounds {
 		require.IsType(t, &round.Output{}, r, "expected result round")
 		resultRound := r.(*round.Output)
 		require.IsType(t, &TaprootResult{}, resultRound.Result, "expected taproot result")
 		result := resultRound.Result.(*TaprootResult)
 		results = append(results, *result)
-		require.Equal(t, id, result.ID, "party IDs should be the same")
+		require.Equal(t, r.SelfID(), result.ID, "party IDs should be the same")
 	}
 
 	var publicKey []byte
@@ -136,16 +136,16 @@ func TestKeygenTaproot(t *testing.T) {
 	partyIDs := test.PartyIDs(N)
 	group := curve.Secp256k1{}
 
-	rounds := make(map[party.ID]round.Round, N)
+	rounds := make([]round.Session, 0, N)
 	for _, partyID := range partyIDs {
-		r, _, err := StartKeygenCommon(true, group, partyIDs, N-1, partyID)()
+		r, err := StartKeygenCommon(true, group, partyIDs, N-1, partyID)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
-		rounds[partyID] = r
+		rounds = append(rounds, r)
 
 	}
 
 	for {
-		err, done := test.Rounds(group, rounds, "", nil)
+		err, done := test.Rounds(group, rounds, nil)
 		require.NoError(t, err, "failed to process round")
 		if done {
 			break

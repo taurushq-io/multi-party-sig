@@ -85,7 +85,7 @@ func (r *presign7) StoreMessage(msg round.Message) error {
 // Finalize implements round.Round
 //
 // - verify ∑ⱼ Sⱼ = X
-func (r *presign7) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *presign7) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// compute ∑ⱼ Sⱼ
 	PublicKeyComputed := r.Group().NewPoint()
 	for _, Sj := range r.S {
@@ -145,7 +145,7 @@ func (r *presign7) Finalize(out chan<- *round.Message) (round.Round, error) {
 		ChiShare: r.ChiShare,
 	}
 	if r.Message == nil {
-		return &round.Output{Result: preSignature}, nil
+		return r.ResultRound(preSignature), nil
 	}
 
 	rSign1 := &sign1{

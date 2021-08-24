@@ -45,7 +45,7 @@ func (r *round1) StoreMessage(round.Message) error { return nil }
 //
 // The overall goal of this round is to generate a secret value, create a polynomial
 // sharing of that value, and then send commitments to these values.
-func (r *round1) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// These steps come from Figure 1, Round 1 of the Frost paper.
 
 	// 1. "Every participant P_i samples t + 1 random values (aᵢ₀, ..., aᵢₜ)) <-$ Z/(q)

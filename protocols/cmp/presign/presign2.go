@@ -115,7 +115,7 @@ func (r *presign2) StoreMessage(msg round.Message) error {
 // Finalize implements round.Round
 //
 // Compute MtA for χᵢ, δᵢ
-func (r *presign2) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *presign2) Finalize(out chan<- *round.Message) (round.Session, error) {
 	otherIDs := r.OtherPartyIDs()
 	n := len(otherIDs)
 
@@ -184,7 +184,7 @@ func (r *presign2) Finalize(out chan<- *round.Message) (round.Round, error) {
 		}
 	}
 
-	return broadcast.New(r.Helper, &presign3{
+	return broadcast.New(&presign3{
 		presign2:        r,
 		DeltaShareBeta:  DeltaShareBeta,
 		ChiShareBeta:    ChiShareBeta,

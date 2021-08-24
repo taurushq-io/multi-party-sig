@@ -10,7 +10,6 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
-	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 	zkenc "github.com/taurusgroup/multi-party-sig/pkg/zk/enc"
 )
 
@@ -18,9 +17,6 @@ var _ round.Round = (*round1)(nil)
 
 type round1 struct {
 	*round.Helper
-
-	// Pool allows us to parallelize certain operations
-	Pool *pool.Pool
 
 	PublicKey curve.Point
 
@@ -53,7 +49,7 @@ func (r *round1) StoreMessage(round.Message) error { return nil }
 //
 // In the next round, we send a hash of all the {Kⱼ,Gⱼ}ⱼ.
 // In two rounds, we compare the hashes received and if they are different then we abort.
-func (r *round1) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// γᵢ <- 𝔽,
 	// Γᵢ = [γᵢ]⋅G
 	GammaShare, BigGammaShare := sample.ScalarPointPair(rand.Reader, r.Group())
@@ -103,7 +99,7 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Round, error) {
 		KNonce:        KNonce,
 		GNonce:        GNonce,
 	}
-	return broadcast.New(r.Helper, nextRound, broadcastMsg), nil
+	return broadcast.New(nextRound, broadcastMsg), nil
 }
 
 // MessageContent implements round.Round.

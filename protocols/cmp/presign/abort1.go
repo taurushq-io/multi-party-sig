@@ -73,7 +73,7 @@ func (r *abort1) StoreMessage(msg round.Message) error {
 }
 
 // Finalize implements round.Round
-func (r *abort1) Finalize(chan<- *round.Message) (round.Round, error) {
+func (r *abort1) Finalize(chan<- *round.Message) (round.Session, error) {
 	var (
 		culprits   []party.ID
 		delta, tmp safenum.Int
@@ -96,7 +96,7 @@ func (r *abort1) Finalize(chan<- *round.Message) (round.Round, error) {
 		}
 	}
 	if len(culprits) > 0 {
-		return &round.Output{Result: AbortResult{culprits}}, nil
+		return r.ResultRound(AbortResult{culprits}), nil
 	}
 	//TODO better error
 	return r, nil

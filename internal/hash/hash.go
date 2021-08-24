@@ -103,7 +103,7 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 		_, err := toBeWritten.WriteTo(hash.h)
 		_, _ = hash.h.WriteString(")")
 		if err != nil {
-			return fmt.Errorf("hash.WriteAny: %w", err)
+			return fmt.Errorf("hash.WriteAny: %s: %w", toBeWritten.Domain(), err)
 		}
 	}
 	return nil

@@ -78,7 +78,7 @@ func (r *round2) StoreMessage(msg round.Message) error {
 }
 
 // Finalize implements round.Round.
-func (r *round2) Finalize(out chan<- *round.Message) (round.Round, error) {
+func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// This essentially follows parts of Figure 3.
 
 	// 4. "Each Pᵢ then computes the set of binding values ρₗ = H₁(l, m, B).

@@ -14,22 +14,22 @@ import (
 
 type Config = config.Config
 
-func StartKeygen(pl *pool.Pool, group curve.Curve, partyIDs []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
-	return keygen.StartKeygen(pl, group, partyIDs, threshold, selfID)
+func StartKeygen(group curve.Curve, partyIDs []party.ID, threshold int, selfID party.ID, pl *pool.Pool) protocol.StartFunc {
+	return keygen.StartKeygen(group, partyIDs, threshold, selfID, pl)
 }
 
-func StartRefresh(pl *pool.Pool, c *Config) protocol.StartFunc {
-	return keygen.StartRefresh(pl, c)
+func StartRefresh(c *Config, pl *pool.Pool) protocol.StartFunc {
+	return keygen.StartRefresh(c, pl)
 }
 
-func StartSign(pl *pool.Pool, config *config.Config, signers []party.ID, message []byte) protocol.StartFunc {
-	return sign.StartSign(pl, config, signers, message)
+func StartSign(config *config.Config, signers []party.ID, message []byte, pl *pool.Pool) protocol.StartFunc {
+	return sign.StartSign(config, signers, message, pl)
 }
 
-func StartPresign(pl *pool.Pool, c *config.Config, signers []party.ID) protocol.StartFunc {
-	return presign.StartPresign(pl, c, signers, nil)
+func StartPresign(c *config.Config, signers []party.ID, pl *pool.Pool) protocol.StartFunc {
+	return presign.StartPresign(c, signers, nil, pl)
 }
 
-func StartPresignOnline(c *config.Config, preSignature *ecdsa.PreSignature, message []byte) protocol.StartFunc {
-	return presign.StartPresignOnline(c, preSignature, message)
+func StartPresignOnline(c *config.Config, preSignature *ecdsa.PreSignature, message []byte, pl *pool.Pool) protocol.StartFunc {
+	return presign.StartPresignOnline(c, preSignature, message, pl)
 }

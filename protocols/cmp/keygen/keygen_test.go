@@ -9,14 +9,13 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/internal/test"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 	"github.com/taurusgroup/multi-party-sig/protocols/cmp/config"
 )
 
 var group = curve.Secp256k1{}
 
-func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
+func checkOutput(t *testing.T, rounds []round.Session) {
 	N := len(rounds)
 	newConfigs := make([]*config.Config, 0, N)
 	for _, r := range rounds {
@@ -47,15 +46,15 @@ func TestKeygen(t *testing.T) {
 	N := 2
 	partyIDs := test.PartyIDs(N)
 
-	rounds := make(map[party.ID]round.Round, N)
+	rounds := make([]round.Session, 0, N)
 	for _, partyID := range partyIDs {
-		r, _, err := StartKeygen(pl, group, partyIDs, N-1, partyID)()
+		r, err := StartKeygen(group, partyIDs, N-1, partyID, pl)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
-		rounds[partyID] = r
+		rounds = append(rounds, r)
 	}
 
 	for {
-		err, done := test.Rounds(group, rounds, "", nil)
+		err, done := test.Rounds(group, rounds, nil)
 		require.NoError(t, err, "failed to process round")
 		if done {
 			break
@@ -70,18 +69,18 @@ func TestRefresh(t *testing.T) {
 
 	N := 4
 	T := N - 1
-	configs := test.GenerateConfig(group, N, T, mrand.New(mrand.NewSource(1)), pl)
+	configs, _ := test.GenerateConfig(group, N, T, mrand.New(mrand.NewSource(1)), pl)
 
-	rounds := make(map[party.ID]round.Round, N)
-	for partyID, s := range configs {
-		r, _, err := StartRefresh(pl, s)()
+	rounds := make([]round.Session, 0, N)
+	for _, c := range configs {
+		r, err := StartRefresh(c, pl)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
-		rounds[partyID] = r
+		rounds = append(rounds, r)
 
 	}
 
 	for {
-		err, done := test.Rounds(group, rounds, "", nil)
+		err, done := test.Rounds(group, rounds, nil)
 		require.NoError(t, err, "failed to process round")
 		if done {
 			break
