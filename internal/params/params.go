@@ -31,6 +31,5 @@ const (
 	BytesPaillier   = BitsPaillier / 8  // = 256
 	BytesCiphertext = 2 * BytesPaillier // = 512
 
-	BytesPoint  = secp256k1.PubKeyBytesLenCompressed
-	BytesScalar = 32
+	BytesPoint = secp256k1.PubKeyBytesLenCompressed
 )

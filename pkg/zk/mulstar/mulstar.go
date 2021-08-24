@@ -170,7 +170,7 @@ func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safen
 		public.C, public.D, public.X,
 		commitment.A, commitment.Bx,
 		commitment.E, commitment.S)
-	e = sample.IntervalScalar(hash.Digest())
+	e = sample.IntervalScalar(hash.Digest(), public.X.Curve())
 	return
 }
 

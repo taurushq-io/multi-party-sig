@@ -6,6 +6,7 @@ import (
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 )
@@ -65,7 +66,7 @@ func (p *Proof) IsValid(public Public) bool {
 	return true
 }
 
-func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
+func NewProof(hash *hash.Hash, group curve.Curve, public Public, private Private) *Proof {
 	N := public.Prover.N()
 	NModulus := public.Prover.Modulus()
 
@@ -82,7 +83,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 		A: A,
 		B: prover.EncWithNonce(alpha, s),
 	}
-	e, _ := challenge(hash, public, commitment)
+	e, _ := challenge(hash, group, public, commitment)
 
 	// Z = α + ex
 	z := new(safenum.Int).Mul(e, private.X, -1)
@@ -102,14 +103,14 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	}
 }
 
-func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
+func (p *Proof) Verify(hash *hash.Hash, group curve.Curve, public Public) bool {
 	if !p.IsValid(public) {
 		return false
 	}
 
 	prover := public.Prover
 
-	e, err := challenge(hash, public, p.Commitment)
+	e, err := challenge(hash, group, public, p.Commitment)
 	if err != nil {
 		return false
 	}
@@ -140,10 +141,10 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safenum.Int, err error) {
+func challenge(hash *hash.Hash, group curve.Curve, public Public, commitment *Commitment) (e *safenum.Int, err error) {
 	err = hash.WriteAny(public.Prover,
 		public.X, public.Y, public.C,
 		commitment.A, commitment.B)
-	e = sample.IntervalScalar(hash.Digest())
+	e = sample.IntervalScalar(hash.Digest(), group)
 	return
 }

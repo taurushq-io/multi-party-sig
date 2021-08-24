@@ -8,11 +8,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/zk"
 )
 
 func TestMul(t *testing.T) {
+	group := curve.Secp256k1{}
+
 	prover := zk.ProverPaillierPublic
 	x := sample.IntervalL(rand.Reader)
 	X, rhoX := prover.Enc(x)
@@ -35,8 +38,8 @@ func TestMul(t *testing.T) {
 		RhoX: rhoX,
 	}
 
-	proof := NewProof(hash.New(), public, private)
-	assert.True(t, proof.Verify(hash.New(), public))
+	proof := NewProof(hash.New(), group, public, private)
+	assert.True(t, proof.Verify(hash.New(), group, public))
 
 	out, err := cbor.Marshal(proof)
 	require.NoError(t, err, "failed to marshal proof")
@@ -47,5 +50,5 @@ func TestMul(t *testing.T) {
 	proof3 := &Proof{}
 	require.NoError(t, cbor.Unmarshal(out2, proof3), "failed to unmarshal 2nd proof")
 
-	assert.True(t, proof3.Verify(hash.New(), public))
+	assert.True(t, proof3.Verify(hash.New(), group, public))
 }

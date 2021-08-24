@@ -58,7 +58,7 @@ func (r *round2) VerifyMessage(from party.ID, to party.ID, content message.Conte
 		return message.ErrNilContent
 	}
 
-	if !body.ProofEnc.Verify(r.HashForID(from), zkenc.Public{
+	if !body.ProofEnc.Verify(r.HashForID(from), r.Group(), zkenc.Public{
 		K:      body.K,
 		Prover: r.Paillier[from],
 		Aux:    r.Pedersen[to],

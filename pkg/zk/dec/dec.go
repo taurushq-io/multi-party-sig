@@ -152,7 +152,7 @@ func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safen
 	err = hash.WriteAny(public.Aux, public.Prover,
 		public.C, public.X,
 		commitment.S, commitment.T, commitment.A, commitment.Gamma)
-	e = sample.IntervalScalar(hash.Digest())
+	e = sample.IntervalScalar(hash.Digest(), public.X.Curve())
 	return
 }
 

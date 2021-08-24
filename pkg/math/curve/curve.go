@@ -23,6 +23,8 @@ type Curve interface {
 	//
 	// This should be unique between curves.
 	Name() string
+	// ScalarBits returns the number of significant bits in a scalar.
+	ScalarBits() int
 	// SafeScalarBytes returns the number of random bytes need to sample a scalar through modular reduction.
 	//
 	// Usually, this is going to be the number of bytes in the scalar, plus an extra

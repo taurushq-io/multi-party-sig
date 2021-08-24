@@ -36,6 +36,10 @@ func (Secp256k1) NewScalar() Scalar {
 	return new(Secp256k1Scalar)
 }
 
+func (Secp256k1) ScalarBits() int {
+	return 256
+}
+
 func (Secp256k1) SafeScalarBytes() int {
 	return 32
 }

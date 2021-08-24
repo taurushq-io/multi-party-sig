@@ -6,6 +6,7 @@ import (
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
@@ -60,7 +61,7 @@ func (p *Proof) IsValid(public Public) bool {
 	return true
 }
 
-func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
+func NewProof(hash *hash.Hash, group curve.Curve, public Public, private Private) *Proof {
 	N := public.Prover.N()
 	NModulus := public.Prover.Modulus()
 
@@ -77,7 +78,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 		C: public.Aux.Commit(alpha, gamma),
 	}
 
-	e, _ := challenge(hash, public, commitment)
+	e, _ := challenge(hash, group, public, commitment)
 
 	z1 := new(safenum.Int).Mul(e, private.K, -1)
 	z1.Add(z1, alpha, -1)
@@ -96,7 +97,7 @@ func NewProof(hash *hash.Hash, public Public, private Private) *Proof {
 	}
 }
 
-func (p Proof) Verify(hash *hash.Hash, public Public) bool {
+func (p Proof) Verify(hash *hash.Hash, group curve.Curve, public Public) bool {
 	if !p.IsValid(public) {
 		return false
 	}
@@ -107,7 +108,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 		return false
 	}
 
-	e, err := challenge(hash, public, p.Commitment)
+	e, err := challenge(hash, group, public, p.Commitment)
 	if err != nil {
 		return false
 	}
@@ -130,9 +131,9 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safenum.Int, err error) {
+func challenge(hash *hash.Hash, group curve.Curve, public Public, commitment *Commitment) (e *safenum.Int, err error) {
 	err = hash.WriteAny(public.Aux, public.Prover, public.K,
 		commitment.S, commitment.A, commitment.C)
-	e = sample.IntervalScalar(hash.Digest())
+	e = sample.IntervalScalar(hash.Digest(), group)
 	return
 }

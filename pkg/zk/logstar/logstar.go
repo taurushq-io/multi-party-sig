@@ -170,7 +170,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safenum.Int, err error) {
 	err = hash.WriteAny(public.Aux, public.Prover, public.C, public.X, public.G,
 		commitment.S, commitment.A, commitment.Y, commitment.D)
-	e = sample.IntervalScalar(hash.Digest())
+	e = sample.IntervalScalar(hash.Digest(), public.X.Curve())
 	return
 }
 
