@@ -69,6 +69,8 @@ func NewSecretKey(pl *pool.Pool) *SecretKey {
 
 // NewSecretKeyFromPrimes generates a new SecretKey. Assumes that P and Q are prime.
 func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
+	oneNat := new(safenum.Nat).SetUint64(1)
+
 	n := arith.ModulusFromFactors(P, Q)
 
 	nNat := n.Nat()
@@ -103,6 +105,8 @@ func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
 // Dec decrypts c and returns the plaintext m ∈ ± (N-2)/2.
 // It returns an error if gcd(c, N²) != 1 or if c is not in [1, N²-1].
 func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
+	oneNat := new(safenum.Nat).SetUint64(1)
+
 	n := sk.PublicKey.n.Modulus
 
 	if !sk.PublicKey.ValidateCiphertexts(ct) {
