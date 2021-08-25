@@ -47,13 +47,13 @@ func testRandomOT(choice bool, init []byte) bool {
 		return false
 	}
 	// This should happen only with negligeable probability
-	if bytes.Equal(result.rand0, result.rand1) {
+	if bytes.Equal(result.Rand0, result.Rand1) {
 		return false
 	}
 	if choice {
-		return bytes.Equal(result.rand1, randChoice)
+		return bytes.Equal(result.Rand1, randChoice)
 	} else {
-		return bytes.Equal(result.rand0, randChoice)
+		return bytes.Equal(result.Rand0, randChoice)
 	}
 }
 
