@@ -17,8 +17,6 @@ var (
 	ErrPaillierEven   = errors.New("modulus N is even")
 )
 
-var oneNat = new(safenum.Nat).SetUint64(1)
-
 // PublicKey is a Paillier public key. It is represented by a modulus N.
 type PublicKey struct {
 	// n = p⋅q
@@ -39,6 +37,7 @@ func (pk *PublicKey) N() *safenum.Modulus {
 
 // NewPublicKey returns an initialized paillier.PublicKey and caches N, N² and (N-1)/2.
 func NewPublicKey(n *safenum.Modulus) *PublicKey {
+	oneNat := new(safenum.Nat).SetUint64(1)
 	nNat := n.Nat()
 	nSquared := safenum.ModulusFromNat(new(safenum.Nat).Mul(nNat, nNat, -1))
 	nPlusOne := new(safenum.Nat).Add(nNat, oneNat, -1)
