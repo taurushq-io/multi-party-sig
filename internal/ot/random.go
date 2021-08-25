@@ -96,7 +96,7 @@ func (r *RandomOTReceiever) Round2(msg *RandomOTSendRound1Message) *RandomOTRece
 	_, _ = H.Digest().Read(response)
 
 	r.hh_randChoice = make([]byte, len(response))
-	copy(response, r.hh_randChoice)
+	copy(r.hh_randChoice, response)
 
 	mask := -byte(r.choice)
 	for i := 0; i < len(msg.challenge); i++ {
