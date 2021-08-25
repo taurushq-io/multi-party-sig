@@ -21,10 +21,10 @@ type RandomOTSetupSendMessage struct {
 	_BProof *zksch.Proof
 }
 
-// RandomOTSetupSendResult is the result that should be saved for the sender.
+// RandomOTSendSetup is the result that should be saved for the sender.
 //
 // This result can be used for multiple random OTs later.
-type RandomOTSetupSendResult struct {
+type RandomOTSendSetup struct {
 	// A secret key used for subsequent random OTs.
 	b curve.Scalar
 	// The matching public key.
@@ -37,15 +37,15 @@ type RandomOTSetupSendResult struct {
 // if that's desired.
 //
 // This setup can be done once and then used for multiple executions.
-func RandomOTSetupSend(hash *hash.Hash, group curve.Curve) (*RandomOTSetupSendMessage, *RandomOTSetupSendResult) {
+func RandomOTSetupSend(hash *hash.Hash, group curve.Curve) (*RandomOTSetupSendMessage, *RandomOTSendSetup) {
 	b := sample.Scalar(rand.Reader, group)
 	B := b.ActOnBase()
 	BProof := zksch.NewProof(hash, B, b)
-	return &RandomOTSetupSendMessage{_B: B, _BProof: BProof}, &RandomOTSetupSendResult{_B: B, b: b}
+	return &RandomOTSetupSendMessage{_B: B, _BProof: BProof}, &RandomOTSendSetup{_B: B, b: b}
 }
 
-// RandomOTSetupReceiveResult is the result that should be saved for the receiver.
-type RandomOTSetupReceiveResult struct {
+// RandomOTReceiveSetup is the result that should be saved for the receiver.
+type RandomOTReceiveSetup struct {
 	// The public key for the sender, used for subsequent random OTs.
 	_B curve.Point
 }
@@ -56,11 +56,11 @@ type RandomOTSetupReceiveResult struct {
 // if that's desired.
 //
 // This setup can be done once and then used for multiple executions.
-func RandomOTSetupReceive(hash *hash.Hash, msg *RandomOTSetupSendMessage) (*RandomOTSetupReceiveResult, error) {
+func RandomOTSetupReceive(hash *hash.Hash, msg *RandomOTSetupSendMessage) (*RandomOTReceiveSetup, error) {
 	if !msg._BProof.Verify(hash, msg._B) {
 		return nil, fmt.Errorf("RandomOTSetupReceive: Schnorr proof failed to verify")
 	}
-	return &RandomOTSetupReceiveResult{_B: msg._B}, nil
+	return &RandomOTReceiveSetup{_B: msg._B}, nil
 }
 
 // RandomOTReceiver contains the state needed for a single execution of a Random OT.
@@ -92,7 +92,7 @@ type RandomOTReceiever struct {
 // initialized with some kind of nonce.
 //
 // choice indicates which of the two random messages should be received.
-func NewRandomOTReceiver(hash *hash.Hash, choice safenum.Choice, result *RandomOTSetupReceiveResult) *RandomOTReceiever {
+func NewRandomOTReceiver(hash *hash.Hash, choice safenum.Choice, result *RandomOTReceiveSetup) *RandomOTReceiever {
 	return &RandomOTReceiever{hash: hash, group: result._B.Curve(), choice: choice, _B: result._B}
 }
 
@@ -209,7 +209,7 @@ type RandomOTSender struct {
 //
 // If multiple executions are done with the same setup, it's crucial that the hash is
 // initialized with some kind of nonce.
-func NewRandomOTSender(hash *hash.Hash, result *RandomOTSetupSendResult) *RandomOTSender {
+func NewRandomOTSender(hash *hash.Hash, result *RandomOTSendSetup) *RandomOTSender {
 	return &RandomOTSender{hash: hash, b: result.b, _B: result._B}
 }
 
