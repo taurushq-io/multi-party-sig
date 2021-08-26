@@ -128,3 +128,10 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 func (hash *Hash) Clone() *Hash {
 	return &Hash{h: hash.h.Clone()}
 }
+
+// Fork clones this hash, and then writes some data.
+func (hash *Hash) Fork(data ...interface{}) *Hash {
+	newHash := hash.Clone()
+	_ = newHash.WriteAny(data)
+	return newHash
+}
