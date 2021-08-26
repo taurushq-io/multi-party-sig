@@ -44,15 +44,15 @@ func TestCorreOTSetup(t *testing.T) {
 		}
 		for i := 0; i < params.SecParam; i++ {
 			// This should only fail with negligeable probability normally
-			if bytes.Equal(receiveSetup._K_0[i], receiveSetup._K_1[i]) {
+			if bytes.Equal(receiveSetup._K_0[i][:], receiveSetup._K_1[i][:]) {
 				t.Error("K_0[i] == K_1[i]")
 			}
 			choice := ((sendSetup._Delta[i>>3] >> (i & 0b111)) & 1) == 1
-			array := receiveSetup._K_0[i]
+			array := receiveSetup._K_0[i][:]
 			if choice {
-				array = receiveSetup._K_1[i]
+				array = receiveSetup._K_1[i][:]
 			}
-			if !bytes.Equal(sendSetup._K_Delta[i], array) {
+			if !bytes.Equal(sendSetup._K_Delta[i][:], array) {
 				t.Error("K_Delta doesn't match")
 			}
 		}
