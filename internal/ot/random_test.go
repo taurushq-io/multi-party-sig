@@ -10,14 +10,14 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
 
-var group = curve.Secp256k1{}
+var testGroup = curve.Secp256k1{}
 
 func runRandomOT(choice bool, hash *hash.Hash) (*RandomOTSendResult, []byte, error) {
 	safeChoice := safenum.Choice(0)
 	if choice {
 		safeChoice = 1
 	}
-	msgS0, setupS := RandomOTSetupSend(hash.Clone(), group)
+	msgS0, setupS := RandomOTSetupSend(hash.Clone(), testGroup)
 	setupR, err := RandomOTSetupReceive(hash.Clone(), msgS0)
 	if err != nil {
 		return nil, nil, err
