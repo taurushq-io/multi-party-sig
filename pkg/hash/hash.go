@@ -108,7 +108,7 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 		case WriterToWithDomain:
 			toBeWritten = t
 		default:
-			panic("hash.Hash: unsupported type")
+			fmt.Println(t)
 		}
 
 		// Write out `(<domain><data>)`, so that each domain separated piece of data
@@ -132,6 +132,6 @@ func (hash *Hash) Clone() *Hash {
 // Fork clones this hash, and then writes some data.
 func (hash *Hash) Fork(data ...interface{}) *Hash {
 	newHash := hash.Clone()
-	_ = newHash.WriteAny(data)
+	_ = newHash.WriteAny(data...)
 	return newHash
 }

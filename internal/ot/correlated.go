@@ -23,7 +23,7 @@ type CorreOTSetupSender struct {
 	randomOTReceivers []*RandomOTReceiever
 }
 
-func NewCorreOTSetupSend(hash *hash.Hash) *CorreOTSetupSender {
+func NewCorreOTSetupSender(hash *hash.Hash) *CorreOTSetupSender {
 	return &CorreOTSetupSender{hash: hash}
 }
 
@@ -46,7 +46,7 @@ func (r *CorreOTSetupSender) Round1(msg *CorreOTSetupReceiveRound1Message) (*Cor
 	for i := 0; i < params.SecParam; i++ {
 		choice := safenum.Choice((r._Delta[i>>3] >> (i & 0b111)) & 1)
 		binary.BigEndian.PutUint64(ctr[:], uint64(i))
-		r.randomOTReceivers[i] = NewRandomOTReceiver(r.hash.Fork(hash.BytesWithDomain{
+		r.randomOTReceivers[i] = NewRandomOTReceiver(r.hash.Fork(&hash.BytesWithDomain{
 			TheDomain: "CorreOT Random OT Counter",
 			Bytes:     ctr[:],
 		}), choice, r.setup)
@@ -98,7 +98,7 @@ type CorreOTSetupReceiver struct {
 }
 
 func NewCorreOTSetupReceive(hash *hash.Hash, group curve.Curve) *CorreOTSetupReceiver {
-	return &CorreOTSetupReceiver{}
+	return &CorreOTSetupReceiver{hash: hash, group: group}
 }
 
 type CorreOTSetupReceiveRound1Message struct {
@@ -113,7 +113,7 @@ func (r *CorreOTSetupReceiver) Round1() *CorreOTSetupReceiveRound1Message {
 	var ctr [8]byte
 	for i := 0; i < params.SecParam; i++ {
 		binary.BigEndian.PutUint64(ctr[:], uint64(i))
-		r.randomOTSenders[i] = NewRandomOTSender(r.hash.Fork(hash.BytesWithDomain{
+		r.randomOTSenders[i] = NewRandomOTSender(r.hash.Fork(&hash.BytesWithDomain{
 			TheDomain: "CorreOT Random OT Counter",
 			Bytes:     ctr[:],
 		}), setup)
@@ -149,7 +149,7 @@ func (r *CorreOTSetupReceiver) Round3(msg *CorreOTSetupSendRound2Message) (*Corr
 		}
 		msgs[i] = msgsi
 		K_0[i] = resultsi.Rand0
-		K_1[i] = resultsi.Rand0
+		K_1[i] = resultsi.Rand1
 	}
 	return &CorreOTSetupReceiveRound3Message{msgs}, &CorreOTReceiveSetup{_K_0: K_0, _K_1: K_1}, nil
 }
