@@ -54,10 +54,13 @@ func (r *CorreOTSetupSender) Round1(msg *CorreOTSetupReceiveRound1Message) (*Cor
 
 	msgs := make([]*RandomOTReceiveRound1Message, params.SecParam)
 	for i := 0; i < params.SecParam; i++ {
-		msgs[i] = r.randomOTReceivers[i].Round1()
+		msgs[i], err = r.randomOTReceivers[i].Round1()
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return &CorreOTSetupSendRound1Message{msgs}, err
+	return &CorreOTSetupSendRound1Message{msgs}, nil
 }
 
 type CorreOTSetupSendRound2Message struct {
@@ -126,12 +129,16 @@ type CorreOTSetupReceiveRound2Message struct {
 	msgs []*RandomOTSendRound1Message
 }
 
-func (r *CorreOTSetupReceiver) Round2(msg *CorreOTSetupSendRound1Message) *CorreOTSetupReceiveRound2Message {
+func (r *CorreOTSetupReceiver) Round2(msg *CorreOTSetupSendRound1Message) (*CorreOTSetupReceiveRound2Message, error) {
 	msgs := make([]*RandomOTSendRound1Message, len(r.randomOTSenders))
+	var err error
 	for i := 0; i < len(msg.msgs) && i < len(r.randomOTSenders); i++ {
-		msgs[i] = r.randomOTSenders[i].Round1(msg.msgs[i])
+		msgs[i], err = r.randomOTSenders[i].Round1(msg.msgs[i])
+		if err != nil {
+			return nil, err
+		}
 	}
-	return &CorreOTSetupReceiveRound2Message{msgs}
+	return &CorreOTSetupReceiveRound2Message{msgs}, nil
 }
 
 type CorreOTSetupReceiveRound3Message struct {

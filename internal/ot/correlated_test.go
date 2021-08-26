@@ -18,7 +18,10 @@ func runCorreOTSetup(hash *hash.Hash) (*CorreOTSendSetup, *CorreOTReceiveSetup, 
 		fmt.Println(err)
 		return nil, nil, err
 	}
-	msgR2 := receiver.Round2(msgS1)
+	msgR2, err := receiver.Round2(msgS1)
+	if err != nil {
+		return nil, nil, err
+	}
 	msgS2 := sender.Round2(msgR2)
 	msgR3, receiveSetup, err := receiver.Round3(msgS2)
 	if err != nil {
