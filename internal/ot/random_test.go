@@ -25,8 +25,14 @@ func runRandomOT(choice bool, hash *hash.Hash) (*RandomOTSendResult, []byte, err
 	receiver := NewRandomOTReceiver(hash.Clone(), safeChoice, setupR)
 	sender := NewRandomOTSender(hash.Clone(), setupS)
 
-	msgR1 := receiver.Round1()
-	msgS1 := sender.Round1(msgR1)
+	msgR1, err := receiver.Round1()
+	if err != nil {
+		return nil, nil, err
+	}
+	msgS1, err := sender.Round1(msgR1)
+	if err != nil {
+		return nil, nil, err
+	}
 	msgR2 := receiver.Round2(msgS1)
 	msgS2, resultS, err := sender.Round2(msgR2)
 	if err != nil {

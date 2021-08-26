@@ -29,6 +29,8 @@ type RandomOTSendSetup struct {
 	b curve.Scalar
 	// The matching public key.
 	_B curve.Point
+	// b * _B
+	_bB curve.Point
 }
 
 // RandomOTSetupSend runs the Sender's part of the setup protocol for Random OT.
@@ -41,7 +43,7 @@ func RandomOTSetupSend(hash *hash.Hash, group curve.Curve) (*RandomOTSetupSendMe
 	b := sample.Scalar(rand.Reader, group)
 	B := b.ActOnBase()
 	BProof := zksch.NewProof(hash, B, b)
-	return &RandomOTSetupSendMessage{_B: B, _BProof: BProof}, &RandomOTSendSetup{_B: B, b: b}
+	return &RandomOTSetupSendMessage{_B: B, _BProof: BProof}, &RandomOTSendSetup{_B: B, b: b, _bB: b.Act(B)}
 }
 
 // RandomOTReceiveSetup is the result that should be saved for the receiver.
@@ -98,27 +100,37 @@ func NewRandomOTReceiver(hash *hash.Hash, choice safenum.Choice, result *RandomO
 
 // RandomOTReceiveRound1Message is the first message sent by the receiver in a Random OT.
 type RandomOTReceiveRound1Message struct {
-	_A curve.Point
+	_ABytes []byte
 }
 
 // Round1 executes the receiver's side of round 1 of a Random OT.
 //
 // This is the starting point for a Random OT.
-func (r *RandomOTReceiever) Round1() *RandomOTReceiveRound1Message {
+func (r *RandomOTReceiever) Round1() (*RandomOTReceiveRound1Message, error) {
 	// We sample a <- Z_q, and then compute
 	//   A = a * G + w * B
 	//   randChoice = H(a * B)
 	a := sample.Scalar(rand.Reader, r.group)
 	A := a.ActOnBase()
-	one := new(safenum.Nat).SetUint64(1)
-	choiceScalar := r.group.NewScalar().SetNat(new(safenum.Nat).CondAssign(r.choice, one))
-	A = A.Add(choiceScalar.Act(r._B))
+	_ABytes, err := A.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	A = A.Add(r._B)
+	_APlusBBytes, err := A.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	mask := -byte(r.choice)
+	for i := 0; i < len(_ABytes) && i < len(_APlusBBytes); i++ {
+		_ABytes[i] ^= (mask & (_ABytes[i] ^ _APlusBBytes[i]))
+	}
 
 	r.randChoice = make([]byte, params.SecBytes)
 	_ = r.hash.WriteAny(a.Act(r._B))
 	_, _ = r.hash.Digest().Read(r.randChoice)
 
-	return &RandomOTReceiveRound1Message{_A: A}
+	return &RandomOTReceiveRound1Message{_ABytes: _ABytes}, nil
 }
 
 // RandomOTReceiveRound2Message is the second message sent by the receiver in a Random OT.
@@ -192,9 +204,11 @@ func (r *RandomOTReceiever) Round3(msg *RandomOTSendRound2Message) ([]byte, erro
 // This should be created from a saved setup, for each execution.
 type RandomOTSender struct {
 	// After setup
-	hash *hash.Hash
-	b    curve.Scalar
-	_B   curve.Point
+	hash  *hash.Hash
+	group curve.Curve
+	b     curve.Scalar
+	_B    curve.Point
+	_bB   curve.Point
 	// After round 1
 	rand0 []byte
 	rand1 []byte
@@ -210,7 +224,7 @@ type RandomOTSender struct {
 // If multiple executions are done with the same setup, it's crucial that the hash is
 // initialized with some kind of nonce.
 func NewRandomOTSender(hash *hash.Hash, result *RandomOTSendSetup) *RandomOTSender {
-	return &RandomOTSender{hash: hash, b: result.b, _B: result._B}
+	return &RandomOTSender{hash: hash, group: result.b.Curve(), b: result.b, _B: result._B, _bB: result._bB}
 }
 
 // RandomOTSendRound1Message is the message sent by the sender in round 1.
@@ -219,18 +233,23 @@ type RandomOTSendRound1Message struct {
 }
 
 // Round1 executes the sender's side of round 1 for a Random OT.
-func (r *RandomOTSender) Round1(msg *RandomOTReceiveRound1Message) *RandomOTSendRound1Message {
+func (r *RandomOTSender) Round1(msg *RandomOTReceiveRound1Message) (*RandomOTSendRound1Message, error) {
 	// We can compute the two random pads:
 	//    rand0 = H(b * A)
 	//    rand1 = H(b * (A - B))
+	_A := r.group.NewPoint()
+	if err := _A.UnmarshalBinary(msg._ABytes); err != nil {
+		return nil, err
+	}
+	bA := r.b.Act(_A)
 	r.rand0 = make([]byte, params.SecBytes)
 	H := r.hash.Clone()
-	_ = H.WriteAny(r.b.Act(msg._A))
+	_ = H.WriteAny(bA)
 	_, _ = H.Digest().Read(r.rand0)
 
 	r.rand1 = make([]byte, params.SecBytes)
 	H = r.hash.Clone()
-	_ = H.WriteAny(r.b.Act(msg._A.Sub(r._B)))
+	_ = H.WriteAny(bA.Sub(r._bB))
 	_, _ = H.Digest().Read(r.rand1)
 
 	// Compute the challenge:
@@ -259,7 +278,7 @@ func (r *RandomOTSender) Round1(msg *RandomOTReceiveRound1Message) *RandomOTSend
 		challenge[i] ^= r.h_decommit0[i]
 	}
 
-	return &RandomOTSendRound1Message{challenge: challenge}
+	return &RandomOTSendRound1Message{challenge: challenge}, nil
 }
 
 // RandomOTSendRound2Message is the message sent by the sender in round 2 of a Random OT.
