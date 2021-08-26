@@ -12,7 +12,7 @@ import (
 
 type CorreOTSendSetup struct {
 	_Delta   []byte
-	_K_Delta []byte
+	_K_Delta [][]byte
 }
 
 type CorreOTSetupSender struct {
@@ -72,6 +72,18 @@ func (r *CorreOTSetupSender) Round2(msg *CorreOTSetupReceiveRound2Message) *Corr
 	return &CorreOTSetupSendRound2Message{msgs}
 }
 
+func (r *CorreOTSetupSender) Round3(msg *CorreOTSetupReceiveRound3Message) (*CorreOTSendSetup, error) {
+	K_Delta := make([][]byte, len(r.randomOTReceivers))
+	var err error
+	for i := 0; i < len(msg.msgs) && i < len(r.randomOTReceivers); i++ {
+		K_Delta[i], err = r.randomOTReceivers[i].Round3(msg.msgs[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &CorreOTSendSetup{_Delta: r._Delta, _K_Delta: K_Delta}, nil
+}
+
 type CorreOTReceiveSetup struct {
 	_K_0 [][]byte
 	_K_1 [][]byte
@@ -120,4 +132,24 @@ func (r *CorreOTSetupReceiver) Round2(msg *CorreOTSetupSendRound1Message) *Corre
 		msgs[i] = r.randomOTSenders[i].Round1(msg.msgs[i])
 	}
 	return &CorreOTSetupReceiveRound2Message{msgs}
+}
+
+type CorreOTSetupReceiveRound3Message struct {
+	msgs []*RandomOTSendRound2Message
+}
+
+func (r *CorreOTSetupReceiver) Round3(msg *CorreOTSetupSendRound2Message) (*CorreOTSetupReceiveRound3Message, *CorreOTReceiveSetup, error) {
+	msgs := make([]*RandomOTSendRound2Message, len(r.randomOTSenders))
+	K_0 := make([][]byte, len(r.randomOTSenders))
+	K_1 := make([][]byte, len(r.randomOTSenders))
+	for i := 0; i < len(msg.msgs) && i < len(r.randomOTSenders); i++ {
+		msgsi, resultsi, err := r.randomOTSenders[i].Round2(msg.msgs[i])
+		if err != nil {
+			return nil, nil, err
+		}
+		msgs[i] = msgsi
+		K_0[i] = resultsi.Rand0
+		K_1[i] = resultsi.Rand0
+	}
+	return &CorreOTSetupReceiveRound3Message{msgs}, &CorreOTReceiveSetup{_K_0: K_0, _K_1: K_1}, nil
 }
