@@ -62,6 +62,7 @@ func RandomOTSetupReceive(hash *hash.Hash, msg *RandomOTSetupSendMessage) (*Rand
 	if !msg._BProof.Verify(hash, msg._B) {
 		return nil, fmt.Errorf("RandomOTSetupReceive: Schnorr proof failed to verify")
 	}
+
 	return &RandomOTReceiveSetup{_B: msg._B}, nil
 }
 
@@ -79,13 +80,13 @@ type RandomOTReceiever struct {
 	// After Round1
 
 	// The random message we've received.
-	randChoice []byte
+	randChoice [params.SecBytes]byte
 	// After Round2
 
 	// The challenge sent to use by the sender.
-	receivedChallenge []byte
+	receivedChallenge [params.SecBytes]byte
 	// H(H(randChoice)), used to avoid redundant calculations.
-	hh_randChoice []byte
+	hh_randChoice [params.SecBytes]byte
 }
 
 // NewRandomOTReceiver sets up the receiver's state for a single Random OT.
@@ -94,8 +95,13 @@ type RandomOTReceiever struct {
 // initialized with some kind of nonce.
 //
 // choice indicates which of the two random messages should be received.
-func NewRandomOTReceiver(hash *hash.Hash, choice safenum.Choice, result *RandomOTReceiveSetup) *RandomOTReceiever {
-	return &RandomOTReceiever{hash: hash, group: result._B.Curve(), choice: choice, _B: result._B}
+func NewRandomOTReceiver(hash *hash.Hash, choice safenum.Choice, result *RandomOTReceiveSetup) (out RandomOTReceiever) {
+	out.hash = hash
+	out.group = result._B.Curve()
+	out.choice = choice
+	out._B = result._B
+
+	return
 }
 
 // RandomOTReceiveRound1Message is the first message sent by the receiver in a Random OT.
@@ -106,94 +112,89 @@ type RandomOTReceiveRound1Message struct {
 // Round1 executes the receiver's side of round 1 of a Random OT.
 //
 // This is the starting point for a Random OT.
-func (r *RandomOTReceiever) Round1() (*RandomOTReceiveRound1Message, error) {
+func (r *RandomOTReceiever) Round1() (outMsg RandomOTReceiveRound1Message, err error) {
 	// We sample a <- Z_q, and then compute
 	//   A = a * G + w * B
 	//   randChoice = H(a * B)
 	a := sample.Scalar(rand.Reader, r.group)
 	A := a.ActOnBase()
-	_ABytes, err := A.MarshalBinary()
+	outMsg._ABytes, err = A.MarshalBinary()
 	if err != nil {
-		return nil, err
+		return
 	}
 	A = A.Add(r._B)
 	_APlusBBytes, err := A.MarshalBinary()
 	if err != nil {
-		return nil, err
+		return outMsg, err
 	}
 	mask := -byte(r.choice)
-	for i := 0; i < len(_ABytes) && i < len(_APlusBBytes); i++ {
-		_ABytes[i] ^= (mask & (_ABytes[i] ^ _APlusBBytes[i]))
+	for i := 0; i < len(outMsg._ABytes) && i < len(_APlusBBytes); i++ {
+		outMsg._ABytes[i] ^= (mask & (outMsg._ABytes[i] ^ _APlusBBytes[i]))
 	}
 
-	r.randChoice = make([]byte, params.SecBytes)
 	_ = r.hash.WriteAny(a.Act(r._B))
-	_, _ = r.hash.Digest().Read(r.randChoice)
+	_, _ = r.hash.Digest().Read(r.randChoice[:])
 
-	return &RandomOTReceiveRound1Message{_ABytes: _ABytes}, nil
+	return
 }
 
 // RandomOTReceiveRound2Message is the second message sent by the receiver in a Random OT.
 type RandomOTReceiveRound2Message struct {
 	// A response to the challenge submitted by the sender.
-	response []byte
+	response [params.SecBytes]byte
 }
 
 // Round2 executes the receiver's side of round 2 of a Random OT.
-func (r *RandomOTReceiever) Round2(msg *RandomOTSendRound1Message) *RandomOTReceiveRound2Message {
-	r.receivedChallenge = msg.challenge
+func (r *RandomOTReceiever) Round2(msg *RandomOTSendRound1Message) (outMsg RandomOTReceiveRound2Message) {
 	// response = H(H(randW)) ^ (w * challenge).
-	response := make([]byte, len(msg.challenge))
+	r.receivedChallenge = msg.challenge
 
 	H := hash.New()
-	_ = H.WriteAny(r.randChoice)
-	_, _ = H.Digest().Read(response)
+	_ = H.WriteAny(r.randChoice[:])
+	_, _ = H.Digest().Read(outMsg.response[:])
 	H = hash.New()
-	_ = H.WriteAny(response)
-	_, _ = H.Digest().Read(response)
+	_ = H.WriteAny(outMsg.response[:])
+	_, _ = H.Digest().Read(outMsg.response[:])
 
-	r.hh_randChoice = make([]byte, len(response))
-	copy(r.hh_randChoice, response)
+	copy(r.hh_randChoice[:], outMsg.response[:])
 
 	mask := -byte(r.choice)
 	for i := 0; i < len(msg.challenge); i++ {
-		response[i] ^= mask & msg.challenge[i]
+		outMsg.response[i] ^= mask & msg.challenge[i]
 	}
 
-	return &RandomOTReceiveRound2Message{response: response}
+	return
 }
 
 // Round3 finalizes the result for the receiver, performing verification.
 //
 // The random choice is returned as the first argument, upon success.
-func (r *RandomOTReceiever) Round3(msg *RandomOTSendRound2Message) ([]byte, error) {
-	h_decommit0 := make([]byte, len(r.receivedChallenge))
+func (r *RandomOTReceiever) Round3(msg *RandomOTSendRound2Message) ([params.SecBytes]byte, error) {
+	var actualChallenge, h_decommit0, h_decommit1 [params.SecBytes]byte
 	H := hash.New()
-	_ = H.WriteAny(msg.decommit0)
-	_, _ = H.Digest().Read(h_decommit0)
+	_ = H.WriteAny(msg.decommit0[:])
+	_, _ = H.Digest().Read(h_decommit0[:])
 
-	h_decommit1 := make([]byte, len(r.receivedChallenge))
 	H = hash.New()
-	_ = H.WriteAny(msg.decommit1)
-	_, _ = H.Digest().Read(h_decommit1)
+	_ = H.WriteAny(msg.decommit1[:])
+	_, _ = H.Digest().Read(h_decommit1[:])
 
-	actualChallenge := make([]byte, len(r.receivedChallenge))
-	for i := 0; i < len(r.receivedChallenge); i++ {
+	for i := 0; i < params.SecBytes; i++ {
 		actualChallenge[i] = h_decommit0[i] ^ h_decommit1[i]
 	}
 
-	if subtle.ConstantTimeCompare(r.receivedChallenge, actualChallenge) != 1 {
-		return nil, fmt.Errorf("RandomOTReceive Round 3: incorrect decommitment")
+	if subtle.ConstantTimeCompare(r.receivedChallenge[:], actualChallenge[:]) != 1 {
+		return r.randChoice, fmt.Errorf("RandomOTReceive Round 3: incorrect decommitment")
 	}
 
 	// Assign the decommitment hash to the one matching our own choice
 	h_decommitChoice := h_decommit0
 	mask := -byte(r.choice)
-	for i := 0; i < len(r.receivedChallenge); i++ {
-		h_decommitChoice[i] ^= (mask & (h_decommitChoice[i] ^ h_decommit1[i]))
+	for i := 0; i < params.SecBytes; i++ {
+		h_decommitChoice[i] ^= mask & (h_decommitChoice[i] ^ h_decommit1[i])
 	}
-	if subtle.ConstantTimeCompare(h_decommitChoice, r.hh_randChoice) != 1 {
-		return nil, fmt.Errorf("RandomOTReceive Round 3: incorrect decommitment")
+	if subtle.ConstantTimeCompare(h_decommitChoice[:], r.hh_randChoice[:]) != 1 {
+		return r.randChoice, fmt.Errorf("RandomOTReceive Round 3: incorrect decommitment")
 	}
 
 	return r.randChoice, nil
@@ -210,81 +211,82 @@ type RandomOTSender struct {
 	_B    curve.Point
 	_bB   curve.Point
 	// After round 1
-	rand0 []byte
-	rand1 []byte
+	rand0 [params.SecBytes]byte
+	rand1 [params.SecBytes]byte
 
-	decommit0 []byte
-	decommit1 []byte
+	decommit0 [params.SecBytes]byte
+	decommit1 [params.SecBytes]byte
 
-	h_decommit0 []byte
+	h_decommit0 [params.SecBytes]byte
 }
 
 // NewRandomOTSender sets up the receiver's state for a single Random OT.
 //
 // If multiple executions are done with the same setup, it's crucial that the hash is
 // initialized with some kind of nonce.
-func NewRandomOTSender(hash *hash.Hash, result *RandomOTSendSetup) *RandomOTSender {
-	return &RandomOTSender{hash: hash, group: result.b.Curve(), b: result.b, _B: result._B, _bB: result._bB}
+func NewRandomOTSender(hash *hash.Hash, result *RandomOTSendSetup) (out RandomOTSender) {
+	out.hash = hash
+	out.group = result.b.Curve()
+	out.b = result.b
+	out._B = result._B
+	out._bB = result._bB
+
+	return
 }
 
 // RandomOTSendRound1Message is the message sent by the sender in round 1.
 type RandomOTSendRound1Message struct {
-	challenge []byte
+	challenge [params.SecBytes]byte
 }
 
 // Round1 executes the sender's side of round 1 for a Random OT.
-func (r *RandomOTSender) Round1(msg *RandomOTReceiveRound1Message) (*RandomOTSendRound1Message, error) {
+func (r *RandomOTSender) Round1(msg *RandomOTReceiveRound1Message) (outMsg RandomOTSendRound1Message, err error) {
 	// We can compute the two random pads:
 	//    rand0 = H(b * A)
 	//    rand1 = H(b * (A - B))
 	_A := r.group.NewPoint()
-	if err := _A.UnmarshalBinary(msg._ABytes); err != nil {
-		return nil, err
+	if err = _A.UnmarshalBinary(msg._ABytes); err != nil {
+		return
 	}
 	bA := r.b.Act(_A)
-	r.rand0 = make([]byte, params.SecBytes)
+
 	H := r.hash.Clone()
 	_ = H.WriteAny(bA)
-	_, _ = H.Digest().Read(r.rand0)
+	_, _ = H.Digest().Read(r.rand0[:])
 
-	r.rand1 = make([]byte, params.SecBytes)
 	H = r.hash.Clone()
 	_ = H.WriteAny(bA.Sub(r._bB))
-	_, _ = H.Digest().Read(r.rand1)
+	_, _ = H.Digest().Read(r.rand1[:])
 
 	// Compute the challenge:
 	//   H(H(rand0)) ^ H(H(rand1))
-	r.decommit0 = make([]byte, params.SecBytes)
 	H = hash.New()
-	_ = H.WriteAny(r.rand0)
-	_, _ = H.Digest().Read(r.decommit0)
+	_ = H.WriteAny(r.rand0[:])
+	_, _ = H.Digest().Read(r.decommit0[:])
 
-	r.decommit1 = make([]byte, params.SecBytes)
 	H = hash.New()
-	_ = H.WriteAny(r.rand1)
-	_, _ = H.Digest().Read(r.decommit1)
+	_ = H.WriteAny(r.rand1[:])
+	_, _ = H.Digest().Read(r.decommit1[:])
 
-	r.h_decommit0 = make([]byte, params.SecBytes)
 	H = hash.New()
-	_ = H.WriteAny(r.decommit0)
-	_, _ = H.Digest().Read(r.h_decommit0)
+	_ = H.WriteAny(r.decommit0[:])
+	_, _ = H.Digest().Read(r.h_decommit0[:])
 
-	challenge := make([]byte, params.SecBytes)
 	H = hash.New()
-	_ = H.WriteAny(r.decommit1)
-	_, _ = H.Digest().Read(challenge)
+	_ = H.WriteAny(r.decommit1[:])
+	_, _ = H.Digest().Read(outMsg.challenge[:])
 
-	for i := 0; i < len(challenge) && i < len(r.h_decommit0); i++ {
-		challenge[i] ^= r.h_decommit0[i]
+	for i := 0; i < params.SecBytes; i++ {
+		outMsg.challenge[i] ^= r.h_decommit0[i]
 	}
 
-	return &RandomOTSendRound1Message{challenge: challenge}, nil
+	return
 }
 
 // RandomOTSendRound2Message is the message sent by the sender in round 2 of a Random OT.
 type RandomOTSendRound2Message struct {
-	decommit0 []byte
-	decommit1 []byte
+	decommit0 [params.SecBytes]byte
+	decommit1 [params.SecBytes]byte
 }
 
 // RandomOTSendResult is the result for a sender in a Random OT.
@@ -292,16 +294,21 @@ type RandomOTSendRound2Message struct {
 // We have two random results with a symmetric security parameter's worth of bits each.
 type RandomOTSendResult struct {
 	// Rand0 is the first random message.
-	Rand0 []byte
+	Rand0 [params.SecBytes]byte
 	// Rand1 is the second random message.
-	Rand1 []byte
+	Rand1 [params.SecBytes]byte
 }
 
 // Round2 executes the sender's side of round 2 in a Random OT.
-func (r *RandomOTSender) Round2(msg *RandomOTReceiveRound2Message) (*RandomOTSendRound2Message, *RandomOTSendResult, error) {
-	if subtle.ConstantTimeCompare(msg.response, r.h_decommit0) != 1 {
-		return nil, nil, fmt.Errorf("RandomOTSender Round2: invalid response")
+func (r *RandomOTSender) Round2(msg *RandomOTReceiveRound2Message) (outMsg RandomOTSendRound2Message, res RandomOTSendResult, err error) {
+	if subtle.ConstantTimeCompare(msg.response[:], r.h_decommit0[:]) != 1 {
+		return outMsg, res, fmt.Errorf("RandomOTSender Round2: invalid response")
 	}
 
-	return &RandomOTSendRound2Message{decommit0: r.decommit0, decommit1: r.decommit1}, &RandomOTSendResult{Rand0: r.rand0, Rand1: r.rand1}, nil
+	outMsg.decommit0 = r.decommit0
+	outMsg.decommit1 = r.decommit1
+	res.Rand0 = r.rand0
+	res.Rand1 = r.rand1
+
+	return
 }

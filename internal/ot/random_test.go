@@ -29,20 +29,20 @@ func runRandomOT(choice bool, hash *hash.Hash) (*RandomOTSendResult, []byte, err
 	if err != nil {
 		return nil, nil, err
 	}
-	msgS1, err := sender.Round1(msgR1)
+	msgS1, err := sender.Round1(&msgR1)
 	if err != nil {
 		return nil, nil, err
 	}
-	msgR2 := receiver.Round2(msgS1)
-	msgS2, resultS, err := sender.Round2(msgR2)
+	msgR2 := receiver.Round2(&msgS1)
+	msgS2, resultS, err := sender.Round2(&msgR2)
 	if err != nil {
 		return nil, nil, err
 	}
-	resultR, err := receiver.Round3(msgS2)
+	resultR, err := receiver.Round3(&msgS2)
 	if err != nil {
 		return nil, nil, err
 	}
-	return resultS, resultR, err
+	return &resultS, resultR[:], err
 }
 
 func testRandomOT(choice bool, init []byte) bool {
@@ -53,13 +53,13 @@ func testRandomOT(choice bool, init []byte) bool {
 		return false
 	}
 	// This should happen only with negligeable probability
-	if bytes.Equal(result.Rand0, result.Rand1) {
+	if bytes.Equal(result.Rand0[:], result.Rand1[:]) {
 		return false
 	}
 	if choice {
-		return bytes.Equal(result.Rand1, randChoice)
+		return bytes.Equal(result.Rand1[:], randChoice)
 	} else {
-		return bytes.Equal(result.Rand0, randChoice)
+		return bytes.Equal(result.Rand0[:], randChoice)
 	}
 }
 
