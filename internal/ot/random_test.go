@@ -63,3 +63,9 @@ func TestRandomOT(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func BenchmarkRandomOT(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		runRandomOT(true, hash.New())
+	}
+}
