@@ -34,7 +34,7 @@ func runCorreOTSetup(hash *hash.Hash) (*CorreOTSendSetup, *CorreOTReceiveSetup, 
 }
 
 func TestCorreOTSetup(t *testing.T) {
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 1; i++ {
 		sendSetup, receiveSetup, err := runCorreOTSetup(hash.New())
 		if err != nil {
 			t.Error(err)
@@ -54,5 +54,10 @@ func TestCorreOTSetup(t *testing.T) {
 			}
 		}
 	}
+}
 
+func BenchmarkCorreOTSetup(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		runCorreOTSetup(hash.New())
+	}
 }
