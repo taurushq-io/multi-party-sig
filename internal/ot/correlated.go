@@ -9,6 +9,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/zeebo/blake3"
 )
 
 type CorreOTSendSetup struct {
@@ -178,7 +179,10 @@ type CorreOTSendResult struct {
 func CorreOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, msg *CorreOTReceiveMessage) (*CorreOTSendResult, error) {
 	batchSizeBytes := batchSize >> 3
 
-	prgHash := ctxHash.Fork(&hash.BytesWithDomain{TheDomain: "CorreOT PRG", Bytes: nil})
+	// Doing a keyed hash for our PRG is faster than cloning a forked hash many times
+	prgKey := make([]byte, 32)
+	_, _ = ctxHash.Fork(&hash.BytesWithDomain{TheDomain: "CorreOT PRG Key", Bytes: nil}).Digest().Read(prgKey)
+	prg, _ := blake3.NewKeyed(prgKey)
 
 	var Q [params.SecParam][]byte
 	for i := 0; i < params.SecParam; i++ {
@@ -187,10 +191,10 @@ func CorreOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, msg
 		}
 
 		// Set Q to TDelta initially
-		H := prgHash.Clone()
-		_ = H.WriteAny(setup._K_Delta[i][:])
+		prg.Reset()
+		_, _ = prg.Write(setup._K_Delta[i][:])
 		Q[i] = make([]byte, batchSizeBytes)
-		_, _ = H.Digest().Read(Q[i])
+		_, _ = prg.Digest().Read(Q[i])
 
 		mask := -((setup._Delta[i>>3] >> (i & 0b111)) & 1)
 		for j := 0; j < batchSizeBytes; j++ {
@@ -212,20 +216,23 @@ type CorreOTReceiveResult struct {
 func CorreOTReceive(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, choices []byte) (*CorreOTReceiveMessage, *CorreOTReceiveResult) {
 	batchSizeBytes := len(choices)
 
-	prgHash := ctxHash.Fork(&hash.BytesWithDomain{TheDomain: "CorreOT PRG", Bytes: nil})
+	// Doing a keyed hash for our PRG is faster than cloning a forked hash many times
+	prgKey := make([]byte, 32)
+	_, _ = ctxHash.Fork(&hash.BytesWithDomain{TheDomain: "CorreOT PRG Key", Bytes: nil}).Digest().Read(prgKey)
+	prg, _ := blake3.NewKeyed(prgKey)
 
 	outMsg := new(CorreOTReceiveMessage)
 	var T0, T1 [params.SecParam][]byte
 	for i := 0; i < params.SecParam; i++ {
-		H := prgHash.Clone()
-		_ = H.WriteAny(setup._K_0[i][:])
+		prg.Reset()
+		_, _ = prg.Write(setup._K_0[i][:])
 		T0[i] = make([]byte, batchSizeBytes)
-		_, _ = H.Digest().Read(T0[i])
+		_, _ = prg.Digest().Read(T0[i])
 
-		H = prgHash.Clone()
-		_ = H.WriteAny(setup._K_1[i][:])
+		prg.Reset()
+		_, _ = prg.Write(setup._K_1[i][:])
 		T1[i] = make([]byte, batchSizeBytes)
-		_, _ = H.Digest().Read(T1[i])
+		_, _ = prg.Digest().Read(T1[i])
 
 		outMsg._U[i] = make([]byte, batchSizeBytes)
 		for j := 0; j < batchSizeBytes; j++ {
