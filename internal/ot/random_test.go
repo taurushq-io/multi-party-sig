@@ -22,7 +22,7 @@ func runRandomOT(choice bool, hash *hash.Hash) (*RandomOTSendResult, []byte, err
 	if err != nil {
 		return nil, nil, err
 	}
-	receiver := NewRandomOTReceiver(hash.Clone(), safeChoice, setupR)
+	receiver := NewRandomOTReceiver(hash.Clone(), setupR, safeChoice)
 	sender := NewRandomOTSender(hash.Clone(), setupS)
 
 	msgR1, err := receiver.Round1()

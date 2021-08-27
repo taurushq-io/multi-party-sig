@@ -95,7 +95,7 @@ type RandomOTReceiever struct {
 // initialized with some kind of nonce.
 //
 // choice indicates which of the two random messages should be received.
-func NewRandomOTReceiver(hash *hash.Hash, choice safenum.Choice, result *RandomOTReceiveSetup) (out RandomOTReceiever) {
+func NewRandomOTReceiver(hash *hash.Hash, result *RandomOTReceiveSetup, choice safenum.Choice) (out RandomOTReceiever) {
 	out.hash = hash
 	out.group = result._B.Curve()
 	out.choice = choice

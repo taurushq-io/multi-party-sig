@@ -2,6 +2,7 @@ package ot
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
 	"testing"
 
@@ -37,7 +38,7 @@ func runCorreOTSetup(hash *hash.Hash) (*CorreOTSendSetup, *CorreOTReceiveSetup, 
 }
 
 func TestCorreOTSetup(t *testing.T) {
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 10; i++ {
 		sendSetup, receiveSetup, err := runCorreOTSetup(hash.New())
 		if err != nil {
 			t.Error(err)
@@ -59,8 +60,59 @@ func TestCorreOTSetup(t *testing.T) {
 	}
 }
 
+func runCorreOT(hash *hash.Hash, choices []byte, sendSetup *CorreOTSendSetup, receiveSetup *CorreOTReceiveSetup) (*CorreOTSendResult, *CorreOTReceiveResult, error) {
+	msgR1, receiveResult := CorreOTReceive(hash.Clone(), receiveSetup, choices)
+	sendResult, err := CorreOTSend(hash.Clone(), sendSetup, 8*len(choices), msgR1)
+	if err != nil {
+		return nil, nil, err
+	}
+	return sendResult, receiveResult, nil
+}
+
+func TestCorreOT(t *testing.T) {
+	sendSetup, receiveSetup, err := runCorreOTSetup(hash.New())
+	if err != nil {
+		t.Error(err)
+	}
+	H := hash.New()
+	for i := 0; i < 10; i++ {
+		_ = H.WriteAny([]byte{byte(i)})
+		choices := make([]byte, params.SecBytes)
+		_, _ = rand.Read(choices)
+		sendResult, receiveResult, err := runCorreOT(H, choices, sendSetup, receiveSetup)
+		if err != nil {
+			t.Error(err)
+		}
+		for i := 0; i < params.SecParam; i++ {
+			choice := (choices[i>>3]>>(i&0b111))&1 == 1
+			expected := make([]byte, params.SecBytes)
+			copy(expected, receiveResult._T[i][:])
+			if choice {
+				for j := 0; j < params.SecBytes; j++ {
+					expected[j] ^= sendSetup._Delta[j]
+				}
+			}
+			actual := sendResult._Q[i][:]
+			if !bytes.Equal(actual, expected) {
+				t.Error("incorrect Correlated OT")
+			}
+		}
+	}
+}
+
 func BenchmarkCorreOTSetup(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		runCorreOTSetup(hash.New())
+	}
+}
+
+func BenchmarkCorreOT(b *testing.B) {
+	b.StopTimer()
+	sendSetup, receiveSetup, _ := runCorreOTSetup(hash.New())
+	choices := make([]byte, params.SecBytes)
+	_, _ = rand.Read(choices)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		runCorreOT(hash.New(), choices, sendSetup, receiveSetup)
 	}
 }

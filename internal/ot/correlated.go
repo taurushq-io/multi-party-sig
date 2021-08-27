@@ -3,6 +3,7 @@ package ot
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
 
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
@@ -47,7 +48,7 @@ func (r *CorreOTSetupSender) Round1(msg *CorreOTSetupReceiveRound1Message) (*Cor
 		r.randomOTReceivers[i] = NewRandomOTReceiver(r.hash.Fork(&hash.BytesWithDomain{
 			TheDomain: "CorreOT Random OT Counter",
 			Bytes:     ctr[:],
-		}), choice, r.setup)
+		}), r.setup, choice)
 	}
 
 	outMsg := new(CorreOTSetupSendRound1Message)
@@ -157,4 +158,80 @@ func (r *CorreOTSetupReceiver) Round3(msg *CorreOTSetupSendRound2Message) (*Corr
 		setup._K_1[i] = resultsi.Rand1
 	}
 	return outMsg, setup, nil
+}
+
+func transposeBits(l int, M *[params.SecParam][]byte) [][params.SecBytes]byte {
+	// TODO: Make this faster
+	MT := make([][params.SecBytes]byte, l)
+	for i := 0; i < l; i++ {
+		for j := 0; j < params.SecParam; j++ {
+			MT[i][j>>3] |= ((M[j][i>>3] >> (i & 0b111)) & 1) << (j & 0b111)
+		}
+	}
+	return MT
+}
+
+type CorreOTSendResult struct {
+	_Q [][params.SecBytes]byte
+}
+
+func CorreOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, msg *CorreOTReceiveMessage) (*CorreOTSendResult, error) {
+	batchSizeBytes := batchSize >> 3
+
+	prgHash := ctxHash.Fork(&hash.BytesWithDomain{TheDomain: "CorreOT PRG", Bytes: nil})
+
+	var Q [params.SecParam][]byte
+	for i := 0; i < params.SecParam; i++ {
+		if len(msg._U[i]) != batchSizeBytes {
+			return nil, errors.New("CorreOTSend: incorrect batch size in message")
+		}
+
+		// Set Q to TDelta initially
+		H := prgHash.Clone()
+		_ = H.WriteAny(setup._K_Delta[i][:])
+		Q[i] = make([]byte, batchSizeBytes)
+		_, _ = H.Digest().Read(Q[i])
+
+		mask := -((setup._Delta[i>>3] >> (i & 0b111)) & 1)
+		for j := 0; j < batchSizeBytes; j++ {
+			Q[i][j] ^= mask & msg._U[i][j]
+		}
+	}
+
+	return &CorreOTSendResult{_Q: transposeBits(batchSize, &Q)}, nil
+}
+
+type CorreOTReceiveMessage struct {
+	_U [params.SecParam][]byte
+}
+
+type CorreOTReceiveResult struct {
+	_T [][params.SecBytes]byte
+}
+
+func CorreOTReceive(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, choices []byte) (*CorreOTReceiveMessage, *CorreOTReceiveResult) {
+	batchSizeBytes := len(choices)
+
+	prgHash := ctxHash.Fork(&hash.BytesWithDomain{TheDomain: "CorreOT PRG", Bytes: nil})
+
+	outMsg := new(CorreOTReceiveMessage)
+	var T0, T1 [params.SecParam][]byte
+	for i := 0; i < params.SecParam; i++ {
+		H := prgHash.Clone()
+		_ = H.WriteAny(setup._K_0[i][:])
+		T0[i] = make([]byte, batchSizeBytes)
+		_, _ = H.Digest().Read(T0[i])
+
+		H = prgHash.Clone()
+		_ = H.WriteAny(setup._K_1[i][:])
+		T1[i] = make([]byte, batchSizeBytes)
+		_, _ = H.Digest().Read(T1[i])
+
+		outMsg._U[i] = make([]byte, batchSizeBytes)
+		for j := 0; j < batchSizeBytes; j++ {
+			outMsg._U[i][j] = T0[i][j] ^ T1[i][j] ^ choices[j]
+		}
+	}
+
+	return outMsg, &CorreOTReceiveResult{_T: transposeBits(8*batchSizeBytes, &T0)}
 }
