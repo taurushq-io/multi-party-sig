@@ -8,6 +8,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 	"github.com/zeebo/blake3"
 )
 
@@ -18,14 +19,15 @@ type CorreOTSendSetup struct {
 
 type CorreOTSetupSender struct {
 	// After setup
+	pl                *pool.Pool
 	hash              *hash.Hash
 	setup             *RandomOTReceiveSetup
 	_Delta            [params.SecBytes]byte
 	randomOTReceivers [params.SecParam]RandomOTReceiever
 }
 
-func NewCorreOTSetupSender(hash *hash.Hash) *CorreOTSetupSender {
-	return &CorreOTSetupSender{hash: hash}
+func NewCorreOTSetupSender(pl *pool.Pool, hash *hash.Hash) *CorreOTSetupSender {
+	return &CorreOTSetupSender{pl: pl, hash: hash}
 }
 
 type CorreOTSetupSendRound1Message struct {
@@ -53,10 +55,14 @@ func (r *CorreOTSetupSender) Round1(msg *CorreOTSetupReceiveRound1Message) (*Cor
 	}
 
 	outMsg := new(CorreOTSetupSendRound1Message)
-	for i := 0; i < params.SecParam; i++ {
+	errors := r.pl.Parallelize(params.SecParam, func(i int) interface{} {
+		var err error
 		outMsg.msgs[i], err = r.randomOTReceivers[i].Round1()
+		return err
+	})
+	for _, err := range errors {
 		if err != nil {
-			return nil, err
+			return outMsg, err.(error)
 		}
 	}
 
@@ -95,14 +101,15 @@ type CorreOTReceiveSetup struct {
 
 type CorreOTSetupReceiver struct {
 	// After setup
+	pl              *pool.Pool
 	hash            *hash.Hash
 	group           curve.Curve
 	setup           *RandomOTSendSetup
 	randomOTSenders [params.SecParam]RandomOTSender
 }
 
-func NewCorreOTSetupReceive(hash *hash.Hash, group curve.Curve) *CorreOTSetupReceiver {
-	return &CorreOTSetupReceiver{hash: hash, group: group}
+func NewCorreOTSetupReceive(pl *pool.Pool, hash *hash.Hash, group curve.Curve) *CorreOTSetupReceiver {
+	return &CorreOTSetupReceiver{pl: pl, hash: hash, group: group}
 }
 
 type CorreOTSetupReceiveRound1Message struct {
@@ -133,11 +140,14 @@ type CorreOTSetupReceiveRound2Message struct {
 func (r *CorreOTSetupReceiver) Round2(msg *CorreOTSetupSendRound1Message) (*CorreOTSetupReceiveRound2Message, error) {
 	outMsg := new(CorreOTSetupReceiveRound2Message)
 
-	var err error
-	for i := 0; i < params.SecParam; i++ {
+	errors := r.pl.Parallelize(params.SecParam, func(i int) interface{} {
+		var err error
 		outMsg.msgs[i], err = r.randomOTSenders[i].Round1(&msg.msgs[i])
+		return err
+	})
+	for _, err := range errors {
 		if err != nil {
-			return nil, err
+			return outMsg, err.(error)
 		}
 	}
 	return outMsg, nil

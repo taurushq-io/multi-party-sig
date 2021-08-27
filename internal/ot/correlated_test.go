@@ -8,11 +8,12 @@ import (
 
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
+	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 )
 
-func runCorreOTSetup(hash *hash.Hash) (*CorreOTSendSetup, *CorreOTReceiveSetup, error) {
-	sender := NewCorreOTSetupSender(hash.Clone())
-	receiver := NewCorreOTSetupReceive(hash.Clone(), testGroup)
+func runCorreOTSetup(pl *pool.Pool, hash *hash.Hash) (*CorreOTSendSetup, *CorreOTReceiveSetup, error) {
+	sender := NewCorreOTSetupSender(pl, hash.Clone())
+	receiver := NewCorreOTSetupReceive(pl, hash.Clone(), testGroup)
 	msgR1 := receiver.Round1()
 	msgS1, err := sender.Round1(msgR1)
 	if err != nil {
@@ -38,8 +39,11 @@ func runCorreOTSetup(hash *hash.Hash) (*CorreOTSendSetup, *CorreOTReceiveSetup, 
 }
 
 func TestCorreOTSetup(t *testing.T) {
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+
 	for i := 0; i < 10; i++ {
-		sendSetup, receiveSetup, err := runCorreOTSetup(hash.New())
+		sendSetup, receiveSetup, err := runCorreOTSetup(pl, hash.New())
 		if err != nil {
 			t.Error(err)
 		}
@@ -70,7 +74,10 @@ func runCorreOT(hash *hash.Hash, choices []byte, sendSetup *CorreOTSendSetup, re
 }
 
 func TestCorreOT(t *testing.T) {
-	sendSetup, receiveSetup, err := runCorreOTSetup(hash.New())
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+
+	sendSetup, receiveSetup, err := runCorreOTSetup(pl, hash.New())
 	if err != nil {
 		t.Error(err)
 	}
@@ -101,14 +108,19 @@ func TestCorreOT(t *testing.T) {
 }
 
 func BenchmarkCorreOTSetup(b *testing.B) {
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+
 	for i := 0; i < b.N; i++ {
-		runCorreOTSetup(hash.New())
+		runCorreOTSetup(pl, hash.New())
 	}
 }
 
 func BenchmarkCorreOT(b *testing.B) {
 	b.StopTimer()
-	sendSetup, receiveSetup, _ := runCorreOTSetup(hash.New())
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+	sendSetup, receiveSetup, _ := runCorreOTSetup(pl, hash.New())
 	choices := make([]byte, params.SecBytes)
 	_, _ = rand.Read(choices)
 	b.StartTimer()
