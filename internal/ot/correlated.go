@@ -2,7 +2,6 @@ package ot
 
 import (
 	"crypto/rand"
-	"encoding/binary"
 	"errors"
 
 	"github.com/cronokirby/safenum"
@@ -42,14 +41,15 @@ func (r *CorreOTSetupSender) Round1(msg *CorreOTSetupReceiveRound1Message) (*Cor
 
 	_, _ = rand.Read(r._Delta[:])
 
-	var ctr [8]byte
+	randomOTNonces := r.hash.Fork(&hash.BytesWithDomain{
+		TheDomain: "CorreOT Random OT Nonces",
+		Bytes:     nil,
+	}).Digest()
 	for i := 0; i < params.SecParam; i++ {
 		choice := safenum.Choice((r._Delta[i>>3] >> (i & 0b111)) & 1)
-		binary.BigEndian.PutUint64(ctr[:], uint64(i))
-		r.randomOTReceivers[i] = NewRandomOTReceiver(r.hash.Fork(&hash.BytesWithDomain{
-			TheDomain: "CorreOT Random OT Counter",
-			Bytes:     ctr[:],
-		}), r.setup, choice)
+		nonce := make([]byte, 32)
+		_, _ = randomOTNonces.Read(nonce)
+		r.randomOTReceivers[i] = NewRandomOTReceiver(nonce, r.setup, choice)
 	}
 
 	outMsg := new(CorreOTSetupSendRound1Message)
@@ -113,13 +113,14 @@ func (r *CorreOTSetupReceiver) Round1() *CorreOTSetupReceiveRound1Message {
 	msg, setup := RandomOTSetupSend(r.hash, r.group)
 	r.setup = setup
 
-	var ctr [8]byte
+	randomOTNonces := r.hash.Fork(&hash.BytesWithDomain{
+		TheDomain: "CorreOT Random OT Nonces",
+		Bytes:     nil,
+	}).Digest()
 	for i := 0; i < params.SecParam; i++ {
-		binary.BigEndian.PutUint64(ctr[:], uint64(i))
-		r.randomOTSenders[i] = NewRandomOTSender(r.hash.Fork(&hash.BytesWithDomain{
-			TheDomain: "CorreOT Random OT Counter",
-			Bytes:     ctr[:],
-		}), setup)
+		nonce := make([]byte, 32)
+		_, _ = randomOTNonces.Read(nonce)
+		r.randomOTSenders[i] = NewRandomOTSender(nonce, r.setup)
 	}
 
 	return &CorreOTSetupReceiveRound1Message{*msg}

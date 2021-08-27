@@ -13,6 +13,8 @@ import (
 var testGroup = curve.Secp256k1{}
 
 func runRandomOT(choice bool, hash *hash.Hash) (*RandomOTSendResult, []byte, error) {
+	nonce := make([]byte, 32)
+	_, _ = hash.Digest().Read(nonce)
 	safeChoice := safenum.Choice(0)
 	if choice {
 		safeChoice = 1
@@ -22,8 +24,8 @@ func runRandomOT(choice bool, hash *hash.Hash) (*RandomOTSendResult, []byte, err
 	if err != nil {
 		return nil, nil, err
 	}
-	receiver := NewRandomOTReceiver(hash.Clone(), setupR, safeChoice)
-	sender := NewRandomOTSender(hash.Clone(), setupS)
+	receiver := NewRandomOTReceiver(nonce, setupR, safeChoice)
+	sender := NewRandomOTSender(nonce, setupS)
 
 	msgR1, err := receiver.Round1()
 	if err != nil {
