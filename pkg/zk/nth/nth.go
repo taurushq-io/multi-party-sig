@@ -1,10 +1,12 @@
+// zknth is based on the zkenc package,
+// and can be seen as the special case where the ciphertext encrypts the "0" value.
 package zknth
 
 import (
 	"crypto/rand"
 
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/internal/hash"
+	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"

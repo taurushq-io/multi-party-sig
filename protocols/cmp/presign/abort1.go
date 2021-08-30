@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
@@ -95,11 +95,7 @@ func (r *abort1) Finalize(chan<- *round.Message) (round.Session, error) {
 			culprits = append(culprits, j)
 		}
 	}
-	if len(culprits) > 0 {
-		return r.ResultRound(AbortResult{culprits}), nil
-	}
-	//TODO better error
-	return r, nil
+	return r.AbortRound(errors.New("abort1: detected culprit"), culprits...), nil
 }
 
 // MessageContent implements round.Round.

@@ -1,6 +1,7 @@
 package cmp
 
 import (
+	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/ecdsa"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -12,24 +13,59 @@ import (
 	"github.com/taurusgroup/multi-party-sig/protocols/cmp/sign"
 )
 
+// Config represents the stored state of a party who participated in a successful `Keygen` protocol.
+// It contains secret key material and should be safely stored.
 type Config = config.Config
 
-func StartKeygen(group curve.Curve, partyIDs []party.ID, threshold int, selfID party.ID, pl *pool.Pool) protocol.StartFunc {
-	return keygen.StartKeygen(group, partyIDs, threshold, selfID, pl)
+// Keygen generates a new shared ECDSA key over the curve defined by `group`. After a successful execution,
+// all participants posses a unique share of this key, as well as auxiliary parameters required during signing.
+//
+// For better performance, a `pool.Pool` can be provided in order to parallelize certain steps of the protocol.
+// Returns *cmp.Config if successful.
+func Keygen(group curve.Curve, selfID party.ID, participants []party.ID, threshold int, pl *pool.Pool) protocol.StartFunc {
+	info := round.Info{
+		ProtocolID:       "cmp/keygen-threshold",
+		FinalRoundNumber: keygen.Rounds,
+		SelfID:           selfID,
+		PartyIDs:         participants,
+		Threshold:        threshold,
+		Group:            group,
+	}
+	return keygen.Start(info, pl, nil)
 }
 
-func StartRefresh(c *Config, pl *pool.Pool) protocol.StartFunc {
-	return keygen.StartRefresh(c, pl)
+// Refresh allows the parties to refresh all existing cryptographic keys from a previously generated Config.
+// The group's ECDSA public key remains the same, but any previous shares are rendered useless.
+// Returns *cmp.Config if successful.
+func Refresh(config *Config, pl *pool.Pool) protocol.StartFunc {
+	info := round.Info{
+		ProtocolID:       "cmp/refresh-threshold",
+		FinalRoundNumber: keygen.Rounds,
+		SelfID:           config.ID,
+		PartyIDs:         config.PartyIDs(),
+		Threshold:        config.Threshold,
+		Group:            config.Group,
+	}
+	return keygen.Start(info, pl, config)
 }
 
-func StartSign(config *config.Config, signers []party.ID, message []byte, pl *pool.Pool) protocol.StartFunc {
-	return sign.StartSign(config, signers, message, pl)
+// Sign generates an ECDSA signature for `messageHash` among the given `signers`.
+// Returns *ecdsa.Signature if successful.
+func Sign(config *Config, signers []party.ID, messageHash []byte, pl *pool.Pool) protocol.StartFunc {
+	return sign.StartSign(config, signers, messageHash, pl)
 }
 
-func StartPresign(c *config.Config, signers []party.ID, pl *pool.Pool) protocol.StartFunc {
-	return presign.StartPresign(c, signers, nil, pl)
+// Presign generates a preprocessed signature that does not depend on the message being signed.
+// When the message becomes available, the same participants can efficiently combine their shares
+// to produce a full signature with the PresignOnline protocol.
+// Note: the PreSignatures should be treated as secret key material.
+// Returns *ecdsa.PreSignature if successful.
+func Presign(config *Config, signers []party.ID, pl *pool.Pool) protocol.StartFunc {
+	return presign.StartPresign(config, signers, nil, pl)
 }
 
-func StartPresignOnline(c *config.Config, preSignature *ecdsa.PreSignature, message []byte, pl *pool.Pool) protocol.StartFunc {
-	return presign.StartPresignOnline(c, preSignature, message, pl)
+// PresignOnline efficiently generates an ECDSA signature for `messageHash` given a preprocessed `PreSignature`.
+// Returns *ecdsa.Signature if successful.
+func PresignOnline(config *Config, preSignature *ecdsa.PreSignature, messageHash []byte, pl *pool.Pool) protocol.StartFunc {
+	return presign.StartPresignOnline(config, preSignature, messageHash, pl)
 }

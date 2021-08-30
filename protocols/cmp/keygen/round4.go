@@ -37,7 +37,7 @@ type message4 struct {
 //
 // - verify Mod, Prm proof for N
 func (r *round4) VerifyMessage(msg round.Message) error {
-	from := msg.From
+	from, to := msg.From, msg.To
 	body, ok := msg.Content.(*message4)
 	if !ok || body == nil {
 		return round.ErrInvalidContent
@@ -57,6 +57,10 @@ func (r *round4) VerifyMessage(msg round.Message) error {
 		return errors.New("failed to validate prm proof")
 	}
 
+	if !r.PaillierPublic[to].ValidateCiphertexts(body.Share) {
+		return errors.New("invalid ciphertext")
+	}
+
 	return nil
 }
 
@@ -68,6 +72,11 @@ func (r *round4) VerifyMessage(msg round.Message) error {
 // - save share.
 func (r *round4) StoreMessage(msg round.Message) error {
 	from, body := msg.From, msg.Content.(*message4)
+
+	// TODO sending an incorrect share cannot be verified and may lead to the receiver getting accused
+	if msg.To != r.SelfID() {
+		return nil
+	}
 	// decrypt share
 	DecryptedShare, err := r.PaillierSecret.Dec(body.Share)
 	if err != nil {
@@ -117,7 +126,7 @@ func (r *round4) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// ShamirPublicPolynomial = F(X) = ∑Fⱼ(X)
 	ShamirPublicPolynomial, err := polynomial.Sum(ShamirPublicPolynomials)
 	if err != nil {
-		return nil, err
+		return r, err
 	}
 
 	// compute the new public key share Xⱼ = F(j) (+X'ⱼ if doing a refresh)

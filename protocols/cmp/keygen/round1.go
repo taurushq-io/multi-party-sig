@@ -5,10 +5,9 @@ import (
 	"errors"
 
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/internal/broadcast"
-	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/internal/types"
+	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
@@ -98,12 +97,12 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 
 	// should be broadcast but we don't need that here
 	msg := &message2{Commitment: SelfCommitment}
-	err = r.SendMessage(out, msg, "")
+	err = r.BroadcastMessage(out, msg)
 	if err != nil {
 		return r, err
 	}
 
-	nextRound := &round2{
+	nextRound := &roundBroadcast2{&round2{
 		round1:         r,
 		VSSPolynomials: map[party.ID]*polynomial.Exponent{r.SelfID(): SelfVSSPolynomial},
 		Commitments:    map[party.ID]hash.Commitment{r.SelfID(): SelfCommitment},
@@ -120,8 +119,8 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 		PedersenSecret: PedersenSecret,
 		SchnorrRand:    SchnorrRand,
 		Decommitment:   Decommitment,
-	}
-	return broadcast.New(nextRound, msg), nil
+	}}
+	return nextRound, nil
 }
 
 // PreviousRound implements round.Round.

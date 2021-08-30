@@ -75,10 +75,10 @@ func (r *round5) Finalize(chan<- *round.Message) (round.Session, error) {
 	}
 
 	if !signature.Verify(r.PublicKey, r.Message) {
-		return nil, errors.New("failed to validate signature")
+		return r.AbortRound(errors.New("failed to validate signature")), nil
 	}
 
-	return &round.Output{Result: signature}, nil
+	return r.ResultRound(signature), nil
 }
 
 // MessageContent implements round.Round.

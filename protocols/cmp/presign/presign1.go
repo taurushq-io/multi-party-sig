@@ -3,11 +3,10 @@ package presign
 import (
 	"crypto/rand"
 
-	"github.com/taurusgroup/multi-party-sig/internal/broadcast"
 	"github.com/taurusgroup/multi-party-sig/internal/elgamal"
-	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/internal/types"
+	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
@@ -48,10 +47,10 @@ type presign1 struct {
 }
 
 // VerifyMessage implements round.Round.
-func (r *presign1) VerifyMessage(round.Message) error { return nil }
+func (presign1) VerifyMessage(round.Message) error { return nil }
 
 // StoreMessage implements round.Round.
-func (r *presign1) StoreMessage(round.Message) error { return nil }
+func (presign1) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round
 //
@@ -98,7 +97,10 @@ func (r *presign1) Finalize(out chan<- *round.Message) (round.Session, error) {
 		Z:            ElGamalK,
 		CommitmentID: commitmentID,
 	}
-	errors := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
+	if err = r.BroadcastMessage(out, &broadcastMsg); err != nil {
+		return r, err
+	}
+	errs := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
 		j := otherIDs[i]
 		proof := zkencelg.NewProof(r.Group(), r.HashForID(r.SelfID()), zkencelg.Public{
 			C:      K,
@@ -114,22 +116,15 @@ func (r *presign1) Finalize(out chan<- *round.Message) (round.Session, error) {
 			B:   ElGamalNonce,
 		})
 
-		err := r.SendMessage(out, &message2{
-			broadcast2: broadcastMsg,
-			Proof:      proof,
-		}, j)
-		if err != nil {
-			return err
-		}
-		return nil
+		return r.SendMessage(out, &message2{Proof: proof}, j)
 	})
-	for _, err := range errors {
+	for _, err := range errs {
 		if err != nil {
 			return r, err.(error)
 		}
 	}
 
-	nextRound := &presign2{
+	return &presignBroadcast2{&presign2{
 		presign1:       r,
 		K:              map[party.ID]*paillier.Ciphertext{r.SelfID(): K},
 		G:              map[party.ID]*paillier.Ciphertext{r.SelfID(): G},
@@ -142,8 +137,7 @@ func (r *presign1) Finalize(out chan<- *round.Message) (round.Session, error) {
 		PresignatureID: map[party.ID]types.RID{r.SelfID(): presignatureID},
 		CommitmentID:   map[party.ID]hash.Commitment{},
 		DecommitmentID: decommitmentID,
-	}
-	return broadcast.New(nextRound, broadcastMsg), nil
+	}}, nil
 }
 
 // MessageContent implements round.Round.

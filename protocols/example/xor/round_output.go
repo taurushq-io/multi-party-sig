@@ -36,6 +36,7 @@ func (r *Round2) VerifyMessage(msg round.Message) error {
 
 // StoreMessage saves any relevant data from the content, in this case the sender's xor value.
 func (r *Round2) StoreMessage(msg round.Message) error {
+
 	from, body := msg.From, msg.Content.(*Round2Message)
 	// store the received value
 	r.received[from] = body.XOR
@@ -48,7 +49,7 @@ func (r *Round2) Finalize(chan<- *round.Message) (round.Session, error) {
 	for _, received := range r.received {
 		resultXOR.XOR(received)
 	}
-	return &round.Output{Result: Result(resultXOR)}, nil
+	return r.ResultRound(Result(resultXOR)), nil
 }
 
 // MessageContent implements round.Round.

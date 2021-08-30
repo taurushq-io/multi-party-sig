@@ -15,7 +15,7 @@ type (
 	Signature     = sign.Signature
 )
 
-// StartKeygen initiates the Frost key generation protocol.
+// Keygen initiates the Frost key generation protocol.
 //
 // This protocol establishes a new threshold signature key among a set of participants.
 // Later, a subset of these participants can create signatures for this public key,
@@ -32,20 +32,20 @@ type (
 //
 // This protocol corresponds to Figure 1 of the Frost paper:
 //   https://eprint.iacr.org/2020/852.pdf
-func StartKeygen(group curve.Curve, participants []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
+func Keygen(group curve.Curve, selfID party.ID, participants []party.ID, threshold int) protocol.StartFunc {
 	return keygen.StartKeygenCommon(false, group, participants, threshold, selfID)
 }
 
-// StartKeygenTaproot is like StartKeygen, but will make Taproot / BIP-340 compatible keys.
+// KeygenTaproot is like Keygen, but will make Taproot / BIP-340 compatible keys.
 //
 // This will also return TaprootResult instead of Result, at the end of the protocol.
 //
 // See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#specification
-func StartKeygenTaproot(participants []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
+func KeygenTaproot(selfID party.ID, participants []party.ID, threshold int) protocol.StartFunc {
 	return keygen.StartKeygenCommon(true, curve.Secp256k1{}, participants, threshold, selfID)
 }
 
-// StartSign initiates the protocol for producing a threshold signature, with Frost.
+// Sign initiates the protocol for producing a threshold signature, with Frost.
 //
 // result is the result of the key generation phase, for this participant.
 //
@@ -65,16 +65,16 @@ func StartKeygenTaproot(participants []party.ID, threshold int, selfID party.ID)
 // Instead, each participant independently verifies and broadcasts items as necessary.
 //
 // Differences stemming from this change are commented throughout the protocol.
-func StartSign(config *Config, signers []party.ID, messageHash []byte) protocol.StartFunc {
+func Sign(config *Config, signers []party.ID, messageHash []byte) protocol.StartFunc {
 	return sign.StartSignCommon(false, config, signers, messageHash)
 }
 
-// StartSignTaproot is like StartSign, but will generate a Taproot / BIP-340 compatible signature.
+// SignTaproot is like Sign, but will generate a Taproot / BIP-340 compatible signature.
 //
 // This needs to result of a Taproot compatible key generation phase, naturally.
 //
 // See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki
-func StartSignTaproot(config *TaprootConfig, signers []party.ID, messageHash []byte) protocol.StartFunc {
+func SignTaproot(config *TaprootConfig, signers []party.ID, messageHash []byte) protocol.StartFunc {
 	publicKey, err := curve.Secp256k1{}.LiftX(config.PublicKey)
 	if err != nil {
 		return func([]byte) (round.Session, error) {

@@ -93,11 +93,8 @@ func (r *abort2) Finalize(chan<- *round.Message) (round.Session, error) {
 			culprits = append(culprits, j)
 		}
 	}
-	if len(culprits) > 0 {
-		return &round.Output{Result: AbortResult{culprits}}, nil
-	}
-	//TODO better error
-	return r, nil
+
+	return r.AbortRound(errors.New("abort2: detected culprit"), culprits...), nil
 }
 
 // MessageContent implements round.Round.

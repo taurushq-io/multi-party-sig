@@ -3,8 +3,9 @@ package protocol
 import (
 	"fmt"
 
-	"github.com/taurusgroup/multi-party-sig/internal/hash"
+	"github.com/fxamacker/cbor/v2"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 )
 
@@ -13,8 +14,7 @@ type Message struct {
 	SSID []byte
 	// From is the party.ID of the sender
 	From party.ID
-	// To is a list of intended recipients for this message.
-	// If To == nil, then the message should be interpreted as a broadcast message.
+	// To is the intended recipient for this message. If To == "", then the message should be sent to all.
 	To party.ID
 	// Protocol identifies the protocol this message belongs to
 	Protocol string
@@ -22,18 +22,16 @@ type Message struct {
 	RoundNumber round.Number
 	// Data is the actual content consumed by the round.
 	Data []byte
-	// Signature TODO
-	Signature []byte
+	// Broadcast indicates whether this message should be reliably broadcast to all participants.
+	Broadcast bool
+	// BroadcastVerification is the hash of all messages broadcast by the parties,
+	// and is included in all messages in the round following a broadcast round.
+	BroadcastVerification []byte
 }
 
 // String implements fmt.Stringer.
 func (m Message) String() string {
 	return fmt.Sprintf("message: round %d, from: %s, to %v, protocol: %s", m.RoundNumber, m.From, m.To, m.Protocol)
-}
-
-// Broadcast returns true if the message should be reliably broadcast to all participants in the protocol.
-func (m Message) Broadcast() bool {
-	return m.To == ""
 }
 
 // IsFor returns true if the message is intended for the designated party.
@@ -44,9 +42,13 @@ func (m Message) IsFor(id party.ID) bool {
 	return m.To == "" || m.To == id
 }
 
-// Hash returns a 64 byte slice of the message content, including the headers.
+// Hash returns a 64 byte hash of the message content, including the headers.
 // Can be used to produce a signature for the message.
-func (m Message) Hash() []byte {
+func (m *Message) Hash() []byte {
+	var broadcast byte
+	if m.Broadcast {
+		broadcast = 1
+	}
 	h := hash.New(
 		hash.BytesWithDomain{TheDomain: "SSID", Bytes: m.SSID},
 		m.From,
@@ -54,6 +56,16 @@ func (m Message) Hash() []byte {
 		hash.BytesWithDomain{TheDomain: "Protocol", Bytes: []byte(m.Protocol)},
 		m.RoundNumber,
 		hash.BytesWithDomain{TheDomain: "Content", Bytes: m.Data},
+		hash.BytesWithDomain{TheDomain: "Broadcast", Bytes: []byte{broadcast}},
+		hash.BytesWithDomain{TheDomain: "BroadcastVerification", Bytes: m.BroadcastVerification},
 	)
 	return h.Sum()
+}
+
+func (m *Message) MarshalBinary() ([]byte, error) {
+	return cbor.Marshal(m)
+}
+
+func (m *Message) UnmarshalBinary(data []byte) error {
+	return cbor.Unmarshal(data, m)
 }

@@ -4,9 +4,9 @@ import (
 	"errors"
 
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/mta"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -40,14 +40,37 @@ type round2 struct {
 	GNonce *safenum.Nat
 }
 
+type roundBroadcast2 struct {
+	*round2
+}
+
 type broadcast2 struct {
 	K *paillier.Ciphertext
 	G *paillier.Ciphertext
 }
 
 type message2 struct {
-	broadcast2
 	ProofEnc *zkenc.Proof
+}
+
+// StoreBroadcastMessage implements round.Round.
+//
+// - store Kⱼ, Gⱼ.
+func (r *roundBroadcast2) StoreBroadcastMessage(msg round.Message) error {
+	from := msg.From
+	body, ok := msg.Content.(*broadcast2)
+	if !ok || body == nil {
+		return round.ErrInvalidContent
+	}
+
+	if !r.Paillier[from].ValidateCiphertexts(body.K, body.G) {
+		return errors.New("invalid K, G")
+	}
+
+	r.K[from] = body.K
+	r.G[from] = body.G
+
+	return nil
 }
 
 // VerifyMessage implements round.Round.
@@ -60,12 +83,12 @@ func (r *round2) VerifyMessage(msg round.Message) error {
 		return round.ErrInvalidContent
 	}
 
-	if body.ProofEnc == nil || body.G == nil || body.K == nil {
+	if body.ProofEnc == nil {
 		return round.ErrNilFields
 	}
 
 	if !body.ProofEnc.Verify(r.Group(), r.HashForID(from), zkenc.Public{
-		K:      body.K,
+		K:      r.K[from],
 		Prover: r.Paillier[from],
 		Aux:    r.Pedersen[to],
 	}) {
@@ -77,12 +100,7 @@ func (r *round2) VerifyMessage(msg round.Message) error {
 // StoreMessage implements round.Round.
 //
 // - store Kⱼ, Gⱼ.
-func (r *round2) StoreMessage(msg round.Message) error {
-	from, body := msg.From, msg.Content.(*message2)
-	r.K[from] = body.K
-	r.G[from] = body.G
-	return nil
-}
+func (round2) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round
 //
@@ -155,11 +173,17 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 // MessageContent implements round.Round.
 func (round2) MessageContent() round.Content { return &message2{} }
 
+// BroadcastContent implements round.BroadcastRound.
+func (roundBroadcast2) BroadcastContent() round.Content { return &broadcast2{} }
+
 // Number implements round.Round.
 func (round2) Number() round.Number { return 2 }
 
 // Init implements round.Content.
 func (message2) Init(curve.Curve) {}
+
+// Init implements round.Content.
+func (broadcast2) Init(curve.Curve) {}
 
 // BroadcastData implements broadcast.Broadcaster.
 func (m broadcast2) BroadcastData() []byte {

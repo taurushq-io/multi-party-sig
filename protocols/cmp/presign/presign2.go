@@ -4,12 +4,11 @@ import (
 	"errors"
 
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/internal/broadcast"
 	"github.com/taurusgroup/multi-party-sig/internal/elgamal"
-	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/mta"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/internal/types"
+	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -53,6 +52,10 @@ type presign2 struct {
 	DecommitmentID hash.Decommitment
 }
 
+type presignBroadcast2 struct {
+	*presign2
+}
+
 type broadcast2 struct {
 	// K = Kᵢ
 	K *paillier.Ciphertext
@@ -65,8 +68,33 @@ type broadcast2 struct {
 }
 
 type message2 struct {
-	broadcast2
 	Proof *zkencelg.Proof
+}
+
+// StoreBroadcastMessage implements round.BroadcastRound.
+//
+// - store Kⱼ, Gⱼ, Zⱼ, CommitmentID.
+func (r *presignBroadcast2) StoreBroadcastMessage(msg round.Message) error {
+	from := msg.From
+	body, ok := msg.Content.(*broadcast2)
+	if !ok || body == nil {
+		return round.ErrInvalidContent
+	}
+
+	if !r.Paillier[from].ValidateCiphertexts(body.K, body.G) || !body.Z.Valid() {
+		return round.ErrNilFields
+	}
+
+	if err := body.CommitmentID.Validate(); err != nil {
+		return err
+	}
+
+	r.K[from] = body.K
+	r.G[from] = body.G
+	r.ElGamalK[from] = body.Z
+	r.CommitmentID[from] = body.CommitmentID
+
+	return nil
 }
 
 // VerifyMessage implements round.Round.
@@ -79,19 +107,11 @@ func (r *presign2) VerifyMessage(msg round.Message) error {
 		return round.ErrInvalidContent
 	}
 
-	if !r.Paillier[from].ValidateCiphertexts(body.K, body.G) || !body.Z.Valid() || body.Proof == nil {
-		return round.ErrNilFields
-	}
-
-	if err := body.CommitmentID.Validate(); err != nil {
-		return err
-	}
-
 	if !body.Proof.Verify(r.HashForID(from), zkencelg.Public{
-		C:      body.K,
+		C:      r.K[from],
 		A:      r.ElGamal[from],
-		B:      body.Z.L,
-		X:      body.Z.M,
+		B:      r.ElGamalK[from].L,
+		X:      r.ElGamalK[from].M,
 		Prover: r.Paillier[from],
 		Aux:    r.Pedersen[to],
 	}) {
@@ -101,16 +121,7 @@ func (r *presign2) VerifyMessage(msg round.Message) error {
 }
 
 // StoreMessage implements round.Round.
-//
-// - store Kⱼ, Gⱼ, Zⱼ.
-func (r *presign2) StoreMessage(msg round.Message) error {
-	from, body := msg.From, msg.Content.(*message2)
-	r.K[from] = body.K
-	r.G[from] = body.G
-	r.ElGamalK[from] = body.Z
-	r.CommitmentID[from] = body.CommitmentID
-	return nil
-}
+func (presign2) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round
 //
@@ -170,12 +181,15 @@ func (r *presign2) Finalize(out chan<- *round.Message) (round.Session, error) {
 		ChiShareBeta[j] = m.ChiBeta
 		ChiCiphertext[j] = m.ChiD
 		msgs[j] = &message3{
-			broadcast3: broadcastMsg,
 			DeltaF:     m.DeltaF,
 			DeltaProof: m.DeltaProof,
 			ChiF:       m.ChiF,
 			ChiProof:   m.ChiProof,
 		}
+	}
+
+	if err := r.BroadcastMessage(out, &broadcastMsg); err != nil {
+		return r, err
 	}
 
 	for id, msg := range msgs {
@@ -184,30 +198,30 @@ func (r *presign2) Finalize(out chan<- *round.Message) (round.Session, error) {
 		}
 	}
 
-	return broadcast.New(&presign3{
+	return &presignBroadcast3{&presign3{
 		presign2:        r,
 		DeltaShareBeta:  DeltaShareBeta,
 		ChiShareBeta:    ChiShareBeta,
-		DeltaShareAlpha: map[party.ID]*safenum.Int{},
-		ChiShareAlpha:   map[party.ID]*safenum.Int{},
 		DeltaCiphertext: map[party.ID]map[party.ID]*paillier.Ciphertext{r.SelfID(): DeltaCiphertext},
 		ChiCiphertext:   map[party.ID]map[party.ID]*paillier.Ciphertext{r.SelfID(): ChiCiphertext},
-	}, broadcastMsg), nil
+	}}, nil
 }
 
 // MessageContent implements round.Round.
 func (presign2) MessageContent() round.Content { return &message2{} }
+
+// BroadcastContent implements round.BroadcastRound.
+func (presignBroadcast2) BroadcastContent() round.Content { return &broadcast2{} }
 
 // Number implements round.Round.
 func (presign2) Number() round.Number { return 2 }
 
 // Init implements round.Content.
 func (m *message2) Init(group curve.Curve) {
-	m.Z = elgamal.Empty(group)
 	m.Proof = zkencelg.Empty(group)
 }
 
-// BroadcastData implements broadcast.Broadcaster.
-func (m broadcast2) BroadcastData() []byte {
-	return hash.New(m.K, m.G, m.Z, m.CommitmentID).Sum()
+// Init implements round.Content.
+func (m *broadcast2) Init(group curve.Curve) {
+	m.Z = elgamal.Empty(group)
 }

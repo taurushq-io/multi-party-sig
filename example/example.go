@@ -14,7 +14,6 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/taproot"
 	"github.com/taurusgroup/multi-party-sig/protocols/cmp"
 	"github.com/taurusgroup/multi-party-sig/protocols/example"
-	"github.com/taurusgroup/multi-party-sig/protocols/example/xor"
 	"github.com/taurusgroup/multi-party-sig/protocols/frost"
 )
 
@@ -27,16 +26,15 @@ func XOR(id party.ID, ids party.IDSlice, n *test.Network) error {
 	if err != nil {
 		return err
 	}
-	r, err := h.Result()
+	_, err = h.Result()
 	if err != nil {
 		return err
 	}
-	h.Log.Info().Hex("xor", r.(xor.Result)).Msg("XOR result")
 	return nil
 }
 
 func CMPKeygen(id party.ID, ids party.IDSlice, threshold int, n *test.Network, pl *pool.Pool) (*cmp.Config, error) {
-	h, err := protocol.NewHandler(cmp.StartKeygen(curve.Secp256k1{}, ids, threshold, id, pl), nil)
+	h, err := protocol.NewHandler(cmp.Keygen(curve.Secp256k1{}, id, ids, threshold, pl), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +51,7 @@ func CMPKeygen(id party.ID, ids party.IDSlice, threshold int, n *test.Network, p
 }
 
 func CMPRefresh(c *cmp.Config, n *test.Network, pl *pool.Pool) (*cmp.Config, error) {
-	hRefresh, err := protocol.NewHandler(cmp.StartRefresh(c, pl), nil)
+	hRefresh, err := protocol.NewHandler(cmp.Refresh(c, pl), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +69,7 @@ func CMPRefresh(c *cmp.Config, n *test.Network, pl *pool.Pool) (*cmp.Config, err
 }
 
 func CMPSign(c *cmp.Config, m []byte, signers party.IDSlice, n *test.Network, pl *pool.Pool) error {
-	h, err := protocol.NewHandler(cmp.StartSign(c, signers, m, pl), nil)
+	h, err := protocol.NewHandler(cmp.Sign(c, signers, m, pl), nil)
 	if err != nil {
 		return err
 	}
@@ -92,7 +90,7 @@ func CMPSign(c *cmp.Config, m []byte, signers party.IDSlice, n *test.Network, pl
 }
 
 func CMPPreSign(c *cmp.Config, signers party.IDSlice, n *test.Network, pl *pool.Pool) (*ecdsa.PreSignature, error) {
-	h, err := protocol.NewHandler(cmp.StartPresign(c, signers, pl), nil)
+	h, err := protocol.NewHandler(cmp.Presign(c, signers, pl), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +112,7 @@ func CMPPreSign(c *cmp.Config, signers party.IDSlice, n *test.Network, pl *pool.
 }
 
 func CMPPreSignOnline(c *cmp.Config, preSignature *ecdsa.PreSignature, m []byte, n *test.Network, pl *pool.Pool) error {
-	h, err := protocol.NewHandler(cmp.StartPresignOnline(c, preSignature, m, pl), nil)
+	h, err := protocol.NewHandler(cmp.PresignOnline(c, preSignature, m, pl), nil)
 	if err != nil {
 		return err
 	}
@@ -135,7 +133,7 @@ func CMPPreSignOnline(c *cmp.Config, preSignature *ecdsa.PreSignature, m []byte,
 }
 
 func FrostKeygen(id party.ID, ids party.IDSlice, threshold int, n *test.Network) (*frost.Config, error) {
-	h, err := protocol.NewHandler(frost.StartKeygen(curve.Secp256k1{}, ids, threshold, id), nil)
+	h, err := protocol.NewHandler(frost.Keygen(curve.Secp256k1{}, id, ids, threshold), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +150,7 @@ func FrostKeygen(id party.ID, ids party.IDSlice, threshold int, n *test.Network)
 }
 
 func FrostSign(c *frost.Config, id party.ID, m []byte, signers party.IDSlice, n *test.Network) error {
-	h, err := protocol.NewHandler(frost.StartSign(c, signers, m), nil)
+	h, err := protocol.NewHandler(frost.Sign(c, signers, m), nil)
 	if err != nil {
 		return err
 	}
@@ -173,7 +171,7 @@ func FrostSign(c *frost.Config, id party.ID, m []byte, signers party.IDSlice, n 
 }
 
 func FrostKeygenTaproot(id party.ID, ids party.IDSlice, threshold int, n *test.Network) (*frost.TaprootConfig, error) {
-	h, err := protocol.NewHandler(frost.StartKeygenTaproot(ids, threshold, id), nil)
+	h, err := protocol.NewHandler(frost.KeygenTaproot(id, ids, threshold), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +187,7 @@ func FrostKeygenTaproot(id party.ID, ids party.IDSlice, threshold int, n *test.N
 	return r.(*frost.TaprootConfig), nil
 }
 func FrostSignTaproot(c *frost.TaprootConfig, id party.ID, m []byte, signers party.IDSlice, n *test.Network) error {
-	h, err := protocol.NewHandler(frost.StartSignTaproot(c, signers, m), nil)
+	h, err := protocol.NewHandler(frost.SignTaproot(c, signers, m), nil)
 	if err != nil {
 		return err
 	}

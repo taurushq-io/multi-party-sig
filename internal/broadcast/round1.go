@@ -2,13 +2,10 @@ package broadcast
 
 import (
 	"bytes"
-	"errors"
 
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 )
-
-var ErrDifferentContent = errors.New("broadcast: received message with different content")
 
 type Round1 struct {
 	round.Session
@@ -51,6 +48,7 @@ func (b *Round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 		return b, err
 	}
 
+	// wrap the message with one containing the echo hash
 	for msg := range c {
 		msg.Content = &Message2{
 			Content:  msg.Content,

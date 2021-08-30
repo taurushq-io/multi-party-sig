@@ -3,7 +3,6 @@ package sign
 import (
 	"crypto/rand"
 
-	"github.com/taurusgroup/multi-party-sig/internal/broadcast"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
@@ -30,10 +29,10 @@ type round1 struct {
 }
 
 // VerifyMessage implements round.Round.
-func (r *round1) VerifyMessage(round.Message) error { return nil }
+func (round1) VerifyMessage(round.Message) error { return nil }
 
 // StoreMessage implements round.Round.
-func (r *round1) StoreMessage(round.Message) error { return nil }
+func (round1) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round
 //
@@ -63,6 +62,9 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 
 	otherIDs := r.OtherPartyIDs()
 	broadcastMsg := broadcast2{K: K, G: G}
+	if err := r.BroadcastMessage(out, &broadcastMsg); err != nil {
+		return r, err
+	}
 	errors := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
 		j := otherIDs[i]
 		proof := zkenc.NewProof(r.Group(), r.HashForID(r.SelfID()), zkenc.Public{
@@ -75,8 +77,7 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 		})
 
 		err := r.SendMessage(out, &message2{
-			broadcast2: broadcastMsg,
-			ProofEnc:   proof,
+			ProofEnc: proof,
 		}, j)
 		if err != nil {
 			return err
@@ -89,7 +90,7 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 		}
 	}
 
-	nextRound := &round2{
+	return &roundBroadcast2{&round2{
 		round1:        r,
 		K:             map[party.ID]*paillier.Ciphertext{r.SelfID(): K},
 		G:             map[party.ID]*paillier.Ciphertext{r.SelfID(): G},
@@ -98,8 +99,7 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 		KShare:        KShare,
 		KNonce:        KNonce,
 		GNonce:        GNonce,
-	}
-	return broadcast.New(nextRound, broadcastMsg), nil
+	}}, nil
 }
 
 // MessageContent implements round.Round.

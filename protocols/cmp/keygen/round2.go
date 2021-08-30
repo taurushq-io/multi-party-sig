@@ -2,9 +2,9 @@ package keygen
 
 import (
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/internal/types"
+	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
@@ -58,13 +58,18 @@ type round2 struct {
 	Decommitment hash.Decommitment // uᵢ
 }
 
+type roundBroadcast2 struct {
+	*round2
+}
+
 type message2 struct {
 	// Commitment = Vᵢ = H(ρᵢ, Fᵢ(X), Aᵢ, Yᵢ, Nᵢ, sᵢ, tᵢ, uᵢ)
 	Commitment hash.Commitment
 }
 
-// VerifyMessage implements round.Round.
-func (r *round2) VerifyMessage(msg round.Message) error {
+// StoreBroadcastMessage implements round.BroadcastRound.
+// - save commitment Vⱼ.
+func (r *roundBroadcast2) StoreBroadcastMessage(msg round.Message) error {
 	body, ok := msg.Content.(*message2)
 	if !ok || body == nil {
 		return round.ErrInvalidContent
@@ -72,17 +77,15 @@ func (r *round2) VerifyMessage(msg round.Message) error {
 	if err := body.Commitment.Validate(); err != nil {
 		return err
 	}
+	r.Commitments[msg.From] = body.Commitment
 	return nil
 }
 
+// VerifyMessage implements round.Round.
+func (round2) VerifyMessage(round.Message) error { return nil }
+
 // StoreMessage implements round.Round.
-//
-// - save commitment Vⱼ.
-func (r *round2) StoreMessage(msg round.Message) error {
-	from, body := msg.From, msg.Content.(*message2)
-	r.Commitments[from] = body.Commitment
-	return nil
-}
+func (round2) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round
 //
@@ -113,15 +116,13 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 func (r *round2) PreviousRound() round.Round { return r.round1 }
 
 // MessageContent implements round.Round.
-func (round2) MessageContent() round.Content { return &message2{} }
+func (round2) MessageContent() round.Content { return nil }
+
+// BroadcastContent implements round.BroadcastRound.
+func (roundBroadcast2) BroadcastContent() round.Content { return &message2{} }
 
 // Number implements round.Round.
 func (round2) Number() round.Number { return 2 }
 
 // Init implements round.Content.
 func (message2) Init(curve.Curve) {}
-
-// BroadcastData implements broadcast.Broadcaster.
-func (m *message2) BroadcastData() []byte {
-	return m.Commitment
-}

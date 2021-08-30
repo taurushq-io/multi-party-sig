@@ -1,6 +1,7 @@
 package presign
 
 import (
+	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/elgamal"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -12,6 +13,11 @@ var _ round.Round = (*presign4)(nil)
 
 type presign4 struct {
 	*presign3
+
+	// DeltaShareAlpha[j] = αᵢⱼ
+	DeltaShareAlpha map[party.ID]*safenum.Int
+	// ChiShareAlpha[j] = α̂ᵢⱼ
+	ChiShareAlpha map[party.ID]*safenum.Int
 
 	// ElGamalChiNonce = b̂ᵢ
 	ElGamalChiNonce elgamal.Nonce

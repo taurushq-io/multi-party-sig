@@ -6,14 +6,14 @@ import (
 	"math"
 	"sync"
 
-	"github.com/taurusgroup/multi-party-sig/internal/hash"
 	"github.com/taurusgroup/multi-party-sig/internal/types"
+	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 )
 
-// Helper implements Session without the round, and can therefore be embedded in the first round of a protocol
+// Helper implements Session without Round, and can therefore be embedded in the first round of a protocol
 // in order to satisfy the Session interface.
 type Helper struct {
 	info Info
@@ -34,10 +34,13 @@ type Helper struct {
 	mtx sync.Mutex
 }
 
-// SessionID is an optional byte slice that can be provided by the user.
+// NewSession creates a new *Helper which can be embedded in the first Round,
+// so that the full struct implements Session.
+// `sessionID` is an optional byte slice that can be provided by the user.
 // When used, it should be unique for each execution of the protocol.
 // It could be a simple counter which is incremented after execution,
 // or a common random string.
+// `auxInfo` is a variable list of objects which should be included in the session's hash state.
 func NewSession(info Info, sessionID []byte, pl *pool.Pool, auxInfo ...hash.WriterToWithDomain) (*Helper, error) {
 	partyIDs := party.NewIDSlice(info.PartyIDs)
 	if !partyIDs.Valid() {
@@ -112,11 +115,6 @@ func NewSession(info Info, sessionID []byte, pl *pool.Pool, auxInfo ...hash.Writ
 	}, nil
 }
 
-// getHash returns a new hash.Hash function initialized with the full SSID.
-// It assumes that the state is in a correct, and can panic if it is not.
-// Calling hash.Sum() on the resulting hash function returns the hash of the SSID.
-// It computes Hash(sid, 𝔾, n, P₁, …, Pₙ, t, auxInfo).
-
 // HashForID returns a clone of the hash.Hash for this session, initialized with the given id.
 func (h *Helper) HashForID(id party.ID) *hash.Hash {
 	h.mtx.Lock()
@@ -136,11 +134,26 @@ func (h *Helper) UpdateHashState(value hash.WriterToWithDomain) {
 	_ = h.hash.WriteAny(value)
 }
 
-// SendMessage returns a message.Message for the given content with the appropriate headers.
-// If to is empty, then the message will be interpreted as "Broadcast".
-// It panics if the content is not able to be marshalled.
-// SendMessage is a convenience function for all rounds that attempts to send the message to the channel.
-// If the channel is full or closed, an error is returned.
+// BroadcastMessage constructs a Message from the broadcast Content, and sets the header correctly.
+// An error is returned if the message cannot be sent to the out channel.
+func (h *Helper) BroadcastMessage(out chan<- *Message, broadcastContent Content) error {
+	msg := &Message{
+		From:      h.info.SelfID,
+		Broadcast: true,
+		Content:   broadcastContent,
+	}
+	select {
+	case out <- msg:
+		return nil
+	default:
+		return ErrOutChanFull
+	}
+}
+
+// SendMessage is a convenience method for safely sending content to some party. If the message is
+// intended for all participants (but does not require reliable broadcast), the `to` field may be empty ("").
+// Returns an error if the message failed to send over out channel.
+// `out` is expected to be a buffered channel with enough capacity to store all messages.
 func (h *Helper) SendMessage(out chan<- *Message, content Content, to party.ID) error {
 	msg := &Message{
 		From:    h.info.SelfID,
@@ -151,7 +164,7 @@ func (h *Helper) SendMessage(out chan<- *Message, content Content, to party.ID) 
 	case out <- msg:
 		return nil
 	default:
-		return errors.New("messages out channel is full")
+		return ErrOutChanFull
 	}
 }
 
@@ -162,10 +175,22 @@ func (h *Helper) Hash() *hash.Hash {
 	return h.hash.Clone()
 }
 
+// ResultRound returns a round that contains only the result of the protocol.
+// This indicates to the used that the protocol is finished.
 func (h *Helper) ResultRound(result interface{}) Session {
 	return &Output{
 		Helper: h,
 		Result: result,
+	}
+}
+
+// AbortRound returns a round that contains only the culprits that were able to be identified during
+// a faulty execution of the protocol.
+func (h *Helper) AbortRound(err error, culprits ...party.ID) Session {
+	return &Abort{
+		Helper:   h,
+		Culprits: culprits,
+		Err:      err,
 	}
 }
 

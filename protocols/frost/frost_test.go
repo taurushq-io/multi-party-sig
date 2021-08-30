@@ -15,7 +15,7 @@ import (
 
 func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte, n *test.Network, wg *sync.WaitGroup) {
 	defer wg.Done()
-	h, err := protocol.NewHandler(StartKeygen(curve.Secp256k1{}, ids, threshold, id), nil)
+	h, err := protocol.NewHandler(Keygen(curve.Secp256k1{}, id, ids, threshold), nil)
 	require.NoError(t, err)
 	require.NoError(t, test.HandlerLoop(id, h, n))
 	r, err := h.Result()
@@ -23,7 +23,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	require.IsType(t, &Config{}, r)
 	c := r.(*Config)
 
-	h, err = protocol.NewHandler(StartKeygenTaproot(ids, threshold, id), nil)
+	h, err = protocol.NewHandler(KeygenTaproot(id, ids, threshold), nil)
 	require.NoError(t, err)
 	require.NoError(t, test.HandlerLoop(c.ID, h, n))
 
@@ -33,7 +33,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 
 	cTaproot := r.(*TaprootConfig)
 
-	h, err = protocol.NewHandler(StartSign(c, ids, message), nil)
+	h, err = protocol.NewHandler(Sign(c, ids, message), nil)
 	require.NoError(t, err)
 	require.NoError(t, test.HandlerLoop(c.ID, h, n))
 
@@ -43,7 +43,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	signature := signResult.(Signature)
 	assert.True(t, signature.Verify(c.PublicKey, message))
 
-	h, err = protocol.NewHandler(StartSignTaproot(cTaproot, ids, message), nil)
+	h, err = protocol.NewHandler(SignTaproot(cTaproot, ids, message), nil)
 	require.NoError(t, err)
 
 	require.NoError(t, test.HandlerLoop(c.ID, h, n))

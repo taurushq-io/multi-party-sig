@@ -2,7 +2,6 @@ package broadcast
 
 import (
 	"bytes"
-	"errors"
 
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -15,7 +14,6 @@ type Round2 struct {
 
 type Message2 struct {
 	round.Content
-
 	// EchoHash is a hash of all previous hashes of broadcast data.
 	// May be empty when no data was broadcast in the previous round.
 	EchoHash []byte
@@ -27,7 +25,7 @@ func (b *Round2) VerifyMessage(msg round.Message) error {
 		return round.ErrInvalidContent
 	}
 	if !bytes.Equal(body.EchoHash, b.EchoHash) {
-		return errors.New("echo broadcast failed")
+		return ErrBroadcastFailure
 	}
 	return b.Session.VerifyMessage(round.Message{
 		From:    msg.From,

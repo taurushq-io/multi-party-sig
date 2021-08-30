@@ -91,7 +91,7 @@ func (r *round4) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// Δ == [δ]G
 	deltaComputed := Delta.ActOnBase()
 	if !deltaComputed.Equal(BigDelta) {
-		return nil, errors.New("computed Δ is inconsistent with [δ]G")
+		return r.AbortRound(errors.New("computed Δ is inconsistent with [δ]G")), nil
 	}
 
 	deltaInv := r.Group().NewScalar().Set(Delta).Invert() // δ⁻¹

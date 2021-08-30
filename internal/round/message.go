@@ -6,8 +6,9 @@ import (
 )
 
 type Message struct {
-	From, To party.ID
-	Content
+	From, To  party.ID
+	Broadcast bool
+	Content   Content
 }
 
 // Content represents a message body for a specific round.

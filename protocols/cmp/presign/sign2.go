@@ -1,6 +1,8 @@
 package presign
 
 import (
+	"errors"
+
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -53,7 +55,7 @@ func (r *sign2) Finalize(chan<- *round.Message) (round.Session, error) {
 	}
 
 	culprits := r.PreSignature.VerifySignatureShares(r.SigmaShares, r.Message)
-	return r.ResultRound(AbortResult{Culprits: culprits}), nil
+	return r.AbortRound(errors.New("signature failed to verify"), culprits...), nil
 }
 
 // MessageContent implements round.Round.

@@ -18,7 +18,7 @@ import (
 
 func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte, pl *pool.Pool, n *test.Network, wg *sync.WaitGroup) {
 	defer wg.Done()
-	h, err := protocol.NewHandler(StartKeygen(curve.Secp256k1{}, ids, threshold, id, pl), nil)
+	h, err := protocol.NewHandler(Keygen(curve.Secp256k1{}, id, ids, threshold, pl), nil)
 	require.NoError(t, err)
 	require.NoError(t, test.HandlerLoop(id, h, n))
 	r, err := h.Result()
@@ -26,7 +26,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	require.IsType(t, &Config{}, r)
 	c := r.(*Config)
 
-	h, err = protocol.NewHandler(StartRefresh(c, pl), nil)
+	h, err = protocol.NewHandler(Refresh(c, pl), nil)
 	require.NoError(t, err)
 	require.NoError(t, test.HandlerLoop(c.ID, h, n))
 
@@ -35,7 +35,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	require.IsType(t, &Config{}, r)
 	c = r.(*Config)
 
-	h, err = protocol.NewHandler(StartSign(c, ids, message, pl), nil)
+	h, err = protocol.NewHandler(Sign(c, ids, message, pl), nil)
 	require.NoError(t, err)
 	require.NoError(t, test.HandlerLoop(c.ID, h, n))
 
@@ -45,7 +45,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	signature := signResult.(*ecdsa.Signature)
 	assert.True(t, signature.Verify(c.PublicPoint(), message))
 
-	h, err = protocol.NewHandler(StartPresign(c, ids, pl), nil)
+	h, err = protocol.NewHandler(Presign(c, ids, pl), nil)
 	require.NoError(t, err)
 
 	require.NoError(t, test.HandlerLoop(c.ID, h, n))
@@ -56,7 +56,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	preSignature := signResult.(*ecdsa.PreSignature)
 	assert.NoError(t, preSignature.Validate())
 
-	h, err = protocol.NewHandler(StartPresignOnline(c, preSignature, message, pl), nil)
+	h, err = protocol.NewHandler(PresignOnline(c, preSignature, message, pl), nil)
 	require.NoError(t, err)
 	require.NoError(t, test.HandlerLoop(c.ID, h, n))
 
@@ -148,15 +148,15 @@ func TestStart(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c.Threshold = tt.threshold
 			var err error
-			_, err = StartKeygen(group, tt.partyIDs, tt.threshold, selfID, pl)(nil)
+			_, err = Keygen(group, selfID, tt.partyIDs, tt.threshold, pl)(nil)
 			t.Log(err)
 			assert.Error(t, err)
 
-			_, err = StartSign(c, tt.partyIDs, m, pl)(nil)
+			_, err = Sign(c, tt.partyIDs, m, pl)(nil)
 			t.Log(err)
 			assert.Error(t, err)
 
-			_, err = StartPresign(c, tt.partyIDs, pl)(nil)
+			_, err = Presign(c, tt.partyIDs, pl)(nil)
 			t.Log(err)
 			assert.Error(t, err)
 		})

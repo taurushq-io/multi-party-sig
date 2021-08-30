@@ -68,7 +68,7 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 		switch t := d.(type) {
 		case encoding.BinaryMarshaler:
 			name := reflect.TypeOf(t)
-			if t == nil {
+			if d == nil {
 				return fmt.Errorf("hash.WriteAny: nil %s", name.String())
 			}
 			bytes, err := t.MarshalBinary()

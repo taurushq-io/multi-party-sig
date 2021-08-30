@@ -17,7 +17,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
 )
 
-// Public holds public information for a party
+// Public holds public information for a party.
 type Public struct {
 	// ECDSA public key share
 	ECDSA curve.Point
@@ -31,19 +31,20 @@ type Public struct {
 	T *safenum.Nat
 }
 
-// Config represents the SSID after having performed a keygen/refresh operation.
-// It represents ssid = (sid, (N₁, s₁, t₁), …, (Nₙ, sₙ, tₙ))
-// where sid = (𝔾, t, n, P₁, …, Pₙ).
+// Config contains all necessary cryptographic keys necessary to generate a signature.
+// It also represents the `SSID` after having performed a keygen/refresh operation.
+// where SSID = (𝔾, t, n, P₁, …, Pₙ, (X₁, Y₁, N₁, s₁, t₁), …, (Xₙ, Yₙ, Nₙ, sₙ, tₙ)).
 type Config struct {
 	Group curve.Curve
 
+	// ID is the identifier of the party this Config belongs to.
 	ID party.ID
 
 	// Threshold is the integer t which defines the maximum number of corruptions tolerated for this config.
 	// Threshold + 1 is the minimum number of parties' shares required to reconstruct the secret/sign a message.
 	Threshold int
 
-	// ECDSA is this party's share xᵢ of the secret ECDSA x
+	// ECDSA is this party's share xᵢ of the secret ECDSA x.
 	ECDSA curve.Scalar
 
 	// ElGamal is this party's yᵢ used for ElGamal.
@@ -343,11 +344,11 @@ func (p *Public) Equal(other *Public) bool {
 //
 // See: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
 func (c *Config) DeriveChild(i uint32) (*Config, error) {
-	public, ok := c.PublicPoint().(*curve.Secp256k1Point)
+	publicPoint, ok := c.PublicPoint().(*curve.Secp256k1Point)
 	if !ok {
 		return nil, errors.New("DeriveChild must be called with secp256k1")
 	}
-	scalar, newChainKey, err := bip32.DeriveScalar(public, c.ChainKey, i)
+	scalar, newChainKey, err := bip32.DeriveScalar(publicPoint, c.ChainKey, i)
 	if err != nil {
 		return nil, err
 	}
@@ -358,9 +359,9 @@ func (c *Config) DeriveChild(i uint32) (*Config, error) {
 
 	scalarG := scalar.ActOnBase()
 
-	publics := make(map[party.ID]*Public, len(c.Public))
+	public := make(map[party.ID]*Public, len(c.Public))
 	for k, v := range c.Public {
-		publics[k] = &Public{
+		public[k] = &Public{
 			ECDSA:   v.ECDSA.Add(scalarG),
 			ElGamal: v.ElGamal,
 			N:       v.N,
@@ -372,7 +373,7 @@ func (c *Config) DeriveChild(i uint32) (*Config, error) {
 	return &Config{
 		Group:     c.Group,
 		Threshold: c.Threshold,
-		Public:    publics,
+		Public:    public,
 		RID:       c.RID,
 		ChainKey:  newChainKey,
 		ID:        c.ID,

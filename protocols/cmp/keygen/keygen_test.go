@@ -48,7 +48,15 @@ func TestKeygen(t *testing.T) {
 
 	rounds := make([]round.Session, 0, N)
 	for _, partyID := range partyIDs {
-		r, err := StartKeygen(group, partyIDs, N-1, partyID, pl)(nil)
+		info := round.Info{
+			ProtocolID:       "cmp/keygen-test",
+			FinalRoundNumber: Rounds,
+			SelfID:           partyID,
+			PartyIDs:         partyIDs,
+			Threshold:        N - 1,
+			Group:            group,
+		}
+		r, err := Start(info, pl, nil)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
 		rounds = append(rounds, r)
 	}
@@ -73,7 +81,15 @@ func TestRefresh(t *testing.T) {
 
 	rounds := make([]round.Session, 0, N)
 	for _, c := range configs {
-		r, err := StartRefresh(c, pl)(nil)
+		info := round.Info{
+			ProtocolID:       "cmp/refresh-test",
+			FinalRoundNumber: Rounds,
+			SelfID:           c.ID,
+			PartyIDs:         c.PartyIDs(),
+			Threshold:        N - 1,
+			Group:            group,
+		}
+		r, err := Start(info, pl, c)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
 		rounds = append(rounds, r)
 

@@ -20,16 +20,19 @@ type Rule interface {
 }
 
 func Rounds(group curve.Curve, rounds []round.Session, rule Rule) (error, bool) {
-	N := len(rounds)
+	var (
+		err       error
+		roundType reflect.Type
+		errGroup  errgroup.Group
+		N         = len(rounds)
+		out       = make(chan *round.Message, N*(N+1))
+	)
 
-	roundType, err := checkAllRoundsSame(rounds)
-	if err != nil {
+	if roundType, err = checkAllRoundsSame(rounds); err != nil {
 		return err, false
 	}
 	log.Println(roundType, "finalizing")
 	// get the second set of  messages
-	errGroup := new(errgroup.Group)
-	out := make(chan *round.Message, N*N)
 	for id := range rounds {
 		idx := id
 		r := rounds[idx]
@@ -38,7 +41,7 @@ func Rounds(group curve.Curve, rounds []round.Session, rule Rule) (error, bool) 
 			if rule != nil {
 				rReal := getRound(r)
 				rule.ModifyBefore(rReal)
-				outFake := make(chan *round.Message, N)
+				outFake := make(chan *round.Message, N+1)
 				rNew, err = r.Finalize(outFake)
 				close(outFake)
 				rNewReal = getRound(rNew)
@@ -66,8 +69,7 @@ func Rounds(group curve.Curve, rounds []round.Session, rule Rule) (error, bool) 
 	}
 	close(out)
 
-	roundType, err = checkAllRoundsSame(rounds)
-	if err != nil {
+	if roundType, err = checkAllRoundsSame(rounds); err != nil {
 		return err, false
 	}
 	if roundType.String() == reflect.TypeOf(&round.Output{}).String() {
@@ -76,31 +78,47 @@ func Rounds(group curve.Curve, rounds []round.Session, rule Rule) (error, bool) 
 
 	log.Println(roundType, "verifying")
 
-	var msgBytes []byte
 	for msg := range out {
-		msgBytes, err = cbor.Marshal(msg)
+		bc := msg.Broadcast
+		msgBytes, err := cbor.Marshal(msg)
 		if err != nil {
 			return err, false
 		}
 		for idx := range rounds {
+			from := msg.From
 			r := rounds[idx]
 			errGroup.Go(func() error {
+				if from == r.SelfID() {
+					return nil
+				}
 				var m round.Message
+				if b, ok := r.(round.BroadcastRound); bc && ok {
+					m.Content = b.BroadcastContent()
+					m.Content.Init(group)
+					if err = cbor.Unmarshal(msgBytes, &m); err != nil {
+						return err
+					}
 
-				m.Content = r.MessageContent()
-				m.Content.Init(group)
-				err = cbor.Unmarshal(msgBytes, &m)
-				if err != nil {
-					return err
-				}
-				if m.From != r.SelfID() && (m.To == "" || m.To == r.SelfID()) {
-					if err = r.VerifyMessage(m); err != nil {
+					if err = b.StoreBroadcastMessage(m); err != nil {
 						return err
 					}
-					if err = r.StoreMessage(m); err != nil {
+				} else {
+					m.Content = r.MessageContent()
+					m.Content.Init(group)
+					if err = cbor.Unmarshal(msgBytes, &m); err != nil {
 						return err
 					}
+
+					if m.To == "" || m.To == r.SelfID() {
+						if err = r.VerifyMessage(m); err != nil {
+							return err
+						}
+						if err = r.StoreMessage(m); err != nil {
+							return err
+						}
+					}
 				}
+
 				return nil
 			})
 		}

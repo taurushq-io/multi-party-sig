@@ -14,31 +14,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/protocols/cmp/config"
 )
 
-const protocolRounds round.Number = 5
-
-func StartKeygen(group curve.Curve, partyIDs []party.ID, threshold int, selfID party.ID, pl *pool.Pool) protocol.StartFunc {
-	info := round.Info{
-		ProtocolID:       "cmp/keygen-threshold",
-		FinalRoundNumber: protocolRounds,
-		SelfID:           selfID,
-		PartyIDs:         partyIDs,
-		Threshold:        threshold,
-		Group:            group,
-	}
-	return Start(info, pl, nil)
-}
-
-func StartRefresh(c *config.Config, pl *pool.Pool) protocol.StartFunc {
-	info := round.Info{
-		ProtocolID:       "cmp/refresh-threshold",
-		FinalRoundNumber: protocolRounds,
-		SelfID:           c.ID,
-		PartyIDs:         c.PartyIDs(),
-		Threshold:        c.Threshold,
-		Group:            c.Group,
-	}
-	return Start(info, pl, c)
-}
+const Rounds round.Number = 5
 
 func Start(info round.Info, pl *pool.Pool, c *config.Config) protocol.StartFunc {
 	return func(sessionID []byte) (_ round.Session, err error) {
