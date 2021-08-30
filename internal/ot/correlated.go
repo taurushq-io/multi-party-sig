@@ -184,6 +184,7 @@ func transposeBits(l int, M *[params.SecParam][]byte) [][params.SecBytes]byte {
 }
 
 type CorreOTSendResult struct {
+	_U [params.SecParam][]byte
 	_Q [][params.SecBytes]byte
 }
 
@@ -213,7 +214,7 @@ func CorreOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, msg
 		}
 	}
 
-	return &CorreOTSendResult{_Q: transposeBits(batchSize, &Q)}, nil
+	return &CorreOTSendResult{_U: msg._U, _Q: transposeBits(batchSize, &Q)}, nil
 }
 
 type CorreOTReceiveMessage struct {
