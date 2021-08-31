@@ -47,7 +47,7 @@ func TestCorreOTSetup(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		for i := 0; i < params.SecParam; i++ {
+		for i := 0; i < params.OTParam; i++ {
 			// This should only fail with negligeable probability normally
 			if bytes.Equal(receiveSetup._K_0[i][:], receiveSetup._K_1[i][:]) {
 				t.Error("K_0[i] == K_1[i]")
@@ -84,18 +84,18 @@ func TestCorreOT(t *testing.T) {
 	H := hash.New()
 	for i := 0; i < 10; i++ {
 		_ = H.WriteAny([]byte{byte(i)})
-		choices := make([]byte, params.SecBytes)
+		choices := make([]byte, params.OTBytes)
 		_, _ = rand.Read(choices)
 		sendResult, receiveResult, err := runCorreOT(H, choices, sendSetup, receiveSetup)
 		if err != nil {
 			t.Error(err)
 		}
-		for i := 0; i < params.SecParam; i++ {
+		for i := 0; i < params.OTParam; i++ {
 			choice := (choices[i>>3]>>(i&0b111))&1 == 1
-			expected := make([]byte, params.SecBytes)
+			expected := make([]byte, params.OTBytes)
 			copy(expected, receiveResult._T[i][:])
 			if choice {
-				for j := 0; j < params.SecBytes; j++ {
+				for j := 0; j < params.OTBytes; j++ {
 					expected[j] ^= sendSetup._Delta[j]
 				}
 			}
@@ -121,7 +121,7 @@ func BenchmarkCorreOT(b *testing.B) {
 	pl := pool.NewPool(0)
 	defer pl.TearDown()
 	sendSetup, receiveSetup, _ := runCorreOTSetup(pl, hash.New())
-	choices := make([]byte, params.SecBytes)
+	choices := make([]byte, params.OTBytes)
 	_, _ = rand.Read(choices)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {

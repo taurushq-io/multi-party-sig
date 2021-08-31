@@ -81,13 +81,13 @@ type RandomOTReceiever struct {
 	// After Round1
 
 	// The random message we've received.
-	randChoice [params.SecBytes]byte
+	randChoice [params.OTBytes]byte
 	// After Round2
 
 	// The challenge sent to use by the sender.
-	receivedChallenge [params.SecBytes]byte
+	receivedChallenge [params.OTBytes]byte
 	// H(H(randChoice)), used to avoid redundant calculations.
-	hh_randChoice [params.SecBytes]byte
+	hh_randChoice [params.OTBytes]byte
 }
 
 // NewRandomOTReceiver sets up the receiver's state for a single Random OT.
@@ -150,7 +150,7 @@ func (r *RandomOTReceiever) Round1() (outMsg RandomOTReceiveRound1Message, err e
 // RandomOTReceiveRound2Message is the second message sent by the receiver in a Random OT.
 type RandomOTReceiveRound2Message struct {
 	// A response to the challenge submitted by the sender.
-	response [params.SecBytes]byte
+	response [params.OTBytes]byte
 }
 
 // Round2 executes the receiver's side of round 2 of a Random OT.
@@ -178,8 +178,8 @@ func (r *RandomOTReceiever) Round2(msg *RandomOTSendRound1Message) (outMsg Rando
 // Round3 finalizes the result for the receiver, performing verification.
 //
 // The random choice is returned as the first argument, upon success.
-func (r *RandomOTReceiever) Round3(msg *RandomOTSendRound2Message) ([params.SecBytes]byte, error) {
-	var actualChallenge, h_decommit0, h_decommit1 [params.SecBytes]byte
+func (r *RandomOTReceiever) Round3(msg *RandomOTSendRound2Message) ([params.OTBytes]byte, error) {
+	var actualChallenge, h_decommit0, h_decommit1 [params.OTBytes]byte
 	r.hash.Reset()
 	_, _ = r.hash.Write(msg.decommit0[:])
 	_, _ = r.hash.Digest().Read(h_decommit0[:])
@@ -188,7 +188,7 @@ func (r *RandomOTReceiever) Round3(msg *RandomOTSendRound2Message) ([params.SecB
 	_, _ = r.hash.Write(msg.decommit1[:])
 	_, _ = r.hash.Digest().Read(h_decommit1[:])
 
-	for i := 0; i < params.SecBytes; i++ {
+	for i := 0; i < params.OTBytes; i++ {
 		actualChallenge[i] = h_decommit0[i] ^ h_decommit1[i]
 	}
 
@@ -199,7 +199,7 @@ func (r *RandomOTReceiever) Round3(msg *RandomOTSendRound2Message) ([params.SecB
 	// Assign the decommitment hash to the one matching our own choice
 	h_decommitChoice := h_decommit0
 	mask := -byte(r.choice)
-	for i := 0; i < params.SecBytes; i++ {
+	for i := 0; i < params.OTBytes; i++ {
 		h_decommitChoice[i] ^= mask & (h_decommitChoice[i] ^ h_decommit1[i])
 	}
 	if subtle.ConstantTimeCompare(h_decommitChoice[:], r.hh_randChoice[:]) != 1 {
@@ -220,13 +220,13 @@ type RandomOTSender struct {
 	_B    curve.Point
 	_bB   curve.Point
 	// After round 1
-	rand0 [params.SecBytes]byte
-	rand1 [params.SecBytes]byte
+	rand0 [params.OTBytes]byte
+	rand1 [params.OTBytes]byte
 
-	decommit0 [params.SecBytes]byte
-	decommit1 [params.SecBytes]byte
+	decommit0 [params.OTBytes]byte
+	decommit1 [params.OTBytes]byte
 
-	h_decommit0 [params.SecBytes]byte
+	h_decommit0 [params.OTBytes]byte
 }
 
 // NewRandomOTSender sets up the receiver's state for a single Random OT.
@@ -249,7 +249,7 @@ func NewRandomOTSender(nonce []byte, result *RandomOTSendSetup) (out RandomOTSen
 
 // RandomOTSendRound1Message is the message sent by the sender in round 1.
 type RandomOTSendRound1Message struct {
-	challenge [params.SecBytes]byte
+	challenge [params.OTBytes]byte
 }
 
 // Round1 executes the sender's side of round 1 for a Random OT.
@@ -297,7 +297,7 @@ func (r *RandomOTSender) Round1(msg *RandomOTReceiveRound1Message) (outMsg Rando
 	_, _ = r.hash.Write(r.decommit1[:])
 	_, _ = r.hash.Digest().Read(outMsg.challenge[:])
 
-	for i := 0; i < params.SecBytes; i++ {
+	for i := 0; i < params.OTBytes; i++ {
 		outMsg.challenge[i] ^= r.h_decommit0[i]
 	}
 
@@ -306,8 +306,8 @@ func (r *RandomOTSender) Round1(msg *RandomOTReceiveRound1Message) (outMsg Rando
 
 // RandomOTSendRound2Message is the message sent by the sender in round 2 of a Random OT.
 type RandomOTSendRound2Message struct {
-	decommit0 [params.SecBytes]byte
-	decommit1 [params.SecBytes]byte
+	decommit0 [params.OTBytes]byte
+	decommit1 [params.OTBytes]byte
 }
 
 // RandomOTSendResult is the result for a sender in a Random OT.
@@ -315,9 +315,9 @@ type RandomOTSendRound2Message struct {
 // We have two random results with a symmetric security parameter's worth of bits each.
 type RandomOTSendResult struct {
 	// Rand0 is the first random message.
-	Rand0 [params.SecBytes]byte
+	Rand0 [params.OTBytes]byte
 	// Rand1 is the second random message.
-	Rand1 [params.SecBytes]byte
+	Rand1 [params.OTBytes]byte
 }
 
 // Round2 executes the sender's side of round 2 in a Random OT.
