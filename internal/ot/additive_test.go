@@ -19,7 +19,10 @@ func runAdditiveOT(hash *hash.Hash, choices []byte, alpha [2]curve.Scalar, sendS
 	if err != nil {
 		return nil, nil, err
 	}
-	receiveResult := receiver.Round2(msgS1)
+	receiveResult, err := receiver.Round2(msgS1)
+	if err != nil {
+		return nil, nil, err
+	}
 	return sendResult, receiveResult, nil
 }
 
