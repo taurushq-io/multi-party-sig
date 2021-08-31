@@ -21,7 +21,7 @@ const (
 
 func startSignCommon(taproot bool, err error, result *keygen.Result, signers []party.ID, messageHash []byte) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
-		group := result.Group
+		group := result.Curve()
 		// This is a bit of a hack, so that the Taproot can tell this function that the public key
 		// is invalid.
 		if err != nil {
@@ -56,7 +56,7 @@ func startSignCommon(taproot bool, err error, result *keygen.Result, signers []p
 			taproot: taproot,
 			M:       messageHash,
 			Y:       result.PublicKey,
-			YShares: result.VerificationShares,
+			YShares: result.VerificationShares.Points,
 			s_i:     result.PrivateShare,
 		}, helper, nil
 	}
@@ -93,13 +93,16 @@ func StartSign(result *keygen.Result, signers []party.ID, messageHash []byte) pr
 // See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki
 func StartSignTaproot(result *keygen.TaprootResult, signers []party.ID, messageHash []byte) protocol.StartFunc {
 	publicKey, err := curve.Secp256k1{}.LiftX(result.PublicKey)
+	genericVerificationShares := make(map[party.ID]curve.Point)
+	for k, v := range result.VerificationShares {
+		genericVerificationShares[k] = v
+	}
 	normalResult := &keygen.Result{
-		Group:              curve.Secp256k1{},
 		ID:                 result.ID,
 		Threshold:          result.Threshold,
 		PrivateShare:       result.PrivateShare,
 		PublicKey:          publicKey,
-		VerificationShares: result.VerificationShares,
+		VerificationShares: party.NewPointMap(genericVerificationShares),
 	}
 	return startSignCommon(true, err, normalResult, signers, messageHash)
 }

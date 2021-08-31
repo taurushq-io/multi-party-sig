@@ -128,9 +128,8 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	}
 
 	UpdatedConfig := &Config{
-		Group:     r.Group(),
 		Threshold: uint32(r.Threshold),
-		Public:    PublicData,
+		Public:    NewPublicMap(PublicData),
 		RID:       r.RID.Copy(),
 		ChainKey:  r.ChainKey,
 		ID:        r.SelfID(),

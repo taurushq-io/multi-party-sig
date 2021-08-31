@@ -33,7 +33,7 @@ var (
 
 func StartSign(pl *pool.Pool, config *keygen.Config, signers []party.ID, message []byte) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
-		group := config.Group
+		group := config.Group()
 
 		// this could be used to indicate a pre-signature later on
 		if len(message) == 0 {
@@ -81,7 +81,7 @@ func StartSign(pl *pool.Pool, config *keygen.Config, signers []party.ID, message
 		SecretECDSA := group.NewScalar().Set(lagrange[config.ID]).Mul(config.ECDSA)
 		SecretPaillier := config.Paillier()
 		for _, j := range signerIDs {
-			public := config.Public[j]
+			public := config.Public.Data[j]
 			// scale public key share
 			ECDSA[j] = lagrange[j].Act(public.ECDSA)
 			// create Paillier key, but set ours to the one derived from the private key

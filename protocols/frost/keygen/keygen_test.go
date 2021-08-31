@@ -98,9 +98,14 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.ID
 	}
 
 	for _, result := range results {
+		marshalled, err := cbor.Marshal(result)
+		require.NoError(t, err)
+		unmarshalledResult := EmptyResult(group)
+		err = cbor.Unmarshal(marshalled, unmarshalledResult)
+		require.NoError(t, err)
 		for _, party := range parties {
 			expected := shares[party].ActOnBase()
-			require.True(t, result.VerificationShares[party].Equal(expected))
+			require.True(t, unmarshalledResult.VerificationShares.Points[party].Equal(expected))
 		}
 	}
 }

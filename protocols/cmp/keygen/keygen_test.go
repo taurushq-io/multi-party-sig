@@ -18,6 +18,8 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
 )
 
+var testGroup = curve.Secp256k1{}
+
 var roundTypes = []reflect.Type{
 	reflect.TypeOf(&round1{}),
 	reflect.TypeOf(&round2{}),
@@ -66,7 +68,14 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
 	for _, r := range rounds {
 		resultRound := r.(*round.Output)
 		result := resultRound.Result.(*Result)
-		newConfigs = append(newConfigs, result.Config)
+		marshalledConfig, err := cbor.Marshal(result.Config)
+		require.NoError(t, err)
+		unmarshalledConfig := EmptyConfig(testGroup)
+		fmt.Println("result", result.Config.Public)
+		err = cbor.Unmarshal(marshalledConfig, &unmarshalledConfig)
+		require.NoError(t, err)
+		fmt.Println("unmarshalled", unmarshalledConfig.Public)
+		newConfigs = append(newConfigs, unmarshalledConfig)
 	}
 
 	firstConfig := newConfigs[0]
@@ -81,14 +90,13 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
 func TestKeygen(t *testing.T) {
 	pl := pool.NewPool(0)
 	defer pl.TearDown()
-	group := curve.Secp256k1{}
 
 	N := 2
 	partyIDs := party.RandomIDs(N)
 
 	rounds := make(map[party.ID]round.Round, N)
 	for _, partyID := range partyIDs {
-		r, _, err := StartKeygen(pl, group, partyIDs, N-1, partyID)()
+		r, _, err := StartKeygen(pl, testGroup, partyIDs, N-1, partyID)()
 		require.NoError(t, err, "round creation should not result in an error")
 		rounds[partyID] = r
 
@@ -103,11 +111,10 @@ func TestKeygen(t *testing.T) {
 func TestRefresh(t *testing.T) {
 	pl := pool.NewPool(0)
 	defer pl.TearDown()
-	group := curve.Secp256k1{}
 
 	N := 4
 	T := N - 1
-	configs := FakeData(group, N, T, mrand.New(mrand.NewSource(1)), pl)
+	configs := FakeData(testGroup, N, T, mrand.New(mrand.NewSource(1)), pl)
 
 	parties := make(map[party.ID]round.Round, N)
 	for partyID, s := range configs {
@@ -126,7 +133,6 @@ func TestRefresh(t *testing.T) {
 func TestProtocol(t *testing.T) {
 	pl := pool.NewPool(0)
 	defer pl.TearDown()
-	group := curve.Secp256k1{}
 
 	ids := party.IDSlice{"a", "b"}
 	threshold := 1
@@ -157,7 +163,7 @@ func TestProtocol(t *testing.T) {
 	}
 
 	for _, id := range ids {
-		p, err := protocol.NewHandler(StartKeygen(pl, group, ids, threshold, id))
+		p, err := protocol.NewHandler(StartKeygen(pl, testGroup, ids, threshold, id))
 		require.NoError(t, err)
 		ps[id] = p
 	}
