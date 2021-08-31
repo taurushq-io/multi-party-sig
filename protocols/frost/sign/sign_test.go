@@ -103,7 +103,6 @@ func TestSign(t *testing.T) {
 	for _, id := range partyIDs {
 		result := &keygen.Result{
 			ID:                 id,
-			Group:              group,
 			Threshold:          threshold,
 			PublicKey:          publicKey,
 			PrivateShare:       privateShares[id],

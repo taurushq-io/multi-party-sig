@@ -156,7 +156,6 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 
 	return &round.Output{Result: &Result{
 		ID:                 r.SelfID(),
-		Group:              r.Group(),
 		Threshold:          r.threshold,
 		PrivateShare:       s_i,
 		PublicKey:          Y,

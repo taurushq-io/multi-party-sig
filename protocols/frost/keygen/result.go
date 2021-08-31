@@ -24,8 +24,6 @@ type Result struct {
 	ID party.ID
 	// Threshold is the number of accepted corruptions while still being able to sign.
 	Threshold int
-	// Group is the Elliptic Curve group used to produce this result
-	Group curve.Curve
 	// PrivateShare is the fraction of the secret key owned by this participant.
 	PrivateShare curve.Scalar
 	// PublicKey is the shared public key for this consortium of signers.
@@ -42,6 +40,11 @@ type Result struct {
 	VerificationShares map[party.ID]curve.Point
 }
 
+// Curve returns the Elliptic Curve Group associated with this result.
+func (r *Result) Curve() curve.Curve {
+	return r.PublicKey.Curve()
+}
+
 // Clone creates a deep clone of this struct, and all the values contained inside
 func (r *Result) Clone() *Result {
 	chainKeyCopy := make([]byte, len(r.ChainKey))
@@ -52,9 +55,8 @@ func (r *Result) Clone() *Result {
 	}
 	return &Result{
 		ID:                 r.ID,
-		Group:              r.Group,
 		Threshold:          r.Threshold,
-		PrivateShare:       r.Group.NewScalar().Set(r.PrivateShare),
+		PrivateShare:       r.Curve().NewScalar().Set(r.PrivateShare),
 		PublicKey:          r.PublicKey,
 		ChainKey:           chainKeyCopy,
 		VerificationShares: verificationSharesCopy,
