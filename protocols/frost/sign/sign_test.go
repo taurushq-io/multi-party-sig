@@ -106,7 +106,7 @@ func TestSign(t *testing.T) {
 			Threshold:          threshold,
 			PublicKey:          publicKey,
 			PrivateShare:       privateShares[id],
-			VerificationShares: verificationShares,
+			VerificationShares: party.NewPointMap(verificationShares),
 			ChainKey:           chainKey,
 		}
 		result, _ = result.DeriveChild(1)

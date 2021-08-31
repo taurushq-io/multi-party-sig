@@ -19,6 +19,9 @@ func adjust(with curve.Scalar, priv curve.Scalar, pub curve.Point, pubShares map
 
 // Result contains all the information produced after key generation, from the perspective
 // of a single participant.
+//
+// When unmarshalling, EmptyResult needs to be called to set the group, before
+// calling cbor.Unmarshal, or equivalent methods.
 type Result struct {
 	// ID is the identifier for this participant.
 	ID party.ID
@@ -37,7 +40,19 @@ type Result struct {
 	// VerificationShares is a map between parties and a commitment to their private share.
 	//
 	// This will later be used to verify the integrity of the signing protocol.
-	VerificationShares map[party.ID]curve.Point
+	VerificationShares *party.PointMap
+}
+
+// EmptyResult creates an empty Result with a specific group.
+//
+// This needs to be called before unmarshalling, instead of just using new(Result).
+// This is to allow points and scalars to be correctly unmarshalled.
+func EmptyResult(group curve.Curve) *Result {
+	return &Result{
+		PrivateShare:       group.NewScalar(),
+		PublicKey:          group.NewPoint(),
+		VerificationShares: party.EmptyPointMap(group),
+	}
 }
 
 // Curve returns the Elliptic Curve Group associated with this result.
@@ -50,7 +65,7 @@ func (r *Result) Clone() *Result {
 	chainKeyCopy := make([]byte, len(r.ChainKey))
 	copy(chainKeyCopy, r.ChainKey)
 	verificationSharesCopy := make(map[party.ID]curve.Point)
-	for k, v := range r.VerificationShares {
+	for k, v := range r.VerificationShares.Points {
 		verificationSharesCopy[k] = v
 	}
 	return &Result{
@@ -59,7 +74,7 @@ func (r *Result) Clone() *Result {
 		PrivateShare:       r.Curve().NewScalar().Set(r.PrivateShare),
 		PublicKey:          r.PublicKey,
 		ChainKey:           chainKeyCopy,
-		VerificationShares: verificationSharesCopy,
+		VerificationShares: party.NewPointMap(verificationSharesCopy),
 	}
 }
 
@@ -79,7 +94,7 @@ func (r *Result) DeriveChild(i uint32) (*Result, error) {
 		return nil, err
 	}
 	newR := r.Clone()
-	adjust(scalar, newR.PrivateShare, newR.PublicKey, newR.VerificationShares)
+	adjust(scalar, newR.PrivateShare, newR.PublicKey, newR.VerificationShares.Points)
 	newR.ChainKey = newChainKey
 	return newR, nil
 }

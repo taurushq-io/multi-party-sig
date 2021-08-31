@@ -159,7 +159,7 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 		Threshold:          r.threshold,
 		PrivateShare:       s_i,
 		PublicKey:          Y,
-		VerificationShares: VerificationShares,
+		VerificationShares: party.NewPointMap(VerificationShares),
 	}}, nil
 }
 

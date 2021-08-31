@@ -56,7 +56,7 @@ func startSignCommon(taproot bool, err error, result *keygen.Result, signers []p
 			taproot: taproot,
 			M:       messageHash,
 			Y:       result.PublicKey,
-			YShares: result.VerificationShares,
+			YShares: result.VerificationShares.Points,
 			s_i:     result.PrivateShare,
 		}, helper, nil
 	}
@@ -102,7 +102,7 @@ func StartSignTaproot(result *keygen.TaprootResult, signers []party.ID, messageH
 		Threshold:          result.Threshold,
 		PrivateShare:       result.PrivateShare,
 		PublicKey:          publicKey,
-		VerificationShares: genericVerificationShares,
+		VerificationShares: party.NewPointMap(genericVerificationShares),
 	}
 	return startSignCommon(true, err, normalResult, signers, messageHash)
 }
