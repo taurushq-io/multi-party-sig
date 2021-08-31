@@ -31,8 +31,8 @@ func Start(info round.Info, pl *pool.Pool, c *config.Config) protocol.StartFunc 
 		group := helper.Group()
 
 		if c != nil {
-			PublicSharesECDSA := make(map[party.ID]curve.Point, len(c.Public))
-			for id, public := range c.Public {
+			PublicSharesECDSA := make(map[party.ID]curve.Point, len(c.Public.Data))
+			for id, public := range c.Public.Data {
 				PublicSharesECDSA[id] = public.ECDSA
 			}
 			return &round1{

@@ -146,9 +146,8 @@ func (r *round4) Finalize(out chan<- *round.Message) (round.Session, error) {
 	}
 
 	UpdatedConfig := &config.Config{
-		Group:     r.Group(),
 		Threshold: r.Threshold(),
-		Public:    PublicData,
+		Public:    config.NewPublicMap(PublicData),
 		RID:       r.RID.Copy(),
 		ChainKey:  r.ChainKey,
 		ID:        r.SelfID(),

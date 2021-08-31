@@ -19,13 +19,14 @@ func adjust(with curve.Scalar, priv curve.Scalar, pub curve.Point, pubShares map
 
 // Result contains all the information produced after key generation, from the perspective
 // of a single participant.
+//
+// When unmarshalling, EmptyResult needs to be called to set the group, before
+// calling cbor.Unmarshal, or equivalent methods.
 type Result struct {
 	// ID is the identifier for this participant.
 	ID party.ID
 	// Threshold is the number of accepted corruptions while still being able to sign.
 	Threshold int
-	// Group is the Elliptic Curve group used to produce this result
-	Group curve.Curve
 	// PrivateShare is the fraction of the secret key owned by this participant.
 	PrivateShare curve.Scalar
 	// PublicKey is the shared public key for this consortium of signers.
@@ -39,7 +40,24 @@ type Result struct {
 	// VerificationShares is a map between parties and a commitment to their private share.
 	//
 	// This will later be used to verify the integrity of the signing protocol.
-	VerificationShares map[party.ID]curve.Point
+	VerificationShares *party.PointMap
+}
+
+// EmptyResult creates an empty Result with a specific group.
+//
+// This needs to be called before unmarshalling, instead of just using new(Result).
+// This is to allow points and scalars to be correctly unmarshalled.
+func EmptyResult(group curve.Curve) *Result {
+	return &Result{
+		PrivateShare:       group.NewScalar(),
+		PublicKey:          group.NewPoint(),
+		VerificationShares: party.EmptyPointMap(group),
+	}
+}
+
+// Curve returns the Elliptic Curve Group associated with this result.
+func (r *Result) Curve() curve.Curve {
+	return r.PublicKey.Curve()
 }
 
 // Clone creates a deep clone of this struct, and all the values contained inside
@@ -47,17 +65,16 @@ func (r *Result) Clone() *Result {
 	chainKeyCopy := make([]byte, len(r.ChainKey))
 	copy(chainKeyCopy, r.ChainKey)
 	verificationSharesCopy := make(map[party.ID]curve.Point)
-	for k, v := range r.VerificationShares {
+	for k, v := range r.VerificationShares.Points {
 		verificationSharesCopy[k] = v
 	}
 	return &Result{
 		ID:                 r.ID,
-		Group:              r.Group,
 		Threshold:          r.Threshold,
-		PrivateShare:       r.Group.NewScalar().Set(r.PrivateShare),
+		PrivateShare:       r.Curve().NewScalar().Set(r.PrivateShare),
 		PublicKey:          r.PublicKey,
 		ChainKey:           chainKeyCopy,
-		VerificationShares: verificationSharesCopy,
+		VerificationShares: party.NewPointMap(verificationSharesCopy),
 	}
 }
 
@@ -77,7 +94,7 @@ func (r *Result) DeriveChild(i uint32) (*Result, error) {
 		return nil, err
 	}
 	newR := r.Clone()
-	adjust(scalar, newR.PrivateShare, newR.PublicKey, newR.VerificationShares)
+	adjust(scalar, newR.PrivateShare, newR.PublicKey, newR.VerificationShares.Points)
 	newR.ChainKey = newChainKey
 	return newR, nil
 }
@@ -91,7 +108,7 @@ type TaprootResult struct {
 	// Threshold is the number of accepted corruptions while still being able to sign.
 	Threshold int
 	// PrivateShare is the fraction of the secret key owned by this participant.
-	PrivateShare curve.Scalar
+	PrivateShare *curve.Secp256k1Scalar
 	// PublicKey is the shared public key for this consortium of signers.
 	//
 	// This key can be used to verify signatures produced by the consortium.
@@ -103,7 +120,7 @@ type TaprootResult struct {
 	// VerificationShares is a map between parties and a commitment to their private share.
 	//
 	// This will later be used to verify the integrity of the signing protocol.
-	VerificationShares map[party.ID]curve.Point
+	VerificationShares map[party.ID]*curve.Secp256k1Point
 }
 
 // Clone creates a deep clone of this struct, and all the values contained inside
@@ -112,14 +129,14 @@ func (r *TaprootResult) Clone() *TaprootResult {
 	copy(publicKeyCopy, r.PublicKey)
 	chainKeyCopy := make([]byte, len(r.ChainKey))
 	copy(chainKeyCopy, r.ChainKey)
-	verificationSharesCopy := make(map[party.ID]curve.Point)
+	verificationSharesCopy := make(map[party.ID]*curve.Secp256k1Point)
 	for k, v := range r.VerificationShares {
 		verificationSharesCopy[k] = v
 	}
 	return &TaprootResult{
 		ID:                 r.ID,
 		Threshold:          r.Threshold,
-		PrivateShare:       curve.Secp256k1{}.NewScalar().Set(r.PrivateShare),
+		PrivateShare:       curve.Secp256k1{}.NewScalar().Set(r.PrivateShare).(*curve.Secp256k1Scalar),
 		PublicKey:          publicKeyCopy,
 		ChainKey:           chainKeyCopy,
 		VerificationShares: r.VerificationShares,
@@ -145,7 +162,14 @@ func (r *TaprootResult) DeriveChild(i uint32) (*TaprootResult, error) {
 		return nil, err
 	}
 	newR := r.Clone()
-	adjust(scalar, newR.PrivateShare, publicKey, newR.VerificationShares)
+	newVerificationShares := make(map[party.ID]curve.Point)
+	for k, v := range newR.VerificationShares {
+		newVerificationShares[k] = v
+	}
+	adjust(scalar, newR.PrivateShare, publicKey, newVerificationShares)
+	for k, v := range newVerificationShares {
+		newR.VerificationShares[k] = v.(*curve.Secp256k1Point)
+	}
 	// If our public key is odd, we need to negate our secret key, and everything
 	// that entails. This means negating each secret share, and the corresponding
 	// verification shares.

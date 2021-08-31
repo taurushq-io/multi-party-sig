@@ -7,6 +7,7 @@ import (
 	"math"
 
 	"github.com/cronokirby/safenum"
+	"github.com/fxamacker/cbor/v2"
 	"github.com/taurusgroup/multi-party-sig/internal/bip32"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/internal/types"
@@ -31,11 +32,69 @@ type Public struct {
 	T *safenum.Nat
 }
 
+// PublicMap holds a map of the Public results associated with each party.
+//
+// This struct exists mainly for easier marshalling.
+type PublicMap struct {
+	group curve.Curve
+	Data  map[party.ID]*Public
+}
+
+// NewPublicMap creates a PublicMap given the underlying map of data.
+func NewPublicMap(data map[party.ID]*Public) *PublicMap {
+	var group curve.Curve
+	for _, v := range data {
+		group = v.ECDSA.Curve()
+		break
+	}
+	return &PublicMap{group: group, Data: data}
+}
+
+// EmptyPublicMap creates a PublicMap ready to be unmarshalled, using a specific group.
+//
+// This function needs to be called for unmarshalling to work correctly.
+func EmptyPublicMap(group curve.Curve) *PublicMap {
+	return &PublicMap{group: group}
+}
+
+func (m *PublicMap) MarshalBinary() ([]byte, error) {
+	byteMap := make(map[party.ID]cbor.RawMessage, len(m.Data))
+	var err error
+	for k, v := range m.Data {
+		byteMap[k], err = cbor.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return cbor.Marshal(byteMap)
+}
+
+func (m *PublicMap) UnmarshalBinary(data []byte) error {
+	if m.group == nil {
+		return errors.New("PublicMap.UnmarshalBinary called without setting a group")
+	}
+	byteMap := make(map[party.ID]cbor.RawMessage)
+	if err := cbor.Unmarshal(data, &byteMap); err != nil {
+		return err
+	}
+	m.Data = make(map[party.ID]*Public, len(byteMap))
+	for k, v := range byteMap {
+		public := Public{ECDSA: m.group.NewPoint()}
+		if err := cbor.Unmarshal(v, &public); err != nil {
+			return err
+		}
+		m.Data[k] = &public
+	}
+	return nil
+}
+
 // Config contains all necessary cryptographic keys necessary to generate a signature.
 // It also represents the `SSID` after having performed a keygen/refresh operation.
 // where SSID = (𝔾, t, n, P₁, …, Pₙ, (X₁, Y₁, N₁, s₁, t₁), …, (Xₙ, Yₙ, Nₙ, sₙ, tₙ)).
+//
+// To unmarshal this struct, EmptyConfig should be called first with a specific group,
+// before using cbor.Unmarshal with that struct.
 type Config struct {
-	Group curve.Curve
 
 	// ID is the identifier of the party this Config belongs to.
 	ID party.ID
@@ -53,8 +112,8 @@ type Config struct {
 	// P, Q is the primes for N = P*Q used by Paillier and Pedersen
 	P, Q *safenum.Nat
 
-	// Public maps party.ID to party. It contains all public information associated to a party.
-	Public map[party.ID]*Public
+	// Public maps party.ID to public. It contains all public information associated to a party.
+	Public *PublicMap
 
 	// RID is a 32 byte random identifier generated for this config
 	RID types.RID
@@ -62,15 +121,28 @@ type Config struct {
 	ChainKey types.RID
 }
 
+// EmptyConfig creates an empty Config with a fixed group, ready for unmarshalling.
+//
+// This needs to be used for unmarshalling, otherwise the points on the curve can't
+// be decoded.
+func EmptyConfig(group curve.Curve) *Config {
+	return &Config{Public: EmptyPublicMap(group), ECDSA: group.NewScalar()}
+}
+
+// Group returns the Elliptic Curve Group associated with this config.
+func (c *Config) Group() curve.Curve {
+	return c.ECDSA.Curve()
+}
+
 // PublicPoint returns the group's public ECC point.
-func (c Config) PublicPoint() curve.Point {
-	sum := c.Group.NewPoint()
-	partyIDs := make([]party.ID, 0, len(c.Public))
-	for j := range c.Public {
+func (c *Config) PublicPoint() curve.Point {
+	sum := c.Group().NewPoint()
+	partyIDs := make([]party.ID, 0, len(c.Public.Data))
+	for j := range c.Public.Data {
 		partyIDs = append(partyIDs, j)
 	}
-	l := polynomial.Lagrange(c.Group, partyIDs)
-	for j, partyJ := range c.Public {
+	l := polynomial.Lagrange(c.Group(), partyIDs)
+	for j, partyJ := range c.Public.Data {
 		sum = sum.Add(l[j].Act(partyJ.ECDSA))
 	}
 	return sum
@@ -80,10 +152,10 @@ func (c Config) PublicPoint() curve.Point {
 // - 0 ⩽ threshold ⩽ n-1
 // - all public data is present and valid
 // - the secret corresponds to the data from an included party.
-func (c Config) Validate() error {
+func (c *Config) Validate() error {
 	// verify number of parties w.r.t. threshold
 	// want 0 ⩽ threshold ⩽ n-1
-	if !ValidThreshold(int(c.Threshold), len(c.Public)) {
+	if !ValidThreshold(int(c.Threshold), len(c.Public.Data)) {
 		return fmt.Errorf("config: threshold %d is invalid", c.Threshold)
 	}
 
@@ -108,7 +180,7 @@ func (c Config) Validate() error {
 		return fmt.Errorf("config: prime q: %w", err)
 	}
 
-	for j, publicJ := range c.Public {
+	for j, publicJ := range c.Public.Data {
 		// validate public
 		if err := publicJ.validate(); err != nil {
 			return fmt.Errorf("config: party %s: %w", j, err)
@@ -116,7 +188,7 @@ func (c Config) Validate() error {
 	}
 
 	// verify our ID is present
-	public := c.Public[c.ID]
+	public := c.Public.Data[c.ID]
 	if public == nil {
 		return errors.New("config: no public data for secret")
 	}
@@ -147,9 +219,9 @@ func (c Config) Validate() error {
 }
 
 // PartyIDs returns a sorted slice of party IDs.
-func (c Config) PartyIDs() party.IDSlice {
-	ids := make([]party.ID, 0, len(c.Public))
-	for j := range c.Public {
+func (c *Config) PartyIDs() party.IDSlice {
+	ids := make([]party.ID, 0, len(c.Public.Data))
+	for j := range c.Public.Data {
 		ids = append(ids, j)
 	}
 	return party.NewIDSlice(ids)
@@ -216,7 +288,7 @@ func (c *Config) WriteTo(w io.Writer) (total int64, err error) {
 	// write all party data
 	for _, j := range partyIDs {
 		// write Xⱼ
-		n, err = c.Public[j].WriteTo(w)
+		n, err = c.Public.Data[j].WriteTo(w)
 		total += n
 		if err != nil {
 			return
@@ -227,7 +299,7 @@ func (c *Config) WriteTo(w io.Writer) (total int64, err error) {
 }
 
 // Domain implements hash.WriterToWithDomain.
-func (c Config) Domain() string {
+func (c *Config) Domain() string {
 	return "CMP Config"
 }
 
@@ -296,7 +368,7 @@ func (c *Config) CanSign(signers party.IDSlice) bool {
 	// check that the signers are a subset of the original parties,
 	// that it includes self, and that the size is > t.
 	for _, j := range signers {
-		if _, ok := c.Public[j]; !ok {
+		if _, ok := c.Public.Data[j]; !ok {
 			return false
 		}
 	}
@@ -359,8 +431,8 @@ func (c *Config) DeriveChild(i uint32) (*Config, error) {
 
 	scalarG := scalar.ActOnBase()
 
-	public := make(map[party.ID]*Public, len(c.Public))
-	for k, v := range c.Public {
+	public := make(map[party.ID]*Public, len(c.Public.Data))
+	for k, v := range c.Public.Data {
 		public[k] = &Public{
 			ECDSA:   v.ECDSA.Add(scalarG),
 			ElGamal: v.ElGamal,
@@ -371,13 +443,12 @@ func (c *Config) DeriveChild(i uint32) (*Config, error) {
 	}
 
 	return &Config{
-		Group:     c.Group,
 		Threshold: c.Threshold,
-		Public:    public,
+		Public:    NewPublicMap(public),
 		RID:       c.RID,
 		ChainKey:  newChainKey,
 		ID:        c.ID,
-		ECDSA:     c.Group.NewScalar().Set(c.ECDSA).Add(scalar),
+		ECDSA:     c.Group().NewScalar().Set(c.ECDSA).Add(scalar),
 		ElGamal:   c.ElGamal,
 		P:         c.P,
 		Q:         c.Q,

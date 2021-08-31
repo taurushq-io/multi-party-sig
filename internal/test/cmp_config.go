@@ -42,7 +42,7 @@ func GenerateConfig(group curve.Curve, N, T int, source io.Reader, pl *pool.Pool
 		configs[pid] = &config.Config{
 			Group:     group,
 			Threshold: T,
-			Public:    public,
+			Public:    NewPublicMap(public),
 			RID:       rid.Copy(),
 			ID:        pid,
 			ECDSA:     ecdsaSecret,

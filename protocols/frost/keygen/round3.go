@@ -142,22 +142,25 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 				VerificationShares[i] = y_i.Negate()
 			}
 		}
+		secpVerificationShares := make(map[party.ID]*curve.Secp256k1Point)
+		for k, v := range VerificationShares {
+			secpVerificationShares[k] = v.(*curve.Secp256k1Point)
+		}
 		return r.ResultRound(&TaprootResult{
 			ID:                 r.SelfID(),
 			Threshold:          r.threshold,
-			PrivateShare:       s_i,
+			PrivateShare:       s_i.(*curve.Secp256k1Scalar),
 			PublicKey:          YSecp.XBytes()[:],
-			VerificationShares: VerificationShares,
+			VerificationShares: secpVerificationShares,
 		}), nil
 	}
 
 	return r.ResultRound(&Result{
 		ID:                 r.SelfID(),
-		Group:              r.Group(),
 		Threshold:          r.threshold,
 		PrivateShare:       s_i,
 		PublicKey:          Y,
-		VerificationShares: VerificationShares,
+		VerificationShares: party.NewPointMap(VerificationShares),
 	}), nil
 }
 

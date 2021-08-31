@@ -3,6 +3,7 @@ package keygen
 import (
 	"testing"
 
+	"github.com/fxamacker/cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
@@ -54,7 +55,16 @@ func checkOutput(t *testing.T, rounds []round.Session, parties party.IDSlice) {
 	for _, result := range results {
 		for _, id := range parties {
 			expected := shares[id].ActOnBase()
-			require.True(t, result.VerificationShares[id].Equal(expected), "different verification shares", id)
+			require.True(t, result.VerificationShares.Points[id].Equal(expected), "different verification shares", id)
+		}
+		marshalled, err := cbor.Marshal(result)
+		require.NoError(t, err)
+		unmarshalledResult := EmptyResult(group)
+		err = cbor.Unmarshal(marshalled, unmarshalledResult)
+		require.NoError(t, err)
+		for _, party := range parties {
+			expected := shares[party].ActOnBase()
+			require.True(t, unmarshalledResult.VerificationShares.Points[party].Equal(expected))
 		}
 	}
 }
