@@ -156,14 +156,14 @@ func TestSignTaproot(t *testing.T) {
 	chainKey := make([]byte, params.SecBytes)
 	_, _ = rand.Read(chainKey)
 
-	privateShares := make(map[party.ID]curve.Scalar, N)
+	privateShares := make(map[party.ID]*curve.Secp256k1Scalar, N)
 	for _, id := range partyIDs {
-		privateShares[id] = f.Evaluate(id.Scalar(group))
+		privateShares[id] = f.Evaluate(id.Scalar(group)).(*curve.Secp256k1Scalar)
 	}
 
-	verificationShares := make(map[party.ID]curve.Point, N)
+	verificationShares := make(map[party.ID]*curve.Secp256k1Point, N)
 	for _, id := range partyIDs {
-		verificationShares[id] = privateShares[id].ActOnBase()
+		verificationShares[id] = privateShares[id].ActOnBase().(*curve.Secp256k1Point)
 	}
 
 	var newPublicKey []byte

@@ -91,7 +91,7 @@ type TaprootResult struct {
 	// Threshold is the number of accepted corruptions while still being able to sign.
 	Threshold int
 	// PrivateShare is the fraction of the secret key owned by this participant.
-	PrivateShare curve.Scalar
+	PrivateShare *curve.Secp256k1Scalar
 	// PublicKey is the shared public key for this consortium of signers.
 	//
 	// This key can be used to verify signatures produced by the consortium.
@@ -103,7 +103,7 @@ type TaprootResult struct {
 	// VerificationShares is a map between parties and a commitment to their private share.
 	//
 	// This will later be used to verify the integrity of the signing protocol.
-	VerificationShares map[party.ID]curve.Point
+	VerificationShares map[party.ID]*curve.Secp256k1Point
 }
 
 // Clone creates a deep clone of this struct, and all the values contained inside
@@ -112,14 +112,14 @@ func (r *TaprootResult) Clone() *TaprootResult {
 	copy(publicKeyCopy, r.PublicKey)
 	chainKeyCopy := make([]byte, len(r.ChainKey))
 	copy(chainKeyCopy, r.ChainKey)
-	verificationSharesCopy := make(map[party.ID]curve.Point)
+	verificationSharesCopy := make(map[party.ID]*curve.Secp256k1Point)
 	for k, v := range r.VerificationShares {
 		verificationSharesCopy[k] = v
 	}
 	return &TaprootResult{
 		ID:                 r.ID,
 		Threshold:          r.Threshold,
-		PrivateShare:       curve.Secp256k1{}.NewScalar().Set(r.PrivateShare),
+		PrivateShare:       curve.Secp256k1{}.NewScalar().Set(r.PrivateShare).(*curve.Secp256k1Scalar),
 		PublicKey:          publicKeyCopy,
 		ChainKey:           chainKeyCopy,
 		VerificationShares: r.VerificationShares,
@@ -145,7 +145,14 @@ func (r *TaprootResult) DeriveChild(i uint32) (*TaprootResult, error) {
 		return nil, err
 	}
 	newR := r.Clone()
-	adjust(scalar, newR.PrivateShare, publicKey, newR.VerificationShares)
+	newVerificationShares := make(map[party.ID]curve.Point)
+	for k, v := range newR.VerificationShares {
+		newVerificationShares[k] = v
+	}
+	adjust(scalar, newR.PrivateShare, publicKey, newVerificationShares)
+	for k, v := range newVerificationShares {
+		newR.VerificationShares[k] = v.(*curve.Secp256k1Point)
+	}
 	// If our public key is odd, we need to negate our secret key, and everything
 	// that entails. This means negating each secret share, and the corresponding
 	// verification shares.

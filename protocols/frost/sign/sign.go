@@ -93,13 +93,17 @@ func StartSign(result *keygen.Result, signers []party.ID, messageHash []byte) pr
 // See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki
 func StartSignTaproot(result *keygen.TaprootResult, signers []party.ID, messageHash []byte) protocol.StartFunc {
 	publicKey, err := curve.Secp256k1{}.LiftX(result.PublicKey)
+	genericVerificationShares := make(map[party.ID]curve.Point)
+	for k, v := range result.VerificationShares {
+		genericVerificationShares[k] = v
+	}
 	normalResult := &keygen.Result{
 		Group:              curve.Secp256k1{},
 		ID:                 result.ID,
 		Threshold:          result.Threshold,
 		PrivateShare:       result.PrivateShare,
 		PublicKey:          publicKey,
-		VerificationShares: result.VerificationShares,
+		VerificationShares: genericVerificationShares,
 	}
 	return startSignCommon(true, err, normalResult, signers, messageHash)
 }
