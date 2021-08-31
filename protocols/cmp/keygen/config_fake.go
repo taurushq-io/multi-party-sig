@@ -34,9 +34,8 @@ func FakeData(group curve.Curve, N, T int, source io.Reader, pl *pool.Pool) map[
 
 		ecdsaSecret := f.Evaluate(pid.Scalar(group))
 		configs[pid] = &Config{
-			Group:     group,
 			Threshold: uint32(T),
-			Public:    public,
+			Public:    NewPublicMap(public),
 			RID:       rid.Copy(),
 			ID:        pid,
 			ECDSA:     ecdsaSecret,

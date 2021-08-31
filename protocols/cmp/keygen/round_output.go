@@ -34,7 +34,7 @@ func (r *output) VerifyMessage(from party.ID, _ party.ID, content message.Conten
 	}
 
 	if !body.SchnorrResponse.Verify(r.HashForID(from),
-		r.UpdatedConfig.Public[from].ECDSA,
+		r.UpdatedConfig.Public.Data[from].ECDSA,
 		r.SchnorrCommitments[from]) {
 		return ErrRoundOutputZKSch
 	}

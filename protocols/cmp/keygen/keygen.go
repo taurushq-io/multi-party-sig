@@ -68,7 +68,7 @@ func StartKeygen(pl *pool.Pool, group curve.Curve, partyIDs []party.ID, threshol
 
 func StartRefresh(pl *pool.Pool, c *Config) protocol.StartFunc {
 	return func() (round.Round, protocol.Info, error) {
-		group := c.Group
+		group := c.Group()
 
 		partyIDs := c.PartyIDs()
 		helper, err := round.NewHelper(
@@ -85,7 +85,7 @@ func StartRefresh(pl *pool.Pool, c *Config) protocol.StartFunc {
 
 		PreviousPublicSharesECDSA := make(map[party.ID]curve.Point, len(partyIDs))
 		for _, j := range partyIDs {
-			PreviousPublicSharesECDSA[j] = c.Public[j].ECDSA
+			PreviousPublicSharesECDSA[j] = c.Public.Data[j].ECDSA
 		}
 		PreviousSecretECDSA := group.NewScalar().Set(c.ECDSA)
 		PreviousPublicKey := c.PublicPoint()
