@@ -48,13 +48,13 @@ func (r *AdditiveOTSender) Round1(msg *AdditiveOTReceiveRound1Message) (*Additiv
 		result[i][1] = sample.Scalar(digest, r.group)
 
 		prg.Reset()
-		_, _ = prg.Write(extendedResult._V0[i][:])
+		_, _ = prg.Write(extendedResult._V1[i][:])
 		digest = prg.Digest()
 		outMsg.CombinedPads[i][0] = sample.Scalar(digest, r.group)
 		outMsg.CombinedPads[i][1] = sample.Scalar(digest, r.group)
 
-		outMsg.CombinedPads[i][0].Add(result[i][0]).Add(r.alpha[0])
-		outMsg.CombinedPads[i][1].Add(result[i][1]).Add(r.alpha[1])
+		outMsg.CombinedPads[i][0].Sub(result[i][0]).Add(r.alpha[0])
+		outMsg.CombinedPads[i][1].Sub(result[i][1]).Add(r.alpha[1])
 	}
 	return outMsg, result, nil
 }
@@ -89,20 +89,16 @@ func (r *AdditiveOTReceiver) Round2(msg *AdditiveOTSendRound1Message) AdditiveOT
 	batchSize := 8 * len(r.choices)
 	result := make([][2]curve.Scalar, batchSize)
 	prg := blake3.New()
-	var pad [2]curve.Scalar
 	for i := 0; i < batchSize; i++ {
 		choice := ((r.choices[i>>3] >> (i & 0b111)) & 1) == 1
 		prg.Reset()
 		_, _ = prg.Write(r.result._VChoices[i][:])
 		digest := prg.Digest()
-		pad[0] = sample.Scalar(digest, r.group)
-		pad[1] = sample.Scalar(digest, r.group)
+		result[i][0] = sample.Scalar(digest, r.group).Negate()
+		result[i][1] = sample.Scalar(digest, r.group).Negate()
 		if choice {
-			result[i] = msg.CombinedPads[i]
-			result[i][0].Sub(pad[0])
-			result[i][1].Sub(pad[1])
-		} else {
-			result[i] = pad
+			result[i][0].Add(msg.CombinedPads[i][0])
+			result[i][1].Add(msg.CombinedPads[i][1])
 		}
 	}
 	return result

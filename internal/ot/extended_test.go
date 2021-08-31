@@ -28,7 +28,7 @@ func TestExtendedOT(t *testing.T) {
 		t.Error(err)
 	}
 	H := hash.New()
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 10; i++ {
 		_ = H.WriteAny([]byte{byte(i)})
 		choices := make([]byte, 11)
 		_, _ = rand.Read(choices)
