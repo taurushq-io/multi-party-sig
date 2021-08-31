@@ -39,7 +39,7 @@ func TestExtendedOT(t *testing.T) {
 		for i := 0; i < len(choices); i++ {
 			for j := 0; j < 8; j++ {
 				choice := ((choices[i] >> j) & 1) == 1
-				expected := make([]byte, params.SecBytes)
+				expected := make([]byte, params.OTBytes)
 				if choice {
 					copy(expected, sendResult._V1[(i<<3)|j][:])
 				} else {
@@ -59,7 +59,7 @@ func BenchmarkExtendedOT(b *testing.B) {
 	pl := pool.NewPool(0)
 	defer pl.TearDown()
 	sendSetup, receiveSetup, _ := runCorreOTSetup(pl, hash.New())
-	choices := make([]byte, params.SecBytes)
+	choices := make([]byte, params.OTBytes)
 	_, _ = rand.Read(choices)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {

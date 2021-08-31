@@ -3,6 +3,8 @@ package params
 const (
 	SecParam  = 256
 	SecBytes  = SecParam / 8
+	OTParam   = 128
+	OTBytes   = OTParam / 8
 	StatParam = 80
 
 	// ZKModIterations is the number of iterations that are performed to prove the validity of
