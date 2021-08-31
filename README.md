@@ -5,12 +5,10 @@
 A Go implementation of multi-party threshold signing for:
 
 - ECDSA, using the "CGGMP" protocol by [Canetti et al.](https://eprint.iacr.org/2021/060) for threshold ECDSA signing.
-  We implement both the 4 round "online" and the 7 round "presigning" protocols from the paper, and adapt the
+  We implement both the 4 round "online" and the 7 round "presigning" protocols from the paper. The latter also supports identifiable aborts.
+  Implementation details are also documented in in [docs/Threshold.pdf](docs/Threshold.pdf).
+  Our implementation supports ECDSA with secp256k1, with other curves coming in the future.
   <!-- including  with some additions to improve its practical reliability, including the "echo broadcast" from [Goldwasser and Lindell](https://doi.org/10.1007/s00145-005-0319-z).  -->
-
-  We documented these in [docs/Threshold.pdf](docs/Threshold.pdf).
-  Both the "3 round" and "7 round" protocols are implemented, and the latter supports both _identifiable aborts_ and _presigning_.
-  Our implementation supports ECDSA with secp256k1.
 
 - Schnorr signatures (as integrated in Bitcoin's Taproot), using the
   [FROST](https://eprint.iacr.org/2020/852.pdf) protocol. Because of the linear structure
@@ -105,12 +103,12 @@ func runProtocol(handler *protocol.Handler) {
         return
       }
       if msgOut.Broadcast {
-        // ensure this message is reliably broadcast	
+        // ensure this message is reliably broadcast
       }
       for _, id := range participants {
         if msgOut.IsFor(id) {
           // send the message to `id`
-        }   
+        }
       }
 
     // Incoming message
@@ -137,7 +135,7 @@ if errors.As(err, protocolError) {
 config := result.(*cmp.Config)
 ```
 
-If an error has occurred, it will be returned as a [`protocol.Error`](pkg/protocol/error.go), 
+If an error has occurred, it will be returned as a [`protocol.Error`](pkg/protocol/error.go),
 which may contain information on the responsible participants, if possible.
 
 When the protocol successfully completes, the result must be cast to the appropriate type.
@@ -153,101 +151,105 @@ The `protocol.Handler` performs an additional check due to [Goldwasser & Lindell
 which ensures that the protocol aborts when some participants incorrectly broadcast these types of messages.
 Unfortunately, identifying the culprits in this case requires external assumption which cannot be handled by this library.
 
-[comment]: <> (### Keygen)
+## Known Issues
 
-[comment]: <> (The [`protocols/keygen`]&#40;protocols/cmp/keygen&#41; package can be used to perform a distributed key generation.)
+###
 
-[comment]: <> (A [`protocol.Handler`]&#40;pkg/protocol/handler.go&#41; is created by specifying the list of `partyIDs` who will receive a share,)
+<!-- ### Keygen
 
-[comment]: <> (and the `selfID` corresponding to this party's ID.)
+The [`protocols/keygen`](protocols/cmp/keygen) package can be used to perform a distributed key generation.
 
-[comment]: <> (The `threshold` defines the maximum number of corrupt parties tolerated.)
+A [`protocol.Handler`](pkg/protocol/handler.go) is created by specifying the list of `partyIDs` who will receive a share,
 
-[comment]: <> (That is, the secret key may only be reconstructed using any `threshold+1` different key shares.)
+and the `selfID` corresponding to this party's ID.
 
-[comment]: <> (This is therefore also the minimum number of participants required to create a signature.)
+The `threshold` defines the maximum number of corrupt parties tolerated.
 
-[comment]: <> (```go)
+That is, the secret key may only be reconstructed using any `threshold+1` different key shares.
 
-[comment]: <> (partyIDs := []party.ID{"a", "b", "c", "d", "e"})
+This is therefore also the minimum number of participants required to create a signature.
 
-[comment]: <> (selfID := party.ID&#40;"a"&#41;)
+```go
 
-[comment]: <> (threshold := 3)
+partyIDs := []party.ID{"a", "b", "c", "d", "e"}
 
-[comment]: <> (keygenHandler, err := protocol.NewHandler&#40;keygen.StartKeygen&#40;partyIDs, threshold, selfID&#41;&#41;)
+selfID := party.ID("a")
 
-[comment]: <> (result, err := runProtocolHandler&#40;keygenHandler&#41;)
+threshold := 3
 
-[comment]: <> (if err != nil {)
+keygenHandler, err := protocol.NewHandler(keygen.StartKeygen(partyIDs, threshold, selfID))
 
-[comment]: <> (    // investigate error)
+result, err := runProtocolHandler(keygenHandler)
 
-[comment]: <> (})
+if err != nil {
 
-[comment]: <> (config := r.&#40;*keygen.Config&#41;)
+ // investigate error
 
-[comment]: <> (```)
+}
 
-[comment]: <> (The [`config`]&#40;/protocols/cmp/keygen/config.proto&#41; object contains all necessary data to create a signature.)
+config := r.(\*keygen.Config)
 
-[comment]: <> (`Config.PublicKey&#40;&#41;` returns an `ecdsa.PublicKey` for which the parties can generate signatures.)
+```
 
-[comment]: <> (### Refresh)
+The [`config`](/protocols/cmp/keygen/config.proto) object contains all necessary data to create a signature.
 
-[comment]: <> (Participant's shares of the ECDSA private key can be refreshed after the initial key generation was successfully performed.)
+`Config.PublicKey()` returns an `ecdsa.PublicKey` for which the parties can generate signatures.
 
-[comment]: <> (It requires all share holders to be present, and the result is a new [`keygen.Config`]&#40;/protocols/cmp/keygen/config.go&#41;.)
+### Refresh
 
-[comment]: <> (The original ECDSA public key remains the same, but the secret is refreshed.)
+Participant's shares of the ECDSA private key can be refreshed after the initial key generation was successfully performed.
 
-[comment]: <> (```go)
+It requires all share holders to be present, and the result is a new [`keygen.Config`](/protocols/cmp/keygen/config.go).
 
-[comment]: <> (refreshHandler, err := protocol.NewHandler&#40;keygen.StartRefresh&#40;config&#41;&#41;)
+The original ECDSA public key remains the same, but the secret is refreshed.
 
-[comment]: <> (result, err := runProtocolHandler&#40;keygenHandler&#41;)
+```go
 
-[comment]: <> (if err != nil {)
+refreshHandler, err := protocol.NewHandler(keygen.StartRefresh(config))
 
-[comment]: <> (    // investigate error)
+result, err := runProtocolHandler(keygenHandler)
 
-[comment]: <> (})
+if err != nil {
 
-[comment]: <> (refreshedConfig := r.&#40;*keygen.Config&#41;)
+ // investigate error
 
-[comment]: <> (```)
+}
 
-[comment]: <> (### Sign)
+refreshedConfig := r.(\*keygen.Config)
 
-[comment]: <> (The [`sign`]&#40;/protocols/cmp/sign&#41; protocol implements the "3 Round" signing protocol from CGGMP21, without pre-signing or identifiable aborts.)
+```
 
-[comment]: <> (Both these features may be implemented in a future version of `multi-party-sig`.)
+### Sign
 
-[comment]: <> (The resulting signature is a valid ECDSA key.)
+The [`sign`](/protocols/cmp/sign) protocol implements the "3 Round" signing protocol from CGGMP21, without pre-signing or identifiable aborts.
 
-[comment]: <> (```go)
+Both these features may be implemented in a future version of `multi-party-sig`.
 
-[comment]: <> (message := []byte&#40;"hello, world"&#41;)
+The resulting signature is a valid ECDSA key.
 
-[comment]: <> (// since threshold is 3, we need for or more parties to)
+```go
 
-[comment]: <> (signers := []party.ID{"a", "b", "c", "d"})
+message := []byte("hello, world")
 
-[comment]: <> (signHandler, err := protocol.NewHandler&#40;sign.StartSign&#40;refreshedConfig, signers, message&#41;&#41;)
+// since threshold is 3, we need for or more parties to
 
-[comment]: <> (result, err := runProtocolHandler&#40;signHandler&#41;)
+signers := []party.ID{"a", "b", "c", "d"}
 
-[comment]: <> (if err != nil {)
+signHandler, err := protocol.NewHandler(sign.StartSign(refreshedConfig, signers, message))
 
-[comment]: <> (    // investigate error)
+result, err := runProtocolHandler(signHandler)
 
-[comment]: <> (})
+if err != nil {
 
-[comment]: <> (signature := r.&#40;*ecdsa.Signature&#41;)
+ // investigate error
 
-[comment]: <> (signature.Verify&#40;refreshedConfig.PublicPoint&#40;&#41;, message&#41;)
+}
 
-[comment]: <> (```)
+signature := r.(\*ecdsa.Signature)
+
+signature.Verify(refreshedConfig.PublicPoint(), message)
+
+``` -->
 
 ## Intellectual property
 
