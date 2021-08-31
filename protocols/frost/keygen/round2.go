@@ -115,13 +115,12 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (round2) MessageContent() round.Content { return &message2{} }
+func (r *round2) MessageContent() round.Content {
+	return &message2{
+		Phi_i:   polynomial.EmptyExponent(r.Group()),
+		Sigma_i: sch.EmptyProof(r.Group()),
+	}
+}
 
 // Number implements round.Round.
 func (round2) Number() round.Number { return 2 }
-
-// Init implements round.Content.
-func (m *message2) Init(group curve.Curve) {
-	m.Phi_i = polynomial.EmptyExponent(group)
-	m.Sigma_i = sch.EmptyProof(group)
-}

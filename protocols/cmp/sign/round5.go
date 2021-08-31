@@ -82,12 +82,11 @@ func (r *round5) Finalize(chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (round5) MessageContent() round.Content { return &message5{} }
+func (r *round5) MessageContent() round.Content {
+	return &message5{
+		SigmaShare: r.Group().NewScalar(),
+	}
+}
 
 // Number implements round.Round.
 func (round5) Number() round.Number { return 5 }
-
-// Init implements round.Content.
-func (m *message5) Init(group curve.Curve) {
-	m.SigmaShare = group.NewScalar()
-}

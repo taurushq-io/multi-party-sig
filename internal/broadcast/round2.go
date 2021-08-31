@@ -4,16 +4,16 @@ import (
 	"bytes"
 
 	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
 
+// Round2 makes sure the EchoHash is the same as the one we previously received.
 type Round2 struct {
 	round.Session
 	EchoHash []byte
 }
 
 type Message2 struct {
-	round.Content
+	Content round.Content
 	// EchoHash is a hash of all previous hashes of broadcast data.
 	// May be empty when no data was broadcast in the previous round.
 	EchoHash []byte
@@ -24,6 +24,8 @@ func (b *Round2) VerifyMessage(msg round.Message) error {
 	if !ok || body == nil {
 		return round.ErrInvalidContent
 	}
+
+	// check the echo hash.
 	if !bytes.Equal(body.EchoHash, b.EchoHash) {
 		return ErrBroadcastFailure
 	}
@@ -50,8 +52,4 @@ func (b *Round2) MessageContent() round.Content {
 	return &Message2{
 		Content: b.Session.MessageContent(),
 	}
-}
-
-func (b *Message2) Init(group curve.Curve) {
-	b.Content.Init(group)
 }

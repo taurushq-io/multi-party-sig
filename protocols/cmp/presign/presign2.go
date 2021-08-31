@@ -208,20 +208,18 @@ func (r *presign2) Finalize(out chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (presign2) MessageContent() round.Content { return &message2{} }
+func (r *presign2) MessageContent() round.Content {
+	return &message2{
+		Proof: zkencelg.Empty(r.Group()),
+	}
+}
 
 // BroadcastContent implements round.BroadcastRound.
-func (presignBroadcast2) BroadcastContent() round.Content { return &broadcast2{} }
+func (r *presignBroadcast2) BroadcastContent() round.Content {
+	return &broadcast2{
+		Z: elgamal.Empty(r.Group()),
+	}
+}
 
 // Number implements round.Round.
 func (presign2) Number() round.Number { return 2 }
-
-// Init implements round.Content.
-func (m *message2) Init(group curve.Curve) {
-	m.Proof = zkencelg.Empty(group)
-}
-
-// Init implements round.Content.
-func (m *broadcast2) Init(group curve.Curve) {
-	m.Z = elgamal.Empty(group)
-}

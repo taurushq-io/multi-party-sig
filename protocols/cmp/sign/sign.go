@@ -45,7 +45,7 @@ func StartSign(config *config.Config, signers []party.ID, message []byte, pl *po
 			Group:            config.Group,
 		}
 
-		helper, err := round.NewSession(info, sessionID, pl, config, types.MessageWrapper(message))
+		helper, err := round.NewSession(info, sessionID, pl, config, types.SigningMessage(message))
 		if err != nil {
 			return nil, fmt.Errorf("sign.Create: %w", err)
 		}
@@ -63,7 +63,7 @@ func StartSign(config *config.Config, signers []party.ID, message []byte, pl *po
 		lagrange := polynomial.Lagrange(group, signers)
 		// Scale own secret
 		SecretECDSA := group.NewScalar().Set(lagrange[config.ID]).Mul(config.ECDSA)
-		SecretPaillier := config.Paillier()
+		SecretPaillier := config.PaillierSecret()
 		for _, j := range helper.PartyIDs() {
 			public := config.Public[j]
 			// scale public key share
@@ -84,7 +84,7 @@ func StartSign(config *config.Config, signers []party.ID, message []byte, pl *po
 			Helper:         helper,
 			PublicKey:      PublicKey,
 			SecretECDSA:    SecretECDSA,
-			SecretPaillier: config.Paillier(),
+			SecretPaillier: config.PaillierSecret(),
 			Paillier:       Paillier,
 			Pedersen:       Pedersen,
 			ECDSA:          ECDSA,

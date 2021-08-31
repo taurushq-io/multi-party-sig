@@ -1,12 +1,18 @@
 package test
 
-import "github.com/taurusgroup/multi-party-sig/pkg/party"
+import (
+	"github.com/taurusgroup/multi-party-sig/pkg/party"
+)
 
-// PartyIDs returns a slice of random IDs with 20 alphanumeric characters.
+// PartyIDs returns a party.IDSlice (sorted) with IDs represented as simple strings.
 func PartyIDs(n int) party.IDSlice {
+	baseString := ""
 	ids := make(party.IDSlice, n)
 	for i := range ids {
-		ids[i] = party.ID('a' + rune(i))
+		if i%26 == 0 && i > 0 {
+			baseString += "a"
+		}
+		ids[i] = party.ID(baseString + string('a'+rune(i%26)))
 	}
-	return ids
+	return party.NewIDSlice(ids)
 }

@@ -423,7 +423,6 @@ func getRoundMessage(msg *Message, r round.Session) (round.Message, error) {
 		content = r.MessageContent()
 	}
 
-	content.Init(r.Group())
 	// unmarshal message
 	if err := cbor.Unmarshal(msg.Data, content); err != nil {
 		return round.Message{}, fmt.Errorf("failed to unmarshal: %w", err)

@@ -191,21 +191,15 @@ func (r *presign3) Finalize(out chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (presign3) MessageContent() round.Content { return &message3{} }
+func (r *presign3) MessageContent() round.Content {
+	return &message3{ChiProof: zkaffg.Empty(r.Group())}
+}
 
 // BroadcastContent implements round.BroadcastRound.
 func (presignBroadcast3) BroadcastContent() round.Content { return &broadcast3{} }
 
 // Number implements round.Round.
 func (presign3) Number() round.Number { return 3 }
-
-// Init implements round.Content.
-func (m *message3) Init(group curve.Curve) {
-	m.ChiProof = zkaffg.Empty(group)
-}
-
-// Init implements round.Content.
-func (broadcast3) Init(curve.Curve) {}
 
 // BroadcastData implements broadcast.Broadcaster.
 func (m broadcast3) BroadcastData() []byte {

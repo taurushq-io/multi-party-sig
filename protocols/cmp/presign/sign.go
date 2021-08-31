@@ -48,7 +48,7 @@ func StartPresign(c *config.Config, signers []party.ID, message []byte, pl *pool
 			info.ProtocolID = protocolFullID
 		}
 
-		helper, err := round.NewSession(info, sessionID, pl, c, types.MessageWrapper(message))
+		helper, err := round.NewSession(info, sessionID, pl, c, types.SigningMessage(message))
 		if err != nil {
 			return nil, fmt.Errorf("sign.Create: %w", err)
 		}
@@ -67,7 +67,7 @@ func StartPresign(c *config.Config, signers []party.ID, message []byte, pl *pool
 		lagrange := polynomial.Lagrange(group, signers)
 		// Scale own secret
 		SecretECDSA := group.NewScalar().Set(lagrange[c.ID]).Mul(c.ECDSA)
-		SecretPaillier := c.Paillier()
+		SecretPaillier := c.PaillierSecret()
 		for _, j := range helper.PartyIDs() {
 			public := c.Public[j]
 			// scale public key share
@@ -90,7 +90,7 @@ func StartPresign(c *config.Config, signers []party.ID, message []byte, pl *pool
 			Pool:           pl,
 			SecretECDSA:    SecretECDSA,
 			SecretElGamal:  c.ElGamal,
-			SecretPaillier: c.Paillier(),
+			SecretPaillier: c.PaillierSecret(),
 			PublicKey:      PublicKey,
 			ECDSA:          ECDSA,
 			ElGamal:        ElGamal,
@@ -141,7 +141,7 @@ func StartPresignOnline(c *config.Config, preSignature *ecdsa.PreSignature, mess
 				TheDomain: "PreSignatureID",
 				Bytes:     preSignature.ID,
 			},
-			types.MessageWrapper(message),
+			types.SigningMessage(message),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("sign.Create: %w", err)

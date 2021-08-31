@@ -183,6 +183,3 @@ func (round4) MessageContent() round.Content { return &message4{} }
 
 // Number implements round.Round.
 func (round4) Number() round.Number { return 4 }
-
-// Init implements round.Content.
-func (message4) Init(curve curve.Curve) {}

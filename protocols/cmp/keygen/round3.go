@@ -194,14 +194,13 @@ func (r *round3) Finalize(out chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (round3) MessageContent() round.Content { return &message3{} }
+func (r *round3) MessageContent() round.Content {
+	return &message3{
+		VSSPolynomial:      polynomial.EmptyExponent(r.Group()),
+		SchnorrCommitments: zksch.EmptyCommitment(r.Group()),
+		ElGamalPublic:      r.Group().NewPoint(),
+	}
+}
 
 // Number implements round.Round.
 func (round3) Number() round.Number { return 3 }
-
-// Init implements round.Content.
-func (m *message3) Init(group curve.Curve) {
-	m.VSSPolynomial = polynomial.EmptyExponent(group)
-	m.SchnorrCommitments = zksch.EmptyCommitment(group)
-	m.ElGamalPublic = group.NewPoint()
-}

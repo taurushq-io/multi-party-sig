@@ -13,6 +13,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/protocols/cmp/config"
 )
 
+// GenerateConfig creates some random configuration for N parties with set threshold T over the group.
 func GenerateConfig(group curve.Curve, N, T int, source io.Reader, pl *pool.Pool) (map[party.ID]*config.Config, party.IDSlice) {
 	partyIDs := PartyIDs(N)
 	configs := make(map[party.ID]*config.Config, N)

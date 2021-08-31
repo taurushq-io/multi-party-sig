@@ -38,8 +38,7 @@ type Helper struct {
 // so that the full struct implements Session.
 // `sessionID` is an optional byte slice that can be provided by the user.
 // When used, it should be unique for each execution of the protocol.
-// It could be a simple counter which is incremented after execution,
-// or a common random string.
+// It could be a simple counter which is incremented after execution,  or a common random string.
 // `auxInfo` is a variable list of objects which should be included in the session's hash state.
 func NewSession(info Info, sessionID []byte, pl *pool.Pool, auxInfo ...hash.WriterToWithDomain) (*Helper, error) {
 	partyIDs := party.NewIDSlice(info.PartyIDs)
@@ -52,10 +51,12 @@ func NewSession(info Info, sessionID []byte, pl *pool.Pool, auxInfo ...hash.Writ
 		return nil, errors.New("session: selfID not included in partyIDs")
 	}
 
+	// make sure the threshold is correct
 	if info.Threshold < 0 || info.Threshold > math.MaxUint32 {
 		return nil, fmt.Errorf("session: threshold %d is invalid", info.Threshold)
 	}
 
+	// the number of users satisfies the threshold
 	if n := len(partyIDs); n <= 0 || info.Threshold > n-1 {
 		return nil, fmt.Errorf("session: threshold %d is invalid for number of parties %d", info.Threshold, n)
 	}
@@ -124,6 +125,7 @@ func (h *Helper) HashForID(id party.ID) *hash.Hash {
 	if id != "" {
 		_ = cloned.WriteAny(id)
 	}
+
 	return cloned
 }
 
@@ -185,7 +187,7 @@ func (h *Helper) ResultRound(result interface{}) Session {
 }
 
 // AbortRound returns a round that contains only the culprits that were able to be identified during
-// a faulty execution of the protocol.
+// a faulty execution of the protocol. The error returned by Round.Finalize() in this case should still be nil.
 func (h *Helper) AbortRound(err error, culprits ...party.ID) Session {
 	return &Abort{
 		Helper:   h,

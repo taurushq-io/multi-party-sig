@@ -8,18 +8,21 @@ import (
 	"github.com/fxamacker/cbor/v2"
 	"github.com/taurusgroup/multi-party-sig/internal/broadcast"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"golang.org/x/sync/errgroup"
 )
 
+// Rule describes various hooks that can be applied to a protocol execution.
 type Rule interface {
-	ModifyBefore(rPrevious round.Session)
+	// ModifyBefore modifies r before r.Finalize() is called.
+	ModifyBefore(r round.Session)
+	// ModifyAfter modifies rNext, which is the round returned by r.Finalize().
 	ModifyAfter(rNext round.Session)
+	// ModifyContent modifies content for the message that is delivered in rNext.
 	ModifyContent(rNext round.Session, to party.ID, content round.Content)
 }
 
-func Rounds(group curve.Curve, rounds []round.Session, rule Rule) (error, bool) {
+func Rounds(rounds []round.Session, rule Rule) (error, bool) {
 	var (
 		err       error
 		roundType reflect.Type
@@ -69,10 +72,14 @@ func Rounds(group curve.Curve, rounds []round.Session, rule Rule) (error, bool) 
 	}
 	close(out)
 
+	// Check that all rounds are the same type
 	if roundType, err = checkAllRoundsSame(rounds); err != nil {
 		return err, false
 	}
 	if roundType.String() == reflect.TypeOf(&round.Output{}).String() {
+		return nil, true
+	}
+	if roundType.String() == reflect.TypeOf(&round.Abort{}).String() {
 		return nil, true
 	}
 
@@ -80,22 +87,20 @@ func Rounds(group curve.Curve, rounds []round.Session, rule Rule) (error, bool) 
 
 	for msg := range out {
 		bc := msg.Broadcast
-		msgBytes, err := cbor.Marshal(msg)
+		msgBytes, err := cbor.Marshal(msg.Content)
 		if err != nil {
 			return err, false
 		}
 		for idx := range rounds {
-			from := msg.From
+			m := *msg
 			r := rounds[idx]
 			errGroup.Go(func() error {
-				if from == r.SelfID() {
+				if m.From == r.SelfID() {
 					return nil
 				}
-				var m round.Message
 				if b, ok := r.(round.BroadcastRound); bc && ok {
 					m.Content = b.BroadcastContent()
-					m.Content.Init(group)
-					if err = cbor.Unmarshal(msgBytes, &m); err != nil {
+					if err = cbor.Unmarshal(msgBytes, m.Content); err != nil {
 						return err
 					}
 
@@ -104,8 +109,7 @@ func Rounds(group curve.Curve, rounds []round.Session, rule Rule) (error, bool) 
 					}
 				} else {
 					m.Content = r.MessageContent()
-					m.Content.Init(group)
-					if err = cbor.Unmarshal(msgBytes, &m); err != nil {
+					if err = cbor.Unmarshal(msgBytes, m.Content); err != nil {
 						return err
 					}
 

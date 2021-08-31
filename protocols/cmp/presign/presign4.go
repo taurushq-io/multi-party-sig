@@ -109,13 +109,12 @@ func (r *presign4) Finalize(out chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (presign4) MessageContent() round.Content { return &message4{} }
+func (r *presign4) MessageContent() round.Content {
+	return &message4{
+		DeltaShare: r.Group().NewScalar(),
+		ElGamalChi: elgamal.Empty(r.Group()),
+	}
+}
 
 // Number implements round.Round.
 func (presign4) Number() round.Number { return 4 }
-
-// Init implements round.Content.
-func (m *message4) Init(group curve.Curve) {
-	m.DeltaShare = group.NewScalar()
-	m.ElGamalChi = elgamal.Empty(group)
-}

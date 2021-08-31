@@ -75,7 +75,7 @@ func TestSign(t *testing.T) {
 	}
 
 	for {
-		err, done := test.Rounds(group, rounds, nil)
+		err, done := test.Rounds(rounds, nil)
 		require.NoError(t, err, "failed to process round")
 		if done {
 			break
@@ -155,7 +155,7 @@ func TestSignTaproot(t *testing.T) {
 	}
 
 	for {
-		err, done := test.Rounds(group, rounds, nil)
+		err, done := test.Rounds(rounds, nil)
 		require.NoError(t, err, "failed to process round")
 		if done {
 			break

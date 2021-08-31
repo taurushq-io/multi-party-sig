@@ -4,17 +4,17 @@ import (
 	"io"
 )
 
-// MessageWrapper wraps
-type MessageWrapper []byte
+// SigningMessage wraps a byte slice representing a message to be signed.
+type SigningMessage []byte
 
 // WriteTo implements io.WriterTo interface.
-func (t MessageWrapper) WriteTo(w io.Writer) (int64, error) {
+func (t SigningMessage) WriteTo(w io.Writer) (int64, error) {
 	n, err := w.Write(t)
 	return int64(n), err
 }
 
 // Domain implements hash.WriterToWithDomain.
-func (t MessageWrapper) Domain() string {
+func (t SigningMessage) Domain() string {
 	if t == nil {
 		return "Empty Message"
 	}

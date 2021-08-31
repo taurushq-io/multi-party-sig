@@ -8,7 +8,8 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
 )
 
-func HandlerLoop(id party.ID, h *protocol.Handler, network *Network) error {
+// HandlerLoop blocks until the handler has finished. The result of the execution is given by Handler.Result().
+func HandlerLoop(id party.ID, h *protocol.Handler, network *Network) {
 	log.Println(h, "start")
 	for {
 		select {
@@ -24,7 +25,7 @@ func HandlerLoop(id party.ID, h *protocol.Handler, network *Network) error {
 				}
 				<-network.Done(id)
 				// the channel was closed, indicating that the protocol is done executing.
-				return nil
+				return
 			}
 			go network.Send(msg)
 

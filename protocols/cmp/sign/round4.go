@@ -121,14 +121,13 @@ func (r *round4) Finalize(out chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (round4) MessageContent() round.Content { return &message4{} }
+func (r *round4) MessageContent() round.Content {
+	return &message4{
+		DeltaShare:    r.Group().NewScalar(),
+		BigDeltaShare: r.Group().NewPoint(),
+		ProofLog:      zklogstar.Empty(r.Group()),
+	}
+}
 
 // Number implements round.Round.
 func (round4) Number() round.Number { return 4 }
-
-// Init implements round.Content.
-func (m *message4) Init(group curve.Curve) {
-	m.DeltaShare = group.NewScalar()
-	m.BigDeltaShare = group.NewPoint()
-	m.ProofLog = zklogstar.Empty(group)
-}

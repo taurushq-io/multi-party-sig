@@ -163,13 +163,12 @@ func (r *presign7) Finalize(out chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (presign7) MessageContent() round.Content { return &message7{} }
+func (r *presign7) MessageContent() round.Content {
+	return &message7{
+		S:     r.Group().NewPoint(),
+		Proof: zkelog.Empty(r.Group()),
+	}
+}
 
 // Number implements round.Round.
 func (presign7) Number() round.Number { return 7 }
-
-// Init implements round.Content.
-func (m *message7) Init(group curve.Curve) {
-	m.S = group.NewPoint()
-	m.Proof = zkelog.Empty(group)
-}

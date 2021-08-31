@@ -1,6 +1,7 @@
 package frost
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 
@@ -17,7 +18,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	defer wg.Done()
 	h, err := protocol.NewHandler(Keygen(curve.Secp256k1{}, id, ids, threshold), nil)
 	require.NoError(t, err)
-	require.NoError(t, test.HandlerLoop(id, h, n))
+	test.HandlerLoop(id, h, n)
 	r, err := h.Result()
 	require.NoError(t, err)
 	require.IsType(t, &Config{}, r)
@@ -25,7 +26,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 
 	h, err = protocol.NewHandler(KeygenTaproot(id, ids, threshold), nil)
 	require.NoError(t, err)
-	require.NoError(t, test.HandlerLoop(c.ID, h, n))
+	test.HandlerLoop(c.ID, h, n)
 
 	r, err = h.Result()
 	require.NoError(t, err)
@@ -35,7 +36,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 
 	h, err = protocol.NewHandler(Sign(c, ids, message), nil)
 	require.NoError(t, err)
-	require.NoError(t, test.HandlerLoop(c.ID, h, n))
+	test.HandlerLoop(c.ID, h, n)
 
 	signResult, err := h.Result()
 	require.NoError(t, err)
@@ -46,7 +47,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	h, err = protocol.NewHandler(SignTaproot(cTaproot, ids, message), nil)
 	require.NoError(t, err)
 
-	require.NoError(t, test.HandlerLoop(c.ID, h, n))
+	test.HandlerLoop(c.ID, h, n)
 
 	signResult, err = h.Result()
 	require.NoError(t, err)
@@ -56,11 +57,12 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 }
 
 func TestFrost(t *testing.T) {
-	N := 5
+	N := 50
 	T := N - 1
 	message := []byte("hello")
 
 	partyIDs := test.PartyIDs(N)
+	fmt.Println(partyIDs)
 
 	n := test.NewNetwork(partyIDs)
 

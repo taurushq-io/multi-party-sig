@@ -179,12 +179,6 @@ func (roundBroadcast2) BroadcastContent() round.Content { return &broadcast2{} }
 // Number implements round.Round.
 func (round2) Number() round.Number { return 2 }
 
-// Init implements round.Content.
-func (message2) Init(curve.Curve) {}
-
-// Init implements round.Content.
-func (broadcast2) Init(curve.Curve) {}
-
 // BroadcastData implements broadcast.Broadcaster.
 func (m broadcast2) BroadcastData() []byte {
 	return hash.New(m.K, m.G).Sum()

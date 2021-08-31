@@ -128,7 +128,7 @@ func TestRoundFail(t *testing.T) {
 				rounds = append(rounds, r)
 			}
 			for {
-				err, done := test.Rounds(group, rounds, &testCase.r)
+				err, done := test.Rounds(rounds, &testCase.r)
 				if err != nil || done {
 					if err != nil {
 						t.Log(err)

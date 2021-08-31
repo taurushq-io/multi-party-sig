@@ -20,6 +20,27 @@ type Ciphertext struct {
 	M curve.Point
 }
 
+// Encrypt returns the encryption of `message` as (L=nonce⋅G, M=message⋅G + nonce⋅public), as well as the `nonce`.
+func Encrypt(public PublicKey, message curve.Scalar) (*Ciphertext, Nonce) {
+	group := public.Curve()
+	nonce := sample.Scalar(rand.Reader, group)
+	L := nonce.ActOnBase()
+	M := message.ActOnBase().Add(nonce.Act(public))
+	return &Ciphertext{
+		L: L,
+		M: M,
+	}, nonce
+}
+
+// Valid returns true if the ciphertext passes basic validation.
+func (c *Ciphertext) Valid() bool {
+	if c == nil || c.L == nil || c.L.IsIdentity() ||
+		c.M == nil || c.M.IsIdentity() {
+		return false
+	}
+	return true
+}
+
 func Empty(group curve.Curve) *Ciphertext {
 	return &Ciphertext{
 		L: group.NewPoint(),
@@ -58,23 +79,4 @@ func (c *Ciphertext) WriteTo(w io.Writer) (int64, error) {
 
 func (Ciphertext) Domain() string {
 	return "ElGamal Ciphertext"
-}
-
-func Encrypt(public PublicKey, message curve.Scalar) (*Ciphertext, Nonce) {
-	group := public.Curve()
-	nonce := sample.Scalar(rand.Reader, group)
-	L := nonce.ActOnBase()
-	M := message.ActOnBase().Add(nonce.Act(public))
-	return &Ciphertext{
-		L: L,
-		M: M,
-	}, nonce
-}
-
-func (c *Ciphertext) Valid() bool {
-	if c == nil || c.L == nil || c.L.IsIdentity() ||
-		c.M == nil || c.M.IsIdentity() {
-		return false
-	}
-	return true
 }

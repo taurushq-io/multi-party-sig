@@ -1,7 +1,7 @@
 package round
 
 type Round interface {
-	// VerifyMessage handles an incoming Message from j and validates it's content with regard to the protocol specification.
+	// VerifyMessage handles an incoming Message and validates its content with regard to the protocol specification.
 	// The content argument can be cast to the appropriate type for this round without error check.
 	// In the first round, this function returns nil.
 	// This function should not modify any saved state as it may be be running concurrently.

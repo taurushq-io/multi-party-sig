@@ -17,6 +17,10 @@ type Broadcaster interface {
 	BroadcastData() []byte
 }
 
+// New wraps the two subsequent rounds and enables the protocol to verify that all parties agree
+// on all messages broadcast.
+// This uses the echo broadcast by Goldwasser and Lindell.
+// When there are only 2 parties, nothing happens since broadcast is by default reliable.
 func New(nextRound round.Session, msg Broadcaster) round.Session {
 	if nextRound.N() == 2 {
 		return nextRound

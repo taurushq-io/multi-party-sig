@@ -165,12 +165,11 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 func (message3) RoundNumber() round.Number { return 3 }
 
 // MessageContent implements round.Round.
-func (round3) MessageContent() round.Content { return &message3{} }
+func (r *round3) MessageContent() round.Content {
+	return &message3{
+		F_li: r.Group().NewScalar(),
+	}
+}
 
 // Number implements round.Round.
 func (round3) Number() round.Number { return 3 }
-
-// Init implements round.Content.
-func (m *message3) Init(group curve.Curve) {
-	m.F_li = group.NewScalar()
-}

@@ -98,15 +98,12 @@ func (r *abort2) Finalize(chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (abort2) MessageContent() round.Content {
-	return &messageAbort2{}
+func (r *abort2) MessageContent() round.Content {
+	return &messageAbort2{
+		YHat:      r.Group().NewPoint(),
+		YHatProof: zklog.Empty(r.Group()),
+	}
 }
 
 // Number implements round.Round.
 func (abort2) Number() round.Number { return 8 }
-
-// Init implements round.Content.
-func (m *messageAbort2) Init(group curve.Curve) {
-	m.YHat = group.NewPoint()
-	m.YHatProof = zklog.Empty(group)
-}

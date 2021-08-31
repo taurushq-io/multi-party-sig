@@ -99,13 +99,12 @@ func (r *presign5) Finalize(out chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (presign5) MessageContent() round.Content { return &message5{} }
+func (r *presign5) MessageContent() round.Content {
+	return &message5{
+		BigGammaShare: r.Group().NewPoint(),
+		ProofLog:      zklogstar.Empty(r.Group()),
+	}
+}
 
 // Number implements round.Round.
 func (presign5) Number() round.Number { return 5 }
-
-// Init implements round.Content.
-func (m *message5) Init(group curve.Curve) {
-	m.BigGammaShare = group.NewPoint()
-	m.ProofLog = zklogstar.Empty(group)
-}

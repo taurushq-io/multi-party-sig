@@ -5,7 +5,6 @@ import (
 
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/internal/types"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 )
 
@@ -57,6 +56,3 @@ func (Round2) MessageContent() round.Content { return &Round2Message{} }
 
 // Number implements round.Round.
 func (Round2) Number() round.Number { return 2 }
-
-// Init implements round.Content.
-func (Round2Message) Init(curve.Curve) {}

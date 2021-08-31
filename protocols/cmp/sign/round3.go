@@ -192,15 +192,14 @@ func (r *round3) Finalize(out chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (round3) MessageContent() round.Content { return &message3{} }
+func (r *round3) MessageContent() round.Content {
+	return &message3{
+		BigGammaShare: r.Group().NewPoint(),
+		ProofLog:      zklogstar.Empty(r.Group()),
+		DeltaProof:    zkaffg.Empty(r.Group()),
+		ChiProof:      zkaffg.Empty(r.Group()),
+	}
+}
 
 // Number implements round.Round.
 func (round3) Number() round.Number { return 3 }
-
-// Init implements round.Content.
-func (m *message3) Init(group curve.Curve) {
-	m.BigGammaShare = group.NewPoint()
-	m.ProofLog = zklogstar.Empty(group)
-	m.DeltaProof = zkaffg.Empty(group)
-	m.ChiProof = zkaffg.Empty(group)
-}

@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	sch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
 	"github.com/taurusgroup/multi-party-sig/protocols/cmp/config"
 )
@@ -52,12 +51,11 @@ func (r *round5) Finalize(chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (round5) MessageContent() round.Content { return &message5{} }
+func (r *round5) MessageContent() round.Content {
+	return &message5{
+		SchnorrResponse: sch.EmptyResponse(r.Group()),
+	}
+}
 
 // Number implements round.Round.
 func (round5) Number() round.Number { return 5 }
-
-// Init implements round.Content.
-func (m *message5) Init(group curve.Curve) {
-	m.SchnorrResponse = sch.EmptyResponse(group)
-}

@@ -7,6 +7,9 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
 )
 
+// Network simulates a point-to-point network between different parties using Go channels.
+// The same network is used by all processes, and can be reused for different protocols.
+// When used with test.Handler, no interaction from the user is required beyond creating the network.
 type Network struct {
 	parties          party.IDSlice
 	listenChannels   map[party.ID]chan *protocol.Message

@@ -172,13 +172,12 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (round2) MessageContent() round.Content { return &message2{} }
+func (r *round2) MessageContent() round.Content {
+	return &message2{
+		D_i: r.Group().NewPoint(),
+		E_i: r.Group().NewPoint(),
+	}
+}
 
 // Number implements round.Round.
 func (round2) Number() round.Number { return 2 }
-
-// Init implements round.Content.
-func (m *message2) Init(group curve.Curve) {
-	m.D_i = group.NewPoint()
-	m.E_i = group.NewPoint()
-}

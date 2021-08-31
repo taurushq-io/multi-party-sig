@@ -151,13 +151,12 @@ func (r *presign6) Finalize(out chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (presign6) MessageContent() round.Content { return &message6{} }
+func (r *presign6) MessageContent() round.Content {
+	return &message6{
+		BigDeltaShare: r.Group().NewPoint(),
+		Proof:         zkelog.Empty(r.Group()),
+	}
+}
 
 // Number implements round.Round.
 func (presign6) Number() round.Number { return 6 }
-
-// Init implements round.Content.
-func (m *message6) Init(group curve.Curve) {
-	m.BigDeltaShare = group.NewPoint()
-	m.Proof = zkelog.Empty(group)
-}

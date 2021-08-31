@@ -123,6 +123,3 @@ func (roundBroadcast2) BroadcastContent() round.Content { return &message2{} }
 
 // Number implements round.Round.
 func (round2) Number() round.Number { return 2 }
-
-// Init implements round.Content.
-func (message2) Init(curve.Curve) {}

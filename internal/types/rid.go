@@ -9,7 +9,7 @@ import (
 )
 
 // RID represents a byte slice of whose size equals the security parameter.
-// It can be easily XOR'ed with other RID.
+// It can be easily XOR'ed with other RID. An empty slice is considered invalid.
 type RID []byte
 
 // EmptyRID returns a zeroed-out RID with
@@ -42,6 +42,7 @@ func (rid RID) WriteTo(w io.Writer) (int64, error) {
 // Domain implements hash.WriterToWithDomain.
 func (RID) Domain() string { return "RID" }
 
+// Validate ensure that the RID is the correct length and is not identically 0.
 func (rid RID) Validate() error {
 	if l := len(rid); l != params.SecBytes {
 		return fmt.Errorf("rid: incorrect length (got %d, expected %d)", l, params.SecBytes)

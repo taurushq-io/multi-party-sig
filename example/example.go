@@ -22,10 +22,7 @@ func XOR(id party.ID, ids party.IDSlice, n *test.Network) error {
 	if err != nil {
 		return err
 	}
-	err = test.HandlerLoop(id, h, n)
-	if err != nil {
-		return err
-	}
+	test.HandlerLoop(id, h, n)
 	_, err = h.Result()
 	if err != nil {
 		return err
@@ -38,10 +35,7 @@ func CMPKeygen(id party.ID, ids party.IDSlice, threshold int, n *test.Network, p
 	if err != nil {
 		return nil, err
 	}
-	err = test.HandlerLoop(id, h, n)
-	if err != nil {
-		return nil, err
-	}
+	test.HandlerLoop(id, h, n)
 	r, err := h.Result()
 	if err != nil {
 		return nil, err
@@ -55,10 +49,7 @@ func CMPRefresh(c *cmp.Config, n *test.Network, pl *pool.Pool) (*cmp.Config, err
 	if err != nil {
 		return nil, err
 	}
-	err = test.HandlerLoop(c.ID, hRefresh, n)
-	if err != nil {
-		return nil, err
-	}
+	test.HandlerLoop(c.ID, hRefresh, n)
 
 	r, err := hRefresh.Result()
 	if err != nil {
@@ -73,10 +64,7 @@ func CMPSign(c *cmp.Config, m []byte, signers party.IDSlice, n *test.Network, pl
 	if err != nil {
 		return err
 	}
-	err = test.HandlerLoop(c.ID, h, n)
-	if err != nil {
-		return err
-	}
+	test.HandlerLoop(c.ID, h, n)
 
 	signResult, err := h.Result()
 	if err != nil {
@@ -95,9 +83,7 @@ func CMPPreSign(c *cmp.Config, signers party.IDSlice, n *test.Network, pl *pool.
 		return nil, err
 	}
 
-	if err = test.HandlerLoop(c.ID, h, n); err != nil {
-		return nil, err
-	}
+	test.HandlerLoop(c.ID, h, n)
 
 	signResult, err := h.Result()
 	if err != nil {
@@ -116,10 +102,7 @@ func CMPPreSignOnline(c *cmp.Config, preSignature *ecdsa.PreSignature, m []byte,
 	if err != nil {
 		return err
 	}
-	err = test.HandlerLoop(c.ID, h, n)
-	if err != nil {
-		return err
-	}
+	test.HandlerLoop(c.ID, h, n)
 
 	signResult, err := h.Result()
 	if err != nil {
@@ -137,10 +120,7 @@ func FrostKeygen(id party.ID, ids party.IDSlice, threshold int, n *test.Network)
 	if err != nil {
 		return nil, err
 	}
-	err = test.HandlerLoop(id, h, n)
-	if err != nil {
-		return nil, err
-	}
+	test.HandlerLoop(id, h, n)
 	r, err := h.Result()
 	if err != nil {
 		return nil, err
@@ -154,10 +134,7 @@ func FrostSign(c *frost.Config, id party.ID, m []byte, signers party.IDSlice, n 
 	if err != nil {
 		return err
 	}
-	err = test.HandlerLoop(id, h, n)
-	if err != nil {
-		return err
-	}
+	test.HandlerLoop(id, h, n)
 	r, err := h.Result()
 	if err != nil {
 		return err
@@ -175,10 +152,7 @@ func FrostKeygenTaproot(id party.ID, ids party.IDSlice, threshold int, n *test.N
 	if err != nil {
 		return nil, err
 	}
-	err = test.HandlerLoop(id, h, n)
-	if err != nil {
-		return nil, err
-	}
+	test.HandlerLoop(id, h, n)
 	r, err := h.Result()
 	if err != nil {
 		return nil, err
@@ -191,10 +165,7 @@ func FrostSignTaproot(c *frost.TaprootConfig, id party.ID, m []byte, signers par
 	if err != nil {
 		return err
 	}
-	err = test.HandlerLoop(id, h, n)
-	if err != nil {
-		return err
-	}
+	test.HandlerLoop(id, h, n)
 	r, err := h.Result()
 	if err != nil {
 		return err

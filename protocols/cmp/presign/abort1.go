@@ -7,7 +7,6 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	zknth "github.com/taurusgroup/multi-party-sig/pkg/zk/nth"
@@ -103,9 +102,6 @@ func (abort1) MessageContent() round.Content { return &messageAbort1{} }
 
 // Number implements round.Round.
 func (abort1) Number() round.Number { return 7 }
-
-// Init implements round.Content.
-func (m *messageAbort1) Init(curve.Curve) {}
 
 type abortNth struct {
 	Plaintext *safenum.Int
