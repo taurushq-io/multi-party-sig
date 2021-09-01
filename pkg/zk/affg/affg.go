@@ -141,10 +141,12 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	e, _ := challenge(hash, group, public, commitment)
 
 	// e•x+α
-	z1 := new(safenum.Int).Mul(e, private.X, -1)
+	z1 := new(safenum.Int).SetInt(private.X)
+	z1.Mul(e, z1, -1)
 	z1.Add(z1, alpha, -1)
 	// e•y+β
-	z2 := new(safenum.Int).Mul(e, private.Y, -1)
+	z2 := new(safenum.Int).SetInt(private.Y)
+	z2.Mul(e, z2, -1)
 	z2.Add(z2, beta, -1)
 	// e•m+γ
 	z3 := new(safenum.Int).Mul(e, m, -1)

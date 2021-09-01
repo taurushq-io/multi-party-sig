@@ -194,11 +194,12 @@ func (p *Secp256k1Point) XBytes() []byte {
 
 func (p *Secp256k1Point) MarshalBinary() ([]byte, error) {
 	out := make([]byte, 33)
-	// This will modify p, but still return an equivalent value
-	p.value.ToAffine()
+	// we clone v to not case a race during a hash.Write
+	v := p.value
+	v.ToAffine()
 	// Doing it this way is compatible with Bitcoin
-	out[0] = byte(p.value.Y.IsOddBit()) + 2
-	data := p.value.X.Bytes()
+	out[0] = byte(v.Y.IsOddBit()) + 2
+	data := v.X.Bytes()
 	copy(out[1:], data[:])
 	return out, nil
 }

@@ -39,8 +39,6 @@ type Proof struct {
 	Responses [params.StatParam]Response
 }
 
-var oneNat = new(safenum.Nat).SetUint64(1).Resize(1)
-
 // isQRModPQ checks that y is a quadratic residue mod both p and q.
 //
 // p and q should be prime numbers.
@@ -50,7 +48,7 @@ var oneNat = new(safenum.Nat).SetUint64(1).Resize(1)
 // qHalf should be (q - 1) / 2.
 func isQRmodPQ(y, pHalf, qHalf *safenum.Nat, p, q *safenum.Modulus) safenum.Choice {
 	test := new(safenum.Nat)
-
+	oneNat := new(safenum.Nat).SetUint64(1)
 	test.Exp(y, pHalf, p)
 	pOk := test.Eq(oneNat)
 

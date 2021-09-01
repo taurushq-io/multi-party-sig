@@ -86,7 +86,8 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	e, _ := challenge(hash, group, public, commitment)
 
 	// Z = α + ex
-	z := new(safenum.Int).Mul(e, private.X, -1)
+	z := new(safenum.Int).SetInt(private.X)
+	z.Mul(e, z, -1)
 	z.Add(z, alpha, -1)
 	// U = r⋅ρᵉ mod N
 	u := NModulus.ExpI(private.Rho, e)

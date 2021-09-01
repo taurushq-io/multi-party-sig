@@ -15,9 +15,8 @@ import (
 var (
 	ErrPaillierLength = errors.New("wrong number bit length of Paillier modulus N")
 	ErrPaillierEven   = errors.New("modulus N is even")
+	ErrPaillierNil    = errors.New("modulus N is nil")
 )
-
-var oneNat = new(safenum.Nat).SetUint64(1)
 
 // PublicKey is a Paillier public key. It is represented by a modulus N.
 type PublicKey struct {
@@ -41,6 +40,7 @@ func (pk *PublicKey) N() *safenum.Modulus {
 func NewPublicKey(n *safenum.Modulus) *PublicKey {
 	nNat := n.Nat()
 	nSquared := safenum.ModulusFromNat(new(safenum.Nat).Mul(nNat, nNat, -1))
+	oneNat := new(safenum.Nat).SetUint64(1)
 	nPlusOne := new(safenum.Nat).Add(nNat, oneNat, -1)
 	// Tightening is fine, since n is public
 	nPlusOne.Resize(nPlusOne.TrueLen())
@@ -57,6 +57,9 @@ func NewPublicKey(n *safenum.Modulus) *PublicKey {
 // - log₂(n) = params.BitsPaillier.
 // - n is odd.
 func ValidateN(n *safenum.Modulus) error {
+	if n == nil {
+		return ErrPaillierNil
+	}
 	// log₂(N) = BitsPaillier
 	nBig := n.Big()
 	if bits := nBig.BitLen(); bits != params.BitsPaillier {
@@ -86,7 +89,10 @@ func (pk PublicKey) Enc(m *safenum.Int) (*Ciphertext, *safenum.Nat) {
 //
 // ct = (1+N)ᵐρᴺ (mod N²).
 func (pk PublicKey) EncWithNonce(m *safenum.Int, nonce *safenum.Nat) *Ciphertext {
-	if m.CheckInRange(pk.n.Modulus) != 1 {
+	mAbs := m.Abs()
+	nHalf := new(safenum.Nat).SetNat(pk.nNat)
+	nHalf.Rsh(nHalf, 1, -1)
+	if gt, _, _ := mAbs.Cmp(nHalf); gt == 1 {
 		panic("paillier.Encrypt: tried to encrypt message outside of range [-(N-1)/2, …, (N-1)/2]")
 	}
 

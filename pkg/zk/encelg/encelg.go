@@ -102,7 +102,8 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 
 	e, _ := challenge(hash, group, public, commitment)
 
-	z1 := new(safenum.Int).Mul(e, private.X, -1)
+	z1 := new(safenum.Int).SetInt(private.X)
+	z1.Mul(e, z1, -1)
 	z1.Add(z1, alpha, -1)
 
 	w := group.NewScalar().SetNat(e.Mod(group.Order())).Mul(private.B).Add(beta)

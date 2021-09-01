@@ -99,7 +99,8 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	e, _ := challenge(group, hash, public, commitment)
 
 	// z₁ = e•x+α
-	z1 := new(safenum.Int).Mul(e, private.X, -1)
+	z1 := new(safenum.Int).SetInt(private.X)
+	z1.Mul(e, z1, -1)
 	z1.Add(z1, alpha, -1)
 	// z₂ = e•m+γ
 	z2 := new(safenum.Int).Mul(e, m, -1)
