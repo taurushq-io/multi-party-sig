@@ -4,7 +4,7 @@ import (
 	mrand "math/rand"
 	"testing"
 
-	"github.com/fxamacker/cbor"
+	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
@@ -27,7 +27,7 @@ func checkOutput(t *testing.T, rounds []round.Session) {
 		marshalledConfig, err := cbor.Marshal(c)
 		require.NoError(t, err)
 		unmarshalledConfig := config.EmptyConfig(group)
-		err = cbor.Unmarshal(marshalledConfig, &unmarshalledConfig)
+		err = cbor.Unmarshal(marshalledConfig, unmarshalledConfig)
 		require.NoError(t, err)
 		newConfigs = append(newConfigs, unmarshalledConfig)
 	}
@@ -38,10 +38,19 @@ func checkOutput(t *testing.T, rounds []round.Session) {
 		assert.True(t, pk.Equal(c.PublicPoint()), "RID is different")
 		assert.Equal(t, firstConfig.RID, c.RID, "RID is different")
 		assert.EqualValues(t, firstConfig.ChainKey, c.ChainKey, "ChainKey is different")
-		for id, p := range firstConfig.Public.Data {
-			assert.True(t, p.Equal(c.Public.Data[id]), "public is not equal")
+		for id, p := range firstConfig.Public {
+			assert.True(t, p.ECDSA.Equal(c.Public[id].ECDSA), "ecdsa not the same", id)
+			assert.True(t, p.ElGamal.Equal(c.Public[id].ElGamal), "elgamal not the same", id)
+			assert.True(t, p.Paillier.Equal(c.Public[id].Paillier), "paillier not the same", id)
+			assert.True(t, p.Pedersen.S().Eq(c.Public[id].Pedersen.S()) == 1, "S not the same", id)
+			assert.True(t, p.Pedersen.T().Eq(c.Public[id].Pedersen.T()) == 1, "T not the same", id)
+			assert.True(t, p.Pedersen.N().Nat().Eq(c.Public[id].Pedersen.N().Nat()) == 1, "N not the same", id)
 		}
-		assert.NoError(t, c.Validate(), "failed to validate new config")
+		data, err := c.MarshalBinary()
+		assert.NoError(t, err, "failed to marshal new config", c.ID)
+		c2 := config.EmptyConfig(group)
+		err = c2.UnmarshalBinary(data)
+		assert.NoError(t, err, "failed to unmarshal new config", c.ID)
 	}
 }
 

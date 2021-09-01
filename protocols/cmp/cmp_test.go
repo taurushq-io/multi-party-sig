@@ -72,9 +72,6 @@ func TestCMP(t *testing.T) {
 	T := N - 1
 	message := []byte("hello")
 
-	pl := pool.NewPool(0)
-	defer pl.TearDown()
-
 	partyIDs := test.PartyIDs(N)
 
 	n := test.NewNetwork(partyIDs)
@@ -82,6 +79,8 @@ func TestCMP(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(N)
 	for _, id := range partyIDs {
+		pl := pool.NewPool(3)
+		defer pl.TearDown()
 		go do(t, id, partyIDs, T, message, pl, n, &wg)
 	}
 	wg.Wait()
@@ -89,7 +88,7 @@ func TestCMP(t *testing.T) {
 
 func TestStart(t *testing.T) {
 	group := curve.Secp256k1{}
-	N := 5
+	N := 6
 	T := 3
 	pl := pool.NewPool(0)
 	defer pl.TearDown()

@@ -17,6 +17,16 @@ import (
 // It contains secret key material and should be safely stored.
 type Config = config.Config
 
+// EmptyConfig creates an empty Config with a fixed group, ready for unmarshalling.
+//
+// This needs to be used for unmarshalling, otherwise the points on the curve can't
+// be decoded.
+func EmptyConfig(group curve.Curve) *Config {
+	return &Config{
+		Group: group,
+	}
+}
+
 // Keygen generates a new shared ECDSA key over the curve defined by `group`. After a successful execution,
 // all participants posses a unique share of this key, as well as auxiliary parameters required during signing.
 //

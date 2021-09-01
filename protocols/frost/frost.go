@@ -15,6 +15,18 @@ type (
 	Signature     = sign.Signature
 )
 
+// EmptyConfig creates an empty Config with a specific group.
+//
+// This needs to be called before unmarshalling, instead of just using new(Result).
+// This is to allow points and scalars to be correctly unmarshalled.
+func EmptyConfig(group curve.Curve) *Config {
+	return &keygen.Result{
+		PrivateShare:       group.NewScalar(),
+		PublicKey:          group.NewPoint(),
+		VerificationShares: party.EmptyPointMap(group),
+	}
+}
+
 // Keygen initiates the Frost key generation protocol.
 //
 // This protocol establishes a new threshold signature key among a set of participants.
@@ -81,13 +93,16 @@ func SignTaproot(config *TaprootConfig, signers []party.ID, messageHash []byte) 
 			return nil, err
 		}
 	}
+	genericVerificationShares := make(map[party.ID]curve.Point)
+	for k, v := range config.VerificationShares {
+		genericVerificationShares[k] = v
+	}
 	normalResult := &keygen.Result{
-		Group:              curve.Secp256k1{},
 		ID:                 config.ID,
 		Threshold:          config.Threshold,
 		PrivateShare:       config.PrivateShare,
 		PublicKey:          publicKey,
-		VerificationShares: config.VerificationShares,
+		VerificationShares: party.NewPointMap(genericVerificationShares),
 	}
 	return sign.StartSignCommon(true, normalResult, signers, messageHash)
 }

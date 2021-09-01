@@ -29,9 +29,8 @@ const (
 
 func StartPresign(c *config.Config, signers []party.ID, message []byte, pl *pool.Pool) protocol.StartFunc {
 	return func(sessionID []byte) (round.Session, error) {
-		// validate config
-		if err := c.Validate(); err != nil {
-			return nil, err
+		if c == nil {
+			return nil, errors.New("presign: config is nil")
 		}
 
 		info := round.Info{
@@ -67,21 +66,13 @@ func StartPresign(c *config.Config, signers []party.ID, message []byte, pl *pool
 		lagrange := polynomial.Lagrange(group, signers)
 		// Scale own secret
 		SecretECDSA := group.NewScalar().Set(lagrange[c.ID]).Mul(c.ECDSA)
-		SecretPaillier := c.PaillierSecret()
 		for _, j := range helper.PartyIDs() {
 			public := c.Public[j]
 			// scale public key share
 			ECDSA[j] = lagrange[j].Act(public.ECDSA)
 			ElGamal[j] = public.ElGamal
-			// create Paillier key, but set ours to the oneNat derived from the private key
-			// since it includes the CRT acceleration.
-			if j == c.ID {
-				Paillier[j] = SecretPaillier.PublicKey
-			} else {
-				Paillier[j] = paillier.NewPublicKey(public.N)
-			}
-			// create Pedersen params
-			Pedersen[j] = pedersen.New(Paillier[j].Modulus(), public.S, public.T)
+			Paillier[j] = public.Paillier
+			Pedersen[j] = public.Pedersen
 			PublicKey = PublicKey.Add(ECDSA[j])
 		}
 
@@ -90,7 +81,7 @@ func StartPresign(c *config.Config, signers []party.ID, message []byte, pl *pool
 			Pool:           pl,
 			SecretECDSA:    SecretECDSA,
 			SecretElGamal:  c.ElGamal,
-			SecretPaillier: c.PaillierSecret(),
+			SecretPaillier: c.Paillier,
 			PublicKey:      PublicKey,
 			ECDSA:          ECDSA,
 			ElGamal:        ElGamal,
@@ -103,6 +94,9 @@ func StartPresign(c *config.Config, signers []party.ID, message []byte, pl *pool
 
 func StartPresignOnline(c *config.Config, preSignature *ecdsa.PreSignature, message []byte, pl *pool.Pool) protocol.StartFunc {
 	return func(sessionID []byte) (round.Session, error) {
+		if c == nil || preSignature == nil {
+			return nil, errors.New("presign: config or preSignature is nil")
+		}
 		// this could be used to indicate a pre-signature later on
 		if len(message) == 0 {
 			return nil, errors.New("sign.Create: message is nil")
@@ -116,11 +110,6 @@ func StartPresignOnline(c *config.Config, preSignature *ecdsa.PreSignature, mess
 
 		if !c.CanSign(signers) {
 			return nil, errors.New("sign.Create: signers is not a valid signing subset")
-		}
-
-		// validate config
-		if err := c.Validate(); err != nil {
-			return nil, err
 		}
 
 		info := round.Info{

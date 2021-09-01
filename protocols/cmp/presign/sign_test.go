@@ -22,7 +22,7 @@ var (
 	oneInt      = new(safenum.Int).SetNat(oneNat)
 	minusOneInt = new(safenum.Int).SetNat(oneNat).Neg(1)
 
-	N           = 3
+	N           = 4
 	T           = N - 1
 	group       = curve.Secp256k1{}
 	configs     map[party.ID]*config.Config
@@ -44,11 +44,11 @@ func init() {
 }
 
 func TestRound(t *testing.T) {
-	pl := pool.NewPool(0)
-	defer pl.TearDown()
 
 	rounds := make([]round.Session, 0, N)
 	for _, c := range configs {
+		pl := pool.NewPool(1)
+		defer pl.TearDown()
 		r, err := StartPresign(c, partyIDs, messageHash, pl)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
 		rounds = append(rounds, r)

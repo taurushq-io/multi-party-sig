@@ -24,16 +24,11 @@ const (
 
 func StartSign(config *config.Config, signers []party.ID, message []byte, pl *pool.Pool) protocol.StartFunc {
 	return func(sessionID []byte) (round.Session, error) {
-		group := config.Group()
+		group := config.Group
 
 		// this could be used to indicate a pre-signature later on
 		if len(message) == 0 {
 			return nil, errors.New("sign.Create: message is nil")
-		}
-
-		// validate config
-		if err := config.Validate(); err != nil {
-			return nil, err
 		}
 
 		info := round.Info{
@@ -63,26 +58,13 @@ func StartSign(config *config.Config, signers []party.ID, message []byte, pl *po
 		lagrange := polynomial.Lagrange(group, signers)
 		// Scale own secret
 		SecretECDSA := group.NewScalar().Set(lagrange[config.ID]).Mul(config.ECDSA)
-<<<<<<< HEAD
-		SecretPaillier := config.PaillierSecret()
+		SecretPaillier := config.Paillier
 		for _, j := range helper.PartyIDs() {
 			public := config.Public[j]
-=======
-		SecretPaillier := config.Paillier()
-		for _, j := range signerIDs {
-			public := config.Public.Data[j]
->>>>>>> 827425ff5c6818fdb6d5739b9b6d836a9aa339c4
 			// scale public key share
 			ECDSA[j] = lagrange[j].Act(public.ECDSA)
-			// create Paillier key, but set ours to the one derived from the private key
-			// since it includes the CRT acceleration.
-			if j == config.ID {
-				Paillier[j] = SecretPaillier.PublicKey
-			} else {
-				Paillier[j] = paillier.NewPublicKey(public.N)
-			}
-			// create Pedersen params
-			Pedersen[j] = pedersen.New(Paillier[j].Modulus(), public.S, public.T)
+			Paillier[j] = public.Paillier
+			Pedersen[j] = public.Pedersen
 			PublicKey = PublicKey.Add(ECDSA[j])
 		}
 
@@ -90,7 +72,7 @@ func StartSign(config *config.Config, signers []party.ID, message []byte, pl *po
 			Helper:         helper,
 			PublicKey:      PublicKey,
 			SecretECDSA:    SecretECDSA,
-			SecretPaillier: config.PaillierSecret(),
+			SecretPaillier: SecretPaillier,
 			Paillier:       Paillier,
 			Pedersen:       Pedersen,
 			ECDSA:          ECDSA,

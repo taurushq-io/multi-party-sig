@@ -139,14 +139,17 @@ func TestSignTaproot(t *testing.T) {
 			newPublicKey = result.PublicKey
 		}
 		tapRootPublicKey, err := curve.Secp256k1{}.LiftX(newPublicKey)
+		genericVerificationShares := make(map[party.ID]curve.Point)
+		for k, v := range result.VerificationShares {
+			genericVerificationShares[k] = v
+		}
 		require.NoError(t, err)
 		normalResult := &keygen.Result{
-			Group:              curve.Secp256k1{},
 			ID:                 result.ID,
 			Threshold:          result.Threshold,
 			PrivateShare:       result.PrivateShare,
 			PublicKey:          tapRootPublicKey,
-			VerificationShares: result.VerificationShares,
+			VerificationShares: party.NewPointMap(genericVerificationShares),
 		}
 		r, err := StartSignCommon(true, normalResult, partyIDs, steak)(nil)
 		require.NoError(t, err, "round creation should not result in an error")

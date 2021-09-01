@@ -66,19 +66,6 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 	var toBeWritten WriterToWithDomain
 	for _, d := range data {
 		switch t := d.(type) {
-		case encoding.BinaryMarshaler:
-			name := reflect.TypeOf(t)
-			if d == nil {
-				return fmt.Errorf("hash.WriteAny: nil %s", name.String())
-			}
-			bytes, err := t.MarshalBinary()
-			if err != nil {
-				return fmt.Errorf("hash.WriteAny: %s: %w", name.String(), err)
-			}
-			toBeWritten = &BytesWithDomain{
-				TheDomain: name.String(),
-				Bytes:     bytes,
-			}
 		case []byte:
 			if t == nil {
 				return errors.New("hash.WriteAny: nil []byte")
@@ -92,6 +79,17 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 			toBeWritten = &BytesWithDomain{"big.Int", bytes}
 		case WriterToWithDomain:
 			toBeWritten = t
+			break
+		case encoding.BinaryMarshaler:
+			name := reflect.TypeOf(t)
+			bytes, err := t.MarshalBinary()
+			if err != nil {
+				return fmt.Errorf("hash.WriteAny: %s: %w", name.String(), err)
+			}
+			toBeWritten = &BytesWithDomain{
+				TheDomain: name.String(),
+				Bytes:     bytes,
+			}
 		default:
 			panic("hash.Hash: unsupported type")
 		}
