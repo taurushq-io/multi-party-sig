@@ -125,7 +125,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 		public.G = p.group.NewBasePoint()
 	}
 
-	if !arith.IsInIntervalLPrimeEps(p.Z1) {
+	if !arith.IsInIntervalLEps(p.Z1) {
 		return false
 	}
 

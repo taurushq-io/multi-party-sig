@@ -105,7 +105,7 @@ func (p Proof) Verify(group curve.Curve, hash *hash.Hash, public Public) bool {
 
 	prover := public.Prover
 
-	if !arith.IsInIntervalLPrimeEps(p.Z1) {
+	if !arith.IsInIntervalLEps(p.Z1) {
 		return false
 	}
 
