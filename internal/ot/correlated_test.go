@@ -52,7 +52,7 @@ func TestCorreOTSetup(t *testing.T) {
 			if bytes.Equal(receiveSetup._K_0[i][:], receiveSetup._K_1[i][:]) {
 				t.Error("K_0[i] == K_1[i]")
 			}
-			choice := ((sendSetup._Delta[i>>3] >> (i & 0b111)) & 1) == 1
+			choice := bitAt(i, sendSetup._Delta[:]) == 1
 			array := receiveSetup._K_0[i][:]
 			if choice {
 				array = receiveSetup._K_1[i][:]
@@ -91,7 +91,7 @@ func TestCorreOT(t *testing.T) {
 			t.Error(err)
 		}
 		for i := 0; i < params.OTParam; i++ {
-			choice := (choices[i>>3]>>(i&0b111))&1 == 1
+			choice := bitAt(i, choices) == 1
 			expected := make([]byte, params.OTBytes)
 			copy(expected, receiveResult._T[i][:])
 			if choice {

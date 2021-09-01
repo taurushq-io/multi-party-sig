@@ -51,19 +51,16 @@ func TestAdditiveOT(t *testing.T) {
 		expected[0] = testGroup.NewScalar()
 		expected[1] = testGroup.NewScalar()
 
-		for i := 0; i < len(choices); i++ {
-			for j := 0; j < 8; j++ {
-				choice := ((choices[i] >> j) & 1) == 1
-				index := (i << 3) | j
-				expected[0].Set(sendResult[index][0]).Negate()
-				expected[1].Set(sendResult[index][1]).Negate()
-				if choice {
-					expected[0].Add(alpha[0])
-					expected[1].Add(alpha[1])
-				}
-				if !(expected[0].Equal(receiveResult[index][0]) && expected[1].Equal(receiveResult[index][1])) {
-					t.Error("incorrect additive OT")
-				}
+		for i := 0; i < 8*len(choices); i++ {
+			choice := bitAt(i, choices) == 1
+			expected[0].Set(sendResult[i][0]).Negate()
+			expected[1].Set(sendResult[i][1]).Negate()
+			if choice {
+				expected[0].Add(alpha[0])
+				expected[1].Add(alpha[1])
+			}
+			if !(expected[0].Equal(receiveResult[i][0]) && expected[1].Equal(receiveResult[i][1])) {
+				t.Error("incorrect additive OT")
 			}
 		}
 	}

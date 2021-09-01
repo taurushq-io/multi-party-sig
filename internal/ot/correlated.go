@@ -48,7 +48,7 @@ func (r *CorreOTSetupSender) Round1(msg *CorreOTSetupReceiveRound1Message) (*Cor
 		Bytes:     nil,
 	}).Digest()
 	for i := 0; i < params.OTParam; i++ {
-		choice := safenum.Choice((r._Delta[i>>3] >> (i & 0b111)) & 1)
+		choice := safenum.Choice(bitAt(i, r._Delta[:]))
 		nonce := make([]byte, 32)
 		_, _ = randomOTNonces.Read(nonce)
 		r.randomOTReceivers[i] = NewRandomOTReceiver(nonce, r.setup, choice)
@@ -177,7 +177,7 @@ func transposeBits(l int, M *[params.OTParam][]byte) [][params.OTBytes]byte {
 	MT := make([][params.OTBytes]byte, l)
 	for i := 0; i < l; i++ {
 		for j := 0; j < params.OTParam; j++ {
-			MT[i][j>>3] |= ((M[j][i>>3] >> (i & 0b111)) & 1) << (j & 0b111)
+			MT[i][j>>3] |= bitAt(i, M[j]) << (j & 0b111)
 		}
 	}
 	return MT
@@ -208,7 +208,7 @@ func CorreOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, msg
 		Q[i] = make([]byte, batchSizeBytes)
 		_, _ = prg.Digest().Read(Q[i])
 
-		mask := -((setup._Delta[i>>3] >> (i & 0b111)) & 1)
+		mask := -bitAt(i, setup._Delta[:])
 		for j := 0; j < batchSizeBytes; j++ {
 			Q[i][j] ^= mask & msg._U[i][j]
 		}

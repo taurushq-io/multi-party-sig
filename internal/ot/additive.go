@@ -101,7 +101,7 @@ func (r *AdditiveOTReceiver) Round2(msg *AdditiveOTSendRound1Message) (AdditiveO
 	result := make([][2]curve.Scalar, batchSize)
 	prg := blake3.New()
 	for i := 0; i < batchSize; i++ {
-		mask := -((r.choices[i>>3] >> (i & 0b111)) & 1)
+		mask := -bitAt(i, r.choices)
 		prg.Reset()
 		_, _ = prg.Write(r.result._VChoices[i][:])
 		digest := prg.Digest()

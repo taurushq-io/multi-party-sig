@@ -149,7 +149,7 @@ func ExtendedOTReceive(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, choices [
 	}
 
 	for i := 0; i < len(chi); i++ {
-		mask := -((extraChoices[i>>3] >> (i & 0b111)) & 1)
+		mask := -bitAt(i, extraChoices)
 		for j := 0; j < params.OTBytes; j++ {
 			outMsg.x[j] ^= mask & chi[i][j]
 		}

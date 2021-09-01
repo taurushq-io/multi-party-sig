@@ -1,0 +1,22 @@
+=== RUN   TestAdditiveOT
+    additive_test.go:48: ExtendedOTSend: monochrome check failed
+--- FAIL: TestAdditiveOT (0.03s)
+panic: runtime error: index out of range [0] with length 0 [recovered]
+	panic: runtime error: index out of range [0] with length 0
+
+goroutine 6 [running]:
+testing.tRunner.func1.2({0x55b2e0, 0xc0005aabb8})
+	/usr/lib/go/src/testing/testing.go:1209 +0x24e
+testing.tRunner.func1()
+	/usr/lib/go/src/testing/testing.go:1212 +0x218
+panic({0x55b2e0, 0xc0005aabb8})
+	/usr/lib/go/src/runtime/panic.go:1038 +0x215
+github.com/taurusgroup/multi-party-sig/internal/ot.TestAdditiveOT(0xc00011a4e0)
+	/home/lucas/Desktop/Taurus/multi-party-sig/internal/ot/additive_test.go:58 +0x597
+testing.tRunner(0xc00011a4e0, 0x696198)
+	/usr/lib/go/src/testing/testing.go:1259 +0x102
+created by testing.(*T).Run
+	/usr/lib/go/src/testing/testing.go:1306 +0x35a
+exit status 2
+FAIL	github.com/taurusgroup/multi-party-sig/internal/ot	0.038s
+FAIL

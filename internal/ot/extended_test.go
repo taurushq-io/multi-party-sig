@@ -36,18 +36,16 @@ func TestExtendedOT(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		for i := 0; i < len(choices); i++ {
-			for j := 0; j < 8; j++ {
-				choice := ((choices[i] >> j) & 1) == 1
-				expected := make([]byte, params.OTBytes)
-				if choice {
-					copy(expected, sendResult._V1[(i<<3)|j][:])
-				} else {
-					copy(expected, sendResult._V0[(i<<3)|j][:])
-				}
-				if !bytes.Equal(receiveResult._VChoices[(i<<3)|j][:], expected) {
-					t.Error("incorrect Extended OT")
-				}
+		for i := 0; i < 8*len(choices); i++ {
+			choice := bitAt(i, choices) == 1
+			expected := make([]byte, params.OTBytes)
+			if choice {
+				copy(expected, sendResult._V1[i][:])
+			} else {
+				copy(expected, sendResult._V0[i][:])
+			}
+			if !bytes.Equal(receiveResult._VChoices[i][:], expected) {
+				t.Error("incorrect Extended OT")
 			}
 
 		}

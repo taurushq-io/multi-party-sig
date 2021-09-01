@@ -51,9 +51,11 @@ func makeGadget(ctxHash *hash.Hash, group curve.Curve) []curve.Scalar {
 	out := make([]curve.Scalar, 8*((group.ScalarBits()+7)/8+(group.ScalarBits()+2*params.StatParam+7)/8))
 	// Handle powers of 2, in big endian order
 	acc := group.NewScalar().SetNat(new(safenum.Nat).SetUint64(1))
-	for i := scalarEnd - 1; i >= 0; i-- {
-		out[i] = group.NewScalar().Set(acc)
-		acc.Add(acc)
+	for i := (scalarEnd >> 3) - 1; i >= 0; i-- {
+		for j := 0; j < 8; j++ {
+			out[(i<<3)|j] = group.NewScalar().Set(acc)
+			acc.Add(acc)
+		}
 	}
 	// Generate random noise
 	digest := ctxHash.Fork(&hash.BytesWithDomain{TheDomain: "Multiply Gadget Sampling", Bytes: nil}).Digest()
