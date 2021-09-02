@@ -31,16 +31,18 @@ type presign4 struct {
 	ChiShare curve.Scalar
 }
 
-type message4 struct {
+type broadcast4 struct {
 	// DeltaShare = δⱼ
 	DeltaShare curve.Scalar
 	// ElGamalChi = Ẑᵢ = (b̂ᵢ, χᵢ⋅G+b̂ᵢ⋅Yᵢ)
 	ElGamalChi *elgamal.Ciphertext
 }
 
-// VerifyMessage implements round.Round.
-func (r *presign4) VerifyMessage(msg round.Message) error {
-	body, ok := msg.Content.(*message4)
+// StoreBroadcastMessage implements round.BroadcastRound.
+//
+// - store Ẑⱼ, δⱼ.
+func (r *presign4) StoreBroadcastMessage(msg round.Message) error {
+	body, ok := msg.Content.(*broadcast4)
 	if !ok || body == nil {
 		return round.ErrInvalidContent
 	}
@@ -48,19 +50,16 @@ func (r *presign4) VerifyMessage(msg round.Message) error {
 	if body.DeltaShare.IsZero() || !body.ElGamalChi.Valid() {
 		return round.ErrNilFields
 	}
-
+	r.ElGamalChi[msg.From] = body.ElGamalChi
+	r.DeltaShares[msg.From] = body.DeltaShare
 	return nil
 }
+
+// VerifyMessage implements round.Round.
+func (presign4) VerifyMessage(round.Message) error { return nil }
 
 // StoreMessage implements round.Round.
-//
-// - store Ẑⱼ, δⱼ.
-func (r *presign4) StoreMessage(msg round.Message) error {
-	from, body := msg.From, msg.Content.(*message4)
-	r.ElGamalChi[from] = body.ElGamalChi
-	r.DeltaShares[from] = body.DeltaShare
-	return nil
-}
+func (presign4) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round
 //
@@ -75,6 +74,10 @@ func (r *presign4) Finalize(out chan<- *round.Message) (round.Session, error) {
 		Rho: r.GNonce,
 	}
 
+	if err := r.BroadcastMessage(out, &broadcast5{BigGammaShare: BigGammaShare}); err != nil {
+		return r, err
+	}
+
 	otherIDs := r.OtherPartyIDs()
 	errors := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
 		j := otherIDs[i]
@@ -87,8 +90,7 @@ func (r *presign4) Finalize(out chan<- *round.Message) (round.Session, error) {
 		}, zkPrivate)
 
 		err := r.SendMessage(out, &message5{
-			BigGammaShare: BigGammaShare,
-			ProofLog:      proofLog,
+			ProofLog: proofLog,
 		}, j)
 		if err != nil {
 			return err
@@ -109,8 +111,11 @@ func (r *presign4) Finalize(out chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *presign4) MessageContent() round.Content {
-	return &message4{
+func (r *presign4) MessageContent() round.Content { return nil }
+
+// BroadcastContent implements round.BroadcastRound.
+func (r *presign4) BroadcastContent() round.Content {
+	return &broadcast4{
 		DeltaShare: r.Group().NewScalar(),
 		ElGamalChi: elgamal.Empty(r.Group()),
 	}

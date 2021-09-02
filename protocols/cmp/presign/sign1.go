@@ -29,9 +29,9 @@ func (r *sign1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// σᵢ = kᵢm+rχᵢ (mod q)
 	SigmaShare := r.PreSignature.SignatureShare(r.Message)
 
-	err := r.SendMessage(out, &messageSign2{
+	err := r.BroadcastMessage(out, &broadcastSign2{
 		Sigma: SigmaShare,
-	}, "")
+	})
 	if err != nil {
 		return r, err.(error)
 	}

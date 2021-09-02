@@ -20,7 +20,7 @@ type abort2 struct {
 	ChiAlphas map[party.ID]map[party.ID]curve.Scalar
 }
 
-type messageAbort2 struct {
+type broadcastAbort2 struct {
 	// YHat = Ŷⱼ = bⱼ⋅Yⱼ
 	YHat      curve.Point
 	YHatProof *zklog.Proof
@@ -28,13 +28,21 @@ type messageAbort2 struct {
 	ChiProofs map[party.ID]*abortNth
 }
 
-// VerifyMessage implements round.Round.
-func (r *abort2) VerifyMessage(msg round.Message) error {
+// StoreBroadcastMessage implements round.BroadcastRound.
+func (r *abort2) StoreBroadcastMessage(msg round.Message) error {
 	from := msg.From
-	body, ok := msg.Content.(*messageAbort2)
+	body, ok := msg.Content.(*broadcastAbort2)
 	if !ok || body == nil {
 		return round.ErrInvalidContent
 	}
+
+	alphas := make(map[party.ID]curve.Scalar, len(body.ChiProofs))
+	for id, chiProof := range body.ChiProofs {
+		alphas[id] = r.Group().NewScalar().SetNat(chiProof.Plaintext.Mod(r.Group().Order()))
+	}
+	r.ChiAlphas[from] = alphas
+	r.YHat[from] = body.YHat
+	r.KShares[from] = r.Group().NewScalar().SetNat(body.KProof.Plaintext.Mod(r.Group().Order()))
 
 	if !body.YHatProof.Verify(r.HashForID(from), zklog.Public{
 		H: r.ElGamalK[from].L,
@@ -54,24 +62,14 @@ func (r *abort2) VerifyMessage(msg round.Message) error {
 			return errors.New("failed to validate Delta MtA Nth proof")
 		}
 	}
-
 	return nil
 }
+
+// VerifyMessage implements round.Round.
+func (abort2) VerifyMessage(round.Message) error { return nil }
 
 // StoreMessage implements round.Round.
-//
-// - store Kⱼ, Gⱼ, Zⱼ.
-func (r *abort2) StoreMessage(msg round.Message) error {
-	from, body := msg.From, msg.Content.(*messageAbort2)
-	alphas := make(map[party.ID]curve.Scalar, len(body.ChiProofs))
-	for id, chiProof := range body.ChiProofs {
-		alphas[id] = r.Group().NewScalar().SetNat(chiProof.Plaintext.Mod(r.Group().Order()))
-	}
-	r.ChiAlphas[from] = alphas
-	r.YHat[from] = body.YHat
-	r.KShares[from] = r.Group().NewScalar().SetNat(body.KProof.Plaintext.Mod(r.Group().Order()))
-	return nil
-}
+func (abort2) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round
 func (r *abort2) Finalize(chan<- *round.Message) (round.Session, error) {
@@ -98,8 +96,11 @@ func (r *abort2) Finalize(chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *abort2) MessageContent() round.Content {
-	return &messageAbort2{
+func (abort2) MessageContent() round.Content { return nil }
+
+// BroadcastContent implements round.BroadcastRound.
+func (r *abort2) BroadcastContent() round.Content {
+	return &broadcastAbort2{
 		YHat:      r.Group().NewPoint(),
 		YHatProof: zklog.Empty(r.Group()),
 	}

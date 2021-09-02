@@ -22,16 +22,18 @@ type presign6 struct {
 	Gamma curve.Point
 }
 
-type message6 struct {
+type broadcast6 struct {
 	// BigDeltaShare = Δⱼ = [kⱼ]•Γⱼ
 	BigDeltaShare curve.Point
 	Proof         *zkelog.Proof
 }
 
-// VerifyMessage implements round.Round.
-func (r *presign6) VerifyMessage(msg round.Message) error {
+// StoreBroadcastMessage implements round.BroadcastRound.
+//
+// - save Δⱼ and verify proof.
+func (r *presign6) StoreBroadcastMessage(msg round.Message) error {
 	from := msg.From
-	body, ok := msg.Content.(*message6)
+	body, ok := msg.Content.(*broadcast6)
 	if !ok || body == nil {
 		return round.ErrInvalidContent
 	}
@@ -49,17 +51,15 @@ func (r *presign6) VerifyMessage(msg round.Message) error {
 		return errors.New("failed to validate elog proof for BigDeltaShare")
 	}
 
-	return nil
-}
-
-// StoreMessage implements round.Round.
-//
-// - save Δⱼ
-func (r *presign6) StoreMessage(msg round.Message) error {
-	from, body := msg.From, msg.Content.(*message6)
 	r.BigDeltaShares[from] = body.BigDeltaShare
 	return nil
 }
+
+// VerifyMessage implements round.Round.
+func (presign6) VerifyMessage(round.Message) error { return nil }
+
+// StoreMessage implements round.Round.
+func (r *presign6) StoreMessage(msg round.Message) error { return nil }
 
 // Finalize implements round.Round
 //
@@ -96,12 +96,12 @@ func (r *presign6) Finalize(out chan<- *round.Message) (round.Session, error) {
 			deltaCiphertext := r.DeltaCiphertext[j][r.SelfID()] // Dᵢⱼ
 			DeltaProofs[j] = proveNth(r.HashForID(r.SelfID()), r.SecretPaillier, deltaCiphertext)
 		}
-		msg := &messageAbort1{
+		msg := &broadcastAbort1{
 			GammaShare:  r.GammaShare,
 			KProof:      proveNth(r.HashForID(r.SelfID()), r.SecretPaillier, r.K[r.SelfID()]),
 			DeltaProofs: DeltaProofs,
 		}
-		if err := r.SendMessage(out, msg, ""); err != nil {
+		if err := r.BroadcastMessage(out, msg); err != nil {
 			return r, err
 		}
 		return &abort1{
@@ -131,12 +131,12 @@ func (r *presign6) Finalize(out chan<- *round.Message) (round.Session, error) {
 		Lambda: r.ElGamalChiNonce,
 	})
 
-	err := r.SendMessage(out, &message7{
+	err := r.BroadcastMessage(out, &broadcast7{
 		S:              S,
 		Proof:          proof,
 		DecommitmentID: r.DecommitmentID,
 		PresignatureID: r.PresignatureID[r.SelfID()],
-	}, "")
+	})
 	if err != nil {
 		return r, err.(error)
 	}
@@ -151,8 +151,11 @@ func (r *presign6) Finalize(out chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *presign6) MessageContent() round.Content {
-	return &message6{
+func (presign6) MessageContent() round.Content { return nil }
+
+// BroadcastContent implements round.BroadcastRound.
+func (r *presign6) BroadcastContent() round.Content {
+	return &broadcast6{
 		BigDeltaShare: r.Group().NewPoint(),
 		Proof:         zkelog.Empty(r.Group()),
 	}
