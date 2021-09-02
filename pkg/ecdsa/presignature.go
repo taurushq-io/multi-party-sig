@@ -11,18 +11,33 @@ import (
 
 type PreSignature struct {
 	// ID is a random identifier for this specific presignature.
-	ID    types.RID
-	Group curve.Curve
+	ID types.RID
 	// R = δ⁻¹⋅Γ = δ⁻¹⋅(∑ⱼ Γⱼ) = (∑ⱼδ⁻¹γⱼ)⋅G = k⁻¹⋅G
 	R curve.Point
 	// RBar[j] = δ⁻¹⋅Δⱼ = (δ⁻¹kⱼ)⋅Γ = (k⁻¹kⱼ)⋅G
-	RBar map[party.ID]curve.Point
+	RBar *party.PointMap
 	// S[j] = χⱼ⋅R
-	S map[party.ID]curve.Point
+	S *party.PointMap
 	// KShare = kᵢ
 	KShare curve.Scalar
 	// ChiShare = χᵢ
 	ChiShare curve.Scalar
+}
+
+// Group returns the elliptic curve group associated with this PreSignature.
+func (sig *PreSignature) Group() curve.Curve {
+	return sig.R.Curve()
+}
+
+// EmptyPreSignature returns a PreSignature with a given group, ready for unmarshalling.
+func EmptyPreSignature(group curve.Curve) *PreSignature {
+	return &PreSignature{
+		R:        group.NewPoint(),
+		RBar:     party.EmptyPointMap(group),
+		S:        party.EmptyPointMap(group),
+		KShare:   group.NewScalar(),
+		ChiShare: group.NewScalar(),
+	}
 }
 
 // SignatureShare represents an individual additive share of the signature's "s" component.
@@ -30,7 +45,7 @@ type SignatureShare = curve.Scalar
 
 // SignatureShare returns this party's share σᵢ = kᵢm+rχᵢ, where s = ∑ⱼσⱼ.
 func (sig *PreSignature) SignatureShare(hash []byte) curve.Scalar {
-	m := curve.FromHash(sig.Group, hash)
+	m := curve.FromHash(sig.Group(), hash)
 	r := sig.R.XScalar()
 	mk := m.Mul(sig.KShare)
 	rx := r.Mul(sig.ChiShare)
@@ -40,7 +55,7 @@ func (sig *PreSignature) SignatureShare(hash []byte) curve.Scalar {
 
 // Signature combines the given shares σⱼ and returns a pair (R,S), where S=∑ⱼσⱼ.
 func (sig *PreSignature) Signature(shares map[party.ID]SignatureShare) *Signature {
-	s := sig.Group.NewScalar()
+	s := sig.Group().NewScalar()
 	for _, sigma := range shares {
 		s.Add(sigma)
 	}
@@ -54,9 +69,9 @@ func (sig *PreSignature) Signature(shares map[party.ID]SignatureShare) *Signatur
 // It returns the list of parties whose shares are invalid.
 func (sig *PreSignature) VerifySignatureShares(shares map[party.ID]SignatureShare, hash []byte) (culprits []party.ID) {
 	r := sig.R.XScalar()
-	m := curve.FromHash(sig.Group, hash)
+	m := curve.FromHash(sig.Group(), hash)
 	for j, share := range shares {
-		Rj, Sj := sig.RBar[j], sig.S[j]
+		Rj, Sj := sig.RBar.Points[j], sig.S.Points[j]
 		if Rj == nil || Sj == nil {
 			culprits = append(culprits, j)
 			continue
@@ -71,12 +86,12 @@ func (sig *PreSignature) VerifySignatureShares(shares map[party.ID]SignatureShar
 }
 
 func (sig *PreSignature) Validate() error {
-	if len(sig.RBar) != len(sig.S) {
+	if len(sig.RBar.Points) != len(sig.S.Points) {
 		return errors.New("presignature: different number of R,S shares")
 	}
 
-	for id, R := range sig.RBar {
-		if S, ok := sig.S[id]; !ok || S.IsIdentity() {
+	for id, R := range sig.RBar.Points {
+		if S, ok := sig.S.Points[id]; !ok || S.IsIdentity() {
 			return errors.New("presignature: S invalid")
 		}
 		if R.IsIdentity() {
@@ -96,8 +111,8 @@ func (sig *PreSignature) Validate() error {
 }
 
 func (sig *PreSignature) SignerIDs() party.IDSlice {
-	ids := make([]party.ID, 0, len(sig.RBar))
-	for id := range sig.RBar {
+	ids := make([]party.ID, 0, len(sig.RBar.Points))
+	for id := range sig.RBar.Points {
 		ids = append(ids, id)
 	}
 	return party.NewIDSlice(ids)

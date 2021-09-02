@@ -54,10 +54,9 @@ func NewPreSignatures(group curve.Curve, N int) (x curve.Scalar, X curve.Point, 
 		RBar[id] = group.NewScalar().Set(kShares[id]).Mul(kInv).ActOnBase()
 		S[id] = chiShares[id].Act(R)
 		preSignatures[id] = &PreSignature{
-			Group:    group,
 			R:        R,
-			RBar:     RBar,
-			S:        S,
+			RBar:     party.NewPointMap(RBar),
+			S:        party.NewPointMap(S),
 			KShare:   kShares[id],
 			ChiShare: chiShares[id],
 		}

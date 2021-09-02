@@ -137,10 +137,9 @@ func (r *presign7) Finalize(out chan<- *round.Message) (round.Session, error) {
 
 	preSignature := &ecdsa.PreSignature{
 		ID:       presignatureID,
-		Group:    r.Group(),
 		R:        r.R,
-		RBar:     r.RBar,
-		S:        r.S,
+		RBar:     party.NewPointMap(r.RBar),
+		S:        party.NewPointMap(r.S),
 		KShare:   r.KShare,
 		ChiShare: r.ChiShare,
 	}

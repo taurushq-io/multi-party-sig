@@ -9,6 +9,11 @@ type Signature struct {
 	S curve.Scalar
 }
 
+// EmptySignature returns a new signature with a given curve, ready to be unmarshalled.
+func EmptySignature(group curve.Curve) Signature {
+	return Signature{R: group.NewPoint(), S: group.NewScalar()}
+}
+
 // Verify is a custom signature format using curve data.
 func (sig Signature) Verify(X curve.Point, hash []byte) bool {
 	group := X.Curve()
