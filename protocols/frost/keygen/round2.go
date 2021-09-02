@@ -34,7 +34,7 @@ type round2 struct {
 	ChainKeyCommitments map[party.ID]hash.Commitment
 }
 
-type message2 struct {
+type broadcast2 struct {
 	// Phi_i is the commitment to the polynomial that this participant generated.
 	Phi_i *polynomial.Exponent
 	// Sigma_i is the Schnorr proof of knowledge of the participant's secret
@@ -43,16 +43,16 @@ type message2 struct {
 	Commitment hash.Commitment
 }
 
-// VerifyMessage implements round.Round.
-func (r *round2) VerifyMessage(msg round.Message) error {
+// StoreBroadcastMessage implements round.BroadcastRound.
+func (r *round2) StoreBroadcastMessage(msg round.Message) error {
 	from := msg.From
-	body, ok := msg.Content.(*message2)
+	body, ok := msg.Content.(*broadcast2)
 	if !ok || body == nil {
 		return round.ErrInvalidContent
 	}
 
 	// check nil
-	if body.Sigma_i == nil || body.Phi_i == nil {
+	if !body.Sigma_i.IsValid() || body.Phi_i == nil {
 		return round.ErrNilFields
 	}
 
@@ -78,16 +78,16 @@ func (r *round2) VerifyMessage(msg round.Message) error {
 		return fmt.Errorf("failed to verify Schnorr proof for party %s", from)
 	}
 
-	return nil
-}
-
-// StoreMessage implements round.Round.
-func (r *round2) StoreMessage(msg round.Message) error {
-	from, body := msg.From, msg.Content.(*message2)
 	r.Phi[from] = body.Phi_i
 	r.ChainKeyCommitments[from] = body.Commitment
 	return nil
 }
+
+// VerifyMessage implements round.Round.
+func (round2) VerifyMessage(round.Message) error { return nil }
+
+// StoreMessage implements round.Round.
+func (round2) StoreMessage(round.Message) error { return nil }
 
 func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// These steps come from Figure 1, Round 2 of the Frost paper
@@ -96,13 +96,17 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// (l, fᵢ(l)), deleting f_i and each share afterward except for (i, fᵢ(i)),
 	// which they keep for themselves."
 
+	if err := r.BroadcastMessage(out, &broadcast3{
+		C_l:          r.ChainKeys[r.SelfID()],
+		Decommitment: r.ChainKeyDecommitment,
+	}); err != nil {
+		return r, err
+	}
+
 	for _, l := range r.OtherPartyIDs() {
-		err := r.SendMessage(out, &message3{
-			F_li:         r.f_i.Evaluate(l.Scalar(r.Group())),
-			C_l:          r.ChainKeys[r.SelfID()],
-			Decommitment: r.ChainKeyDecommitment,
-		}, l)
-		if err != nil {
+		if err := r.SendMessage(out, &message3{
+			F_li: r.f_i.Evaluate(l.Scalar(r.Group())),
+		}, l); err != nil {
 			return r, err
 		}
 	}
@@ -115,8 +119,11 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *round2) MessageContent() round.Content {
-	return &message2{
+func (round2) MessageContent() round.Content { return nil }
+
+// BroadcastContent implements round.BroadcastRound.
+func (r *round2) BroadcastContent() round.Content {
+	return &broadcast2{
 		Phi_i:   polynomial.EmptyExponent(r.Group()),
 		Sigma_i: sch.EmptyProof(r.Group()),
 	}
