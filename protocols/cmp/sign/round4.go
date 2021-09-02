@@ -27,11 +27,30 @@ type round4 struct {
 }
 
 type message4 struct {
+	ProofLog *zklogstar.Proof
+}
+
+type broadcast4 struct {
 	// DeltaShare = δⱼ
 	DeltaShare curve.Scalar
 	// BigDeltaShare = Δⱼ = [kⱼ]•Γⱼ
 	BigDeltaShare curve.Point
-	ProofLog      *zklogstar.Proof
+}
+
+// StoreBroadcastMessage implements round.BroadcastRound.
+//
+// - store δⱼ, Δⱼ
+func (r *round4) StoreBroadcastMessage(msg round.Message) error {
+	body, ok := msg.Content.(*broadcast4)
+	if !ok || body == nil {
+		return round.ErrInvalidContent
+	}
+	if body.DeltaShare.IsZero() || body.BigDeltaShare.IsIdentity() {
+		return round.ErrNilFields
+	}
+	r.BigDeltaShares[msg.From] = body.BigDeltaShare
+	r.DeltaShares[msg.From] = body.DeltaShare
+	return nil
 }
 
 // VerifyMessage implements round.Round.
@@ -44,13 +63,9 @@ func (r *round4) VerifyMessage(msg round.Message) error {
 		return round.ErrInvalidContent
 	}
 
-	if body.DeltaShare == nil || body.BigDeltaShare == nil || body.ProofLog == nil {
-		return round.ErrNilFields
-	}
-
 	zkLogPublic := zklogstar.Public{
 		C:      r.K[from],
-		X:      body.BigDeltaShare,
+		X:      r.BigDeltaShares[from],
 		G:      r.Gamma,
 		Prover: r.Paillier[from],
 		Aux:    r.Pedersen[to],
@@ -63,12 +78,7 @@ func (r *round4) VerifyMessage(msg round.Message) error {
 }
 
 // StoreMessage implements round.Round.
-//
-// - store Δⱼ, δⱼ.
-func (r *round4) StoreMessage(msg round.Message) error {
-	from, body := msg.From, msg.Content.(*message4)
-	r.BigDeltaShares[from] = body.BigDeltaShare
-	r.DeltaShares[from] = body.DeltaShare
+func (round4) StoreMessage(round.Message) error {
 	return nil
 }
 
@@ -106,7 +116,7 @@ func (r *round4) Finalize(out chan<- *round.Message) (round.Session, error) {
 	SigmaShare := r.Group().NewScalar().Set(R).Mul(r.ChiShare).Add(km)
 
 	// Send to all
-	err := r.SendMessage(out, &message5{SigmaShare: SigmaShare}, "")
+	err := r.BroadcastMessage(out, &broadcast5{SigmaShare: SigmaShare})
 	if err != nil {
 		return r, err
 	}
@@ -123,9 +133,15 @@ func (r *round4) Finalize(out chan<- *round.Message) (round.Session, error) {
 // MessageContent implements round.Round.
 func (r *round4) MessageContent() round.Content {
 	return &message4{
+		ProofLog: zklogstar.Empty(r.Group()),
+	}
+}
+
+// BroadcastContent implements round.BroadcastRound.
+func (r *round4) BroadcastContent() round.Content {
+	return &broadcast4{
 		DeltaShare:    r.Group().NewScalar(),
 		BigDeltaShare: r.Group().NewPoint(),
-		ProofLog:      zklogstar.Empty(r.Group()),
 	}
 }
 

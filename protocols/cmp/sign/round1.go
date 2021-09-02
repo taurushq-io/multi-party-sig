@@ -90,7 +90,7 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 		}
 	}
 
-	return &roundBroadcast2{&round2{
+	return &round2{
 		round1:        r,
 		K:             map[party.ID]*paillier.Ciphertext{r.SelfID(): K},
 		G:             map[party.ID]*paillier.Ciphertext{r.SelfID(): G},
@@ -99,7 +99,7 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 		KShare:        KShare,
 		KNonce:        KNonce,
 		GNonce:        GNonce,
-	}}, nil
+	}, nil
 }
 
 // MessageContent implements round.Round.

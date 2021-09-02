@@ -31,32 +31,32 @@ type round5 struct {
 	R curve.Scalar
 }
 
-type message5 struct {
+type broadcast5 struct {
 	SigmaShare curve.Scalar
 }
 
-// VerifyMessage implements round.Round.
-func (r *round5) VerifyMessage(msg round.Message) error {
-	body, ok := msg.Content.(*message5)
+// StoreBroadcastMessage implements round.BroadcastRound.
+//
+// - save σⱼ
+func (r *round5) StoreBroadcastMessage(msg round.Message) error {
+	body, ok := msg.Content.(*broadcast5)
 	if !ok || body == nil {
 		return round.ErrInvalidContent
 	}
 
-	if body.SigmaShare == nil || body.SigmaShare.IsZero() {
+	if body.SigmaShare.IsZero() {
 		return round.ErrNilFields
 	}
 
+	r.SigmaShares[msg.From] = body.SigmaShare
 	return nil
 }
 
+// VerifyMessage implements round.Round.
+func (round5) VerifyMessage(round.Message) error { return nil }
+
 // StoreMessage implements round.Round.
-//
-// - save σⱼ
-func (r *round5) StoreMessage(msg round.Message) error {
-	from, body := msg.From, msg.Content.(*message5)
-	r.SigmaShares[from] = body.SigmaShare
-	return nil
-}
+func (round5) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round
 //
@@ -82,8 +82,11 @@ func (r *round5) Finalize(chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *round5) MessageContent() round.Content {
-	return &message5{
+func (r *round5) MessageContent() round.Content { return nil }
+
+// BroadcastContent implements round.BroadcastRound.
+func (r *round5) BroadcastContent() round.Content {
+	return &broadcast5{
 		SigmaShare: r.Group().NewScalar(),
 	}
 }

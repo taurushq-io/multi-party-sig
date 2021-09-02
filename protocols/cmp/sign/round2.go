@@ -6,7 +6,6 @@ import (
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/mta"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -40,12 +39,10 @@ type round2 struct {
 	GNonce *safenum.Nat
 }
 
-type roundBroadcast2 struct {
-	*round2
-}
-
 type broadcast2 struct {
+	// K = Kᵢ
 	K *paillier.Ciphertext
+	// G = Gᵢ
 	G *paillier.Ciphertext
 }
 
@@ -56,7 +53,7 @@ type message2 struct {
 // StoreBroadcastMessage implements round.Round.
 //
 // - store Kⱼ, Gⱼ.
-func (r *roundBroadcast2) StoreBroadcastMessage(msg round.Message) error {
+func (r *round2) StoreBroadcastMessage(msg round.Message) error {
 	from := msg.From
 	body, ok := msg.Content.(*broadcast2)
 	if !ok || body == nil {
@@ -106,6 +103,12 @@ func (round2) StoreMessage(round.Message) error { return nil }
 //
 // - compute Hash(ssid, K₁, G₁, …, Kₙ, Gₙ).
 func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
+	if err := r.BroadcastMessage(out, &broadcast3{
+		BigGammaShare: r.BigGammaShare[r.SelfID()],
+	}); err != nil {
+		return r, err
+	}
+
 	otherIDs := r.OtherPartyIDs()
 	type mtaOut struct {
 		err       error
@@ -134,14 +137,13 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 			})
 
 		err := r.SendMessage(out, &message3{
-			BigGammaShare: r.BigGammaShare[r.SelfID()],
-			DeltaD:        DeltaD,
-			DeltaF:        DeltaF,
-			DeltaProof:    DeltaProof,
-			ChiD:          ChiD,
-			ChiF:          ChiF,
-			ChiProof:      ChiProof,
-			ProofLog:      proof,
+			DeltaD:     DeltaD,
+			DeltaF:     DeltaF,
+			DeltaProof: DeltaProof,
+			ChiD:       ChiD,
+			ChiF:       ChiF,
+			ChiProof:   ChiProof,
+			ProofLog:   proof,
 		}, j)
 		return mtaOut{
 			err:       err,
@@ -174,12 +176,7 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 func (round2) MessageContent() round.Content { return &message2{} }
 
 // BroadcastContent implements round.BroadcastRound.
-func (roundBroadcast2) BroadcastContent() round.Content { return &broadcast2{} }
+func (round2) BroadcastContent() round.Content { return &broadcast2{} }
 
 // Number implements round.Round.
 func (round2) Number() round.Number { return 2 }
-
-// BroadcastData implements broadcast.Broadcaster.
-func (m broadcast2) BroadcastData() []byte {
-	return hash.New(m.K, m.G).Sum()
-}

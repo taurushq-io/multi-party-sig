@@ -29,14 +29,32 @@ type round3 struct {
 }
 
 type message3 struct {
-	BigGammaShare curve.Point          // BigGammaShare = Γⱼ
-	DeltaD        *paillier.Ciphertext // DeltaD = Dᵢⱼ
-	DeltaF        *paillier.Ciphertext // DeltaF = Fᵢⱼ
-	DeltaProof    *zkaffg.Proof
-	ChiD          *paillier.Ciphertext // DeltaD = D̂_{ij}
-	ChiF          *paillier.Ciphertext // ChiF = F̂ᵢⱼ
-	ChiProof      *zkaffg.Proof
-	ProofLog      *zklogstar.Proof
+	DeltaD     *paillier.Ciphertext // DeltaD = Dᵢⱼ
+	DeltaF     *paillier.Ciphertext // DeltaF = Fᵢⱼ
+	DeltaProof *zkaffg.Proof
+	ChiD       *paillier.Ciphertext // DeltaD = D̂_{ij}
+	ChiF       *paillier.Ciphertext // ChiF = F̂ᵢⱼ
+	ChiProof   *zkaffg.Proof
+	ProofLog   *zklogstar.Proof
+}
+
+type broadcast3 struct {
+	BigGammaShare curve.Point // BigGammaShare = Γⱼ
+}
+
+// StoreBroadcastMessage implements round.BroadcastRound.
+//
+// - store Γⱼ
+func (r *round3) StoreBroadcastMessage(msg round.Message) error {
+	body, ok := msg.Content.(*broadcast3)
+	if !ok || body == nil {
+		return round.ErrInvalidContent
+	}
+	if body.BigGammaShare.IsIdentity() {
+		return round.ErrNilFields
+	}
+	r.BigGammaShare[msg.From] = body.BigGammaShare
+	return nil
 }
 
 // VerifyMessage implements round.Round.
@@ -49,15 +67,11 @@ func (r *round3) VerifyMessage(msg round.Message) error {
 		return round.ErrInvalidContent
 	}
 
-	if body.BigGammaShare.IsIdentity() {
-		return round.ErrNilFields
-	}
-
 	if !body.DeltaProof.Verify(r.HashForID(from), zkaffg.Public{
 		Kv:       r.K[to],
 		Dv:       body.DeltaD,
 		Fp:       body.DeltaF,
-		Xp:       body.BigGammaShare,
+		Xp:       r.BigGammaShare[from],
 		Prover:   r.Paillier[from],
 		Verifier: r.Paillier[to],
 		Aux:      r.Pedersen[to],
@@ -79,7 +93,7 @@ func (r *round3) VerifyMessage(msg round.Message) error {
 
 	if !body.ProofLog.Verify(r.HashForID(from), zklogstar.Public{
 		C:      r.G[from],
-		X:      body.BigGammaShare,
+		X:      r.BigGammaShare[from],
 		Prover: r.Paillier[from],
 		Aux:    r.Pedersen[to],
 	}) {
@@ -92,11 +106,9 @@ func (r *round3) VerifyMessage(msg round.Message) error {
 // StoreMessage implements round.Round.
 //
 // - Decrypt MtA shares,
-// - save Γⱼ, αᵢⱼ, α̂ᵢⱼ.
+// - save αᵢⱼ, α̂ᵢⱼ.
 func (r *round3) StoreMessage(msg round.Message) error {
 	from, body := msg.From, msg.Content.(*message3)
-
-	r.BigGammaShare[from] = body.BigGammaShare
 
 	// αᵢⱼ
 	DeltaShareAlpha, err := r.SecretPaillier.Dec(body.DeltaD)
@@ -154,6 +166,13 @@ func (r *round3) Finalize(out chan<- *round.Message) (round.Session, error) {
 	}
 
 	DeltaShareScalar := r.Group().NewScalar().SetNat(DeltaShare.Mod(r.Group().Order()))
+	if err := r.BroadcastMessage(out, &broadcast4{
+		DeltaShare:    DeltaShareScalar,
+		BigDeltaShare: BigDeltaShare,
+	}); err != nil {
+		return r, err
+	}
+
 	otherIDs := r.OtherPartyIDs()
 	errs := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
 		j := otherIDs[i]
@@ -167,9 +186,7 @@ func (r *round3) Finalize(out chan<- *round.Message) (round.Session, error) {
 		}, zkPrivate)
 
 		err := r.SendMessage(out, &message4{
-			DeltaShare:    DeltaShareScalar,
-			BigDeltaShare: BigDeltaShare,
-			ProofLog:      proofLog,
+			ProofLog: proofLog,
 		}, j)
 		if err != nil {
 			return err
@@ -194,10 +211,16 @@ func (r *round3) Finalize(out chan<- *round.Message) (round.Session, error) {
 // MessageContent implements round.Round.
 func (r *round3) MessageContent() round.Content {
 	return &message3{
+		ProofLog:   zklogstar.Empty(r.Group()),
+		DeltaProof: zkaffg.Empty(r.Group()),
+		ChiProof:   zkaffg.Empty(r.Group()),
+	}
+}
+
+// BroadcastContent implements round.BroadcastRound.
+func (r *round3) BroadcastContent() round.Content {
+	return &broadcast3{
 		BigGammaShare: r.Group().NewPoint(),
-		ProofLog:      zklogstar.Empty(r.Group()),
-		DeltaProof:    zkaffg.Empty(r.Group()),
-		ChiProof:      zkaffg.Empty(r.Group()),
 	}
 }
 
