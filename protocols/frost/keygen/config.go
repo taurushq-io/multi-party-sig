@@ -17,12 +17,12 @@ func adjust(with curve.Scalar, priv curve.Scalar, pub curve.Point, pubShares map
 	}
 }
 
-// Result contains all the information produced after key generation, from the perspective
+// Config contains all the information produced after key generation, from the perspective
 // of a single participant.
 //
 // When unmarshalling, EmptyResult needs to be called to set the group, before
 // calling cbor.Unmarshal, or equivalent methods.
-type Result struct {
+type Config struct {
 	// ID is the identifier for this participant.
 	ID party.ID
 	// Threshold is the number of accepted corruptions while still being able to sign.
@@ -43,12 +43,12 @@ type Result struct {
 	VerificationShares *party.PointMap
 }
 
-// EmptyResult creates an empty Result with a specific group.
+// EmptyConfig creates an empty Result with a specific group.
 //
 // This needs to be called before unmarshalling, instead of just using new(Result).
 // This is to allow points and scalars to be correctly unmarshalled.
-func EmptyResult(group curve.Curve) *Result {
-	return &Result{
+func EmptyConfig(group curve.Curve) *Config {
+	return &Config{
 		PrivateShare:       group.NewScalar(),
 		PublicKey:          group.NewPoint(),
 		VerificationShares: party.EmptyPointMap(group),
@@ -56,19 +56,19 @@ func EmptyResult(group curve.Curve) *Result {
 }
 
 // Curve returns the Elliptic Curve Group associated with this result.
-func (r *Result) Curve() curve.Curve {
+func (r *Config) Curve() curve.Curve {
 	return r.PublicKey.Curve()
 }
 
 // Clone creates a deep clone of this struct, and all the values contained inside
-func (r *Result) Clone() *Result {
+func (r *Config) Clone() *Config {
 	chainKeyCopy := make([]byte, len(r.ChainKey))
 	copy(chainKeyCopy, r.ChainKey)
 	verificationSharesCopy := make(map[party.ID]curve.Point)
 	for k, v := range r.VerificationShares.Points {
 		verificationSharesCopy[k] = v
 	}
-	return &Result{
+	return &Config{
 		ID:                 r.ID,
 		Threshold:          r.Threshold,
 		PrivateShare:       r.Curve().NewScalar().Set(r.PrivateShare),
@@ -84,7 +84,7 @@ func (r *Result) Clone() *Result {
 //
 // This derivation works according to BIP-32, see:
 // https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
-func (r *Result) DeriveChild(i uint32) (*Result, error) {
+func (r *Config) DeriveChild(i uint32) (*Config, error) {
 	publicKey, ok := r.PublicKey.(*curve.Secp256k1Point)
 	if !ok {
 		return nil, errors.New("DeriveChild called on non secp256k1 curve")
@@ -99,10 +99,10 @@ func (r *Result) DeriveChild(i uint32) (*Result, error) {
 	return newR, nil
 }
 
-// TaprootResult is like result, but for Taproot / BIP-340 keys.
+// TaprootConfig is like result, but for Taproot / BIP-340 keys.
 //
 // The main difference is that our public key is an actual taproot public key.
-type TaprootResult struct {
+type TaprootConfig struct {
 	// ID is the identifier for this participant.
 	ID party.ID
 	// Threshold is the number of accepted corruptions while still being able to sign.
@@ -124,7 +124,7 @@ type TaprootResult struct {
 }
 
 // Clone creates a deep clone of this struct, and all the values contained inside
-func (r *TaprootResult) Clone() *TaprootResult {
+func (r *TaprootConfig) Clone() *TaprootConfig {
 	publicKeyCopy := make([]byte, len(r.PublicKey))
 	copy(publicKeyCopy, r.PublicKey)
 	chainKeyCopy := make([]byte, len(r.ChainKey))
@@ -133,7 +133,7 @@ func (r *TaprootResult) Clone() *TaprootResult {
 	for k, v := range r.VerificationShares {
 		verificationSharesCopy[k] = v
 	}
-	return &TaprootResult{
+	return &TaprootConfig{
 		ID:                 r.ID,
 		Threshold:          r.Threshold,
 		PrivateShare:       curve.Secp256k1{}.NewScalar().Set(r.PrivateShare).(*curve.Secp256k1Scalar),
@@ -152,7 +152,7 @@ func (r *TaprootResult) Clone() *TaprootResult {
 // ECDSA key, with the y coordinate byte set to 0x02. We also only look at the x
 // coordinate of the derived public key, making sure that the corresponding secret
 // key matches the version of this point with an even y coordinate.
-func (r *TaprootResult) DeriveChild(i uint32) (*TaprootResult, error) {
+func (r *TaprootConfig) DeriveChild(i uint32) (*TaprootConfig, error) {
 	publicKey, err := curve.Secp256k1{}.LiftX(r.PublicKey)
 	if err != nil {
 		return nil, err
