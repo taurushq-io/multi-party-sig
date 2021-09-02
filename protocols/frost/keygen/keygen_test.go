@@ -17,11 +17,11 @@ func checkOutput(t *testing.T, rounds []round.Session, parties party.IDSlice) {
 	group := curve.Secp256k1{}
 
 	N := len(rounds)
-	results := make([]Result, 0, N)
+	results := make([]Config, 0, N)
 	for _, r := range rounds {
 		resultRound, ok := r.(*round.Output)
 		require.True(t, ok)
-		result, ok := resultRound.Result.(*Result)
+		result, ok := resultRound.Result.(*Config)
 		require.True(t, ok)
 		results = append(results, *result)
 		require.Equal(t, r.SelfID(), result.ID)
@@ -59,7 +59,7 @@ func checkOutput(t *testing.T, rounds []round.Session, parties party.IDSlice) {
 		}
 		marshalled, err := cbor.Marshal(result)
 		require.NoError(t, err)
-		unmarshalledResult := EmptyResult(group)
+		unmarshalledResult := EmptyConfig(group)
 		err = cbor.Unmarshal(marshalled, unmarshalledResult)
 		require.NoError(t, err)
 		for _, id := range parties {
@@ -96,12 +96,12 @@ func checkOutputTaproot(t *testing.T, rounds []round.Session, parties party.IDSl
 	group := curve.Secp256k1{}
 
 	N := len(rounds)
-	results := make([]TaprootResult, 0, N)
+	results := make([]TaprootConfig, 0, N)
 	for _, r := range rounds {
 		require.IsType(t, &round.Output{}, r, "expected result round")
 		resultRound := r.(*round.Output)
-		require.IsType(t, &TaprootResult{}, resultRound.Result, "expected taproot result")
-		result := resultRound.Result.(*TaprootResult)
+		require.IsType(t, &TaprootConfig{}, resultRound.Result, "expected taproot result")
+		result := resultRound.Result.(*TaprootConfig)
 		results = append(results, *result)
 		require.Equal(t, r.SelfID(), result.ID, "party IDs should be the same")
 	}

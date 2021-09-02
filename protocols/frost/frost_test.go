@@ -57,7 +57,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 }
 
 func TestFrost(t *testing.T) {
-	N := 50
+	N := 5
 	T := N - 1
 	message := []byte("hello")
 

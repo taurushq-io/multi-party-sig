@@ -10,8 +10,8 @@ import (
 )
 
 type (
-	Config        = keygen.Result
-	TaprootConfig = keygen.TaprootResult
+	Config        = keygen.Config
+	TaprootConfig = keygen.TaprootConfig
 	Signature     = sign.Signature
 )
 
@@ -20,7 +20,7 @@ type (
 // This needs to be called before unmarshalling, instead of just using new(Result).
 // This is to allow points and scalars to be correctly unmarshalled.
 func EmptyConfig(group curve.Curve) *Config {
-	return &keygen.Result{
+	return &keygen.Config{
 		PrivateShare:       group.NewScalar(),
 		PublicKey:          group.NewPoint(),
 		VerificationShares: party.EmptyPointMap(group),
@@ -97,7 +97,7 @@ func SignTaproot(config *TaprootConfig, signers []party.ID, messageHash []byte) 
 	for k, v := range config.VerificationShares {
 		genericVerificationShares[k] = v
 	}
-	normalResult := &keygen.Result{
+	normalResult := &keygen.Config{
 		ID:                 config.ID,
 		Threshold:          config.Threshold,
 		PrivateShare:       config.PrivateShare,

@@ -56,7 +56,7 @@ func TestSign(t *testing.T) {
 	var newPublicKey curve.Point
 	rounds := make([]round.Session, 0, N)
 	for _, id := range partyIDs {
-		result := &keygen.Result{
+		result := &keygen.Config{
 			ID:                 id,
 			Threshold:          threshold,
 			PublicKey:          publicKey,
@@ -127,7 +127,7 @@ func TestSignTaproot(t *testing.T) {
 	var newPublicKey []byte
 	rounds := make([]round.Session, 0, N)
 	for _, id := range partyIDs {
-		result := &keygen.TaprootResult{
+		result := &keygen.TaprootConfig{
 			ID:                 id,
 			Threshold:          threshold,
 			PublicKey:          publicKey,
@@ -144,7 +144,7 @@ func TestSignTaproot(t *testing.T) {
 			genericVerificationShares[k] = v
 		}
 		require.NoError(t, err)
-		normalResult := &keygen.Result{
+		normalResult := &keygen.Config{
 			ID:                 result.ID,
 			Threshold:          result.Threshold,
 			PrivateShare:       result.PrivateShare,

@@ -146,7 +146,7 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 		for k, v := range VerificationShares {
 			secpVerificationShares[k] = v.(*curve.Secp256k1Point)
 		}
-		return r.ResultRound(&TaprootResult{
+		return r.ResultRound(&TaprootConfig{
 			ID:                 r.SelfID(),
 			Threshold:          r.threshold,
 			PrivateShare:       s_i.(*curve.Secp256k1Scalar),
@@ -155,7 +155,7 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 		}), nil
 	}
 
-	return r.ResultRound(&Result{
+	return r.ResultRound(&Config{
 		ID:                 r.SelfID(),
 		Threshold:          r.threshold,
 		PrivateShare:       s_i,
