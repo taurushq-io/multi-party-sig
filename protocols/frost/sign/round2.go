@@ -35,16 +35,16 @@ type round2 struct {
 	E map[party.ID]curve.Point
 }
 
-type message2 struct {
+type broadcast2 struct {
 	// D_i is the first commitment produced by the sender of this message.
 	D_i curve.Point
 	// E_i is the second commitment produced by the sender of this message.
 	E_i curve.Point
 }
 
-// VerifyMessage implements round.Round.
-func (r *round2) VerifyMessage(msg round.Message) error {
-	body, ok := msg.Content.(*message2)
+// StoreBroadcastMessage implements round.BroadcastRound.
+func (r *round2) StoreBroadcastMessage(msg round.Message) error {
+	body, ok := msg.Content.(*broadcast2)
 	if !ok || body == nil {
 		return round.ErrInvalidContent
 	}
@@ -66,16 +66,16 @@ func (r *round2) VerifyMessage(msg round.Message) error {
 		return fmt.Errorf("nonce commitment is the identity point")
 	}
 
+	r.D[msg.From] = body.D_i
+	r.E[msg.From] = body.E_i
 	return nil
 }
 
+// VerifyMessage implements round.Round.
+func (round2) VerifyMessage(round.Message) error { return nil }
+
 // StoreMessage implements round.Round.
-func (r *round2) StoreMessage(msg round.Message) error {
-	from, body := msg.From, msg.Content.(*message2)
-	r.D[from] = body.D_i
-	r.E[from] = body.E_i
-	return nil
-}
+func (round2) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round.
 func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
@@ -156,7 +156,7 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// TODO: Securely delete the nonces.
 
 	// Broadcast our response
-	err := r.SendMessage(out, &message3{Z_i: z_i}, "")
+	err := r.BroadcastMessage(out, &broadcast3{Z_i: z_i})
 	if err != nil {
 		return r, err
 	}
@@ -172,8 +172,11 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *round2) MessageContent() round.Content {
-	return &message2{
+func (round2) MessageContent() round.Content { return nil }
+
+// BroadcastContent implements round.BroadcastRound.
+func (r *round2) BroadcastContent() round.Content {
+	return &broadcast2{
 		D_i: r.Group().NewPoint(),
 		E_i: r.Group().NewPoint(),
 	}
