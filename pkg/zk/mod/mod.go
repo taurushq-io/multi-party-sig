@@ -50,7 +50,6 @@ func isQRmodPQ(y, pHalf, qHalf *safenum.Nat, p, q *safenum.Modulus) safenum.Choi
 	oneNat := new(safenum.Nat).SetUint64(1).Resize(1)
 
 	test := new(safenum.Nat)
-	oneNat := new(safenum.Nat).SetUint64(1)
 	test.Exp(y, pHalf, p)
 	pOk := test.Eq(oneNat)
 

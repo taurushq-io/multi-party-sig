@@ -75,7 +75,6 @@ func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
 	n := arith.ModulusFromFactors(P, Q)
 
 	nNat := n.Nat()
-	oneNat := new(safenum.Nat).SetUint64(1)
 	nPlusOne := new(safenum.Nat).Add(nNat, oneNat, -1)
 	// Tightening is fine, since n is public
 	nPlusOne.Resize(nPlusOne.TrueLen())
@@ -110,7 +109,6 @@ func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
 	oneNat := new(safenum.Nat).SetUint64(1)
 
 	n := sk.PublicKey.n.Modulus
-	oneNat := new(safenum.Nat).SetUint64(1)
 
 	if !sk.PublicKey.ValidateCiphertexts(ct) {
 		return nil, errors.New("paillier: failed to decrypt invalid ciphertext")

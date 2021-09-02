@@ -41,7 +41,6 @@ func NewPublicKey(n *safenum.Modulus) *PublicKey {
 	oneNat := new(safenum.Nat).SetUint64(1)
 	nNat := n.Nat()
 	nSquared := safenum.ModulusFromNat(new(safenum.Nat).Mul(nNat, nNat, -1))
-	oneNat := new(safenum.Nat).SetUint64(1)
 	nPlusOne := new(safenum.Nat).Add(nNat, oneNat, -1)
 	// Tightening is fine, since n is public
 	nPlusOne.Resize(nPlusOne.TrueLen())
