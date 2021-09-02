@@ -27,7 +27,7 @@ type round3 struct {
 	SchnorrCommitments map[party.ID]*zksch.Commitment // Aⱼ
 }
 
-type message3 struct {
+type broadcast3 struct {
 	// RID = RIDᵢ
 	RID types.RID
 	C   types.RID
@@ -46,7 +46,7 @@ type message3 struct {
 	Decommitment hash.Decommitment
 }
 
-// VerifyMessage implements round.Round.
+// StoreBroadcastMessage implements round.BroadcastRound.
 //
 // - verify length of Schnorr commitments
 // - verify degree of VSS polynomial Fⱼ "in-the-exponent"
@@ -55,9 +55,10 @@ type message3 struct {
 // - validate Paillier
 // - validate Pedersen
 // - validate commitments.
-func (r *round3) VerifyMessage(msg round.Message) error {
+// - store ridⱼ, Cⱼ, Nⱼ, Sⱼ, Tⱼ, Fⱼ(X), Aⱼ.
+func (r *round3) StoreBroadcastMessage(msg round.Message) error {
 	from := msg.From
-	body, ok := msg.Content.(*message3)
+	body, ok := msg.Content.(*broadcast3)
 	if !ok || body == nil {
 		return round.ErrInvalidContent
 	}
@@ -104,14 +105,6 @@ func (r *round3) VerifyMessage(msg round.Message) error {
 		body.RID, body.C, VSSPolynomial, body.SchnorrCommitments, body.ElGamalPublic, body.N, body.S, body.T) {
 		return errors.New("failed to decommit")
 	}
-
-	return nil
-}
-
-// StoreMessage implements round.Round.
-// - store ridⱼ, Cⱼ, Nⱼ, Sⱼ, Tⱼ, Fⱼ(X), Aⱼ.
-func (r *round3) StoreMessage(msg round.Message) error {
-	from, body := msg.From, msg.Content.(*message3)
 	r.RIDs[from] = body.RID
 	r.ChainKeys[from] = body.C
 	r.NModulus[from] = body.N
@@ -121,8 +114,15 @@ func (r *round3) StoreMessage(msg round.Message) error {
 	r.VSSPolynomials[from] = body.VSSPolynomial
 	r.SchnorrCommitments[from] = body.SchnorrCommitments
 	r.ElGamalPublic[from] = body.ElGamalPublic
+
 	return nil
 }
+
+// VerifyMessage implements round.Round.
+func (round3) VerifyMessage(round.Message) error { return nil }
+
+// StoreMessage implements round.Round.
+func (round3) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round
 //
@@ -167,6 +167,13 @@ func (r *round3) Finalize(out chan<- *round.Message) (round.Session, error) {
 		Q:      r.PaillierSecret.Q(),
 	}, h.Clone(), zkprm.Public{N: r.NModulus[r.SelfID()], S: r.S[r.SelfID()], T: r.T[r.SelfID()]}, r.Pool)
 
+	if err := r.BroadcastMessage(out, &broadcast4{
+		Mod: mod,
+		Prm: prm,
+	}); err != nil {
+		return r, err
+	}
+
 	// create messages with encrypted shares
 	for _, j := range r.OtherPartyIDs() {
 		// compute fᵢ(j)
@@ -175,8 +182,6 @@ func (r *round3) Finalize(out chan<- *round.Message) (round.Session, error) {
 		C, _ := r.PaillierPublic[j].Enc(curve.MakeInt(share))
 
 		err := r.SendMessage(out, &message4{
-			Mod:   mod,
-			Prm:   prm,
 			Share: C,
 		}, j)
 		if err != nil {
@@ -194,8 +199,11 @@ func (r *round3) Finalize(out chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *round3) MessageContent() round.Content {
-	return &message3{
+func (round3) MessageContent() round.Content { return nil }
+
+// BroadcastContent implements round.BroadcastRound.
+func (r *round3) BroadcastContent() round.Content {
+	return &broadcast3{
 		VSSPolynomial:      polynomial.EmptyExponent(r.Group()),
 		SchnorrCommitments: zksch.EmptyCommitment(r.Group()),
 		ElGamalPublic:      r.Group().NewPoint(),

@@ -28,24 +28,23 @@ type round4 struct {
 }
 
 type message4 struct {
-	Mod *zkmod.Proof
-	Prm *zkprm.Proof
 	// Share = Encᵢ(x) is the encryption of the receivers share
 	Share *paillier.Ciphertext
 }
 
-// VerifyMessage implements round.Round.
+type broadcast4 struct {
+	Mod *zkmod.Proof
+	Prm *zkprm.Proof
+}
+
+// StoreBroadcastMessage implements round.BroadcastRound.
 //
 // - verify Mod, Prm proof for N
-func (r *round4) VerifyMessage(msg round.Message) error {
-	from, to := msg.From, msg.To
-	body, ok := msg.Content.(*message4)
+func (r *round4) StoreBroadcastMessage(msg round.Message) error {
+	from := msg.From
+	body, ok := msg.Content.(*broadcast4)
 	if !ok || body == nil {
 		return round.ErrInvalidContent
-	}
-
-	if body.Mod == nil || body.Prm == nil || body.Share == nil {
-		return round.ErrNilFields
 	}
 
 	// verify zkmod
@@ -57,8 +56,19 @@ func (r *round4) VerifyMessage(msg round.Message) error {
 	if !body.Prm.Verify(zkprm.Public{N: r.NModulus[from], S: r.S[from], T: r.T[from]}, r.HashForID(from), r.Pool) {
 		return errors.New("failed to validate prm proof")
 	}
+	return nil
+}
 
-	if !r.PaillierPublic[to].ValidateCiphertexts(body.Share) {
+// VerifyMessage implements round.Round.
+//
+// - verify validity of share ciphertext.
+func (r *round4) VerifyMessage(msg round.Message) error {
+	body, ok := msg.Content.(*message4)
+	if !ok || body == nil {
+		return round.ErrInvalidContent
+	}
+
+	if !r.PaillierPublic[msg.To].ValidateCiphertexts(body.Share) {
 		return errors.New("invalid ciphertext")
 	}
 
@@ -67,17 +77,13 @@ func (r *round4) VerifyMessage(msg round.Message) error {
 
 // StoreMessage implements round.Round.
 //
-// Since this message is only intended for us, we need to to the VSS verification here.
+// Since this message is only intended for us, we need to do the VSS verification here.
 // - check that the decrypted share did not overflow.
 // - check VSS condition.
 // - save share.
 func (r *round4) StoreMessage(msg round.Message) error {
 	from, body := msg.From, msg.Content.(*message4)
 
-	// TODO sending an incorrect share cannot be verified and may lead to the receiver getting accused
-	if msg.To != r.SelfID() {
-		return nil
-	}
 	// decrypt share
 	DecryptedShare, err := r.PaillierSecret.Dec(body.Share)
 	if err != nil {
@@ -165,7 +171,7 @@ func (r *round4) Finalize(out chan<- *round.Message) (round.Session, error) {
 	proof := r.SchnorrRand.Prove(h, PublicData[r.SelfID()].ECDSA, UpdatedSecretECDSA)
 
 	// send to all
-	err = r.SendMessage(out, &message5{SchnorrResponse: proof}, "")
+	err = r.BroadcastMessage(out, &broadcast5{SchnorrResponse: proof})
 	if err != nil {
 		return r, err
 	}
@@ -179,6 +185,9 @@ func (r *round4) Finalize(out chan<- *round.Message) (round.Session, error) {
 
 // MessageContent implements round.Round.
 func (round4) MessageContent() round.Content { return &message4{} }
+
+// BroadcastContent implements round.BroadcastRound.
+func (round4) BroadcastContent() round.Content { return &broadcast4{} }
 
 // Number implements round.Round.
 func (round4) Number() round.Number { return 4 }
