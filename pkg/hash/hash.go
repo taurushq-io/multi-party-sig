@@ -79,7 +79,6 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 			toBeWritten = &BytesWithDomain{"big.Int", bytes}
 		case WriterToWithDomain:
 			toBeWritten = t
-			break
 		case encoding.BinaryMarshaler:
 			name := reflect.TypeOf(t)
 			bytes, err := t.MarshalBinary()
