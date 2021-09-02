@@ -6,8 +6,6 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/taproot"
 )
 
@@ -36,21 +34,22 @@ type round3 struct {
 	Lambda map[party.ID]curve.Scalar
 }
 
-type Sign3 struct {
+type message3 struct {
 	// Z_i is the response scalar computed by the sender of this message.
 	Z_i curve.Scalar
 }
 
 // VerifyMessage implements round.Round.
-func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Content) error {
-	body, ok := content.(*Sign3)
+func (r *round3) VerifyMessage(msg round.Message) error {
+	from := msg.From
+	body, ok := msg.Content.(*message3)
 	if !ok || body == nil {
-		return message.ErrInvalidContent
+		return round.ErrInvalidContent
 	}
 
 	// check nil
 	if body.Z_i == nil {
-		return message.ErrNilFields
+		return round.ErrNilFields
 	}
 
 	// These steps come from Figure 3 of the Frost paper.
@@ -77,16 +76,16 @@ func (r *round3) VerifyMessage(from party.ID, _ party.ID, content message.Conten
 }
 
 // StoreMessage implements round.Round.
-func (r *round3) StoreMessage(from party.ID, content message.Content) error {
-	msg := content.(*Sign3)
+func (r *round3) StoreMessage(msg round.Message) error {
+	from, body := msg.From, msg.Content.(*message3)
 
-	r.z[from] = msg.Z_i
+	r.z[from] = body.Z_i
 
 	return nil
 }
 
 // Finalize implements round.Round.
-func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
+func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 	// These steps come from Figure 3 of the Frost paper.
 
 	// 7.c "Compute the group's response z = ∑ᵢ zᵢ"
@@ -101,17 +100,17 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 		sig = append(sig, r.R.(*curve.Secp256k1Point).XBytes()...)
 		zBytes, err := z.MarshalBinary()
 		if err != nil {
-			return r, nil
+			return r, err
 		}
 		sig = append(sig, zBytes[:]...)
 
 		taprootPub := taproot.PublicKey(r.Y.(*curve.Secp256k1Point).XBytes())
 
 		if !taprootPub.Verify(sig, r.M) {
-			return r, fmt.Errorf("generated signature failed to verify")
+			return r.AbortRound(fmt.Errorf("generated signature failed to verify")), nil
 		}
 
-		return &round.Output{Result: sig}, nil
+		return r.ResultRound(sig), nil
 	} else {
 		sig := Signature{
 			R: r.R,
@@ -119,17 +118,19 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 		}
 
 		if !sig.Verify(r.Y, r.M) {
-			return r, fmt.Errorf("generated signature failed to verify")
+			return r.AbortRound(fmt.Errorf("generated signature failed to verify")), nil
 		}
 
-		return &round.Output{Result: sig}, nil
+		return r.ResultRound(sig), nil
 	}
 }
 
 // MessageContent implements round.Round.
-func (r *round3) MessageContent() message.Content {
-	return &Sign3{Z_i: r.Group().NewScalar()}
+func (r *round3) MessageContent() round.Content {
+	return &message3{
+		Z_i: r.Group().NewScalar(),
+	}
 }
 
-// RoundNumber implements message.Content.
-func (Sign3) RoundNumber() types.RoundNumber { return 3 }
+// Number implements round.Round.
+func (round3) Number() round.Number { return 3 }

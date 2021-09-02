@@ -93,7 +93,7 @@ type Pool struct {
 
 // NewPool creates a new pool, with a certain number of workers.
 //
-// If count <= 0, this will use the number of available CPUs instead.
+// If count ⩽ 0, this will use the number of available CPUs instead.
 func NewPool(count int) *Pool {
 	var p Pool
 
@@ -113,7 +113,9 @@ func NewPool(count int) *Pool {
 
 // TearDown cleanly tears down a pool, closing channels, etc.
 func (p *Pool) TearDown() {
-	close(p.commands)
+	if p != nil {
+		close(p.commands)
+	}
 }
 
 // Search queries the function f, until count successes are found.

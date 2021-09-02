@@ -3,6 +3,7 @@ package hash
 import (
 	"bytes"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io"
 
@@ -32,7 +33,12 @@ func (c Commitment) Validate() error {
 	if l := len(c); l != DigestLengthBytes {
 		return fmt.Errorf("commitment: incorrect length (got %d, expected %d)", l, DigestLengthBytes)
 	}
-	return nil
+	for _, b := range c {
+		if b != 0 {
+			return nil
+		}
+	}
+	return errors.New("commitment: commitment is 0")
 }
 
 // WriteTo implements the io.WriterTo interface for Decommitment.
@@ -53,7 +59,12 @@ func (d Decommitment) Validate() error {
 	if l := len(d); l != params.SecBytes {
 		return fmt.Errorf("decommitment: incorrect length (got %d, expected %d)", l, params.SecBytes)
 	}
-	return nil
+	for _, b := range d {
+		if b != 0 {
+			return nil
+		}
+	}
+	return errors.New("decommitment: decommitment is 0")
 }
 
 // Commit creates a commitment to data, and returns a commitment hash, and a decommitment string such that

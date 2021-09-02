@@ -27,6 +27,7 @@ func mustReadBits(rand io.Reader, buf []byte) {
 func ModN(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
 	out := new(safenum.Nat)
 	buf := make([]byte, (n.BitLen()+7)/8)
+	n = safenum.ModulusFromNat(n.Nat())
 	for {
 		mustReadBits(rand, buf)
 		out.SetBytes(buf)
@@ -40,11 +41,15 @@ func ModN(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
 
 // UnitModN returns a u ∈ ℤₙˣ.
 func UnitModN(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
+	out := new(safenum.Nat)
+	buf := make([]byte, (n.BitLen()+7)/8)
+	n = safenum.ModulusFromNat(n.Nat())
 	for i := 0; i < maxIterations; i++ {
 		// PERF: Reuse buffer instead of allocating each time
-		u := ModN(rand, n)
-		if u.IsUnit(n) == 1 {
-			return u
+		mustReadBits(rand, buf)
+		out.SetBytes(buf)
+		if out.IsUnit(n) == 1 {
+			return out
 		}
 	}
 	panic(ErrMaxIterations)

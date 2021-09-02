@@ -17,6 +17,7 @@ var (
 	ErrPrimeBadLength = errors.New("prime factor is not the right length")
 	ErrNotBlum        = errors.New("prime factor is not equivalent to 3 (mod 4)")
 	ErrNotSafePrime   = errors.New("supposed prime factor is not a safe prime")
+	ErrPrimeNil       = errors.New("prime is nil")
 )
 
 // SecretKey is the secret key corresponding to a Public Paillier Key.
@@ -74,6 +75,7 @@ func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
 	n := arith.ModulusFromFactors(P, Q)
 
 	nNat := n.Nat()
+	oneNat := new(safenum.Nat).SetUint64(1)
 	nPlusOne := new(safenum.Nat).Add(nNat, oneNat, -1)
 	// Tightening is fine, since n is public
 	nPlusOne.Resize(nPlusOne.TrueLen())
@@ -108,6 +110,7 @@ func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
 	oneNat := new(safenum.Nat).SetUint64(1)
 
 	n := sk.PublicKey.n.Modulus
+	oneNat := new(safenum.Nat).SetUint64(1)
 
 	if !sk.PublicKey.ValidateCiphertexts(ct) {
 		return nil, errors.New("paillier: failed to decrypt invalid ciphertext")
@@ -129,6 +132,24 @@ func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
 	return new(safenum.Int).SetModSymmetric(result, n), nil
 }
 
+// DecWithRandomness returns the underlying plaintext, as well as the randomness used.
+func (sk *SecretKey) DecWithRandomness(ct *Ciphertext) (*safenum.Int, *safenum.Nat, error) {
+	m, err := sk.Dec(ct)
+	if err != nil {
+		return nil, nil, err
+	}
+	mNeg := new(safenum.Int).SetInt(m).Neg(1)
+
+	// x = C(N+1)⁻ᵐ (mod N)
+	x := sk.n.ExpI(sk.nPlusOne, mNeg)
+	x.ModMul(x, ct.c, sk.n.Modulus)
+
+	// r = xⁿ⁻¹ (mod N)
+	nInverse := new(safenum.Nat).ModInverse(sk.nNat, safenum.ModulusFromNat(sk.phi))
+	r := sk.n.Exp(x, nInverse)
+	return m, r, nil
+}
+
 func (sk SecretKey) GeneratePedersen() (*pedersen.Parameters, *safenum.Nat) {
 	s, t, lambda := sample.Pedersen(rand.Reader, sk.phi, sk.n.Modulus)
 	ped := pedersen.New(sk.n, s, t)
@@ -141,6 +162,9 @@ func (sk SecretKey) GeneratePedersen() (*pedersen.Parameters, *safenum.Nat) {
 // - p ≡ 3 (mod 4).
 // - q := (p-1)/2 is prime.
 func ValidatePrime(p *safenum.Nat) error {
+	if p == nil {
+		return ErrPrimeNil
+	}
 	// check bit lengths
 	const bitsWant = params.BitsBlumPrime
 	// Technically, this leaks the number of bits, but this is fine, since returning

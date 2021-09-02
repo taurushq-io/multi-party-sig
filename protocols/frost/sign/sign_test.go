@@ -3,73 +3,28 @@ package sign
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"reflect"
 	"testing"
 
-	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/internal/test"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
 	"github.com/taurusgroup/multi-party-sig/pkg/taproot"
 	"github.com/taurusgroup/multi-party-sig/protocols/frost/keygen"
 )
 
-var roundTypes = []reflect.Type{
-	reflect.TypeOf(&round1{}),
-	reflect.TypeOf(&round2{}),
-	reflect.TypeOf(&round3{}),
-}
-
-func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundType reflect.Type) {
-	N := len(rounds)
-	t.Logf("starting round %v", expectedRoundType)
-	// get the second set of  messages
-	out := make(chan *message.Message, N*N)
-	for idJ, r := range rounds {
-		require.EqualValues(t, expectedRoundType, reflect.TypeOf(r))
-		newRound, err := r.Finalize(out)
-		require.NoError(t, err, "failed to generate messages")
-		if newRound != nil {
-			rounds[idJ] = newRound
-		}
-	}
-	close(out)
-
-	for msg := range out {
-		msgBytes, err := cbor.Marshal(msg)
-		require.NoError(t, err, "failed to marshal message")
-		for idJ, r := range rounds {
-			var m message.Message
-			require.NoError(t, cbor.Unmarshal(msgBytes, &m), "failed to unmarshal message")
-			if m.From == idJ {
-				continue
-			}
-			if len(msg.To) == 0 || party.IDSlice(msg.To).Contains(idJ) {
-				content := r.MessageContent()
-				err = msg.UnmarshalContent(content)
-				require.NoError(t, err)
-				require.NoError(t, r.VerifyMessage(msg.From, idJ, content))
-				require.NoError(t, r.StoreMessage(msg.From, content))
-			}
-		}
-	}
-
-	t.Logf("round %v done", expectedRoundType)
-}
-
-func checkOutput(t *testing.T, rounds map[party.ID]round.Round, public curve.Point, m []byte) {
+func checkOutput(t *testing.T, rounds []round.Session, public curve.Point, m []byte) {
 	for _, r := range rounds {
-		resultRound, ok := r.(*round.Output)
-		assert.True(t, ok)
-		signature, ok := resultRound.Result.(Signature)
-		assert.True(t, ok)
-		assert.True(t, signature.Verify(public, m))
+		require.IsType(t, &round.Output{}, r, "expected result round")
+		resultRound := r.(*round.Output)
+		require.IsType(t, Signature{}, resultRound.Result, "expected signature result")
+		signature := resultRound.Result.(Signature)
+		assert.True(t, signature.Verify(public, m), "expected valid signature")
 	}
 }
 
@@ -79,7 +34,7 @@ func TestSign(t *testing.T) {
 	N := 5
 	threshold := 2
 
-	partyIDs := party.RandomIDs(N)
+	partyIDs := test.PartyIDs(N)
 
 	secret := sample.Scalar(rand.Reader, group)
 	f := polynomial.NewPolynomial(group, threshold, secret)
@@ -99,9 +54,9 @@ func TestSign(t *testing.T) {
 	}
 
 	var newPublicKey curve.Point
-	rounds := make(map[party.ID]round.Round, N)
+	rounds := make([]round.Session, 0, N)
 	for _, id := range partyIDs {
-		result := &keygen.Result{
+		result := &keygen.Config{
 			ID:                 id,
 			Threshold:          threshold,
 			PublicKey:          publicKey,
@@ -113,25 +68,29 @@ func TestSign(t *testing.T) {
 		if newPublicKey == nil {
 			newPublicKey = result.PublicKey
 		}
-		r, _, err := StartSign(result, partyIDs, steak)()
+		r, err := StartSignCommon(false, result, partyIDs, steak)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
-		rounds[id] = r
+		rounds = append(rounds, r)
 	}
 
-	for _, roundType := range roundTypes {
-		processRound(t, rounds, roundType)
+	for {
+		err, done := test.Rounds(rounds, nil)
+		require.NoError(t, err, "failed to process round")
+		if done {
+			break
+		}
 	}
 
 	checkOutput(t, rounds, newPublicKey, steak)
 }
 
-func checkOutputTaproot(t *testing.T, rounds map[party.ID]round.Round, public taproot.PublicKey, m []byte) {
+func checkOutputTaproot(t *testing.T, rounds []round.Session, public taproot.PublicKey, m []byte) {
 	for _, r := range rounds {
-		resultRound, ok := r.(*round.Output)
-		assert.True(t, ok)
-		signature, ok := resultRound.Result.(taproot.Signature)
-		assert.True(t, ok)
-		assert.True(t, public.Verify(signature, m))
+		require.IsType(t, &round.Output{}, r, "expected result round")
+		resultRound := r.(*round.Output)
+		require.IsType(t, taproot.Signature{}, resultRound.Result, "expected taproot signature result")
+		signature := resultRound.Result.(taproot.Signature)
+		assert.True(t, public.Verify(signature, m), "expected valid signature")
 	}
 }
 
@@ -140,7 +99,7 @@ func TestSignTaproot(t *testing.T) {
 	N := 5
 	threshold := 2
 
-	partyIDs := party.RandomIDs(N)
+	partyIDs := test.PartyIDs(N)
 
 	secret := sample.Scalar(rand.Reader, group)
 	publicPoint := secret.ActOnBase()
@@ -166,9 +125,9 @@ func TestSignTaproot(t *testing.T) {
 	}
 
 	var newPublicKey []byte
-	rounds := make(map[party.ID]round.Round, N)
+	rounds := make([]round.Session, 0, N)
 	for _, id := range partyIDs {
-		result := &keygen.TaprootResult{
+		result := &keygen.TaprootConfig{
 			ID:                 id,
 			Threshold:          threshold,
 			PublicKey:          publicKey,
@@ -179,13 +138,30 @@ func TestSignTaproot(t *testing.T) {
 		if newPublicKey == nil {
 			newPublicKey = result.PublicKey
 		}
-		r, _, err := StartSignTaproot(result, partyIDs, steak)()
+		tapRootPublicKey, err := curve.Secp256k1{}.LiftX(newPublicKey)
+		genericVerificationShares := make(map[party.ID]curve.Point)
+		for k, v := range result.VerificationShares {
+			genericVerificationShares[k] = v
+		}
+		require.NoError(t, err)
+		normalResult := &keygen.Config{
+			ID:                 result.ID,
+			Threshold:          result.Threshold,
+			PrivateShare:       result.PrivateShare,
+			PublicKey:          tapRootPublicKey,
+			VerificationShares: party.NewPointMap(genericVerificationShares),
+		}
+		r, err := StartSignCommon(true, normalResult, partyIDs, steak)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
-		rounds[id] = r
+		rounds = append(rounds, r)
 	}
 
-	for _, roundType := range roundTypes {
-		processRound(t, rounds, roundType)
+	for {
+		err, done := test.Rounds(rounds, nil)
+		require.NoError(t, err, "failed to process round")
+		if done {
+			break
+		}
 	}
 
 	checkOutputTaproot(t, rounds, newPublicKey, steak)

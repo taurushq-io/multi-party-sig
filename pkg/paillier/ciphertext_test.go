@@ -137,6 +137,33 @@ func TestEncDecScalingHomomorphic(t *testing.T) {
 	}
 }
 
+func testDecWithRandomness(x, r uint64) bool {
+	mExpected := new(safenum.Int).SetUint64(x)
+	nonceExpected := new(safenum.Nat).SetUint64(r)
+	c := paillierPublic.EncWithNonce(mExpected, nonceExpected)
+	mActual, nonceActual, err := paillierSecret.DecWithRandomness(c)
+	if err != nil {
+		return false
+	}
+	if mActual.Eq(mExpected) != 1 {
+		return false
+	}
+	if nonceActual.Eq(nonceExpected) != 1 {
+		return false
+	}
+	return true
+}
+
+func TestDecWithRandomness(t *testing.T) {
+	if !testing.Short() {
+		reinit()
+	}
+	err := quick.Check(testDecWithRandomness, &quick.Config{})
+	if err != nil {
+		t.Error(err)
+	}
+}
+
 // Used to avoid benchmark optimization.
 var resultCiphertext *Ciphertext
 

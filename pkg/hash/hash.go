@@ -1,14 +1,14 @@
 package hash
 
 import (
+	"encoding"
 	"errors"
 	"fmt"
 	"io"
 	"math/big"
+	"reflect"
 
-	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/zeebo/blake3"
 )
 
@@ -77,36 +77,19 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 			}
 			bytes, _ := t.GobEncode()
 			toBeWritten = &BytesWithDomain{"big.Int", bytes}
-		case *safenum.Nat:
-			if t == nil {
-				return fmt.Errorf("hash.Hash: write *safenum.Nat: nil")
-			}
-			toBeWritten = &BytesWithDomain{"safenum.Nat", t.Bytes()}
-		case *safenum.Int:
-			if t == nil {
-				return fmt.Errorf("hash.Hash: write *safenum.Int: nil")
-			}
-			bytes, _ := t.MarshalBinary()
-			toBeWritten = &BytesWithDomain{"safenum.Int", bytes}
-		case *safenum.Modulus:
-			if t == nil {
-				return fmt.Errorf("hash.Hash: write *safenum.Modulus: nil")
-			}
-			toBeWritten = &BytesWithDomain{"safenum.Modulus", t.Bytes()}
-		case curve.Point:
-			data, err := t.MarshalBinary()
-			if err != nil {
-				return err
-			}
-			toBeWritten = &BytesWithDomain{"curve.Point", data}
-		case curve.Scalar:
-			data, err := t.MarshalBinary()
-			if err != nil {
-				return err
-			}
-			toBeWritten = &BytesWithDomain{"curve.Scalar", data}
 		case WriterToWithDomain:
 			toBeWritten = t
+			break
+		case encoding.BinaryMarshaler:
+			name := reflect.TypeOf(t)
+			bytes, err := t.MarshalBinary()
+			if err != nil {
+				return fmt.Errorf("hash.WriteAny: %s: %w", name.String(), err)
+			}
+			toBeWritten = &BytesWithDomain{
+				TheDomain: name.String(),
+				Bytes:     bytes,
+			}
 		default:
 			fmt.Println(t)
 		}
@@ -118,7 +101,7 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 		_, err := toBeWritten.WriteTo(hash.h)
 		_, _ = hash.h.WriteString(")")
 		if err != nil {
-			return fmt.Errorf("hash.WriteAny: %w", err)
+			return fmt.Errorf("hash.WriteAny: %s: %w", toBeWritten.Domain(), err)
 		}
 	}
 	return nil

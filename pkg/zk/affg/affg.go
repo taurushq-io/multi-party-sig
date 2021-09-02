@@ -13,51 +13,44 @@ import (
 )
 
 type Public struct {
-	// C is a ciphertext encrypted with N₀
-	C *paillier.Ciphertext
+	// Kv is a ciphertext encrypted with Nᵥ
+	// Original name: C
+	Kv *paillier.Ciphertext
 
-	// D = (x ⨀ C) ⨁ Enc₀(y;ρ)
-	//   = (xᵢ ⨀ Kⱼ) ⨁ Encⱼ(- βᵢⱼ; sᵢⱼ)
-	D *paillier.Ciphertext
+	// Dv = (x ⨀ Kv) ⨁ Encᵥ(y;s)
+	Dv *paillier.Ciphertext
 
-	// Y = Enc₁(y;ρ')
-	//   = Encᵢ(βᵢⱼ,rᵢⱼ)
-	// y is Bob's additive share
-	Y *paillier.Ciphertext
+	// Fp = Encₚ(y;r)
+	// Original name: Y
+	Fp *paillier.Ciphertext
 
-	// X = gˣ
-	// x is Alice's multiplicative share
-	X curve.Point
+	// Xp = gˣ
+	Xp curve.Point
 
-	// Prover = N₁
-	// Verifier = N₀
+	// Prover = Nₚ
+	// Verifier = Nᵥ
 	Prover, Verifier *paillier.PublicKey
 	Aux              *pedersen.Parameters
 }
 
 type Private struct {
-	// X ∈ ± 2ˡ
-	// Bob's multiplicative share
+	// X = x
 	X *safenum.Int
-
-	// Y ∈ ± 2ˡº
-	// Bob's additive share βᵢⱼ
+	// Y = y
 	Y *safenum.Int
-
-	// Rho = ρ
-	// Nonce D = sᵢⱼ
-	Rho *safenum.Nat
-
-	// RhoY = ρy
-	// Nonce for Y = rᵢⱼ
-	RhoY *safenum.Nat
+	// S = s
+	// Original name: ρ
+	S *safenum.Nat
+	// R = r
+	// Original name: ρy
+	R *safenum.Nat
 }
 type Commitment struct {
-	// A = (α ⊙ c ) ⊕ Enc(N0, beta, r)
+	// A = (α ⊙ C) ⊕ Encᵥ(β, ρ)
 	A *paillier.Ciphertext
 	// Bₓ = α⋅G
 	Bx curve.Point
-	// By = Enc(N1, beta, ry)
+	// By = Encₚ(β, ρy)
 	By *paillier.Ciphertext
 	// E = sᵃ tᵍ (mod N)
 	E *safenum.Nat
@@ -80,9 +73,9 @@ type Proof struct {
 	Z3 *safenum.Int
 	// Z4 = Z₄ = δ + e⋅μ
 	Z4 *safenum.Int
-	// W = w = r⋅ρᵉ (mod N₀)
+	// W = w = ρ⋅sᵉ (mod N₀)
 	W *safenum.Nat
-	// Wy = wy = ry ⋅ρyᵉ (mod N₁)
+	// Wy = wy = ρy⋅rᵉ (mod N₁)
 	Wy *safenum.Nat
 }
 
@@ -120,16 +113,16 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	alpha := sample.IntervalLEps(rand.Reader)
 	beta := sample.IntervalLPrimeEps(rand.Reader)
 
-	r := sample.UnitModN(rand.Reader, N0)
-	rY := sample.UnitModN(rand.Reader, N1)
+	rho := sample.UnitModN(rand.Reader, N0)
+	rhoY := sample.UnitModN(rand.Reader, N1)
 
 	gamma := sample.IntervalLEpsN(rand.Reader)
 	m := sample.IntervalLN(rand.Reader)
 	delta := sample.IntervalLEpsN(rand.Reader)
 	mu := sample.IntervalLN(rand.Reader)
 
-	cAlpha := public.C.Clone().Mul(verifier, alpha)           // = Cᵃ mod N₀ = α ⊙ C
-	A := verifier.EncWithNonce(beta, r).Add(verifier, cAlpha) // = Enc₀(β,r) ⊕ (α ⊙ C)
+	cAlpha := public.Kv.Clone().Mul(verifier, alpha)            // = Cᵃ mod N₀ = α ⊙ Kv
+	A := verifier.EncWithNonce(beta, rho).Add(verifier, cAlpha) // = Enc₀(β,ρ) ⊕ (α ⊙ Kv)
 
 	E := public.Aux.Commit(alpha, gamma)
 	S := public.Aux.Commit(private.X, m)
@@ -138,20 +131,22 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	commitment := &Commitment{
 		A:  A,
 		Bx: group.NewScalar().SetNat(alpha.Mod(group.Order())).ActOnBase(),
-		By: prover.EncWithNonce(beta, rY),
+		By: prover.EncWithNonce(beta, rhoY),
 		E:  E,
 		S:  S,
 		F:  F,
 		T:  T,
 	}
 
-	e, _ := challenge(hash, public, commitment)
+	e, _ := challenge(hash, group, public, commitment)
 
 	// e•x+α
-	z1 := new(safenum.Int).Mul(e, private.X, -1)
+	z1 := new(safenum.Int).SetInt(private.X)
+	z1.Mul(e, z1, -1)
 	z1.Add(z1, alpha, -1)
 	// e•y+β
-	z2 := new(safenum.Int).Mul(e, private.Y, -1)
+	z2 := new(safenum.Int).SetInt(private.Y)
+	z2.Mul(e, z2, -1)
 	z2.Add(z2, beta, -1)
 	// e•m+γ
 	z3 := new(safenum.Int).Mul(e, m, -1)
@@ -159,12 +154,12 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	// e•μ+δ
 	z4 := new(safenum.Int).Mul(e, mu, -1)
 	z4.Add(z4, delta, -1)
-	// (ρᵉ mod N₀)•r mod N₀
-	w := N0Modulus.ExpI(private.Rho, e)
-	w.ModMul(w, r, N0)
-	// ( (ρy)ᵉ mod N₁)•ry mod N₁
-	wY := N1Modulus.ExpI(private.RhoY, e)
-	wY.ModMul(wY, rY, N1)
+	// ρ⋅sᵉ mod N₀
+	w := N0Modulus.ExpI(private.S, e)
+	w.ModMul(w, rho, N0)
+	// ρy⋅rᵉ  mod N₁
+	wY := N1Modulus.ExpI(private.R, e)
+	wY.ModMul(wY, rhoY, N1)
 
 	return &Proof{
 		group:      group,
@@ -193,7 +188,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 		return false
 	}
 
-	e, err := challenge(hash, public, p.Commitment)
+	e, err := challenge(hash, p.group, public, p.Commitment)
 	if err != nil {
 		return false
 	}
@@ -207,13 +202,13 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	}
 
 	{
-		// tmp = z₁ ⊙ C
-		// lhs = Enc₀(z₂;w) ⊕ z₁ ⊙ C
-		tmp := public.C.Clone().Mul(verifier, p.Z1)
+		// tmp = z₁ ⊙ Kv
+		// lhs = Enc₀(z₂;w) ⊕ z₁ ⊙ Kv
+		tmp := public.Kv.Clone().Mul(verifier, p.Z1)
 		lhs := verifier.EncWithNonce(p.Z2, p.W).Add(verifier, tmp)
 
-		// rhs = (e ⊙ D) ⊕ A
-		rhs := public.D.Clone().Mul(verifier, e).Add(verifier, p.A)
+		// rhs = (e ⊙ Dv) ⊕ A
+		rhs := public.Dv.Clone().Mul(verifier, e).Add(verifier, p.A)
 
 		if !lhs.Equal(rhs) {
 			return false
@@ -224,8 +219,8 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 		// lhs = [z₁]G
 		lhs := p.group.NewScalar().SetNat(p.Z1.Mod(p.group.Order())).ActOnBase()
 
-		// rhsPt = Bₓ + [e]X
-		rhs := p.group.NewScalar().SetNat(e.Mod(p.group.Order())).Act(public.X)
+		// rhsPt = Bₓ + [e]Xp
+		rhs := p.group.NewScalar().SetNat(e.Mod(p.group.Order())).Act(public.Xp)
 		rhs = rhs.Add(p.Bx)
 		if !lhs.Equal(rhs) {
 			return false
@@ -236,8 +231,8 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 		// lhs = Enc₁(z₂; wy)
 		lhs := prover.EncWithNonce(p.Z2, p.Wy)
 
-		// rhs = (e ⊙ Y) ⊕ By
-		rhs := public.Y.Clone().Mul(prover, e).Add(prover, p.By)
+		// rhs = (e ⊙ Fp) ⊕ By
+		rhs := public.Fp.Clone().Mul(prover, e).Add(prover, p.By)
 
 		if !lhs.Equal(rhs) {
 			return false
@@ -247,13 +242,13 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safenum.Int, err error) {
+func challenge(hash *hash.Hash, group curve.Curve, public Public, commitment *Commitment) (e *safenum.Int, err error) {
 	err = hash.WriteAny(public.Aux, public.Prover, public.Verifier,
-		public.C, public.D, public.Y, public.X,
+		public.Kv, public.Dv, public.Fp, public.Xp,
 		commitment.A, commitment.Bx, commitment.By,
 		commitment.E, commitment.S, commitment.F, commitment.T)
 
-	e = sample.IntervalScalar(hash.Digest(), public.X.Curve())
+	e = sample.IntervalScalar(hash.Digest(), group)
 	return
 }
 

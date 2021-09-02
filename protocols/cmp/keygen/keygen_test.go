@@ -1,80 +1,34 @@
 package keygen
 
 import (
-	"fmt"
 	mrand "math/rand"
-	"reflect"
-	"sync"
 	"testing"
 
 	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/internal/test"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
+	"github.com/taurusgroup/multi-party-sig/protocols/cmp/config"
 )
 
-var testGroup = curve.Secp256k1{}
+var group = curve.Secp256k1{}
 
-var roundTypes = []reflect.Type{
-	reflect.TypeOf(&round1{}),
-	reflect.TypeOf(&round2{}),
-	reflect.TypeOf(&round3{}),
-	reflect.TypeOf(&round4{}),
-	reflect.TypeOf(&output{}),
-}
-
-func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundType reflect.Type) {
+func checkOutput(t *testing.T, rounds []round.Session) {
 	N := len(rounds)
-	t.Logf("starting round %v", expectedRoundType)
-	// get the second set of  messages
-	out := make(chan *message.Message, N*N)
-	for idJ, r := range rounds {
-		require.EqualValues(t, expectedRoundType, reflect.TypeOf(r))
-		newRound, err := r.Finalize(out)
-		require.NoError(t, err, "failed to generate messages")
-		if newRound != nil {
-			rounds[idJ] = newRound
-		}
-	}
-	close(out)
-
-	for msg := range out {
-		msgBytes, err := cbor.Marshal(msg)
-		require.NoError(t, err, "failed to marshal message")
-		for idJ, r := range rounds {
-			var m message.Message
-			require.NoError(t, cbor.Unmarshal(msgBytes, &m), "failed to unmarshal message")
-			if m.IsFor(idJ) {
-				content := r.MessageContent()
-				err = msg.UnmarshalContent(content)
-				require.NoError(t, err)
-				require.NoError(t, r.VerifyMessage(msg.From, idJ, content))
-				require.NoError(t, r.StoreMessage(msg.From, content))
-			}
-		}
-	}
-
-	t.Logf("round %v done", expectedRoundType)
-}
-
-func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
-	N := len(rounds)
-	newConfigs := make([]*Config, 0, N)
+	newConfigs := make([]*config.Config, 0, N)
 	for _, r := range rounds {
+		require.IsType(t, &round.Output{}, r)
 		resultRound := r.(*round.Output)
-		result := resultRound.Result.(*Result)
-		marshalledConfig, err := cbor.Marshal(result.Config)
+		require.IsType(t, &config.Config{}, resultRound.Result)
+		c := resultRound.Result.(*config.Config)
+		marshalledConfig, err := cbor.Marshal(c)
 		require.NoError(t, err)
-		unmarshalledConfig := EmptyConfig(testGroup)
-		fmt.Println("result", result.Config.Public)
-		err = cbor.Unmarshal(marshalledConfig, &unmarshalledConfig)
+		unmarshalledConfig := config.EmptyConfig(group)
+		err = cbor.Unmarshal(marshalledConfig, unmarshalledConfig)
 		require.NoError(t, err)
-		fmt.Println("unmarshalled", unmarshalledConfig.Public)
 		newConfigs = append(newConfigs, unmarshalledConfig)
 	}
 
@@ -83,7 +37,20 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round) {
 	for _, c := range newConfigs {
 		assert.True(t, pk.Equal(c.PublicPoint()), "RID is different")
 		assert.Equal(t, firstConfig.RID, c.RID, "RID is different")
-		assert.NoError(t, c.Validate(), "failed to validate new config")
+		assert.EqualValues(t, firstConfig.ChainKey, c.ChainKey, "ChainKey is different")
+		for id, p := range firstConfig.Public {
+			assert.True(t, p.ECDSA.Equal(c.Public[id].ECDSA), "ecdsa not the same", id)
+			assert.True(t, p.ElGamal.Equal(c.Public[id].ElGamal), "elgamal not the same", id)
+			assert.True(t, p.Paillier.Equal(c.Public[id].Paillier), "paillier not the same", id)
+			assert.True(t, p.Pedersen.S().Eq(c.Public[id].Pedersen.S()) == 1, "S not the same", id)
+			assert.True(t, p.Pedersen.T().Eq(c.Public[id].Pedersen.T()) == 1, "T not the same", id)
+			assert.True(t, p.Pedersen.N().Nat().Eq(c.Public[id].Pedersen.N().Nat()) == 1, "N not the same", id)
+		}
+		data, err := c.MarshalBinary()
+		assert.NoError(t, err, "failed to marshal new config", c.ID)
+		c2 := config.EmptyConfig(group)
+		err = c2.UnmarshalBinary(data)
+		assert.NoError(t, err, "failed to unmarshal new config", c.ID)
 	}
 }
 
@@ -92,18 +59,29 @@ func TestKeygen(t *testing.T) {
 	defer pl.TearDown()
 
 	N := 2
-	partyIDs := party.RandomIDs(N)
+	partyIDs := test.PartyIDs(N)
 
-	rounds := make(map[party.ID]round.Round, N)
+	rounds := make([]round.Session, 0, N)
 	for _, partyID := range partyIDs {
-		r, _, err := StartKeygen(pl, testGroup, partyIDs, N-1, partyID)()
+		info := round.Info{
+			ProtocolID:       "cmp/keygen-test",
+			FinalRoundNumber: Rounds,
+			SelfID:           partyID,
+			PartyIDs:         partyIDs,
+			Threshold:        N - 1,
+			Group:            group,
+		}
+		r, err := Start(info, pl, nil)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
-		rounds[partyID] = r
-
+		rounds = append(rounds, r)
 	}
 
-	for _, roundType := range roundTypes {
-		processRound(t, rounds, roundType)
+	for {
+		err, done := test.Rounds(rounds, nil)
+		require.NoError(t, err, "failed to process round")
+		if done {
+			break
+		}
 	}
 	checkOutput(t, rounds)
 }
@@ -114,93 +92,30 @@ func TestRefresh(t *testing.T) {
 
 	N := 4
 	T := N - 1
-	configs := FakeData(testGroup, N, T, mrand.New(mrand.NewSource(1)), pl)
+	configs, _ := test.GenerateConfig(group, N, T, mrand.New(mrand.NewSource(1)), pl)
 
-	parties := make(map[party.ID]round.Round, N)
-	for partyID, s := range configs {
-		r, _, err := StartRefresh(pl, s)()
+	rounds := make([]round.Session, 0, N)
+	for _, c := range configs {
+		info := round.Info{
+			ProtocolID:       "cmp/refresh-test",
+			FinalRoundNumber: Rounds,
+			SelfID:           c.ID,
+			PartyIDs:         c.PartyIDs(),
+			Threshold:        N - 1,
+			Group:            group,
+		}
+		r, err := Start(info, pl, c)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
-		parties[partyID] = r
+		rounds = append(rounds, r)
 
 	}
 
-	for _, roundType := range roundTypes {
-		processRound(t, parties, roundType)
-	}
-	checkOutput(t, parties)
-}
-
-func TestProtocol(t *testing.T) {
-	pl := pool.NewPool(0)
-	defer pl.TearDown()
-
-	ids := party.IDSlice{"a", "b"}
-	threshold := 1
-	ps := map[party.ID]*protocol.Handler{}
-
-	handleMessage := func(msg *message.Message) {
-		if msg == nil {
-			return
-		}
-		for id, p := range ps {
-			if msg.From == id {
-				continue
-			}
-			if len(msg.To) == 0 || party.IDSlice(msg.To).Contains(id) {
-				err := p.Update(msg)
-				assert.NoError(t, err)
-			}
+	for {
+		err, done := test.Rounds(rounds, nil)
+		require.NoError(t, err, "failed to process round")
+		if done {
+			break
 		}
 	}
-
-	wg := new(sync.WaitGroup)
-	getMessages := func(p *protocol.Handler) {
-		for msg := range p.Listen() {
-			handleMessage(msg)
-		}
-		fmt.Println("done")
-		wg.Done()
-	}
-
-	for _, id := range ids {
-		p, err := protocol.NewHandler(StartKeygen(pl, testGroup, ids, threshold, id))
-		require.NoError(t, err)
-		ps[id] = p
-	}
-	for _, p := range ps {
-		wg.Add(1)
-		go getMessages(p)
-	}
-	wg.Wait()
-
-	for _, p := range ps {
-		r, err := p.Result()
-		assert.NoError(t, err)
-		assert.IsType(t, &Result{}, r)
-		res := r.(*Result)
-		assert.NoError(t, res.Config.Validate())
-	}
-
-	newPs := map[party.ID]*protocol.Handler{}
-	for id, p := range ps {
-		r, _ := p.Result()
-		res := r.(*Result)
-		p2, err := protocol.NewHandler(StartRefresh(pl, res.Config))
-		require.NoError(t, err)
-		newPs[id] = p2
-	}
-	ps = newPs
-	for _, p := range ps {
-		wg.Add(1)
-		go getMessages(p)
-	}
-	wg.Wait()
-
-	for _, p := range ps {
-		r, err := p.Result()
-		assert.NoError(t, err)
-		assert.IsType(t, &Result{}, r)
-		res := r.(*Result)
-		assert.NoError(t, res.Config.Validate())
-	}
+	checkOutput(t, rounds)
 }

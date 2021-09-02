@@ -43,7 +43,7 @@ func TestMulG(t *testing.T) {
 		Rho: rho,
 	}
 	proof := NewProof(group, hash.New(), public, private)
-	assert.True(t, proof.Verify(hash.New(), public))
+	assert.True(t, proof.Verify(group, hash.New(), public))
 
 	out, err := cbor.Marshal(proof)
 	require.NoError(t, err, "failed to marshal proof")
@@ -54,5 +54,5 @@ func TestMulG(t *testing.T) {
 	proof3 := Empty(group)
 	require.NoError(t, cbor.Unmarshal(out2, proof3), "failed to unmarshal 2nd proof")
 
-	assert.True(t, proof3.Verify(hash.New(), public))
+	assert.True(t, proof3.Verify(group, hash.New(), public))
 }

@@ -3,13 +3,12 @@ package keygen
 import (
 	"github.com/cronokirby/safenum"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
 	zksch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
 )
 
@@ -25,21 +24,24 @@ type round2 struct {
 	Commitments map[party.ID]hash.Commitment
 
 	// RIDs[j] = ridⱼ
-	RIDs map[party.ID]RID
+	RIDs map[party.ID]types.RID
 	// ChainKeys[j] = cⱼ
-	ChainKeys map[party.ID]RID
+	ChainKeys map[party.ID]types.RID
 
 	// ShareReceived[j] = xʲᵢ
 	// share received from party j
 	ShareReceived map[party.ID]curve.Scalar
 
+	ElGamalPublic map[party.ID]curve.Point
 	// PaillierPublic[j] = Nⱼ
 	PaillierPublic map[party.ID]*paillier.PublicKey
 
-	// N[j] = Nⱼ
-	N map[party.ID]*safenum.Modulus
+	// NModulus[j] = Nⱼ
+	NModulus map[party.ID]*safenum.Modulus
 	// S[j], T[j] = sⱼ, tⱼ
 	S, T map[party.ID]*safenum.Nat
+
+	ElGamalSecret curve.Scalar
 
 	// PaillierSecret = (pᵢ, qᵢ)
 	PaillierSecret *paillier.SecretKey
@@ -56,71 +58,68 @@ type round2 struct {
 	Decommitment hash.Decommitment // uᵢ
 }
 
-type Keygen2 struct {
-	// Commitment = Vᵢ = H(ρᵢ, Fᵢ(X), Aᵢ, Nᵢ, sᵢ, tᵢ, uᵢ)
+type roundBroadcast2 struct {
+	*round2
+}
+
+type message2 struct {
+	// Commitment = Vᵢ = H(ρᵢ, Fᵢ(X), Aᵢ, Yᵢ, Nᵢ, sᵢ, tᵢ, uᵢ)
 	Commitment hash.Commitment
 }
 
-// VerifyMessage implements round.Round.
-func (r *round2) VerifyMessage(_ party.ID, _ party.ID, content message.Content) error {
-	body, ok := content.(*Keygen2)
+// StoreBroadcastMessage implements round.BroadcastRound.
+// - save commitment Vⱼ.
+func (r *roundBroadcast2) StoreBroadcastMessage(msg round.Message) error {
+	body, ok := msg.Content.(*message2)
 	if !ok || body == nil {
-		return message.ErrInvalidContent
+		return round.ErrInvalidContent
 	}
 	if err := body.Commitment.Validate(); err != nil {
 		return err
 	}
+	r.Commitments[msg.From] = body.Commitment
 	return nil
 }
 
+// VerifyMessage implements round.Round.
+func (round2) VerifyMessage(round.Message) error { return nil }
+
 // StoreMessage implements round.Round.
-//
-// - save commitment Vⱼ.
-func (r *round2) StoreMessage(from party.ID, content message.Content) error {
-	body := content.(*Keygen2)
-	r.Commitments[from] = body.Commitment
-	return nil
-}
+func (round2) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round
 //
-// Since we assume a simple P2P network, we use an extra round to "echo"
-// the hash. Everybody sends a hash of all hashes.
-//
 // - send all committed data.
-// - send Hash(ssid, V₁, …, Vₙ).
-func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
-	// Broadcast the message we created in Round1
-	h := r.Hash()
-	for _, j := range r.PartyIDs() {
-		_ = h.WriteAny(r.Commitments[j])
-	}
-	EchoHash := h.Sum()
-
+func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// Send the message we created in Round1 to all
-	msg := r.MarshalMessage(&Keygen3{
+	err := r.SendMessage(out, &message3{
 		RID:                r.RIDs[r.SelfID()],
 		C:                  r.ChainKeys[r.SelfID()],
 		VSSPolynomial:      r.VSSPolynomials[r.SelfID()],
 		SchnorrCommitments: r.SchnorrRand.Commitment(),
-		N:                  r.N[r.SelfID()],
+		ElGamalPublic:      r.ElGamalPublic[r.SelfID()],
+		N:                  r.NModulus[r.SelfID()],
 		S:                  r.S[r.SelfID()],
 		T:                  r.T[r.SelfID()],
 		Decommitment:       r.Decommitment,
-		HashEcho:           EchoHash,
-	}, r.OtherPartyIDs()...)
-	if err := r.SendMessage(msg, out); err != nil {
+	}, "")
+	if err != nil {
 		return r, err
 	}
 	return &round3{
 		round2:             r,
-		EchoHash:           EchoHash,
 		SchnorrCommitments: map[party.ID]*zksch.Commitment{},
 	}, nil
 }
 
-// MessageContent implements round.Round.
-func (round2) MessageContent() message.Content { return &Keygen2{} }
+// PreviousRound implements round.Round.
+func (r *round2) PreviousRound() round.Round { return r.round1 }
 
-// RoundNumber implements message.Content.
-func (Keygen2) RoundNumber() types.RoundNumber { return 2 }
+// MessageContent implements round.Round.
+func (round2) MessageContent() round.Content { return nil }
+
+// BroadcastContent implements round.BroadcastRound.
+func (roundBroadcast2) BroadcastContent() round.Content { return &message2{} }
+
+// Number implements round.Round.
+func (round2) Number() round.Number { return 2 }

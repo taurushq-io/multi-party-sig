@@ -1,104 +1,59 @@
 package sign
 
 import (
-	"crypto/rand"
 	mrand "math/rand"
-	"reflect"
 	"testing"
 
-	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/internal/test"
+	"github.com/taurusgroup/multi-party-sig/pkg/ecdsa"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
-	"github.com/taurusgroup/multi-party-sig/protocols/cmp/keygen"
 	"golang.org/x/crypto/sha3"
 )
-
-var roundTypes = []reflect.Type{
-	reflect.TypeOf(&round1{}),
-	reflect.TypeOf(&round2{}),
-	reflect.TypeOf(&round3{}),
-	reflect.TypeOf(&round4{}),
-	reflect.TypeOf(&output{}),
-}
-
-func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundType reflect.Type) {
-	N := len(rounds)
-	t.Logf("starting round %v", expectedRoundType)
-	// get the second set of  messages
-	out := make(chan *message.Message, N*N)
-	for id, r := range rounds {
-		assert.EqualValues(t, expectedRoundType, reflect.TypeOf(r))
-		newRound, err := r.Finalize(out)
-		require.NoError(t, err, "failed to generate messages")
-
-		if newRound != nil {
-			rounds[id] = newRound
-		}
-	}
-	close(out)
-
-	for msg := range out {
-		msgBytes, err := cbor.Marshal(msg)
-		require.NoError(t, err, "failed to marshal message")
-		for idJ, r := range rounds {
-			var m message.Message
-			require.NoError(t, cbor.Unmarshal(msgBytes, &m), "failed to unmarshal message")
-			if m.IsFor(idJ) {
-				content := r.MessageContent()
-				err = msg.UnmarshalContent(content)
-				require.NoError(t, err)
-				require.NoError(t, r.VerifyMessage(msg.From, idJ, content))
-				require.NoError(t, r.StoreMessage(msg.From, content))
-			}
-
-		}
-	}
-
-	t.Logf("round %v done", expectedRoundType)
-}
 
 func TestRound(t *testing.T) {
 	pl := pool.NewPool(0)
 	defer pl.TearDown()
 	group := curve.Secp256k1{}
 
-	N := 2
-	T := 1
-
-	rid := make([]byte, params.SecBytes)
-	_, _ = rand.Read(rid)
+	N := 6
+	T := N - 1
 
 	t.Log("generating configs")
-	configs := keygen.FakeData(group, N, T, mrand.New(mrand.NewSource(1)), pl)
-	partyIDs := make([]party.ID, 0, T+1)
-	for id, config := range configs {
-		configs[id], _ = config.DeriveChild(0)
-		partyIDs = append(partyIDs, id)
-		if len(partyIDs) == T+1 {
-			break
-		}
-	}
+	configs, partyIDs := test.GenerateConfig(group, N, T, mrand.New(mrand.NewSource(1)), pl)
 	t.Log("done generating configs")
+
+	partyIDs = partyIDs[:T+1]
+	publicPoint := configs[partyIDs[0]].PublicPoint()
 
 	messageToSign := []byte("hello")
 	messageHash := make([]byte, 64)
 	sha3.ShakeSum128(messageHash, messageToSign)
 
-	rounds := make(map[party.ID]round.Round, N)
-	var err error
+	rounds := make([]round.Session, 0, N)
 	for _, partyID := range partyIDs {
 		c := configs[partyID]
-		rounds[partyID], _, err = StartSign(pl, c, partyIDs, messageHash)()
+		r, err := StartSign(c, partyIDs, messageHash, pl)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
+		rounds = append(rounds, r)
 	}
 
-	for _, roundType := range roundTypes {
-		processRound(t, rounds, roundType)
+	for {
+		err, done := test.Rounds(rounds, nil)
+		require.NoError(t, err, "failed to process round")
+		if done {
+			break
+		}
+	}
+
+	for _, r := range rounds {
+		require.IsType(t, &round.Output{}, r, "expected result round")
+		resultRound := r.(*round.Output)
+		require.IsType(t, &ecdsa.Signature{}, resultRound.Result, "expected taproot signature result")
+		signature := resultRound.Result.(*ecdsa.Signature)
+		assert.True(t, signature.Verify(publicPoint, messageHash), "expected valid signature")
 	}
 }

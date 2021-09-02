@@ -4,26 +4,23 @@ import (
 	"fmt"
 
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
 )
 
 // Error is a custom error for protocols which contains information about the responsible round in which it occurred,
 // and the party responsible.
 type Error struct {
-	// RoundNumber where the error occurred
-	RoundNumber types.RoundNumber
-	// Culprit is empty if the identity of the misbehaving party cannot be known
-	Culprit party.ID
-	// Err is the underlying error
+	// Culprit is empty if the identity of the misbehaving party cannot be known.
+	Culprits []party.ID
+	// Err is the underlying error.
 	Err error
 }
 
 // Error implement error.
 func (e Error) Error() string {
-	if e.Culprit == "" {
-		return fmt.Sprintf("round %d: %s", e.RoundNumber, e.Err)
+	if e.Culprits == nil {
+		return e.Err.Error()
 	}
-	return fmt.Sprintf("round %d: party: %s: %s", e.RoundNumber, e.Culprit, e.Err)
+	return fmt.Sprintf("culprits: %v: %s", e.Culprits, e.Err)
 }
 
 // Unwrap implement errors.Wrapper.

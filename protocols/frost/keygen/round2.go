@@ -4,12 +4,11 @@ import (
 	"fmt"
 
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
 	sch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
 )
 
@@ -30,12 +29,12 @@ type round2 struct {
 	// ChainKey will be the final bit of randomness everybody contributes to.
 	//
 	// This is an addition to FROST, which we include for key derivation
-	ChainKeys map[party.ID][]byte
+	ChainKeys map[party.ID]types.RID
 	// ChainKeyCommitments holds the commitments for the chain key contributions
 	ChainKeyCommitments map[party.ID]hash.Commitment
 }
 
-type Keygen2 struct {
+type message2 struct {
 	// Phi_i is the commitment to the polynomial that this participant generated.
 	Phi_i *polynomial.Exponent
 	// Sigma_i is the Schnorr proof of knowledge of the participant's secret
@@ -45,15 +44,20 @@ type Keygen2 struct {
 }
 
 // VerifyMessage implements round.Round.
-func (r *round2) VerifyMessage(from party.ID, _ party.ID, content message.Content) error {
-	body, ok := content.(*Keygen2)
+func (r *round2) VerifyMessage(msg round.Message) error {
+	from := msg.From
+	body, ok := msg.Content.(*message2)
 	if !ok || body == nil {
-		return message.ErrInvalidContent
+		return round.ErrInvalidContent
 	}
 
 	// check nil
 	if body.Sigma_i == nil || body.Phi_i == nil {
-		return message.ErrNilFields
+		return round.ErrNilFields
+	}
+
+	if err := body.Commitment.Validate(); err != nil {
+		return fmt.Errorf("commitment: %w", err)
 	}
 
 	// These steps come from Figure 1, Round 1 of the Frost paper
@@ -78,14 +82,14 @@ func (r *round2) VerifyMessage(from party.ID, _ party.ID, content message.Conten
 }
 
 // StoreMessage implements round.Round.
-func (r *round2) StoreMessage(from party.ID, content message.Content) error {
-	msg := content.(*Keygen2)
-	r.Phi[from] = msg.Phi_i
-	r.ChainKeyCommitments[from] = msg.Commitment
+func (r *round2) StoreMessage(msg round.Message) error {
+	from, body := msg.From, msg.Content.(*message2)
+	r.Phi[from] = body.Phi_i
+	r.ChainKeyCommitments[from] = body.Commitment
 	return nil
 }
 
-func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
+func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// These steps come from Figure 1, Round 2 of the Frost paper
 
 	// 1. "Each P_i securely sends to each other participant Pₗ a secret share
@@ -93,12 +97,12 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// which they keep for themselves."
 
 	for _, l := range r.OtherPartyIDs() {
-		msg := r.MarshalMessage(&Keygen3{
+		err := r.SendMessage(out, &message3{
 			F_li:         r.f_i.Evaluate(l.Scalar(r.Group())),
 			C_l:          r.ChainKeys[r.SelfID()],
 			Decommitment: r.ChainKeyDecommitment,
 		}, l)
-		if err := r.SendMessage(msg, out); err != nil {
+		if err != nil {
 			return r, err
 		}
 	}
@@ -111,15 +115,12 @@ func (r *round2) Finalize(out chan<- *message.Message) (round.Round, error) {
 }
 
 // MessageContent implements round.Round.
-//
-// Since this is the first round of the protocol, we expect to see a dummy First type.
-func (r *round2) MessageContent() message.Content {
-	return &Keygen2{
-		// TODO add
+func (r *round2) MessageContent() round.Content {
+	return &message2{
 		Phi_i:   polynomial.EmptyExponent(r.Group()),
 		Sigma_i: sch.EmptyProof(r.Group()),
 	}
 }
 
-// RoundNumber implements message.Content.
-func (Keygen2) RoundNumber() types.RoundNumber { return 2 }
+// Number implements round.Round.
+func (round2) Number() round.Number { return 2 }

@@ -18,3 +18,5 @@ linters:
     - importas
     - nilerr
     - prealloc
+  disable:
+    - typecheck

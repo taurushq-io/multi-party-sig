@@ -61,7 +61,7 @@ func (p *Proof) IsValid(public Public) bool {
 	return true
 }
 
-func NewProof(hash *hash.Hash, group curve.Curve, public Public, private Private) *Proof {
+func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private) *Proof {
 	N := public.Prover.N()
 	NModulus := public.Prover.Modulus()
 
@@ -80,7 +80,8 @@ func NewProof(hash *hash.Hash, group curve.Curve, public Public, private Private
 
 	e, _ := challenge(hash, group, public, commitment)
 
-	z1 := new(safenum.Int).Mul(e, private.K, -1)
+	z1 := new(safenum.Int).SetInt(private.K)
+	z1.Mul(e, z1, -1)
 	z1.Add(z1, alpha, -1)
 
 	z2 := NModulus.ExpI(private.Rho, e)
@@ -97,14 +98,14 @@ func NewProof(hash *hash.Hash, group curve.Curve, public Public, private Private
 	}
 }
 
-func (p Proof) Verify(hash *hash.Hash, group curve.Curve, public Public) bool {
+func (p Proof) Verify(group curve.Curve, hash *hash.Hash, public Public) bool {
 	if !p.IsValid(public) {
 		return false
 	}
 
 	prover := public.Prover
 
-	if !arith.IsInIntervalLPrimeEps(p.Z1) {
+	if !arith.IsInIntervalLEps(p.Z1) {
 		return false
 	}
 
