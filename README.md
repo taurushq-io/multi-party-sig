@@ -12,7 +12,7 @@ A Go implementation of multi-party threshold signing for:
 
 - Schnorr signatures (as integrated in Bitcoin's Taproot), using the
   [FROST](https://eprint.iacr.org/2020/852.pdf) protocol. Because of the linear structure
-  of Schnorr signatures, this protocol is less expensive thea CMP. We've also
+  of Schnorr signatures, this protocol is less expensive than CMP. We've also
   made the necessary adjustments to make our signatures compatible with
   Taproot's specific point encoding, as specified in [BIP-0340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki).
 
