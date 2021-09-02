@@ -35,19 +35,19 @@ func TestAffG(t *testing.T) {
 	D.Add(verifierPaillier, tmp)
 
 	public := Public{
-		C:        C,
-		D:        D,
-		Y:        Y,
-		X:        X,
+		Kv:       C,
+		Dv:       D,
+		Fp:       Y,
+		Xp:       X,
 		Prover:   prover,
 		Verifier: verifierPaillier,
 		Aux:      verifierPedersen,
 	}
 	private := Private{
-		X:    x,
-		Y:    y,
-		Rho:  rho,
-		RhoY: rhoY,
+		X: x,
+		Y: y,
+		S: rho,
+		R: rhoY,
 	}
 	proof := NewProof(group, hash.New(), public, private)
 	assert.True(t, proof.Verify(hash.New(), public))

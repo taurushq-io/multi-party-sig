@@ -88,3 +88,7 @@ func (ct *Ciphertext) UnmarshalBinary(data []byte) error {
 	ct.c = new(safenum.Nat)
 	return ct.c.UnmarshalBinary(data)
 }
+
+func (ct *Ciphertext) Nat() *safenum.Nat {
+	return new(safenum.Nat).SetNat(ct.c)
+}

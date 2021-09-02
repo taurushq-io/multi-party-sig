@@ -3,14 +3,12 @@ package keygen
 import (
 	"fmt"
 
-	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
 )
 
 // This round corresponds with steps 2-4 of Round 2, Figure 1 in the Frost paper:
@@ -24,25 +22,30 @@ type round3 struct {
 	shareFrom map[party.ID]curve.Scalar
 }
 
-type Keygen3 struct {
+type message3 struct {
 	// F_li is the secret share sent from party l to this party.
 	F_li curve.Scalar
 	// C_l is contribution to the chaining key for this party.
-	C_l []byte
+	C_l types.RID
 	// Decommitment = uᵢ decommitment bytes
 	Decommitment hash.Decommitment
 }
 
 // VerifyMessage implements round.Round.
-func (r *round3) VerifyMessage(from party.ID, to party.ID, content message.Content) error {
-	body, ok := content.(*Keygen3)
+func (r *round3) VerifyMessage(msg round.Message) error {
+	from := msg.From
+	body, ok := msg.Content.(*message3)
 	if !ok || body == nil {
-		return message.ErrInvalidContent
+		return round.ErrInvalidContent
 	}
 
 	// check nil
 	if body.F_li == nil {
-		return message.ErrNilFields
+		return round.ErrNilFields
+	}
+
+	if err := body.C_l.Validate(); err != nil {
+		return err
 	}
 
 	// Verify that the commitment to the chain key contribution matches, and then xor
@@ -56,8 +59,8 @@ func (r *round3) VerifyMessage(from party.ID, to party.ID, content message.Conte
 // StoreMessage implements round.Round.
 //
 // Verify the VSS condition here since we will not be sending this message to other parties for verification.
-func (r *round3) StoreMessage(from party.ID, content message.Content) error {
-	msg := content.(*Keygen3)
+func (r *round3) StoreMessage(msg round.Message) error {
+	from, body := msg.From, msg.Content.(*message3)
 
 	// These steps come from Figure 1, Round 2 of the Frost paper
 
@@ -66,25 +69,23 @@ func (r *round3) StoreMessage(from party.ID, content message.Content) error {
 	//   fₗ(i) * G =? ∑ₖ₌₀ᵗ (iᵏ mod q) * ϕₗₖ
 	//
 	// aborting if the check fails."
-	expected := msg.F_li.ActOnBase()
+	expected := body.F_li.ActOnBase()
 	actual := r.Phi[from].Evaluate(r.SelfID().Scalar(r.Group()))
 	if !expected.Equal(actual) {
 		return fmt.Errorf("VSS failed to validate")
 	}
 
-	r.shareFrom[from] = msg.F_li
-	r.ChainKeys[from] = msg.C_l
+	r.shareFrom[from] = body.F_li
+	r.ChainKeys[from] = body.C_l
 
 	return nil
 }
 
 // Finalize implements round.Round.
-func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
-	ChainKey := make([]byte, params.SecBytes)
+func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
+	ChainKey := types.EmptyRID()
 	for _, j := range r.PartyIDs() {
-		for b := range ChainKey {
-			ChainKey[b] ^= r.ChainKeys[j][b]
-		}
+		ChainKey.XOR(r.ChainKeys[j])
 	}
 
 	// These steps come from Figure 1, Round 2 of the Frost paper
@@ -145,32 +146,33 @@ func (r *round3) Finalize(chan<- *message.Message) (round.Round, error) {
 		for k, v := range VerificationShares {
 			secpVerificationShares[k] = v.(*curve.Secp256k1Point)
 		}
-		return &round.Output{Result: &TaprootResult{
+		return r.ResultRound(&TaprootResult{
 			ID:                 r.SelfID(),
 			Threshold:          r.threshold,
 			PrivateShare:       s_i.(*curve.Secp256k1Scalar),
 			PublicKey:          YSecp.XBytes()[:],
 			VerificationShares: secpVerificationShares,
-		}}, nil
+		}), nil
 	}
 
-	return &round.Output{Result: &Result{
+	return r.ResultRound(&Result{
 		ID:                 r.SelfID(),
 		Threshold:          r.threshold,
 		PrivateShare:       s_i,
 		PublicKey:          Y,
 		VerificationShares: party.NewPointMap(VerificationShares),
-	}}, nil
+	}), nil
 }
 
+// RoundNumber implements message.Content.
+func (message3) RoundNumber() round.Number { return 3 }
+
 // MessageContent implements round.Round.
-//
-// Since this is the first round of the protocol, we expect to see a dummy First type.
-func (r *round3) MessageContent() message.Content {
-	return &Keygen3{
+func (r *round3) MessageContent() round.Content {
+	return &message3{
 		F_li: r.Group().NewScalar(),
 	}
 }
 
-// RoundNumber implements message.Content.
-func (Keygen3) RoundNumber() types.RoundNumber { return 3 }
+// Number implements round.Round.
+func (round3) Number() round.Number { return 3 }

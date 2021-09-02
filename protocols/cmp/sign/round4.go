@@ -1,11 +1,11 @@
 package sign
 
 import (
+	"errors"
+
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
 	zklogstar "github.com/taurusgroup/multi-party-sig/pkg/zk/logstar"
 )
 
@@ -26,7 +26,7 @@ type round4 struct {
 	ChiShare curve.Scalar
 }
 
-type Sign4 struct {
+type message4 struct {
 	// DeltaShare = δⱼ
 	DeltaShare curve.Scalar
 	// BigDeltaShare = Δⱼ = [kⱼ]•Γⱼ
@@ -37,14 +37,15 @@ type Sign4 struct {
 // VerifyMessage implements round.Round.
 //
 // - Verify Π(log*)(ϕ''ᵢⱼ, Δⱼ, Γ).
-func (r *round4) VerifyMessage(from party.ID, to party.ID, content message.Content) error {
-	body, ok := content.(*Sign4)
+func (r *round4) VerifyMessage(msg round.Message) error {
+	from, to := msg.From, msg.To
+	body, ok := msg.Content.(*message4)
 	if !ok || body == nil {
-		return message.ErrInvalidContent
+		return round.ErrInvalidContent
 	}
 
 	if body.DeltaShare == nil || body.BigDeltaShare == nil || body.ProofLog == nil {
-		return message.ErrNilContent
+		return round.ErrNilFields
 	}
 
 	zkLogPublic := zklogstar.Public{
@@ -55,7 +56,7 @@ func (r *round4) VerifyMessage(from party.ID, to party.ID, content message.Conte
 		Aux:    r.Pedersen[to],
 	}
 	if !body.ProofLog.Verify(r.HashForID(from), zkLogPublic) {
-		return ErrRound4ZKLog
+		return errors.New("failed to validate log proof")
 	}
 
 	return nil
@@ -64,8 +65,8 @@ func (r *round4) VerifyMessage(from party.ID, to party.ID, content message.Conte
 // StoreMessage implements round.Round.
 //
 // - store Δⱼ, δⱼ.
-func (r *round4) StoreMessage(from party.ID, content message.Content) error {
-	body := content.(*Sign4)
+func (r *round4) StoreMessage(msg round.Message) error {
+	from, body := msg.From, msg.Content.(*message4)
 	r.BigDeltaShares[from] = body.BigDeltaShare
 	r.DeltaShares[from] = body.DeltaShare
 	return nil
@@ -77,7 +78,7 @@ func (r *round4) StoreMessage(from party.ID, content message.Content) error {
 // - set Δ = ∑ⱼ Δⱼ
 // - verify Δ = [δ]G
 // - compute σᵢ = rχᵢ + kᵢm.
-func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
+func (r *round4) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// δ = ∑ⱼ δⱼ
 	// Δ = ∑ⱼ Δⱼ
 	Delta := r.Group().NewScalar()
@@ -90,7 +91,7 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	// Δ == [δ]G
 	deltaComputed := Delta.ActOnBase()
 	if !deltaComputed.Equal(BigDelta) {
-		return nil, ErrRound4BigDelta
+		return r.AbortRound(errors.New("computed Δ is inconsistent with [δ]G")), nil
 	}
 
 	deltaInv := r.Group().NewScalar().Set(Delta).Invert() // δ⁻¹
@@ -105,11 +106,11 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 	SigmaShare := r.Group().NewScalar().Set(R).Mul(r.ChiShare).Add(km)
 
 	// Send to all
-	msg := r.MarshalMessage(&SignOutput{SigmaShare: SigmaShare}, r.OtherPartyIDs()...)
-	if err := r.SendMessage(msg, out); err != nil {
+	err := r.SendMessage(out, &message5{SigmaShare: SigmaShare}, "")
+	if err != nil {
 		return r, err
 	}
-	return &output{
+	return &round5{
 		round4:      r,
 		SigmaShares: map[party.ID]curve.Scalar{r.SelfID(): SigmaShare},
 		Delta:       Delta,
@@ -120,13 +121,13 @@ func (r *round4) Finalize(out chan<- *message.Message) (round.Round, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *round4) MessageContent() message.Content {
-	return &Sign4{
+func (r *round4) MessageContent() round.Content {
+	return &message4{
 		DeltaShare:    r.Group().NewScalar(),
 		BigDeltaShare: r.Group().NewPoint(),
 		ProofLog:      zklogstar.Empty(r.Group()),
 	}
 }
 
-// RoundNumber implements message.Content.
-func (Sign4) RoundNumber() types.RoundNumber { return 4 }
+// Number implements round.Round.
+func (round4) Number() round.Number { return 4 }

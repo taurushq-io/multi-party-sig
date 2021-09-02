@@ -9,8 +9,6 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
-	"github.com/taurusgroup/multi-party-sig/pkg/pool"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
 	zkenc "github.com/taurusgroup/multi-party-sig/pkg/zk/enc"
 )
 
@@ -18,9 +16,6 @@ var _ round.Round = (*round1)(nil)
 
 type round1 struct {
 	*round.Helper
-
-	// Pool allows us to parallelize certain operations
-	Pool *pool.Pool
 
 	PublicKey curve.Point
 
@@ -34,10 +29,10 @@ type round1 struct {
 }
 
 // VerifyMessage implements round.Round.
-func (r *round1) VerifyMessage(party.ID, party.ID, message.Content) error { return nil }
+func (round1) VerifyMessage(round.Message) error { return nil }
 
 // StoreMessage implements round.Round.
-func (r *round1) StoreMessage(party.ID, message.Content) error { return nil }
+func (round1) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round
 //
@@ -53,7 +48,7 @@ func (r *round1) StoreMessage(party.ID, message.Content) error { return nil }
 //
 // In the next round, we send a hash of all the {Kⱼ,Gⱼ}ⱼ.
 // In two rounds, we compare the hashes received and if they are different then we abort.
-func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
+func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// γᵢ <- 𝔽,
 	// Γᵢ = [γᵢ]⋅G
 	GammaShare, BigGammaShare := sample.ScalarPointPair(rand.Reader, r.Group())
@@ -66,9 +61,13 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 	K, KNonce := r.Paillier[r.SelfID()].Enc(curve.MakeInt(KShare))
 
 	otherIDs := r.OtherPartyIDs()
+	broadcastMsg := broadcast2{K: K, G: G}
+	if err := r.BroadcastMessage(out, &broadcastMsg); err != nil {
+		return r, err
+	}
 	errors := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
 		j := otherIDs[i]
-		proof := zkenc.NewProof(r.HashForID(r.SelfID()), r.Group(), zkenc.Public{
+		proof := zkenc.NewProof(r.Group(), r.HashForID(r.SelfID()), zkenc.Public{
 			K:      K,
 			Prover: r.Paillier[r.SelfID()],
 			Aux:    r.Pedersen[j],
@@ -77,13 +76,10 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 			Rho: KNonce,
 		})
 
-		// ignore error
-		msg := r.MarshalMessage(&Sign2{
+		err := r.SendMessage(out, &message2{
 			ProofEnc: proof,
-			K:        K,
-			G:        G,
 		}, j)
-		if err := r.SendMessage(msg, out); err != nil {
+		if err != nil {
 			return err
 		}
 		return nil
@@ -94,7 +90,7 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 		}
 	}
 
-	return &round2{
+	return &roundBroadcast2{&round2{
 		round1:        r,
 		K:             map[party.ID]*paillier.Ciphertext{r.SelfID(): K},
 		G:             map[party.ID]*paillier.Ciphertext{r.SelfID(): G},
@@ -103,8 +99,11 @@ func (r *round1) Finalize(out chan<- *message.Message) (round.Round, error) {
 		KShare:        KShare,
 		KNonce:        KNonce,
 		GNonce:        GNonce,
-	}, nil
+	}}, nil
 }
 
 // MessageContent implements round.Round.
-func (round1) MessageContent() message.Content { return &message.First{} }
+func (round1) MessageContent() round.Content { return nil }
+
+// Number implements round.Round.
+func (round1) Number() round.Number { return 1 }

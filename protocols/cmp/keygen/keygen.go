@@ -11,96 +11,46 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/types"
+	"github.com/taurusgroup/multi-party-sig/protocols/cmp/config"
 )
 
-const (
-	// threshold keygen with echo broadcast.
-	protocolKeygenID types.ProtocolID = "cmp/keygen-threshold-echo"
-	// threshold refresh with echo broadcast.
-	protocolRefreshID types.ProtocolID = "cmp/refresh-threshold-echo"
+const Rounds round.Number = 5
 
-	protocolRounds types.RoundNumber = 6
-)
-
-func StartKeygen(pl *pool.Pool, group curve.Curve, partyIDs []party.ID, threshold int, selfID party.ID) protocol.StartFunc {
-	return func() (round.Round, protocol.Info, error) {
-
-		sortedIDs := party.NewIDSlice(partyIDs)
-
-		n := len(sortedIDs)
-		if !validThreshold(threshold, n) {
-			return nil, nil, fmt.Errorf("keygen.StartKeygen: threshold %d is not valid for number of parties %d", threshold, n)
+func Start(info round.Info, pl *pool.Pool, c *config.Config) protocol.StartFunc {
+	return func(sessionID []byte) (_ round.Session, err error) {
+		var helper *round.Helper
+		if c == nil {
+			helper, err = round.NewSession(info, sessionID, pl)
+		} else {
+			helper, err = round.NewSession(info, sessionID, pl, c)
 		}
-		helper, err := round.NewHelper(
-			protocolKeygenID,
-			group,
-			protocolRounds,
-			selfID,
-			sortedIDs,
-			thresholdWrapper(threshold),
-		)
 		if err != nil {
-			return nil, nil, fmt.Errorf("keygen.StartKeygen: %w", err)
+			return nil, fmt.Errorf("keygen: %w", err)
 		}
 
-		PreviousPublicSharesECDSA := make(map[party.ID]curve.Point, n)
-		for _, idJ := range helper.PartyIDs() {
-			PreviousPublicSharesECDSA[idJ] = group.NewPoint()
+		group := helper.Group()
+
+		if c != nil {
+			PublicSharesECDSA := make(map[party.ID]curve.Point, len(c.Public))
+			for id, public := range c.Public {
+				PublicSharesECDSA[id] = public.ECDSA
+			}
+			return &round1{
+				Helper:                    helper,
+				PreviousSecretECDSA:       c.ECDSA,
+				PreviousPublicSharesECDSA: PublicSharesECDSA,
+				PreviousChainKey:          c.ChainKey,
+				VSSSecret:                 polynomial.NewPolynomial(group, helper.Threshold(), group.NewScalar()), // fᵢ(X) deg(fᵢ) = t, fᵢ(0) = 0
+			}, nil
 		}
-		PreviousSecretECDSA := group.NewScalar()
-		PreviousPublicKey := group.NewPoint()
+
 		// sample fᵢ(X) deg(fᵢ) = t, fᵢ(0) = secretᵢ
-		VSSSecret := polynomial.NewPolynomial(group, threshold, sample.Scalar(rand.Reader, group))
-
+		VSSConstant := sample.Scalar(rand.Reader, group)
+		VSSSecret := polynomial.NewPolynomial(group, helper.Threshold(), VSSConstant)
 		return &round1{
-			Helper:                    helper,
-			Pool:                      pl,
-			Threshold:                 threshold,
-			PreviousPublicSharesECDSA: PreviousPublicSharesECDSA,
-			PreviousSecretECDSA:       PreviousSecretECDSA,
-			PreviousPublicKey:         PreviousPublicKey,
-			PreviousChainKey:          nil,
-			VSSSecret:                 VSSSecret,
-		}, helper, nil
-	}
-}
+			Helper:    helper,
+			VSSSecret: VSSSecret,
+		}, nil
 
-func StartRefresh(pl *pool.Pool, c *Config) protocol.StartFunc {
-	return func() (round.Round, protocol.Info, error) {
-		group := c.Group()
-
-		partyIDs := c.PartyIDs()
-		helper, err := round.NewHelper(
-			protocolRefreshID,
-			group,
-			protocolRounds,
-			c.ID,
-			partyIDs,
-			c,
-		)
-		if err != nil {
-			return nil, nil, fmt.Errorf("refresh.StartKeygen: %w", err)
-		}
-
-		PreviousPublicSharesECDSA := make(map[party.ID]curve.Point, len(partyIDs))
-		for _, j := range partyIDs {
-			PreviousPublicSharesECDSA[j] = c.Public.Data[j].ECDSA
-		}
-		PreviousSecretECDSA := group.NewScalar().Set(c.ECDSA)
-		PreviousPublicKey := c.PublicPoint()
-		// sample fᵢ(X) deg(fᵢ) = t, fᵢ(0) = 0
-		VSSSecret := polynomial.NewPolynomial(group, int(c.Threshold), nil)
-
-		return &round1{
-			Helper:                    helper,
-			Pool:                      pl,
-			Threshold:                 int(c.Threshold),
-			PreviousSecretECDSA:       PreviousSecretECDSA,
-			PreviousPublicKey:         PreviousPublicKey,
-			PreviousPublicSharesECDSA: PreviousPublicSharesECDSA,
-			PreviousChainKey:          c.ChainKey,
-			VSSSecret:                 VSSSecret,
-		}, helper, nil
 	}
 }

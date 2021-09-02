@@ -94,10 +94,11 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 		D: public.Aux.Commit(alpha, gamma),
 	}
 
-	e, _ := challenge(hash, public, commitment)
+	e, _ := challenge(hash, group, public, commitment)
 
 	// z1 = α + e x,
-	z1 := new(safenum.Int).Mul(e, private.X, -1)
+	z1 := new(safenum.Int).SetInt(private.X)
+	z1.Mul(e, z1, -1)
 	z1.Add(z1, alpha, -1)
 	// z2 = r ρᵉ mod N,
 	z2 := NModulus.ExpI(private.Rho, e)
@@ -124,13 +125,13 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 		public.G = p.group.NewBasePoint()
 	}
 
-	if !arith.IsInIntervalLPrimeEps(p.Z1) {
+	if !arith.IsInIntervalLEps(p.Z1) {
 		return false
 	}
 
 	prover := public.Prover
 
-	e, err := challenge(hash, public, p.Commitment)
+	e, err := challenge(hash, p.group, public, p.Commitment)
 	if err != nil {
 		return false
 	}
@@ -167,10 +168,10 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment *Commitment) (e *safenum.Int, err error) {
+func challenge(hash *hash.Hash, group curve.Curve, public Public, commitment *Commitment) (e *safenum.Int, err error) {
 	err = hash.WriteAny(public.Aux, public.Prover, public.C, public.X, public.G,
 		commitment.S, commitment.A, commitment.Y, commitment.D)
-	e = sample.IntervalScalar(hash.Digest(), public.X.Curve())
+	e = sample.IntervalScalar(hash.Digest(), group)
 	return
 }
 

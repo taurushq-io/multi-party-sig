@@ -4,12 +4,16 @@ import (
 	mrand "math/rand"
 	"testing"
 
+	"github.com/cronokirby/safenum"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
+	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/zk"
+	zkaffg "github.com/taurusgroup/multi-party-sig/pkg/zk/affg"
+	zkaffp "github.com/taurusgroup/multi-party-sig/pkg/zk/affp"
 )
 
 func Test_newMtA(t *testing.T) {
@@ -21,8 +25,10 @@ func Test_newMtA(t *testing.T) {
 
 	ski := zk.ProverPaillierSecret
 	skj := zk.VerifierPaillierSecret
-	ai, Ai := sample.ScalarPointPair(source, group)
-	aj, Aj := sample.ScalarPointPair(source, group)
+	aiScalar := sample.Scalar(source, group)
+	ajScalar := sample.Scalar(source, group)
+	ai := curve.MakeInt(aiScalar)
+	aj := curve.MakeInt(ajScalar)
 
 	bi := sample.Scalar(source, group)
 	bj := sample.Scalar(source, group)
@@ -30,34 +36,74 @@ func Test_newMtA(t *testing.T) {
 	Bi, _ := paillierI.Enc(curve.MakeInt(bi))
 	Bj, _ := paillierJ.Enc(curve.MakeInt(bj))
 
-	aibj := group.NewScalar().Set(ai).Mul(bj)
-	ajbi := group.NewScalar().Set(aj).Mul(bi)
+	aibj := group.NewScalar().Set(aiScalar).Mul(bj)
+	ajbi := group.NewScalar().Set(ajScalar).Mul(bi)
 	c := group.NewScalar().Set(aibj).Add(ajbi)
 
-	mtaI, betaI := New(curve.MakeInt(ai), Bj, ski, paillierJ)
-	mtaJ, betaJ := New(curve.MakeInt(aj), Bi, skj, paillierI)
+	verifyMtA := func(Di, Dj *paillier.Ciphertext, betaI, betaJ *safenum.Int) {
+		alphaI, err := ski.Dec(Dj)
+		require.NoError(t, err, "decryption should pass")
+		alphaJ, err := skj.Dec(Di)
+		require.NoError(t, err, "decryption should pass")
 
-	msgForJ := mtaI.ProofAffG(group, hash.New(),
-		curve.MakeInt(ai), Ai, Bj, betaI,
-		ski, paillierJ, zk.Pedersen)
-	msgForI := mtaJ.ProofAffG(group, hash.New(),
-		curve.MakeInt(aj), Aj, Bi, betaJ,
-		skj, paillierI, zk.Pedersen)
+		gammaI := alphaI.Add(alphaI, betaI, -1)
+		gammaJ := alphaJ.Add(alphaJ, betaJ, -1)
+		gamma := gammaI.Add(gammaI, gammaJ, -1)
+		gammaS := group.NewScalar().SetNat(gamma.Mod(group.Order()))
+		assert.Equal(t, c, gammaS, "a•b should be equal to α + β")
+	}
 
-	err := mtaI.VerifyAffG(hash.New(), Bi, Aj, msgForI, paillierJ, paillierI, zk.Pedersen)
-	require.NoError(t, err, "decryption should pass")
-	err = mtaJ.VerifyAffG(hash.New(), Bj, Ai, msgForJ, paillierI, paillierJ, zk.Pedersen)
-	require.NoError(t, err, "decryption should pass")
+	{
+		Ai, Aj := aiScalar.ActOnBase(), ajScalar.ActOnBase()
+		betaI, Di, Fi, proofI := ProveAffG(group, hash.New(), ai, Ai, Bj, ski, paillierJ, zk.Pedersen)
+		betaJ, Dj, Fj, proofJ := ProveAffG(group, hash.New(), aj, Aj, Bi, skj, paillierI, zk.Pedersen)
 
-	alphaI, err := ski.Dec(msgForI.Dij)
-	require.NoError(t, err, "decryption should pass")
-	alphaJ, err := skj.Dec(msgForJ.Dij)
-	require.NoError(t, err, "decryption should pass")
+		assert.True(t, proofI.Verify(hash.New(), zkaffg.Public{
+			Kv:       Bj,
+			Dv:       Di,
+			Fp:       Fi,
+			Xp:       Ai,
+			Prover:   paillierI,
+			Verifier: paillierJ,
+			Aux:      zk.Pedersen,
+		}))
+		assert.True(t, proofJ.Verify(hash.New(), zkaffg.Public{
+			Kv:       Bi,
+			Dv:       Dj,
+			Fp:       Fj,
+			Xp:       Aj,
+			Prover:   paillierJ,
+			Verifier: paillierI,
+			Aux:      zk.Pedersen,
+		}))
+		verifyMtA(Di, Dj, betaI, betaJ)
+	}
 
-	gammaI := alphaI.Add(alphaI, betaI, -1)
-	gammaJ := alphaJ.Add(alphaJ, betaJ, -1)
-	gamma := gammaI.Add(gammaI, gammaJ, -1)
-	gammaS := group.NewScalar().SetNat(gamma.Mod(group.Order()))
-	assert.Equal(t, c, gammaS, "a•b should be equal to α + β")
+	{
+		Ai, nonceI := ski.Enc(ai)
+		Aj, nonceJ := skj.Enc(aj)
+		betaI, Di, Fi, proofI := ProveAffP(group, hash.New(), ai, Ai, nonceI, Bj, ski, paillierJ, zk.Pedersen)
+		betaJ, Dj, Fj, proofJ := ProveAffP(group, hash.New(), aj, Aj, nonceJ, Bi, skj, paillierI, zk.Pedersen)
+
+		assert.True(t, proofI.Verify(group, hash.New(), zkaffp.Public{
+			Kv:       Bj,
+			Dv:       Di,
+			Fp:       Fi,
+			Xp:       Ai,
+			Prover:   paillierI,
+			Verifier: paillierJ,
+			Aux:      zk.Pedersen,
+		}))
+		assert.True(t, proofJ.Verify(group, hash.New(), zkaffp.Public{
+			Kv:       Bi,
+			Dv:       Dj,
+			Fp:       Fj,
+			Xp:       Aj,
+			Prover:   paillierJ,
+			Verifier: paillierI,
+			Aux:      zk.Pedersen,
+		}))
+		verifyMtA(Di, Dj, betaI, betaJ)
+	}
 
 }

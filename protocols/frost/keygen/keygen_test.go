@@ -1,75 +1,30 @@
 package keygen
 
 import (
-	"bytes"
-	"reflect"
 	"testing"
 
 	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/internal/test"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol/message"
 )
 
-var roundTypes = []reflect.Type{
-	reflect.TypeOf(&round1{}),
-	reflect.TypeOf(&round2{}),
-	reflect.TypeOf(&round3{}),
-}
-
-func processRound(t *testing.T, rounds map[party.ID]round.Round, expectedRoundType reflect.Type) {
-	N := len(rounds)
-	t.Logf("starting round %v", expectedRoundType)
-	// get the second set of  messages
-	out := make(chan *message.Message, N*N)
-	for idJ, r := range rounds {
-		require.EqualValues(t, expectedRoundType, reflect.TypeOf(r))
-		newRound, err := r.Finalize(out)
-		require.NoError(t, err, "failed to generate messages")
-		if newRound != nil {
-			rounds[idJ] = newRound
-		}
-	}
-	close(out)
-
-	for msg := range out {
-		msgBytes, err := cbor.Marshal(msg)
-		require.NoError(t, err, "failed to marshal message")
-		for idJ, r := range rounds {
-			var m message.Message
-			require.NoError(t, cbor.Unmarshal(msgBytes, &m), "failed to unmarshal message")
-			if m.From == idJ {
-				continue
-			}
-			if msg.IsFor(idJ) {
-				content := r.MessageContent()
-				err = msg.UnmarshalContent(content)
-				require.NoError(t, err)
-				require.NoError(t, r.VerifyMessage(msg.From, idJ, content))
-				require.NoError(t, r.StoreMessage(msg.From, content))
-			}
-		}
-	}
-
-	t.Logf("round %v done", expectedRoundType)
-}
-
-func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.IDSlice) {
+func checkOutput(t *testing.T, rounds []round.Session, parties party.IDSlice) {
 	group := curve.Secp256k1{}
 
 	N := len(rounds)
 	results := make([]Result, 0, N)
-	for id, r := range rounds {
+	for _, r := range rounds {
 		resultRound, ok := r.(*round.Output)
 		require.True(t, ok)
 		result, ok := resultRound.Result.(*Result)
 		require.True(t, ok)
 		results = append(results, *result)
-		require.Equal(t, id, result.ID)
+		require.Equal(t, r.SelfID(), result.ID)
 	}
 
 	var publicKey curve.Point
@@ -78,11 +33,11 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.ID
 	lagrangeCoefficients := polynomial.Lagrange(group, parties)
 	for _, result := range results {
 		if publicKey != nil {
-			assert.True(t, publicKey.Equal(result.PublicKey))
+			assert.True(t, publicKey.Equal(result.PublicKey), "different public key")
 		}
 		publicKey = result.PublicKey
 		if chainKey != nil {
-			assert.True(t, bytes.Equal(chainKey, result.ChainKey))
+			assert.Equal(t, chainKey, result.ChainKey, "different chain key")
 		}
 		chainKey = result.ChainKey
 		privateKey.Add(group.NewScalar().Set(lagrangeCoefficients[result.ID]).Mul(result.PrivateShare))
@@ -98,14 +53,18 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.ID
 	}
 
 	for _, result := range results {
+		for _, id := range parties {
+			expected := shares[id].ActOnBase()
+			require.True(t, result.VerificationShares.Points[id].Equal(expected), "different verification shares", id)
+		}
 		marshalled, err := cbor.Marshal(result)
 		require.NoError(t, err)
 		unmarshalledResult := EmptyResult(group)
 		err = cbor.Unmarshal(marshalled, unmarshalledResult)
 		require.NoError(t, err)
-		for _, party := range parties {
-			expected := shares[party].ActOnBase()
-			require.True(t, unmarshalledResult.VerificationShares.Points[party].Equal(expected))
+		for _, id := range parties {
+			expected := shares[id].ActOnBase()
+			require.True(t, unmarshalledResult.VerificationShares.Points[id].Equal(expected))
 		}
 	}
 }
@@ -113,35 +72,38 @@ func checkOutput(t *testing.T, rounds map[party.ID]round.Round, parties party.ID
 func TestKeygen(t *testing.T) {
 	group := curve.Secp256k1{}
 	N := 5
-	partyIDs := party.RandomIDs(N)
+	partyIDs := test.PartyIDs(N)
 
-	rounds := make(map[party.ID]round.Round, N)
+	rounds := make([]round.Session, 0, N)
 	for _, partyID := range partyIDs {
-		r, _, err := StartKeygen(group, partyIDs, N-1, partyID)()
+		r, err := StartKeygenCommon(false, group, partyIDs, N-1, partyID)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
-		rounds[partyID] = r
-
+		rounds = append(rounds, r)
 	}
 
-	for _, roundType := range roundTypes {
-		processRound(t, rounds, roundType)
+	for {
+		err, done := test.Rounds(rounds, nil)
+		require.NoError(t, err, "failed to process round")
+		if done {
+			break
+		}
 	}
 
 	checkOutput(t, rounds, partyIDs)
 }
 
-func checkOutputTaproot(t *testing.T, rounds map[party.ID]round.Round, parties party.IDSlice) {
+func checkOutputTaproot(t *testing.T, rounds []round.Session, parties party.IDSlice) {
 	group := curve.Secp256k1{}
 
 	N := len(rounds)
 	results := make([]TaprootResult, 0, N)
-	for id, r := range rounds {
-		resultRound, ok := r.(*round.Output)
-		require.True(t, ok)
-		result, ok := resultRound.Result.(*TaprootResult)
-		require.True(t, ok)
+	for _, r := range rounds {
+		require.IsType(t, &round.Output{}, r, "expected result round")
+		resultRound := r.(*round.Output)
+		require.IsType(t, &TaprootResult{}, resultRound.Result, "expected taproot result")
+		result := resultRound.Result.(*TaprootResult)
 		results = append(results, *result)
-		require.Equal(t, id, result.ID)
+		require.Equal(t, r.SelfID(), result.ID, "party IDs should be the same")
 	}
 
 	var publicKey []byte
@@ -150,11 +112,11 @@ func checkOutputTaproot(t *testing.T, rounds map[party.ID]round.Round, parties p
 	lagrangeCoefficients := polynomial.Lagrange(group, parties)
 	for _, result := range results {
 		if publicKey != nil {
-			assert.True(t, bytes.Equal(publicKey, result.PublicKey))
+			assert.EqualValues(t, publicKey, result.PublicKey, "different public keys")
 		}
 		publicKey = result.PublicKey
 		if chainKey != nil {
-			assert.True(t, bytes.Equal(chainKey, result.ChainKey))
+			assert.Equal(t, chainKey, result.ChainKey, "different chain keys")
 		}
 		chainKey = result.ChainKey
 		privateKey.Add(group.NewScalar().Set(lagrangeCoefficients[result.ID]).Mul(result.PrivateShare))
@@ -172,27 +134,32 @@ func checkOutputTaproot(t *testing.T, rounds map[party.ID]round.Round, parties p
 	}
 
 	for _, result := range results {
-		for _, party := range parties {
-			expected := shares[party].ActOnBase()
-			assert.True(t, result.VerificationShares[party].Equal(expected))
+		for _, id := range parties {
+			expected := shares[id].ActOnBase()
+			assert.True(t, result.VerificationShares[id].Equal(expected))
 		}
 	}
 }
 
 func TestKeygenTaproot(t *testing.T) {
 	N := 5
-	partyIDs := party.RandomIDs(N)
+	partyIDs := test.PartyIDs(N)
+	group := curve.Secp256k1{}
 
-	rounds := make(map[party.ID]round.Round, N)
+	rounds := make([]round.Session, 0, N)
 	for _, partyID := range partyIDs {
-		r, _, err := StartKeygenTaproot(partyIDs, N-1, partyID)()
+		r, err := StartKeygenCommon(true, group, partyIDs, N-1, partyID)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
-		rounds[partyID] = r
+		rounds = append(rounds, r)
 
 	}
 
-	for _, roundType := range roundTypes {
-		processRound(t, rounds, roundType)
+	for {
+		err, done := test.Rounds(rounds, nil)
+		require.NoError(t, err, "failed to process round")
+		if done {
+			break
+		}
 	}
 
 	checkOutputTaproot(t, rounds, partyIDs)

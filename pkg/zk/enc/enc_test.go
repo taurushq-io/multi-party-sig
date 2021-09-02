@@ -27,11 +27,11 @@ func TestEnc(t *testing.T) {
 		Aux:    verifier,
 	}
 
-	proof := NewProof(hash.New(), group, public, Private{
+	proof := NewProof(group, hash.New(), public, Private{
 		K:   k,
 		Rho: rho,
 	})
-	assert.True(t, proof.Verify(hash.New(), group, public))
+	assert.True(t, proof.Verify(group, hash.New(), public))
 
 	out, err := cbor.Marshal(proof)
 	require.NoError(t, err, "failed to marshal proof")
@@ -42,5 +42,5 @@ func TestEnc(t *testing.T) {
 	proof3 := &Proof{}
 	require.NoError(t, cbor.Unmarshal(out2, proof3), "failed to unmarshal 2nd proof")
 
-	assert.True(t, proof3.Verify(hash.New(), group, public))
+	assert.True(t, proof3.Verify(group, hash.New(), public))
 }

@@ -24,13 +24,13 @@ func TestPrm(t *testing.T) {
 		ped.T(),
 	}
 
-	proof := NewProof(pl, hash.New(), public, Private{
+	proof := NewProof(Private{
 		Lambda: lambda,
 		Phi:    sk.Phi(),
 		P:      sk.P(),
 		Q:      sk.Q(),
-	})
-	assert.True(t, proof.Verify(pl, hash.New(), public))
+	}, hash.New(), public, pl)
+	assert.True(t, proof.Verify(public, hash.New(), pl))
 
 	out, err := cbor.Marshal(proof)
 	require.NoError(t, err, "failed to marshal proof")
@@ -41,7 +41,7 @@ func TestPrm(t *testing.T) {
 	proof3 := &Proof{}
 	require.NoError(t, cbor.Unmarshal(out2, proof3), "failed to unmarshal 2nd proof")
 
-	assert.True(t, proof3.Verify(pl, hash.New(), public))
+	assert.True(t, proof3.Verify(public, hash.New(), pl))
 }
 
 var p *Proof
@@ -68,6 +68,6 @@ func BenchmarkCRT(b *testing.B) {
 	}
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		p = NewProof(nil, hash.New(), public, private)
+		p = NewProof(private, hash.New(), public, nil)
 	}
 }
