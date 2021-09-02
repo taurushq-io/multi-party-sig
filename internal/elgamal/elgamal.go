@@ -49,7 +49,8 @@ func Empty(group curve.Curve) *Ciphertext {
 }
 
 func (c *Ciphertext) WriteTo(w io.Writer) (int64, error) {
-	var total int64, n int
+	var total int64
+	var n int
 
 	buf, err := c.L.MarshalBinary()
 	if err != nil {
