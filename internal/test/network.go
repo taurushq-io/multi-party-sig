@@ -23,7 +23,7 @@ func NewNetwork(parties party.IDSlice) *Network {
 	close(closed)
 	c := &Network{
 		parties:          parties,
-		listenChannels:   make(map[party.ID]chan *protocol.Message, len(parties)),
+		listenChannels:   make(map[party.ID]chan *protocol.Message, 2*len(parties)),
 		closedListenChan: closed,
 	}
 	return c
