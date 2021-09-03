@@ -75,7 +75,7 @@ func (r *round2) StoreBroadcastMessage(msg round.Message) error {
 	// To see why this is correct, compare this verification with the proof we
 	// produced in the previous round. Note how we do the same hash cloning,
 	// but this time with the ID of the message sender.
-	if !body.Sigma_i.Verify(r.Helper.HashForID(from), body.Phi_i.Constant()) {
+	if !body.Sigma_i.Verify(r.Helper.HashForID(from), body.Phi_i.Constant(), nil) {
 		return fmt.Errorf("failed to verify Schnorr proof for party %s", from)
 	}
 

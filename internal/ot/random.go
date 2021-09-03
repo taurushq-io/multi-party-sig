@@ -47,7 +47,7 @@ type RandomOTSendSetup struct {
 func RandomOTSetupSend(hash *hash.Hash, group curve.Curve) (*RandomOTSetupSendMessage, *RandomOTSendSetup) {
 	b := sample.Scalar(rand.Reader, group)
 	B := b.ActOnBase()
-	BProof := zksch.NewProof(hash, B, b)
+	BProof := zksch.NewProof(hash, B, b, nil)
 	return &RandomOTSetupSendMessage{B: B, BProof: BProof}, &RandomOTSendSetup{_B: B, b: b, _bB: b.Act(B)}
 }
 
@@ -64,7 +64,7 @@ type RandomOTReceiveSetup struct {
 //
 // This setup can be done once and then used for multiple executions.
 func RandomOTSetupReceive(hash *hash.Hash, msg *RandomOTSetupSendMessage) (*RandomOTReceiveSetup, error) {
-	if !msg.BProof.Verify(hash, msg.B) {
+	if !msg.BProof.Verify(hash, msg.B, nil) {
 		return nil, fmt.Errorf("RandomOTSetupReceive: Schnorr proof failed to verify")
 	}
 

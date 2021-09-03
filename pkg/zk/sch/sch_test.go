@@ -15,12 +15,12 @@ import (
 func TestSchPass(t *testing.T) {
 	group := curve.Secp256k1{}
 
-	a := NewRandomness(rand.Reader, group)
+	a := NewRandomness(rand.Reader, group, nil)
 	x, X := sample.ScalarPointPair(rand.Reader, group)
 
-	proof := a.Prove(hash.New(), X, x)
-	assert.True(t, proof.Verify(hash.New(), X, a.Commitment()), "failed passing test")
-	assert.True(t, proof.Verify(hash.New(), X, a.Commitment()))
+	proof := a.Prove(hash.New(), X, x, nil)
+	assert.True(t, proof.Verify(hash.New(), X, a.Commitment(), nil), "failed passing test")
+	assert.True(t, proof.Verify(hash.New(), X, a.Commitment(), nil))
 
 	out, err := cbor.Marshal(proof)
 	require.NoError(t, err, "failed to marshal proof")
@@ -31,15 +31,15 @@ func TestSchPass(t *testing.T) {
 	proof3 := EmptyResponse(group)
 	require.NoError(t, cbor.Unmarshal(out2, proof3), "failed to unmarshal 2nd proof")
 
-	assert.True(t, proof3.Verify(hash.New(), X, a.Commitment()))
+	assert.True(t, proof3.Verify(hash.New(), X, a.Commitment(), nil))
 
 }
 func TestSchFail(t *testing.T) {
 	group := curve.Secp256k1{}
 
-	a := NewRandomness(rand.Reader, group)
+	a := NewRandomness(rand.Reader, group, nil)
 	x, X := group.NewScalar(), group.NewPoint()
 
-	proof := a.Prove(hash.New(), X, x)
-	assert.False(t, proof.Verify(hash.New(), X, a.Commitment()), "proof should not accept identity point")
+	proof := a.Prove(hash.New(), X, x, nil)
+	assert.False(t, proof.Verify(hash.New(), X, a.Commitment(), nil), "proof should not accept identity point")
 }

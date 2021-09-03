@@ -75,7 +75,7 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	SelfVSSPolynomial := polynomial.NewPolynomialExponent(r.VSSSecret)
 
 	// generate Schnorr randomness
-	SchnorrRand := zksch.NewRandomness(rand.Reader, r.Group())
+	SchnorrRand := zksch.NewRandomness(rand.Reader, r.Group(), nil)
 
 	// Sample RIDᵢ
 	SelfRID, err := types.NewRID(rand.Reader)

@@ -72,7 +72,7 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// different.
 	// At this point, we've already hashed context inside of helper, so we just
 	// add in our own ID, and then we're good to go.
-	Sigma_i := zksch.NewProof(r.Helper.HashForID(r.SelfID()), a_i0_times_G, a_i0)
+	Sigma_i := zksch.NewProof(r.Helper.HashForID(r.SelfID()), a_i0_times_G, a_i0, nil)
 
 	// 3. "Every participant Pᵢ computes a public comment Φᵢ = <ϕᵢ₀, ..., ϕᵢₜ>
 	// where ϕᵢⱼ = aᵢⱼ * G."

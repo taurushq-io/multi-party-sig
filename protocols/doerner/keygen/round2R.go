@@ -36,7 +36,7 @@ func (r *round2R) VerifyMessage(msg round.Message) error {
 	if body.Proof == nil || body.PublicShare == nil || body.OtMsg == nil {
 		return round.ErrNilFields
 	}
-	if !body.Proof.Verify(r.Hash(), body.PublicShare) {
+	if !body.Proof.Verify(r.Hash(), body.PublicShare, nil) {
 		return errors.New("invalid Schnorr proof")
 	}
 	return nil
@@ -53,7 +53,7 @@ func (r *round2R) StoreMessage(msg round.Message) (err error) {
 }
 
 func (r *round2R) Finalize(out chan<- *round.Message) (round.Session, error) {
-	proof := zksch.NewProof(r.Hash(), r.publicShare, r.secretShare)
+	proof := zksch.NewProof(r.Hash(), r.publicShare, r.secretShare, nil)
 	if err := r.SendMessage(out, &message2R{r.decommit, r.publicShare, proof, r.otMsg}, ""); err != nil {
 		return r, err
 	}

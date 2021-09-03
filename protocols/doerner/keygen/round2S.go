@@ -36,7 +36,7 @@ func (r *round2S) VerifyMessage(msg round.Message) error {
 	if !r.Hash().Decommit(r.receiverCommit, body.Decommit, body.PublicShare) {
 		return errors.New("invalid commitment")
 	}
-	if !body.Proof.Verify(r.Hash(), body.PublicShare) {
+	if !body.Proof.Verify(r.Hash(), body.PublicShare, nil) {
 		return errors.New("invalid Schnorr proof")
 	}
 	return nil

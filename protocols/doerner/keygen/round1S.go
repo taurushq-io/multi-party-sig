@@ -56,7 +56,7 @@ func (r *round1S) StoreMessage(msg round.Message) (err error) {
 func (r *round1S) Finalize(out chan<- *round.Message) (round.Session, error) {
 	secretShare := sample.Scalar(rand.Reader, r.Group())
 	publicShare := secretShare.ActOnBase()
-	proof := zksch.NewProof(r.Hash(), publicShare, secretShare)
+	proof := zksch.NewProof(r.Hash(), publicShare, secretShare, nil)
 	if err := r.SendMessage(out, &message1S{publicShare, proof, r.otMsg}, ""); err != nil {
 		return r, err
 	}
