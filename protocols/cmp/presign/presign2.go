@@ -52,10 +52,6 @@ type presign2 struct {
 	DecommitmentID hash.Decommitment
 }
 
-type presignBroadcast2 struct {
-	*presign2
-}
-
 type broadcast2 struct {
 	// K = Kᵢ
 	K *paillier.Ciphertext
@@ -74,7 +70,7 @@ type message2 struct {
 // StoreBroadcastMessage implements round.BroadcastRound.
 //
 // - store Kⱼ, Gⱼ, Zⱼ, CommitmentID.
-func (r *presignBroadcast2) StoreBroadcastMessage(msg round.Message) error {
+func (r *presign2) StoreBroadcastMessage(msg round.Message) error {
 	from := msg.From
 	body, ok := msg.Content.(*broadcast2)
 	if !ok || body == nil {
@@ -198,13 +194,13 @@ func (r *presign2) Finalize(out chan<- *round.Message) (round.Session, error) {
 		}
 	}
 
-	return &presignBroadcast3{&presign3{
+	return &presign3{
 		presign2:        r,
 		DeltaShareBeta:  DeltaShareBeta,
 		ChiShareBeta:    ChiShareBeta,
 		DeltaCiphertext: map[party.ID]map[party.ID]*paillier.Ciphertext{r.SelfID(): DeltaCiphertext},
 		ChiCiphertext:   map[party.ID]map[party.ID]*paillier.Ciphertext{r.SelfID(): ChiCiphertext},
-	}}, nil
+	}, nil
 }
 
 // MessageContent implements round.Round.
@@ -215,7 +211,7 @@ func (r *presign2) MessageContent() round.Content {
 }
 
 // BroadcastContent implements round.BroadcastRound.
-func (r *presignBroadcast2) BroadcastContent() round.Content {
+func (r *presign2) BroadcastContent() round.Content {
 	return &broadcast2{
 		Z: elgamal.Empty(r.Group()),
 	}

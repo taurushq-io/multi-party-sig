@@ -64,7 +64,7 @@ func TestRoundFail(t *testing.T) {
 				},
 				BeforeSend: func(rNext round.Session, to party.ID, content round.Content) {
 					r, okR := rNext.(*presign4)
-					c, okC := content.(*message4)
+					c, okC := content.(*broadcast4)
 					if okR || okC {
 						oneScalar := r.Group().NewScalar().SetNat(oneNat)
 						c.DeltaShare = r.Group().NewScalar().Set(c.DeltaShare).Sub(oneScalar)
@@ -92,7 +92,7 @@ func TestRoundFail(t *testing.T) {
 			TestRule{
 				BeforeFinalize: func(rPrevious round.Session) {
 					switch r := rPrevious.(type) {
-					case *presignBroadcast3:
+					case *presign3:
 						minusOne := r.Group().NewScalar().SetNat(oneNat).Negate()
 						r.SecretECDSA = minusOne.Add(r.SecretECDSA)
 					default:
@@ -112,7 +112,7 @@ func TestRoundFail(t *testing.T) {
 			"round 3 modify chi force abort",
 			TestRule{
 				AfterFinalize: func(rNext round.Session) {
-					if r, ok := rNext.(*presignBroadcast3); ok {
+					if r, ok := rNext.(*presign3); ok {
 						r.SecretECDSA = r.Group().NewScalar().SetNat(oneNat).Add(r.SecretECDSA)
 					}
 				},

@@ -128,6 +128,11 @@ func (h *Handler) Update(msg *Message) {
 		return
 	}
 
+	h.store(msg)
+	if h.currentRound.Number() != msg.RoundNumber {
+		return
+	}
+
 	if msg.Broadcast {
 		if err := h.verifyBroadcastMessage(msg); err != nil {
 			h.abort(err, msg.From)
@@ -140,7 +145,6 @@ func (h *Handler) Update(msg *Message) {
 		}
 	}
 
-	h.store(msg)
 	h.finalize()
 }
 

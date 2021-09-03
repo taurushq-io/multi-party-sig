@@ -30,10 +30,6 @@ type presign3 struct {
 	ChiCiphertext map[party.ID]map[party.ID]*paillier.Ciphertext
 }
 
-type presignBroadcast3 struct {
-	*presign3
-}
-
 type broadcast3 struct {
 	// DeltaCiphertext[k] = Dₖⱼ
 	DeltaCiphertext map[party.ID]*paillier.Ciphertext
@@ -48,9 +44,8 @@ type message3 struct {
 	ChiProof   *zkaffg.Proof
 }
 
-// StoreBroadcastMessage implements round.Round.
-//
-func (r *presignBroadcast3) StoreBroadcastMessage(msg round.Message) error {
+// StoreBroadcastMessage implements round.BroadcastRound.
+func (r *presign3) StoreBroadcastMessage(msg round.Message) error {
 	from := msg.From
 	body, ok := msg.Content.(*broadcast3)
 	if !ok || body == nil {
@@ -171,11 +166,11 @@ func (r *presign3) Finalize(out chan<- *round.Message) (round.Session, error) {
 
 	DeltaShareScalar := r.Group().NewScalar().SetNat(DeltaShare.Mod(r.Group().Order()))
 
-	msg := &message4{
+	msg := &broadcast4{
 		DeltaShare: DeltaShareScalar,
 		ElGamalChi: ElGamalChi,
 	}
-	if err = r.SendMessage(out, msg, ""); err != nil {
+	if err = r.BroadcastMessage(out, msg); err != nil {
 		return r, err
 	}
 
@@ -196,7 +191,7 @@ func (r *presign3) MessageContent() round.Content {
 }
 
 // BroadcastContent implements round.BroadcastRound.
-func (presignBroadcast3) BroadcastContent() round.Content { return &broadcast3{} }
+func (presign3) BroadcastContent() round.Content { return &broadcast3{} }
 
 // Number implements round.Round.
 func (presign3) Number() round.Number { return 3 }

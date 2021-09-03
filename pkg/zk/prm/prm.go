@@ -78,6 +78,9 @@ func NewProof(private Private, hash *hash.Hash, public Public, pl *pool.Pool) *P
 }
 
 func (p *Proof) Verify(public Public, hash *hash.Hash, pl *pool.Pool) bool {
+	if p == nil {
+		return false
+	}
 	if err := pedersen.ValidateParameters(public.N, public.S, public.T); err != nil {
 		return false
 	}

@@ -34,15 +34,15 @@ type round3 struct {
 	Lambda map[party.ID]curve.Scalar
 }
 
-type message3 struct {
+type broadcast3 struct {
 	// Z_i is the response scalar computed by the sender of this message.
 	Z_i curve.Scalar
 }
 
-// VerifyMessage implements round.Round.
-func (r *round3) VerifyMessage(msg round.Message) error {
+// StoreBroadcastMessage implements round.BroadcastRound.
+func (r *round3) StoreBroadcastMessage(msg round.Message) error {
 	from := msg.From
-	body, ok := msg.Content.(*message3)
+	body, ok := msg.Content.(*broadcast3)
 	if !ok || body == nil {
 		return round.ErrInvalidContent
 	}
@@ -72,17 +72,16 @@ func (r *round3) VerifyMessage(msg round.Message) error {
 		return fmt.Errorf("failed to verify response from %v", from)
 	}
 
-	return nil
-}
-
-// StoreMessage implements round.Round.
-func (r *round3) StoreMessage(msg round.Message) error {
-	from, body := msg.From, msg.Content.(*message3)
-
 	r.z[from] = body.Z_i
 
 	return nil
 }
+
+// VerifyMessage implements round.Round.
+func (round3) VerifyMessage(round.Message) error { return nil }
+
+// StoreMessage implements round.Round.
+func (round3) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round.
 func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
@@ -126,8 +125,11 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *round3) MessageContent() round.Content {
-	return &message3{
+func (round3) MessageContent() round.Content { return nil }
+
+// BroadcastContent implements round.BroadcastRound.
+func (r *round3) BroadcastContent() round.Content {
+	return &broadcast3{
 		Z_i: r.Group().NewScalar(),
 	}
 }

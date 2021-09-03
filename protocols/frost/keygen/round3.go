@@ -25,23 +25,21 @@ type round3 struct {
 type message3 struct {
 	// F_li is the secret share sent from party l to this party.
 	F_li curve.Scalar
+}
+
+type broadcast3 struct {
 	// C_l is contribution to the chaining key for this party.
 	C_l types.RID
 	// Decommitment = uᵢ decommitment bytes
 	Decommitment hash.Decommitment
 }
 
-// VerifyMessage implements round.Round.
-func (r *round3) VerifyMessage(msg round.Message) error {
+// StoreBroadcastMessage implements round.BroadcastRound.
+func (r *round3) StoreBroadcastMessage(msg round.Message) error {
 	from := msg.From
-	body, ok := msg.Content.(*message3)
+	body, ok := msg.Content.(*broadcast3)
 	if !ok || body == nil {
 		return round.ErrInvalidContent
-	}
-
-	// check nil
-	if body.F_li == nil {
-		return round.ErrNilFields
 	}
 
 	if err := body.C_l.Validate(); err != nil {
@@ -53,6 +51,22 @@ func (r *round3) VerifyMessage(msg round.Message) error {
 	if !r.HashForID(from).Decommit(r.ChainKeyCommitments[from], body.Decommitment, body.C_l) {
 		return fmt.Errorf("failed to verify chain key commitment")
 	}
+	r.ChainKeys[from] = body.C_l
+	return nil
+}
+
+// VerifyMessage implements round.Round.
+func (r *round3) VerifyMessage(msg round.Message) error {
+	body, ok := msg.Content.(*message3)
+	if !ok || body == nil {
+		return round.ErrInvalidContent
+	}
+
+	// check nil
+	if body.F_li == nil {
+		return round.ErrNilFields
+	}
+
 	return nil
 }
 
@@ -76,7 +90,6 @@ func (r *round3) StoreMessage(msg round.Message) error {
 	}
 
 	r.shareFrom[from] = body.F_li
-	r.ChainKeys[from] = body.C_l
 
 	return nil
 }
@@ -173,6 +186,9 @@ func (r *round3) MessageContent() round.Content {
 		F_li: r.Group().NewScalar(),
 	}
 }
+
+// BroadcastContent implements round.BroadcastRound.
+func (r *round3) BroadcastContent() round.Content { return &broadcast3{} }
 
 // Number implements round.Round.
 func (round3) Number() round.Number { return 3 }
