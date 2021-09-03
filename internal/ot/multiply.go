@@ -92,13 +92,22 @@ func NewMultiplySender(ctxHash *hash.Hash, setup *CorreOTSendSetup, alpha curve.
 }
 
 type MultiplySendRound1Message struct {
-	msg    *AdditiveOTSendRound1Message
-	rCheck []curve.Scalar
-	uCheck curve.Scalar
+	Msg    *AdditiveOTSendRound1Message
+	RCheck []curve.Scalar
+	UCheck curve.Scalar
+}
+
+func (r *MultiplyReceiver) EmptyMultiplySendRound1Message() *MultiplySendRound1Message {
+	group := r.group
+	RCheck := make([]curve.Scalar, len(r.gadget))
+	for i := 0; i < len(RCheck); i++ {
+		RCheck[i] = group.NewScalar()
+	}
+	return &MultiplySendRound1Message{RCheck: RCheck, UCheck: group.NewScalar()}
 }
 
 func (r *MultiplySender) Round1(msg *MultiplyReceiveRound1Message) (*MultiplySendRound1Message, curve.Scalar, error) {
-	additiveMsg, result, err := r.sender.Round1(msg.msg)
+	additiveMsg, result, err := r.sender.Round1(msg.Msg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -126,9 +135,9 @@ func (r *MultiplySender) Round1(msg *MultiplyReceiveRound1Message) (*MultiplySen
 	}
 
 	return &MultiplySendRound1Message{
-		msg:    additiveMsg,
-		rCheck: rCheck,
-		uCheck: uCheck,
+		Msg:    additiveMsg,
+		RCheck: rCheck,
+		UCheck: uCheck,
 	}, share, nil
 }
 
@@ -162,7 +171,7 @@ func NewMultiplyReceiver(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, beta cu
 }
 
 type MultiplyReceiveRound1Message struct {
-	msg *AdditiveOTReceiveRound1Message
+	Msg *AdditiveOTReceiveRound1Message
 }
 
 func (r *MultiplyReceiver) Round1() *MultiplyReceiveRound1Message {
@@ -171,7 +180,7 @@ func (r *MultiplyReceiver) Round1() *MultiplyReceiveRound1Message {
 }
 
 func (r *MultiplyReceiver) Round2(msg *MultiplySendRound1Message) (curve.Scalar, error) {
-	result, err := r.receiver.Round2(msg.msg)
+	result, err := r.receiver.Round2(msg.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -190,8 +199,8 @@ func (r *MultiplyReceiver) Round2(msg *MultiplySendRound1Message) (curve.Scalar,
 		checkLeft.Add(mul.Set(result[i][1]).Mul(chi1))
 
 		checkRight.SetNat(choiceNat.SetUint64(uint64((r.choices[i>>3] >> (i & 0b111)) & 1)))
-		checkRight.Mul(msg.uCheck)
-		checkRight.Sub(msg.rCheck[i])
+		checkRight.Mul(msg.UCheck)
+		checkRight.Sub(msg.RCheck[i])
 
 		if !checkLeft.Equal(checkRight) {
 			return nil, errors.New("multiply receive round 2: integrity check failed")

@@ -68,7 +68,7 @@ type ExtendedOTSendResult struct {
 func ExtendedOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, msg *ExtendedOTReceiveMessage) (*ExtendedOTSendResult, error) {
 	inflatedBatchSize := batchSize + params.OTParam + params.StatParam
 
-	correResult, err := CorreOTSend(ctxHash, setup, inflatedBatchSize, msg.correMsg)
+	correResult, err := CorreOTSend(ctxHash, setup, inflatedBatchSize, msg.CorreMsg)
 	if err != nil {
 		return nil, err
 	}
@@ -88,9 +88,9 @@ func ExtendedOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, 
 		q.accumulate(&correResult._Q[i], &chi[i])
 	}
 
-	q.accumulate(&msg.x, &setup._Delta)
+	q.accumulate(&msg.X, &setup._Delta)
 
-	if !q.eq(&msg.t) {
+	if !q.eq(&msg.T) {
 		return nil, fmt.Errorf("ExtendedOTSend: monochrome check failed")
 	}
 
@@ -123,9 +123,9 @@ type ExtendedOTReceiveResult struct {
 }
 
 type ExtendedOTReceiveMessage struct {
-	correMsg *CorreOTReceiveMessage
-	x        [params.OTBytes]byte
-	t        fieldElement
+	CorreMsg *CorreOTReceiveMessage
+	X        [params.OTBytes]byte
+	T        fieldElement
 }
 
 func ExtendedOTReceive(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, choices []byte) (*ExtendedOTReceiveMessage, *ExtendedOTReceiveResult) {
@@ -137,10 +137,10 @@ func ExtendedOTReceive(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, choices [
 	correMsg, correResult := CorreOTReceive(ctxHash, setup, extraChoices)
 
 	for i := 0; i < params.OTParam; i++ {
-		ctxHash.WriteAny(correMsg._U[i])
+		ctxHash.WriteAny(correMsg.U[i])
 	}
 	outMsg := new(ExtendedOTReceiveMessage)
-	outMsg.correMsg = correMsg
+	outMsg.CorreMsg = correMsg
 
 	chi := make([][params.OTBytes]byte, inflatedBatchSize)
 	digest := ctxHash.Digest()
@@ -151,12 +151,12 @@ func ExtendedOTReceive(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, choices [
 	for i := 0; i < len(chi); i++ {
 		mask := -bitAt(i, extraChoices)
 		for j := 0; j < params.OTBytes; j++ {
-			outMsg.x[j] ^= mask & chi[i][j]
+			outMsg.X[j] ^= mask & chi[i][j]
 		}
 	}
 
 	for i := 0; i < len(chi) && i < len(correResult._T); i++ {
-		outMsg.t.accumulate(&correResult._T[i], &chi[i])
+		outMsg.T.accumulate(&correResult._T[i], &chi[i])
 	}
 
 	VChoices := make([][params.OTBytes]byte, 8*len(choices))

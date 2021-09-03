@@ -31,12 +31,12 @@ func NewCorreOTSetupSender(pl *pool.Pool, hash *hash.Hash) *CorreOTSetupSender {
 }
 
 type CorreOTSetupSendRound1Message struct {
-	msgs [params.OTParam]RandomOTReceiveRound1Message
+	Msgs [params.OTParam]RandomOTReceiveRound1Message
 }
 
 func (r *CorreOTSetupSender) Round1(msg *CorreOTSetupReceiveRound1Message) (*CorreOTSetupSendRound1Message, error) {
 	var err error
-	r.setup, err = RandomOTSetupReceive(r.hash, &msg.msg)
+	r.setup, err = RandomOTSetupReceive(r.hash, &msg.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (r *CorreOTSetupSender) Round1(msg *CorreOTSetupReceiveRound1Message) (*Cor
 	outMsg := new(CorreOTSetupSendRound1Message)
 	errors := r.pl.Parallelize(params.OTParam, func(i int) interface{} {
 		var err error
-		outMsg.msgs[i], err = r.randomOTReceivers[i].Round1()
+		outMsg.Msgs[i], err = r.randomOTReceivers[i].Round1()
 		return err
 	})
 	for _, err := range errors {
@@ -70,13 +70,13 @@ func (r *CorreOTSetupSender) Round1(msg *CorreOTSetupReceiveRound1Message) (*Cor
 }
 
 type CorreOTSetupSendRound2Message struct {
-	msgs [params.OTParam]RandomOTReceiveRound2Message
+	Msgs [params.OTParam]RandomOTReceiveRound2Message
 }
 
 func (r *CorreOTSetupSender) Round2(msg *CorreOTSetupReceiveRound2Message) *CorreOTSetupSendRound2Message {
 	outMsg := new(CorreOTSetupSendRound2Message)
 	for i := 0; i < params.OTParam; i++ {
-		outMsg.msgs[i] = r.randomOTReceivers[i].Round2(&msg.msgs[i])
+		outMsg.Msgs[i] = r.randomOTReceivers[i].Round2(&msg.Msgs[i])
 	}
 	return outMsg
 }
@@ -86,7 +86,7 @@ func (r *CorreOTSetupSender) Round3(msg *CorreOTSetupReceiveRound3Message) (*Cor
 	setup._Delta = r._Delta
 	var err error
 	for i := 0; i < params.OTParam; i++ {
-		setup._K_Delta[i], err = r.randomOTReceivers[i].Round3(&msg.msgs[i])
+		setup._K_Delta[i], err = r.randomOTReceivers[i].Round3(&msg.Msgs[i])
 		if err != nil {
 			return nil, err
 		}
@@ -113,7 +113,11 @@ func NewCorreOTSetupReceive(pl *pool.Pool, hash *hash.Hash, group curve.Curve) *
 }
 
 type CorreOTSetupReceiveRound1Message struct {
-	msg RandomOTSetupSendMessage
+	Msg RandomOTSetupSendMessage
+}
+
+func EmptyCorreOTSetupReceiveRound1Message(group curve.Curve) *CorreOTSetupReceiveRound1Message {
+	return &CorreOTSetupReceiveRound1Message{Msg: *EmptyRandomOTSetupSendMessage(group)}
 }
 
 func (r *CorreOTSetupReceiver) Round1() *CorreOTSetupReceiveRound1Message {
@@ -134,7 +138,7 @@ func (r *CorreOTSetupReceiver) Round1() *CorreOTSetupReceiveRound1Message {
 }
 
 type CorreOTSetupReceiveRound2Message struct {
-	msgs [params.OTParam]RandomOTSendRound1Message
+	Msgs [params.OTParam]RandomOTSendRound1Message
 }
 
 func (r *CorreOTSetupReceiver) Round2(msg *CorreOTSetupSendRound1Message) (*CorreOTSetupReceiveRound2Message, error) {
@@ -142,7 +146,7 @@ func (r *CorreOTSetupReceiver) Round2(msg *CorreOTSetupSendRound1Message) (*Corr
 
 	errors := r.pl.Parallelize(params.OTParam, func(i int) interface{} {
 		var err error
-		outMsg.msgs[i], err = r.randomOTSenders[i].Round1(&msg.msgs[i])
+		outMsg.Msgs[i], err = r.randomOTSenders[i].Round1(&msg.Msgs[i])
 		return err
 	})
 	for _, err := range errors {
@@ -154,18 +158,18 @@ func (r *CorreOTSetupReceiver) Round2(msg *CorreOTSetupSendRound1Message) (*Corr
 }
 
 type CorreOTSetupReceiveRound3Message struct {
-	msgs [params.OTParam]RandomOTSendRound2Message
+	Msgs [params.OTParam]RandomOTSendRound2Message
 }
 
 func (r *CorreOTSetupReceiver) Round3(msg *CorreOTSetupSendRound2Message) (*CorreOTSetupReceiveRound3Message, *CorreOTReceiveSetup, error) {
 	outMsg := new(CorreOTSetupReceiveRound3Message)
 	setup := new(CorreOTReceiveSetup)
 	for i := 0; i < params.OTParam; i++ {
-		msgsi, resultsi, err := r.randomOTSenders[i].Round2(&msg.msgs[i])
+		msgsi, resultsi, err := r.randomOTSenders[i].Round2(&msg.Msgs[i])
 		if err != nil {
 			return nil, nil, err
 		}
-		outMsg.msgs[i] = msgsi
+		outMsg.Msgs[i] = msgsi
 		setup._K_0[i] = resultsi.Rand0
 		setup._K_1[i] = resultsi.Rand1
 	}
@@ -198,7 +202,7 @@ func CorreOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, msg
 
 	var Q [params.OTParam][]byte
 	for i := 0; i < params.OTParam; i++ {
-		if len(msg._U[i]) != batchSizeBytes {
+		if len(msg.U[i]) != batchSizeBytes {
 			return nil, errors.New("CorreOTSend: incorrect batch size in message")
 		}
 
@@ -210,15 +214,15 @@ func CorreOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, msg
 
 		mask := -bitAt(i, setup._Delta[:])
 		for j := 0; j < batchSizeBytes; j++ {
-			Q[i][j] ^= mask & msg._U[i][j]
+			Q[i][j] ^= mask & msg.U[i][j]
 		}
 	}
 
-	return &CorreOTSendResult{_U: msg._U, _Q: transposeBits(batchSize, &Q)}, nil
+	return &CorreOTSendResult{_U: msg.U, _Q: transposeBits(batchSize, &Q)}, nil
 }
 
 type CorreOTReceiveMessage struct {
-	_U [params.OTParam][]byte
+	U [params.OTParam][]byte
 }
 
 type CorreOTReceiveResult struct {
@@ -246,9 +250,9 @@ func CorreOTReceive(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, choices []by
 		T1[i] = make([]byte, batchSizeBytes)
 		_, _ = prg.Digest().Read(T1[i])
 
-		outMsg._U[i] = make([]byte, batchSizeBytes)
+		outMsg.U[i] = make([]byte, batchSizeBytes)
 		for j := 0; j < batchSizeBytes; j++ {
-			outMsg._U[i][j] = T0[i][j] ^ T1[i][j] ^ choices[j]
+			outMsg.U[i][j] = T0[i][j] ^ T1[i][j] ^ choices[j]
 		}
 	}
 

@@ -11,11 +11,13 @@ import (
 )
 
 type message2R struct {
-	decommit    hash.Decommitment
-	publicShare curve.Point
-	proof       *zksch.Proof
-	otMsg       *ot.CorreOTSetupReceiveRound2Message
+	Decommit    hash.Decommitment
+	PublicShare curve.Point
+	Proof       *zksch.Proof
+	OtMsg       *ot.CorreOTSetupReceiveRound2Message
 }
+
+func (message2R) RoundNumber() round.Number { return 2 }
 
 type round2R struct {
 	*round1R
@@ -31,10 +33,10 @@ func (r *round2R) VerifyMessage(msg round.Message) error {
 	if !ok || body == nil {
 		return round.ErrInvalidContent
 	}
-	if body.proof == nil || body.publicShare == nil || body.otMsg == nil {
+	if body.Proof == nil || body.PublicShare == nil || body.OtMsg == nil {
 		return round.ErrNilFields
 	}
-	if !body.proof.Verify(r.Hash(), body.publicShare) {
+	if !body.Proof.Verify(r.Hash(), body.PublicShare) {
 		return errors.New("invalid Schnorr proof")
 	}
 	return nil
@@ -42,11 +44,11 @@ func (r *round2R) VerifyMessage(msg round.Message) error {
 
 func (r *round2R) StoreMessage(msg round.Message) (err error) {
 	body := msg.Content.(*message1S)
-	r.otMsg, err = r.receiver.Round2(body.otMsg)
+	r.otMsg, err = r.receiver.Round2(body.OtMsg)
 	if err != nil {
 		return err
 	}
-	r.public = r.secretShare.Act(body.publicShare)
+	r.public = r.secretShare.Act(body.PublicShare)
 	return nil
 }
 
@@ -60,7 +62,7 @@ func (r *round2R) Finalize(out chan<- *round.Message) (round.Session, error) {
 
 func (r *round2R) MessageContent() round.Content {
 	group := r.Group()
-	return &message1S{publicShare: group.NewPoint(), proof: zksch.EmptyProof(group)}
+	return &message1S{PublicShare: group.NewPoint(), Proof: zksch.EmptyProof(group)}
 }
 
 func (round2R) Number() round.Number {

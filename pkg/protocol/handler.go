@@ -19,9 +19,17 @@ import (
 // An optional sessionID can be provided, which should unique among all protocol executions.
 type StartFunc func(sessionID []byte) (round.Session, error)
 
-// Handler represents an execution of a given protocol.
+type Handler interface {
+	Result() (interface{}, error)
+	Listen() <-chan *Message
+	Stop()
+	CanAccept(msg *Message) bool
+	Accept(msg *Message)
+}
+
+// MultiHandler represents an execution of a given protocol.
 // It provides a simple interface for the user to receive/deliver protocol messages.
-type Handler struct {
+type MultiHandler struct {
 	currentRound    round.Session
 	rounds          map[round.Number]round.Session
 	err             *Error
@@ -34,12 +42,12 @@ type Handler struct {
 }
 
 // NewHandler expects a StartFunc for the desired protocol. It returns a handler that the user can interact with.
-func NewHandler(create StartFunc, sessionID []byte) (*Handler, error) {
+func NewHandler(create StartFunc, sessionID []byte) (*MultiHandler, error) {
 	r, err := create(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("protocol: failed to create round: %w", err)
 	}
-	h := &Handler{
+	h := &MultiHandler{
 		currentRound:    r,
 		rounds:          map[round.Number]round.Session{r.Number(): r},
 		messages:        newQueue(r.OtherPartyIDs(), r.FinalRoundNumber()),
@@ -52,7 +60,7 @@ func NewHandler(create StartFunc, sessionID []byte) (*Handler, error) {
 }
 
 // Result returns the protocol result if the protocol completed successfully. Otherwise an error is returned.
-func (h *Handler) Result() (interface{}, error) {
+func (h *MultiHandler) Result() (interface{}, error) {
 	h.mtx.Lock()
 	defer h.mtx.Unlock()
 	if h.result != nil {
@@ -67,14 +75,14 @@ func (h *Handler) Result() (interface{}, error) {
 // Listen returns a channel with outgoing messages that must be sent to other parties.
 // The message received should be _reliably_ broadcast if msg.Broadcast is true.
 // The channel is closed when either an error occurs or the protocol detects an error.
-func (h *Handler) Listen() <-chan *Message {
+func (h *MultiHandler) Listen() <-chan *Message {
 	h.mtx.Lock()
 	defer h.mtx.Unlock()
 	return h.out
 }
 
 // CanAccept returns true if the message is designated for this protocol protocol execution.
-func (h *Handler) CanAccept(msg *Message) bool {
+func (h *MultiHandler) CanAccept(msg *Message) bool {
 	r := h.currentRound
 	if msg == nil {
 		return false
@@ -113,11 +121,11 @@ func (h *Handler) CanAccept(msg *Message) bool {
 	return true
 }
 
-// Update tries to process the given message. If an abort occurs, the channel returned by Listen() is closed,
+// Accept tries to process the given message. If an abort occurs, the channel returned by Listen() is closed,
 // and an error is returned by Result().
 //
 // This function may be called concurrently from different threads but may block until all previous calls have finished.
-func (h *Handler) Update(msg *Message) {
+func (h *MultiHandler) Accept(msg *Message) {
 	h.mtx.Lock()
 	defer h.mtx.Unlock()
 
@@ -152,7 +160,7 @@ func (h *Handler) Update(msg *Message) {
 	h.finalize()
 }
 
-func (h *Handler) verifyBroadcastMessage(msg *Message) error {
+func (h *MultiHandler) verifyBroadcastMessage(msg *Message) error {
 	r, ok := h.rounds[msg.RoundNumber]
 	if !ok {
 		return nil
@@ -184,7 +192,7 @@ func (h *Handler) verifyBroadcastMessage(msg *Message) error {
 }
 
 // verifyMessage tries to handle a normal (non reliably broadcast) message for this current round.
-func (h *Handler) verifyMessage(msg *Message) error {
+func (h *MultiHandler) verifyMessage(msg *Message) error {
 	// we simply return if we haven't reached the right round.
 	r, ok := h.rounds[msg.RoundNumber]
 	if !ok {
@@ -216,7 +224,7 @@ func (h *Handler) verifyMessage(msg *Message) error {
 	return nil
 }
 
-func (h *Handler) finalize() {
+func (h *MultiHandler) finalize() {
 	// only finalize if we have received all messages
 	if !h.receivedAll() {
 		return
@@ -311,7 +319,7 @@ func (h *Handler) finalize() {
 	h.finalize()
 }
 
-func (h *Handler) abort(err error, culprits ...party.ID) {
+func (h *MultiHandler) abort(err error, culprits ...party.ID) {
 	if err != nil {
 		h.err = &Error{
 			Culprits: culprits,
@@ -332,7 +340,7 @@ func (h *Handler) abort(err error, culprits ...party.ID) {
 }
 
 // Stop cancels the current execution of the protocol, and alerts the other users.
-func (h *Handler) Stop() {
+func (h *MultiHandler) Stop() {
 	if h.err != nil || h.result != nil {
 		h.abort(errors.New("aborted by user"), h.currentRound.SelfID())
 	}
@@ -342,7 +350,7 @@ func expectsNormalMessage(r round.Session) bool {
 	return r.MessageContent() != nil
 }
 
-func (h *Handler) receivedAll() bool {
+func (h *MultiHandler) receivedAll() bool {
 	r := h.currentRound
 	number := r.Number()
 	// check all broadcast messages
@@ -385,7 +393,7 @@ func (h *Handler) receivedAll() bool {
 	return true
 }
 
-func (h *Handler) duplicate(msg *Message) bool {
+func (h *MultiHandler) duplicate(msg *Message) bool {
 	if msg.RoundNumber == 0 {
 		return false
 	}
@@ -402,7 +410,7 @@ func (h *Handler) duplicate(msg *Message) bool {
 	return q[msg.From] != nil
 }
 
-func (h *Handler) store(msg *Message) {
+func (h *MultiHandler) store(msg *Message) {
 	var q map[party.ID]*Message
 	if msg.Broadcast {
 		q = h.broadcast[msg.RoundNumber]
@@ -445,7 +453,7 @@ func getRoundMessage(msg *Message, r round.Session) (round.Message, error) {
 }
 
 // checkBroadcastHash is run after receivedAll() and checks whether all provided verification hashes are correct.
-func (h *Handler) checkBroadcastHash() bool {
+func (h *MultiHandler) checkBroadcastHash() bool {
 	number := h.currentRound.Number()
 	// check BroadcastVerification
 	previousHash := h.broadcastHashes[number-1]
@@ -478,6 +486,6 @@ func newQueue(senders []party.ID, rounds round.Number) map[round.Number]map[part
 	return q
 }
 
-func (h *Handler) String() string {
+func (h *MultiHandler) String() string {
 	return fmt.Sprintf("party: %s, protocol: %s", h.currentRound.SelfID(), h.currentRound.ProtocolID())
 }

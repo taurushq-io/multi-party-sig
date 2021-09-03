@@ -56,8 +56,8 @@ func StartKeygen(group curve.Curve, receiver bool, selfID, otherID party.ID, pl 
 		}
 
 		if receiver {
-			return &round1R{Helper: helper}, nil
+			return &round1R{Helper: helper, receiver: ot.NewCorreOTSetupReceive(pl, helper.Hash(), helper.Group())}, nil
 		}
-		return &round1S{Helper: helper}, nil
+		return &round1S{Helper: helper, sender: ot.NewCorreOTSetupSender(pl, helper.Hash())}, nil
 	}
 }

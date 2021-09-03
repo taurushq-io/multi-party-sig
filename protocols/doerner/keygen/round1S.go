@@ -12,10 +12,12 @@ import (
 )
 
 type message1S struct {
-	publicShare curve.Point
-	proof       *zksch.Proof
-	otMsg       *ot.CorreOTSetupSendRound1Message
+	PublicShare curve.Point
+	Proof       *zksch.Proof
+	OtMsg       *ot.CorreOTSetupSendRound1Message
 }
+
+func (message1S) RoundNumber() round.Number { return 2 }
 
 type round1S struct {
 	*round.Helper
@@ -30,11 +32,11 @@ func (r *round1S) VerifyMessage(msg round.Message) error {
 		return round.ErrInvalidContent
 	}
 
-	if err := body.commit.Validate(); err != nil {
+	if err := body.Commit.Validate(); err != nil {
 		return err
 	}
 
-	if body.otMsg == nil {
+	if body.OtMsg == nil {
 		return round.ErrNilFields
 	}
 
@@ -43,11 +45,11 @@ func (r *round1S) VerifyMessage(msg round.Message) error {
 
 func (r *round1S) StoreMessage(msg round.Message) (err error) {
 	body := msg.Content.(*message1R)
-	r.otMsg, err = r.sender.Round1(body.otMsg)
+	r.otMsg, err = r.sender.Round1(body.OtMsg)
 	if err != nil {
 		return err
 	}
-	r.receiverCommit = body.commit
+	r.receiverCommit = body.Commit
 	return nil
 }
 
@@ -61,8 +63,8 @@ func (r *round1S) Finalize(out chan<- *round.Message) (round.Session, error) {
 	return &round2S{round1S: r, secretShare: secretShare}, nil
 }
 
-func (round1S) MessageContent() round.Content {
-	return &message1R{}
+func (r *round1S) MessageContent() round.Content {
+	return &message1R{OtMsg: ot.EmptyCorreOTSetupReceiveRound1Message(r.Group())}
 }
 
 func (round1S) Number() round.Number { return 1 }

@@ -6,8 +6,10 @@ import (
 )
 
 type message3R struct {
-	otMsg *ot.CorreOTSetupReceiveRound3Message
+	OtMsg *ot.CorreOTSetupReceiveRound3Message
 }
+
+func (message3R) RoundNumber() round.Number { return 3 }
 
 type round3R struct {
 	*round2R
@@ -20,7 +22,7 @@ func (r *round3R) VerifyMessage(msg round.Message) error {
 	if !ok || body == nil {
 		return round.ErrInvalidContent
 	}
-	if body.otMsg == nil {
+	if body.OtMsg == nil {
 		return round.ErrNilFields
 	}
 	return nil
@@ -28,7 +30,7 @@ func (r *round3R) VerifyMessage(msg round.Message) error {
 
 func (r *round3R) StoreMessage(msg round.Message) (err error) {
 	body := msg.Content.(*message2S)
-	r.otMsg, r.setup, err = r.receiver.Round3(body.otMsg)
+	r.otMsg, r.setup, err = r.receiver.Round3(body.OtMsg)
 	return
 }
 
@@ -43,6 +45,6 @@ func (r *round3R) MessageContent() round.Content {
 	return &message2S{}
 }
 
-func (round3R) RoundNumber() round.Number {
+func (round3R) Number() round.Number {
 	return 3
 }

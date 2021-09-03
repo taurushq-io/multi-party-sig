@@ -15,7 +15,7 @@ func (r *round3S) VerifyMessage(msg round.Message) error {
 	if !ok || body == nil {
 		return round.ErrInvalidContent
 	}
-	if body.otMsg == nil {
+	if body.OtMsg == nil {
 		return round.ErrNilFields
 	}
 	return nil
@@ -23,7 +23,7 @@ func (r *round3S) VerifyMessage(msg round.Message) error {
 
 func (r *round3S) StoreMessage(msg round.Message) (err error) {
 	body := msg.Content.(*message3R)
-	r.setup, err = r.sender.Round3(body.otMsg)
+	r.setup, err = r.sender.Round3(body.OtMsg)
 	return
 }
 
@@ -35,6 +35,6 @@ func (r *round3S) MessageContent() round.Content {
 	return &message3R{}
 }
 
-func (round3S) RoundNumber() round.Number {
+func (round3S) Number() round.Number {
 	return 3
 }

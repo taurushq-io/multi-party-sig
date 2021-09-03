@@ -32,7 +32,7 @@ func NewAdditiveOTSender(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize 
 }
 
 func (r *AdditiveOTSender) Round1(msg *AdditiveOTReceiveRound1Message) (*AdditiveOTSendRound1Message, AdditiveOTSendResult, error) {
-	extendedResult, err := ExtendedOTSend(r.ctxHash, r.setup, r.batchSize, msg.msg)
+	extendedResult, err := ExtendedOTSend(r.ctxHash, r.setup, r.batchSize, msg.Msg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -85,13 +85,13 @@ func NewAdditiveOTReceiver(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, group
 }
 
 type AdditiveOTReceiveRound1Message struct {
-	msg *ExtendedOTReceiveMessage
+	Msg *ExtendedOTReceiveMessage
 }
 
 func (r *AdditiveOTReceiver) Round1() *AdditiveOTReceiveRound1Message {
 	msg, result := ExtendedOTReceive(r.ctxHash, r.setup, r.choices)
 	r.result = result
-	return &AdditiveOTReceiveRound1Message{msg: msg}
+	return &AdditiveOTReceiveRound1Message{Msg: msg}
 }
 
 type AdditiveOTReceiveResult [][2]curve.Scalar

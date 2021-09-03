@@ -1,14 +1,15 @@
 package keygen
 
 import (
-	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/internal/test"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
+	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
 )
 
 func checkOutput(t *testing.T, configSender *ConfigSender, configReceiver *ConfigReceiver) {
@@ -19,38 +20,36 @@ func checkOutput(t *testing.T, configSender *ConfigSender, configReceiver *Confi
 	require.True(t, public.Equal(configSender.Public))
 }
 
+func worker(wg *sync.WaitGroup, id party.ID, handler protocol.Handler, network *test.Network) {
+	defer wg.Done()
+	test.HandlerLoop(id, handler, network)
+}
+
 func TestKeygen(t *testing.T) {
-	pl := pool.NewPool(0)
-	defer pl.TearDown()
+	var pl *pool.Pool
 
 	group := curve.Secp256k1{}
 	partyIDs := test.PartyIDs(2)
+	network := test.NewNetwork(partyIDs)
 
-	rounds := make([]round.Session, 0, 2)
-	fmt.Println("partyIDS", partyIDs)
-	r0, err := StartKeygen(group, false, partyIDs[0], partyIDs[1], pl)(nil)
+	var wg sync.WaitGroup
+	h0, err := protocol.NewTwoPartyHandler(StartKeygen(group, true, partyIDs[0], partyIDs[1], pl), []byte("session"), true)
 	require.NoError(t, err, "round creation should not result in an error")
-	rounds = append(rounds, r0)
-	r1, err := StartKeygen(group, true, partyIDs[1], partyIDs[0], pl)(nil)
-	rounds = append(rounds, r1)
+	h1, err := protocol.NewTwoPartyHandler(StartKeygen(group, false, partyIDs[1], partyIDs[0], pl), []byte("session"), false)
 	require.NoError(t, err, "round creation should not result in an error")
+	wg.Add(2)
+	go worker(&wg, partyIDs[0], h0, network)
+	go worker(&wg, partyIDs[1], h1, network)
+	wg.Wait()
 
-	for {
-		err, done := test.Rounds(rounds, nil)
-		require.NoError(t, err, "failed to process round")
-		if done {
-			break
-		}
-	}
-
-	resultRound0, ok := rounds[0].(*round.Output)
-	require.True(t, ok)
-	configSender, ok := resultRound0.Result.(*ConfigSender)
+	resultRound0, err := h0.Result()
+	require.NoError(t, err)
+	configReceiver, ok := resultRound0.(*ConfigReceiver)
 	require.True(t, ok)
 
-	resultRound1, ok := rounds[1].(*round.Output)
-	require.True(t, ok)
-	configReceiver, ok := resultRound1.Result.(*ConfigReceiver)
+	resultRound1, err := h1.Result()
+	require.NoError(t, err)
+	configSender, ok := resultRound1.(*ConfigSender)
 	require.True(t, ok)
 
 	checkOutput(t, configSender, configReceiver)

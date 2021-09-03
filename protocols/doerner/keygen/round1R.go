@@ -10,9 +10,11 @@ import (
 )
 
 type message1R struct {
-	commit hash.Commitment
-	otMsg  *ot.CorreOTSetupReceiveRound1Message
+	Commit hash.Commitment
+	OtMsg  *ot.CorreOTSetupReceiveRound1Message
 }
+
+func (message1R) RoundNumber() round.Number { return 1 }
 
 // round1R corresponds to the first round from the receiver's perspective.
 type round1R struct {
