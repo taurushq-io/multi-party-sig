@@ -35,6 +35,7 @@ type round2 struct {
 }
 
 type broadcast2 struct {
+	round.ReliableBroadcastContent
 	// Phi_i is the commitment to the polynomial that this participant generated.
 	Phi_i *polynomial.Exponent
 	// Sigma_i is the Schnorr proof of knowledge of the participant's secret
@@ -125,7 +126,7 @@ func (round2) MessageContent() round.Content { return nil }
 func (broadcast2) RoundNumber() round.Number { return 2 }
 
 // BroadcastContent implements round.BroadcastRound.
-func (r *round2) BroadcastContent() round.Content {
+func (r *round2) BroadcastContent() round.BroadcastContent {
 	return &broadcast2{
 		Phi_i:   polynomial.EmptyExponent(r.Group()),
 		Sigma_i: sch.EmptyProof(r.Group()),

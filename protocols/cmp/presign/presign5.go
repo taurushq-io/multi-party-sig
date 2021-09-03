@@ -24,6 +24,7 @@ type message5 struct {
 }
 
 type broadcast5 struct {
+	round.NormalBroadcastContent
 	// BigGammaShare = Γᵢ
 	BigGammaShare curve.Point
 }
@@ -120,7 +121,7 @@ func (r *presign5) MessageContent() round.Content {
 func (broadcast5) RoundNumber() round.Number { return 5 }
 
 // BroadcastContent implements round.BroadcastRound.
-func (r *presign5) BroadcastContent() round.Content {
+func (r *presign5) BroadcastContent() round.BroadcastContent {
 	return &broadcast5{
 		BigGammaShare: r.Group().NewPoint(),
 	}

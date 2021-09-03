@@ -31,6 +31,7 @@ type presign7 struct {
 }
 
 type broadcast7 struct {
+	round.NormalBroadcastContent
 	// S = Sᵢ
 	S              curve.Point
 	Proof          *zkelog.Proof
@@ -84,7 +85,7 @@ func (presign7) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round
 //
-// - verify ∑ⱼ Sⱼ = X
+// - verify ∑ⱼ Sⱼ = X.
 func (r *presign7) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// compute ∑ⱼ Sⱼ
 	PublicKeyComputed := r.Group().NewPoint()
@@ -163,7 +164,7 @@ func (presign7) MessageContent() round.Content { return nil }
 func (broadcast7) RoundNumber() round.Number { return 7 }
 
 // BroadcastContent implements round.BroadcastRound.
-func (r *presign7) BroadcastContent() round.Content {
+func (r *presign7) BroadcastContent() round.BroadcastContent {
 	return &broadcast7{
 		S:     r.Group().NewPoint(),
 		Proof: zkelog.Empty(r.Group()),

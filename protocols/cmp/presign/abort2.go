@@ -21,6 +21,7 @@ type abort2 struct {
 }
 
 type broadcastAbort2 struct {
+	round.NormalBroadcastContent
 	// YHat = Ŷⱼ = bⱼ⋅Yⱼ
 	YHat      curve.Point
 	YHatProof *zklog.Proof
@@ -102,7 +103,7 @@ func (abort2) MessageContent() round.Content { return nil }
 func (broadcastAbort2) RoundNumber() round.Number { return 8 }
 
 // BroadcastContent implements round.BroadcastRound.
-func (r *abort2) BroadcastContent() round.Content {
+func (r *abort2) BroadcastContent() round.BroadcastContent {
 	return &broadcastAbort2{
 		YHat:      r.Group().NewPoint(),
 		YHatProof: zklog.Empty(r.Group()),

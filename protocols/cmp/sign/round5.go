@@ -32,6 +32,7 @@ type round5 struct {
 }
 
 type broadcast5 struct {
+	round.NormalBroadcastContent
 	SigmaShare curve.Scalar
 }
 
@@ -88,7 +89,7 @@ func (r *round5) MessageContent() round.Content { return nil }
 func (broadcast5) RoundNumber() round.Number { return 5 }
 
 // BroadcastContent implements round.BroadcastRound.
-func (r *round5) BroadcastContent() round.Content {
+func (r *round5) BroadcastContent() round.BroadcastContent {
 	return &broadcast5{
 		SigmaShare: r.Group().NewScalar(),
 	}

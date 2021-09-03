@@ -53,6 +53,7 @@ type presign2 struct {
 }
 
 type broadcast2 struct {
+	round.ReliableBroadcastContent
 	// K = Kᵢ
 	K *paillier.Ciphertext
 	// G = Gᵢ
@@ -217,7 +218,7 @@ func (r *presign2) MessageContent() round.Content {
 func (broadcast2) RoundNumber() round.Number { return 2 }
 
 // BroadcastContent implements round.BroadcastRound.
-func (r *presign2) BroadcastContent() round.Content {
+func (r *presign2) BroadcastContent() round.BroadcastContent {
 	return &broadcast2{
 		Z: elgamal.Empty(r.Group()),
 	}

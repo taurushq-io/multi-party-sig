@@ -23,6 +23,7 @@ type presign6 struct {
 }
 
 type broadcast6 struct {
+	round.NormalBroadcastContent
 	// BigDeltaShare = Δⱼ = [kⱼ]•Γⱼ
 	BigDeltaShare curve.Point
 	Proof         *zkelog.Proof
@@ -157,7 +158,7 @@ func (presign6) MessageContent() round.Content { return nil }
 func (broadcast6) RoundNumber() round.Number { return 6 }
 
 // BroadcastContent implements round.BroadcastRound.
-func (r *presign6) BroadcastContent() round.Content {
+func (r *presign6) BroadcastContent() round.BroadcastContent {
 	return &broadcast6{
 		BigDeltaShare: r.Group().NewPoint(),
 		Proof:         zkelog.Empty(r.Group()),

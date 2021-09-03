@@ -32,6 +32,7 @@ type presign4 struct {
 }
 
 type broadcast4 struct {
+	round.NormalBroadcastContent
 	// DeltaShare = δⱼ
 	DeltaShare curve.Scalar
 	// ElGamalChi = Ẑᵢ = (b̂ᵢ, χᵢ⋅G+b̂ᵢ⋅Yᵢ)
@@ -117,7 +118,7 @@ func (r *presign4) MessageContent() round.Content { return nil }
 func (broadcast4) RoundNumber() round.Number { return 4 }
 
 // BroadcastContent implements round.BroadcastRound.
-func (r *presign4) BroadcastContent() round.Content {
+func (r *presign4) BroadcastContent() round.BroadcastContent {
 	return &broadcast4{
 		DeltaShare: r.Group().NewScalar(),
 		ElGamalChi: elgamal.Empty(r.Group()),

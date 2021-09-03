@@ -28,6 +28,7 @@ type round3 struct {
 }
 
 type broadcast3 struct {
+	round.NormalBroadcastContent
 	// RID = RIDᵢ
 	RID types.RID
 	C   types.RID
@@ -205,7 +206,7 @@ func (round3) MessageContent() round.Content { return nil }
 func (broadcast3) RoundNumber() round.Number { return 3 }
 
 // BroadcastContent implements round.BroadcastRound.
-func (r *round3) BroadcastContent() round.Content {
+func (r *round3) BroadcastContent() round.BroadcastContent {
 	return &broadcast3{
 		VSSPolynomial:      polynomial.EmptyExponent(r.Group()),
 		SchnorrCommitments: zksch.EmptyCommitment(r.Group()),

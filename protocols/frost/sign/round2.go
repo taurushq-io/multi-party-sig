@@ -36,6 +36,7 @@ type round2 struct {
 }
 
 type broadcast2 struct {
+	round.ReliableBroadcastContent
 	// D_i is the first commitment produced by the sender of this message.
 	D_i curve.Point
 	// E_i is the second commitment produced by the sender of this message.
@@ -178,7 +179,7 @@ func (round2) MessageContent() round.Content { return nil }
 func (broadcast2) RoundNumber() round.Number { return 2 }
 
 // BroadcastContent implements round.BroadcastRound.
-func (r *round2) BroadcastContent() round.Content {
+func (r *round2) BroadcastContent() round.BroadcastContent {
 	return &broadcast2{
 		D_i: r.Group().NewPoint(),
 		E_i: r.Group().NewPoint(),

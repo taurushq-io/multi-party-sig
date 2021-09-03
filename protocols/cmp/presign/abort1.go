@@ -23,6 +23,7 @@ type abort1 struct {
 }
 
 type broadcastAbort1 struct {
+	round.NormalBroadcastContent
 	// GammaShare = γᵢ
 	GammaShare  *safenum.Int
 	KProof      *abortNth
@@ -102,7 +103,7 @@ func (abort1) MessageContent() round.Content { return nil }
 func (broadcastAbort1) RoundNumber() round.Number { return 7 }
 
 // BroadcastContent implements round.BroadcastRound.
-func (r *abort1) BroadcastContent() round.Content { return &broadcastAbort1{} }
+func (r *abort1) BroadcastContent() round.BroadcastContent { return &broadcastAbort1{} }
 
 // Number implements round.Round.
 func (abort1) Number() round.Number { return 7 }
