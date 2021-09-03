@@ -56,6 +56,9 @@ func (r *round5) Finalize(chan<- *round.Message) (round.Session, error) {
 // MessageContent implements round.Round.
 func (r *round5) MessageContent() round.Content { return nil }
 
+// RoundNumber implements round.Content.
+func (broadcast5) RoundNumber() round.Number { return 5 }
+
 // BroadcastContent implements round.BroadcastRound.
 func (r *round5) BroadcastContent() round.Content {
 	return &broadcast5{

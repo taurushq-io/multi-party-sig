@@ -185,10 +185,16 @@ func (r *presign3) Finalize(out chan<- *round.Message) (round.Session, error) {
 	}, nil
 }
 
+// RoundNumber implements round.Content.
+func (message3) RoundNumber() round.Number { return 3 }
+
 // MessageContent implements round.Round.
 func (r *presign3) MessageContent() round.Content {
 	return &message3{ChiProof: zkaffg.Empty(r.Group())}
 }
+
+// RoundNumber implements round.Content.
+func (broadcast3) RoundNumber() round.Number { return 3 }
 
 // BroadcastContent implements round.BroadcastRound.
 func (presign3) BroadcastContent() round.Content { return &broadcast3{} }

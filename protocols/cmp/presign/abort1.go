@@ -98,6 +98,9 @@ func (r *abort1) Finalize(chan<- *round.Message) (round.Session, error) {
 // MessageContent implements round.Round.
 func (abort1) MessageContent() round.Content { return nil }
 
+// RoundNumber implements round.Content.
+func (broadcastAbort1) RoundNumber() round.Number { return 7 }
+
 // BroadcastContent implements round.BroadcastRound.
 func (r *abort1) BroadcastContent() round.Content { return &broadcastAbort1{} }
 

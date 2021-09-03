@@ -130,12 +130,18 @@ func (r *round4) Finalize(out chan<- *round.Message) (round.Session, error) {
 	}, nil
 }
 
+// RoundNumber implements round.Content.
+func (message4) RoundNumber() round.Number { return 4 }
+
 // MessageContent implements round.Round.
 func (r *round4) MessageContent() round.Content {
 	return &message4{
 		ProofLog: zklogstar.Empty(r.Group()),
 	}
 }
+
+// RoundNumber implements round.Content.
+func (broadcast4) RoundNumber() round.Number { return 4 }
 
 // BroadcastContent implements round.BroadcastRound.
 func (r *round4) BroadcastContent() round.Content {

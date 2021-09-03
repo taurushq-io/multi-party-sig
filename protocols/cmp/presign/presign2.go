@@ -203,12 +203,18 @@ func (r *presign2) Finalize(out chan<- *round.Message) (round.Session, error) {
 	}, nil
 }
 
+// RoundNumber implements round.Content.
+func (message2) RoundNumber() round.Number { return 2 }
+
 // MessageContent implements round.Round.
 func (r *presign2) MessageContent() round.Content {
 	return &message2{
 		Proof: zkencelg.Empty(r.Group()),
 	}
 }
+
+// RoundNumber implements round.Content.
+func (broadcast2) RoundNumber() round.Number { return 2 }
 
 // BroadcastContent implements round.BroadcastRound.
 func (r *presign2) BroadcastContent() round.Content {

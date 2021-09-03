@@ -62,6 +62,9 @@ func (r *sign2) Finalize(chan<- *round.Message) (round.Session, error) {
 // MessageContent implements round.Round.
 func (sign2) MessageContent() round.Content { return nil }
 
+// RoundNumber implements round.Content.
+func (broadcastSign2) RoundNumber() round.Number { return 8 }
+
 // BroadcastContent implements round.BroadcastRound.
 func (r *sign2) BroadcastContent() round.Content {
 	return &broadcastSign2{
@@ -70,4 +73,4 @@ func (r *sign2) BroadcastContent() round.Content {
 }
 
 // Number implements round.Round.
-func (sign2) Number() round.Number { return 2 }
+func (sign2) Number() round.Number { return 8 }

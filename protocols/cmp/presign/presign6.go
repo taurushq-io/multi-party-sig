@@ -153,6 +153,9 @@ func (r *presign6) Finalize(out chan<- *round.Message) (round.Session, error) {
 // MessageContent implements round.Round.
 func (presign6) MessageContent() round.Content { return nil }
 
+// RoundNumber implements round.Content.
+func (broadcast6) RoundNumber() round.Number { return 6 }
+
 // BroadcastContent implements round.BroadcastRound.
 func (r *presign6) BroadcastContent() round.Content {
 	return &broadcast6{

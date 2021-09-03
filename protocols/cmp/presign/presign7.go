@@ -153,16 +153,14 @@ func (r *presign7) Finalize(out chan<- *round.Message) (round.Session, error) {
 		Message:      r.Message,
 		PreSignature: preSignature,
 	}
-	nextRound, err := rSign1.Finalize(out)
-	rSign2, ok := nextRound.(*sign2)
-	if !ok || err != nil {
-		return r, err
-	}
-	return &presign8{rSign2}, nil
+	return rSign1.Finalize(out)
 }
 
 // MessageContent implements round.Round.
 func (presign7) MessageContent() round.Content { return nil }
+
+// RoundNumber implements round.Content.
+func (broadcast7) RoundNumber() round.Number { return 7 }
 
 // BroadcastContent implements round.BroadcastRound.
 func (r *presign7) BroadcastContent() round.Content {

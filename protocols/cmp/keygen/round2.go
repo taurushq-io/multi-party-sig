@@ -114,6 +114,9 @@ func (r *round2) PreviousRound() round.Round { return r.round1 }
 // MessageContent implements round.Round.
 func (round2) MessageContent() round.Content { return nil }
 
+// RoundNumber implements round.Content.
+func (broadcast2) RoundNumber() round.Number { return 2 }
+
 // BroadcastContent implements round.BroadcastRound.
 func (round2) BroadcastContent() round.Content { return &broadcast2{} }
 

@@ -177,7 +177,7 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 	}), nil
 }
 
-// RoundNumber implements message.Content.
+// RoundNumber implements round.Content.
 func (message3) RoundNumber() round.Number { return 3 }
 
 // MessageContent implements round.Round.
@@ -186,6 +186,9 @@ func (r *round3) MessageContent() round.Content {
 		F_li: r.Group().NewScalar(),
 	}
 }
+
+// RoundNumber implements round.Content.
+func (broadcast3) RoundNumber() round.Number { return 3 }
 
 // BroadcastContent implements round.BroadcastRound.
 func (r *round3) BroadcastContent() round.Content { return &broadcast3{} }

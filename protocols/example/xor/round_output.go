@@ -51,6 +51,9 @@ func (r *Round2) Finalize(chan<- *round.Message) (round.Session, error) {
 	return r.ResultRound(Result(resultXOR)), nil
 }
 
+// RoundNumber should return the same things as Round.Number.
+func (Round2Message) RoundNumber() round.Number { return 2 }
+
 // MessageContent implements round.Round.
 func (Round2) MessageContent() round.Content { return &Round2Message{} }
 

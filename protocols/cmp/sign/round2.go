@@ -172,8 +172,14 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 	}, nil
 }
 
+// RoundNumber implements round.Content.
+func (message2) RoundNumber() round.Number { return 2 }
+
 // MessageContent implements round.Round.
 func (round2) MessageContent() round.Content { return &message2{} }
+
+// RoundNumber implements round.Content.
+func (broadcast2) RoundNumber() round.Number { return 2 }
 
 // BroadcastContent implements round.BroadcastRound.
 func (round2) BroadcastContent() round.Content { return &broadcast2{} }

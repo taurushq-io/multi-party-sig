@@ -106,12 +106,18 @@ func (r *presign5) Finalize(out chan<- *round.Message) (round.Session, error) {
 	}, nil
 }
 
+// RoundNumber implements round.Content.
+func (message5) RoundNumber() round.Number { return 5 }
+
 // MessageContent implements round.Round.
 func (r *presign5) MessageContent() round.Content {
 	return &message5{
 		ProofLog: zklogstar.Empty(r.Group()),
 	}
 }
+
+// RoundNumber implements round.Content.
+func (broadcast5) RoundNumber() round.Number { return 5 }
 
 // BroadcastContent implements round.BroadcastRound.
 func (r *presign5) BroadcastContent() round.Content {
