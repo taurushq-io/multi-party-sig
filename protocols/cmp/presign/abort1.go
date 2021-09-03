@@ -22,20 +22,28 @@ type abort1 struct {
 	DeltaAlphas map[party.ID]map[party.ID]*safenum.Int
 }
 
-type messageAbort1 struct {
+type broadcastAbort1 struct {
 	// GammaShare = γᵢ
 	GammaShare  *safenum.Int
 	KProof      *abortNth
 	DeltaProofs map[party.ID]*abortNth
 }
 
-// VerifyMessage implements round.Round.
-func (r *abort1) VerifyMessage(msg round.Message) error {
+// StoreBroadcastMessage implements round.BroadcastRound.
+func (r *abort1) StoreBroadcastMessage(msg round.Message) error {
 	from := msg.From
-	body, ok := msg.Content.(*messageAbort1)
+	body, ok := msg.Content.(*broadcastAbort1)
 	if !ok || body == nil {
 		return round.ErrInvalidContent
 	}
+
+	alphas := make(map[party.ID]*safenum.Int, len(body.DeltaProofs))
+	for id, deltaProof := range body.DeltaProofs {
+		alphas[id] = deltaProof.Plaintext
+	}
+	r.DeltaAlphas[from] = alphas
+	r.GammaShares[from] = body.GammaShare
+	r.KShares[from] = body.KProof.Plaintext
 
 	public := r.Paillier[from]
 	if !body.KProof.Verify(r.HashForID(from), public, r.K[from]) {
@@ -52,24 +60,14 @@ func (r *abort1) VerifyMessage(msg round.Message) error {
 			return errors.New("failed to validate Delta MtA Nth proof")
 		}
 	}
-
 	return nil
 }
+
+// VerifyMessage implements round.Round.
+func (abort1) VerifyMessage(round.Message) error { return nil }
 
 // StoreMessage implements round.Round.
-//
-// - store Kⱼ, Gⱼ, Zⱼ.
-func (r *abort1) StoreMessage(msg round.Message) error {
-	from, body := msg.From, msg.Content.(*messageAbort1)
-	alphas := make(map[party.ID]*safenum.Int, len(body.DeltaProofs))
-	for id, deltaProof := range body.DeltaProofs {
-		alphas[id] = deltaProof.Plaintext
-	}
-	r.DeltaAlphas[from] = alphas
-	r.GammaShares[from] = body.GammaShare
-	r.KShares[from] = body.KProof.Plaintext
-	return nil
-}
+func (abort1) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round
 func (r *abort1) Finalize(chan<- *round.Message) (round.Session, error) {
@@ -98,7 +96,10 @@ func (r *abort1) Finalize(chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (abort1) MessageContent() round.Content { return &messageAbort1{} }
+func (abort1) MessageContent() round.Content { return nil }
+
+// BroadcastContent implements round.BroadcastRound.
+func (r *abort1) BroadcastContent() round.Content { return &broadcastAbort1{} }
 
 // Number implements round.Round.
 func (abort1) Number() round.Number { return 7 }

@@ -222,6 +222,9 @@ func (r *Response) Verify(n, w, y *big.Int) bool {
 }
 
 func (p *Proof) Verify(public Public, hash *hash.Hash, pl *pool.Pool) bool {
+	if p == nil {
+		return false
+	}
 	n := public.N.Big()
 	nMod := public.N
 	// check if n is odd and prime

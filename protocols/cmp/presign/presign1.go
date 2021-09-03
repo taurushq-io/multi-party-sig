@@ -124,7 +124,7 @@ func (r *presign1) Finalize(out chan<- *round.Message) (round.Session, error) {
 		}
 	}
 
-	return &presignBroadcast2{&presign2{
+	return &presign2{
 		presign1:       r,
 		K:              map[party.ID]*paillier.Ciphertext{r.SelfID(): K},
 		G:              map[party.ID]*paillier.Ciphertext{r.SelfID(): G},
@@ -137,7 +137,7 @@ func (r *presign1) Finalize(out chan<- *round.Message) (round.Session, error) {
 		PresignatureID: map[party.ID]types.RID{r.SelfID(): presignatureID},
 		CommitmentID:   map[party.ID]hash.Commitment{},
 		DecommitmentID: decommitmentID,
-	}}, nil
+	}, nil
 }
 
 // MessageContent implements round.Round.

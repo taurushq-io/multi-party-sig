@@ -58,19 +58,15 @@ type round2 struct {
 	Decommitment hash.Decommitment // uᵢ
 }
 
-type roundBroadcast2 struct {
-	*round2
-}
-
-type message2 struct {
+type broadcast2 struct {
 	// Commitment = Vᵢ = H(ρᵢ, Fᵢ(X), Aᵢ, Yᵢ, Nᵢ, sᵢ, tᵢ, uᵢ)
 	Commitment hash.Commitment
 }
 
 // StoreBroadcastMessage implements round.BroadcastRound.
 // - save commitment Vⱼ.
-func (r *roundBroadcast2) StoreBroadcastMessage(msg round.Message) error {
-	body, ok := msg.Content.(*message2)
+func (r *round2) StoreBroadcastMessage(msg round.Message) error {
+	body, ok := msg.Content.(*broadcast2)
 	if !ok || body == nil {
 		return round.ErrInvalidContent
 	}
@@ -92,7 +88,7 @@ func (round2) StoreMessage(round.Message) error { return nil }
 // - send all committed data.
 func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// Send the message we created in Round1 to all
-	err := r.SendMessage(out, &message3{
+	err := r.BroadcastMessage(out, &broadcast3{
 		RID:                r.RIDs[r.SelfID()],
 		C:                  r.ChainKeys[r.SelfID()],
 		VSSPolynomial:      r.VSSPolynomials[r.SelfID()],
@@ -102,7 +98,7 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 		S:                  r.S[r.SelfID()],
 		T:                  r.T[r.SelfID()],
 		Decommitment:       r.Decommitment,
-	}, "")
+	})
 	if err != nil {
 		return r, err
 	}
@@ -119,7 +115,7 @@ func (r *round2) PreviousRound() round.Round { return r.round1 }
 func (round2) MessageContent() round.Content { return nil }
 
 // BroadcastContent implements round.BroadcastRound.
-func (roundBroadcast2) BroadcastContent() round.Content { return &message2{} }
+func (round2) BroadcastContent() round.Content { return &broadcast2{} }
 
 // Number implements round.Round.
 func (round2) Number() round.Number { return 2 }

@@ -96,13 +96,13 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	}
 
 	// should be broadcast but we don't need that here
-	msg := &message2{Commitment: SelfCommitment}
+	msg := &broadcast2{Commitment: SelfCommitment}
 	err = r.BroadcastMessage(out, msg)
 	if err != nil {
 		return r, err
 	}
 
-	nextRound := &roundBroadcast2{&round2{
+	nextRound := &round2{
 		round1:         r,
 		VSSPolynomials: map[party.ID]*polynomial.Exponent{r.SelfID(): SelfVSSPolynomial},
 		Commitments:    map[party.ID]hash.Commitment{r.SelfID(): SelfCommitment},
@@ -119,7 +119,7 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 		PedersenSecret: PedersenSecret,
 		SchnorrRand:    SchnorrRand,
 		Decommitment:   Decommitment,
-	}}
+	}
 	return nextRound, nil
 }
 

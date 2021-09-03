@@ -20,9 +20,28 @@ type presign5 struct {
 }
 
 type message5 struct {
+	ProofLog *zklogstar.Proof
+}
+
+type broadcast5 struct {
 	// BigGammaShare = Γᵢ
 	BigGammaShare curve.Point
-	ProofLog      *zklogstar.Proof
+}
+
+// StoreBroadcastMessage implements round.BroadcastRound.
+//
+// - save Γⱼ
+func (r *presign5) StoreBroadcastMessage(msg round.Message) error {
+	body, ok := msg.Content.(*broadcast5)
+	if !ok || body == nil {
+		return round.ErrInvalidContent
+	}
+
+	if body.BigGammaShare.IsIdentity() {
+		return round.ErrNilFields
+	}
+	r.BigGammaShare[msg.From] = body.BigGammaShare
+	return nil
 }
 
 // VerifyMessage implements round.Round.
@@ -32,14 +51,9 @@ func (r *presign5) VerifyMessage(msg round.Message) error {
 	if !ok || body == nil {
 		return round.ErrInvalidContent
 	}
-
-	if body.BigGammaShare.IsIdentity() {
-		return round.ErrNilFields
-	}
-
 	if !body.ProofLog.Verify(r.HashForID(msg.From), zklogstar.Public{
 		C:      r.G[from],
-		X:      body.BigGammaShare,
+		X:      r.BigGammaShare[from],
 		Prover: r.Paillier[from],
 		Aux:    r.Pedersen[to],
 	}) {
@@ -50,13 +64,7 @@ func (r *presign5) VerifyMessage(msg round.Message) error {
 }
 
 // StoreMessage implements round.Round.
-//
-// - save Γⱼ
-func (r *presign5) StoreMessage(msg round.Message) error {
-	from, body := msg.From, msg.Content.(*message5)
-	r.BigGammaShare[from] = body.BigGammaShare
-	return nil
-}
+func (presign5) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round
 //
@@ -83,10 +91,10 @@ func (r *presign5) Finalize(out chan<- *round.Message) (round.Session, error) {
 			Lambda: r.ElGamalKNonce,
 		})
 
-	err := r.SendMessage(out, &message6{
+	err := r.BroadcastMessage(out, &broadcast6{
 		BigDeltaShare: BigDeltaShare,
 		Proof:         proofLog,
-	}, "")
+	})
 	if err != nil {
 		return r, err
 	}
@@ -101,8 +109,14 @@ func (r *presign5) Finalize(out chan<- *round.Message) (round.Session, error) {
 // MessageContent implements round.Round.
 func (r *presign5) MessageContent() round.Content {
 	return &message5{
+		ProofLog: zklogstar.Empty(r.Group()),
+	}
+}
+
+// BroadcastContent implements round.BroadcastRound.
+func (r *presign5) BroadcastContent() round.Content {
+	return &broadcast5{
 		BigGammaShare: r.Group().NewPoint(),
-		ProofLog:      zklogstar.Empty(r.Group()),
 	}
 }
 

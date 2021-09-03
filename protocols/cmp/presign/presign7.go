@@ -30,7 +30,7 @@ type presign7 struct {
 	RBar map[party.ID]curve.Point
 }
 
-type message7 struct {
+type broadcast7 struct {
 	// S = Sᵢ
 	S              curve.Point
 	Proof          *zkelog.Proof
@@ -38,10 +38,12 @@ type message7 struct {
 	PresignatureID types.RID
 }
 
-// VerifyMessage implements round.Round.
-func (r *presign7) VerifyMessage(msg round.Message) error {
+// StoreBroadcastMessage implements round.BroadcastRound.
+//
+// - save Sⱼ and verify proof + decommitment to presignature ID.
+func (r *presign7) StoreBroadcastMessage(msg round.Message) error {
 	from := msg.From
-	body, ok := msg.Content.(*message7)
+	body, ok := msg.Content.(*broadcast7)
 	if !ok || body == nil {
 		return round.ErrInvalidContent
 	}
@@ -68,19 +70,17 @@ func (r *presign7) VerifyMessage(msg round.Message) error {
 	}) {
 		return errors.New("failed to validate elog proof for S")
 	}
-
-	return nil
-}
-
-// StoreMessage implements round.Round.
-//
-// - save Sⱼ
-func (r *presign7) StoreMessage(msg round.Message) error {
-	from, body := msg.From, msg.Content.(*message7)
 	r.S[from] = body.S
 	r.PresignatureID[from] = body.PresignatureID
+
 	return nil
 }
+
+// VerifyMessage implements round.Round.
+func (presign7) VerifyMessage(round.Message) error { return nil }
+
+// StoreMessage implements round.Round.
+func (presign7) StoreMessage(round.Message) error { return nil }
 
 // Finalize implements round.Round
 //
@@ -114,13 +114,13 @@ func (r *presign7) Finalize(out chan<- *round.Message) (round.Session, error) {
 			chiCiphertext := r.ChiCiphertext[j][r.SelfID()] // D̂ᵢⱼ
 			ChiProofs[j] = proveNth(r.HashForID(r.SelfID()), r.SecretPaillier, chiCiphertext)
 		}
-		msg := &messageAbort2{
+		msg := &broadcastAbort2{
 			YHat:      YHat,
 			YHatProof: YHatProof,
 			KProof:    proveNth(r.HashForID(r.SelfID()), r.SecretPaillier, r.K[r.SelfID()]),
 			ChiProofs: ChiProofs,
 		}
-		if err := r.SendMessage(out, msg, ""); err != nil {
+		if err := r.BroadcastMessage(out, msg); err != nil {
 			return r, err
 		}
 		ChiAlphas := make(map[party.ID]curve.Scalar, r.N())
@@ -162,8 +162,11 @@ func (r *presign7) Finalize(out chan<- *round.Message) (round.Session, error) {
 }
 
 // MessageContent implements round.Round.
-func (r *presign7) MessageContent() round.Content {
-	return &message7{
+func (presign7) MessageContent() round.Content { return nil }
+
+// BroadcastContent implements round.BroadcastRound.
+func (r *presign7) BroadcastContent() round.Content {
+	return &broadcast7{
 		S:     r.Group().NewPoint(),
 		Proof: zkelog.Empty(r.Group()),
 	}
