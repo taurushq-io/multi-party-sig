@@ -23,7 +23,6 @@ const (
 	protocolOnlineID                   = "cmp/presign-online"
 	protocolFullID                     = "cmp/presign-full"
 	protocolOfflineRounds round.Number = 7
-	protocolOnlineRounds  round.Number = 2
 	protocolFullRounds    round.Number = 8
 )
 
@@ -114,7 +113,7 @@ func StartPresignOnline(c *config.Config, preSignature *ecdsa.PreSignature, mess
 
 		info := round.Info{
 			ProtocolID:       protocolOnlineID,
-			FinalRoundNumber: protocolOnlineRounds,
+			FinalRoundNumber: protocolFullRounds,
 			SelfID:           c.ID,
 			PartyIDs:         signers,
 			Threshold:        c.Threshold,

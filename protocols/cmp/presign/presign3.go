@@ -31,6 +31,7 @@ type presign3 struct {
 }
 
 type broadcast3 struct {
+	round.NormalBroadcastContent
 	// DeltaCiphertext[k] = Dₖⱼ
 	DeltaCiphertext map[party.ID]*paillier.Ciphertext
 	// ChiCiphertext[k] = D̂ₖⱼ
@@ -185,13 +186,19 @@ func (r *presign3) Finalize(out chan<- *round.Message) (round.Session, error) {
 	}, nil
 }
 
+// RoundNumber implements round.Content.
+func (message3) RoundNumber() round.Number { return 3 }
+
 // MessageContent implements round.Round.
 func (r *presign3) MessageContent() round.Content {
 	return &message3{ChiProof: zkaffg.Empty(r.Group())}
 }
 
+// RoundNumber implements round.Content.
+func (broadcast3) RoundNumber() round.Number { return 3 }
+
 // BroadcastContent implements round.BroadcastRound.
-func (presign3) BroadcastContent() round.Content { return &broadcast3{} }
+func (presign3) BroadcastContent() round.BroadcastContent { return &broadcast3{} }
 
 // Number implements round.Round.
 func (presign3) Number() round.Number { return 3 }

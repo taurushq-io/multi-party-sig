@@ -33,6 +33,7 @@ type message4 struct {
 }
 
 type broadcast4 struct {
+	round.NormalBroadcastContent
 	Mod *zkmod.Proof
 	Prm *zkprm.Proof
 }
@@ -183,11 +184,17 @@ func (r *round4) Finalize(out chan<- *round.Message) (round.Session, error) {
 	}, nil
 }
 
+// RoundNumber implements round.Content.
+func (message4) RoundNumber() round.Number { return 4 }
+
 // MessageContent implements round.Round.
 func (round4) MessageContent() round.Content { return &message4{} }
 
+// RoundNumber implements round.Content.
+func (broadcast4) RoundNumber() round.Number { return 4 }
+
 // BroadcastContent implements round.BroadcastRound.
-func (round4) BroadcastContent() round.Content { return &broadcast4{} }
+func (round4) BroadcastContent() round.BroadcastContent { return &broadcast4{} }
 
 // Number implements round.Round.
 func (round4) Number() round.Number { return 4 }

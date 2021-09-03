@@ -28,6 +28,7 @@ type message3 struct {
 }
 
 type broadcast3 struct {
+	round.NormalBroadcastContent
 	// C_l is contribution to the chaining key for this party.
 	C_l types.RID
 	// Decommitment = uᵢ decommitment bytes
@@ -177,7 +178,7 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 	}), nil
 }
 
-// RoundNumber implements message.Content.
+// RoundNumber implements round.Content.
 func (message3) RoundNumber() round.Number { return 3 }
 
 // MessageContent implements round.Round.
@@ -187,8 +188,11 @@ func (r *round3) MessageContent() round.Content {
 	}
 }
 
+// RoundNumber implements round.Content.
+func (broadcast3) RoundNumber() round.Number { return 3 }
+
 // BroadcastContent implements round.BroadcastRound.
-func (r *round3) BroadcastContent() round.Content { return &broadcast3{} }
+func (r *round3) BroadcastContent() round.BroadcastContent { return &broadcast3{} }
 
 // Number implements round.Round.
 func (round3) Number() round.Number { return 3 }

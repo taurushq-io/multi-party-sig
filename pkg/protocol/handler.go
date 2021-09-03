@@ -106,6 +106,10 @@ func (h *Handler) CanAccept(msg *Message) bool {
 		return false
 	}
 
+	if msg.RoundNumber < r.Number() && msg.RoundNumber > 0 {
+		return false
+	}
+
 	return true
 }
 
@@ -244,7 +248,7 @@ func (h *Handler) finalize() {
 			From:                  r.SelfID(),
 			To:                    roundMsg.To,
 			Protocol:              r.ProtocolID(),
-			RoundNumber:           r.Number(),
+			RoundNumber:           roundMsg.Content.RoundNumber(),
 			Data:                  data,
 			Broadcast:             roundMsg.Broadcast,
 			BroadcastVerification: h.broadcastHashes[r.Number()-1],
