@@ -17,6 +17,7 @@ type sign2 struct {
 }
 
 type broadcastSign2 struct {
+	round.NormalBroadcastContent
 	// Sigma = σᵢ
 	Sigma curve.Scalar
 }
@@ -62,12 +63,15 @@ func (r *sign2) Finalize(chan<- *round.Message) (round.Session, error) {
 // MessageContent implements round.Round.
 func (sign2) MessageContent() round.Content { return nil }
 
+// RoundNumber implements round.Content.
+func (broadcastSign2) RoundNumber() round.Number { return 8 }
+
 // BroadcastContent implements round.BroadcastRound.
-func (r *sign2) BroadcastContent() round.Content {
+func (r *sign2) BroadcastContent() round.BroadcastContent {
 	return &broadcastSign2{
 		Sigma: r.Group().NewScalar(),
 	}
 }
 
 // Number implements round.Round.
-func (sign2) Number() round.Number { return 2 }
+func (sign2) Number() round.Number { return 8 }

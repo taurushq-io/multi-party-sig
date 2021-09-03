@@ -35,6 +35,7 @@ type round3 struct {
 }
 
 type broadcast3 struct {
+	round.NormalBroadcastContent
 	// Z_i is the response scalar computed by the sender of this message.
 	Z_i curve.Scalar
 }
@@ -127,8 +128,11 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 // MessageContent implements round.Round.
 func (round3) MessageContent() round.Content { return nil }
 
+// RoundNumber implements round.Content.
+func (broadcast3) RoundNumber() round.Number { return 3 }
+
 // BroadcastContent implements round.BroadcastRound.
-func (r *round3) BroadcastContent() round.Content {
+func (r *round3) BroadcastContent() round.BroadcastContent {
 	return &broadcast3{
 		Z_i: r.Group().NewScalar(),
 	}

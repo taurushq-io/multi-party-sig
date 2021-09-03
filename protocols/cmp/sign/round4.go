@@ -31,6 +31,7 @@ type message4 struct {
 }
 
 type broadcast4 struct {
+	round.NormalBroadcastContent
 	// DeltaShare = δⱼ
 	DeltaShare curve.Scalar
 	// BigDeltaShare = Δⱼ = [kⱼ]•Γⱼ
@@ -130,6 +131,9 @@ func (r *round4) Finalize(out chan<- *round.Message) (round.Session, error) {
 	}, nil
 }
 
+// RoundNumber implements round.Content.
+func (message4) RoundNumber() round.Number { return 4 }
+
 // MessageContent implements round.Round.
 func (r *round4) MessageContent() round.Content {
 	return &message4{
@@ -137,8 +141,11 @@ func (r *round4) MessageContent() round.Content {
 	}
 }
 
+// RoundNumber implements round.Content.
+func (broadcast4) RoundNumber() round.Number { return 4 }
+
 // BroadcastContent implements round.BroadcastRound.
-func (r *round4) BroadcastContent() round.Content {
+func (r *round4) BroadcastContent() round.BroadcastContent {
 	return &broadcast4{
 		DeltaShare:    r.Group().NewScalar(),
 		BigDeltaShare: r.Group().NewPoint(),

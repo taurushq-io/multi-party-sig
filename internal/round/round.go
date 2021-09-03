@@ -47,7 +47,7 @@ type BroadcastRound interface {
 	// BroadcastContent returns an uninitialized message.Content for this round's broadcast message.
 	//
 	// The first round of a protocol, and rounds which do not expect a broadcast message should return nil.
-	BroadcastContent() Content
+	BroadcastContent() BroadcastContent
 
 	// Round must be implemented by an inherited round which would otherwise function the same way.
 	Round

@@ -1,6 +1,7 @@
 package test
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"reflect"
@@ -86,19 +87,22 @@ func Rounds(rounds []round.Session, rule Rule) (error, bool) {
 	log.Println(roundType, "verifying")
 
 	for msg := range out {
-		bc := msg.Broadcast
 		msgBytes, err := cbor.Marshal(msg.Content)
 		if err != nil {
 			return err, false
 		}
-		for idx := range rounds {
+		for _, r := range rounds {
 			m := *msg
-			r := rounds[idx]
+			r := r
+			if msg.From == r.SelfID() || msg.Content.RoundNumber() != r.Number() {
+				continue
+			}
 			errGroup.Go(func() error {
-				if m.From == r.SelfID() {
-					return nil
-				}
-				if b, ok := r.(round.BroadcastRound); bc && ok {
+				if m.Broadcast {
+					b, ok := r.(round.BroadcastRound)
+					if !ok {
+						return errors.New("broadcast message but not broadcast round")
+					}
 					m.Content = b.BroadcastContent()
 					if err = cbor.Unmarshal(msgBytes, m.Content); err != nil {
 						return err
