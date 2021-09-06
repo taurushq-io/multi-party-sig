@@ -72,7 +72,7 @@ func (r *round2R) Finalize(out chan<- *round.Message) (round.Session, error) {
 	if err != nil {
 		return r, err
 	}
-	tB1, err := r.multiply1.Round2(r.MulMsg0)
+	tB1, err := r.multiply1.Round2(r.MulMsg1)
 	if err != nil {
 		return r, err
 	}
