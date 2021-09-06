@@ -11,26 +11,39 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
 )
 
+// ConfigReceiver holds the results of key generation for the receiver.
 type ConfigReceiver struct {
-	Setup       *ot.CorreOTReceiveSetup
+	// Setup is an implementation detail, needed to perform signing.
+	Setup *ot.CorreOTReceiveSetup
+	// SecretShare is a multiplicative share of the secret key.
 	SecretShare curve.Scalar
-	Public      curve.Point
+	// Public is the shared public key.
+	Public curve.Point
 }
 
+// Group returns the elliptic curve group associate with this config.
 func (c *ConfigReceiver) Group() curve.Curve {
 	return c.Public.Curve()
 }
 
+// ConfigSender holds the results of key generation for the sender.
 type ConfigSender struct {
-	Setup       *ot.CorreOTSendSetup
+	// Setup is an implementation detail, needed to perform signing.
+	Setup *ot.CorreOTSendSetup
+	// SecretShare is a multiplicative share of the secret key.
 	SecretShare curve.Scalar
-	Public      curve.Point
+	// Public is the shared public key.
+	Public curve.Point
 }
 
+// Group returns the elliptic curve group associate with this config.
 func (c *ConfigSender) Group() curve.Curve {
 	return c.Public.Curve()
 }
 
+// StartKeygen starts the key generation protocol.
+//
+// This is documented further in the base doerner package.
 func StartKeygen(group curve.Curve, receiver bool, selfID, otherID party.ID, pl *pool.Pool) protocol.StartFunc {
 	return func(sessionID []byte) (round.Session, error) {
 		info := round.Info{

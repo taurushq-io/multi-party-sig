@@ -10,6 +10,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/protocols/doerner/keygen"
 )
 
+// StartSignReceiver starts the signature protocol for the receiver.
 func StartSignReceiver(config *keygen.ConfigReceiver, selfID, otherID party.ID, hash []byte, pl *pool.Pool) protocol.StartFunc {
 	return func(sessionID []byte) (round.Session, error) {
 		info := round.Info{
@@ -30,6 +31,7 @@ func StartSignReceiver(config *keygen.ConfigReceiver, selfID, otherID party.ID, 
 	}
 }
 
+// StartSignSender starts the signature protocol for the sender.
 func StartSignSender(config *keygen.ConfigSender, selfID, otherID party.ID, hash []byte, pl *pool.Pool) protocol.StartFunc {
 	return func(sessionID []byte) (round.Session, error) {
 		info := round.Info{
