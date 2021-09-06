@@ -10,10 +10,15 @@ import (
 	"github.com/zeebo/blake3"
 )
 
+// fieldElementLen is enough to hold 2 elements of GF(2^k).
+//
+// This allows us to multiply 2 elements together withour performing a reduction.
 const fieldElementLen = 2 * params.OTBytes / 8
 
+// fieldElement represent an element of GF(2^k), in little endian order.
 type fieldElement [fieldElementLen]uint64
 
+// eq checks if two field elements are equal, in constant time.
 func (f *fieldElement) eq(a *fieldElement) bool {
 	acc := uint64(0)
 	for i := 0; i < fieldElementLen; i++ {
@@ -22,6 +27,7 @@ func (f *fieldElement) eq(a *fieldElement) bool {
 	return ((acc | -acc) >> (63)) != 1
 }
 
+// shl1 shifts a field element left by 1 bit.
 func (f *fieldElement) shl1() {
 	for i := fieldElementLen - 1; i > 0; i-- {
 		f[i] = (f[i] << 1) | (f[i-1] >> 63)
@@ -29,6 +35,10 @@ func (f *fieldElement) shl1() {
 	f[0] <<= 1
 }
 
+// accumulate calculates f += a * b, in the GF(2^k) field.
+//
+// This allows us to calculate a weight sum of different vectors, which we use
+// to detect cheating in the protocol.
 func (f *fieldElement) accumulate(a *[params.OTBytes]byte, b *[params.OTBytes]byte) {
 	var b64 [params.OTBytes / 8]uint64
 	for i := 0; i < len(b64); i++ {
@@ -60,11 +70,23 @@ func (f *fieldElement) accumulate(a *[params.OTBytes]byte, b *[params.OTBytes]by
 	}
 }
 
+// ExtendedOTSendResult is the Sender's result for an Extended OT.
+//
+// The Sender receives two batches of random vectors, and the Receiver receives a batch
+// of selections from these random vectors.
 type ExtendedOTSendResult struct {
 	_V0 [][params.OTBytes]byte
 	_V1 [][params.OTBytes]byte
 }
 
+// ExtendedOTSend runs the Sender's side of the Extended OT Protocol.
+//
+// The goal of this protocol is to conduct a large number of random oblivious transfers.
+//
+// This follows Figure 7 of https://eprint.iacr.org/2015/546.
+//
+// A single setup can be used for many invocations of this protocol, so long as the
+// hash is initialized with some kind of nonce.
 func ExtendedOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, msg *ExtendedOTReceiveMessage) (*ExtendedOTSendResult, error) {
 	inflatedBatchSize := batchSize + params.OTParam + params.StatParam
 
@@ -118,16 +140,28 @@ func ExtendedOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, 
 	return &ExtendedOTSendResult{_V0: V0, _V1: V1}, nil
 }
 
+// ExtendedOTReceiveResult is the Receiver's result for an Extended OT.
+//
+// We receive the random vectors corresponding to our choice bits.
 type ExtendedOTReceiveResult struct {
 	_VChoices [][params.OTBytes]byte
 }
 
+// ExtendedOTReceiveMessage is the Receiver's first message for an Extended OT.
 type ExtendedOTReceiveMessage struct {
 	CorreMsg *CorreOTReceiveMessage
 	X        [params.OTBytes]byte
 	T        fieldElement
 }
 
+// ExtendedOTReceive runs the Receiver's side of the Extended OT Protocol.
+//
+// The goal of this protocol is to conduct a large number of random oblivious transfers.
+//
+// This follows Figure 7 of https://eprint.iacr.org/2015/546.
+//
+// A single setup can be used for many invocations of this protocol, so long as the
+// hash is initialized with some kind of nonce.
 func ExtendedOTReceive(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, choices []byte) (*ExtendedOTReceiveMessage, *ExtendedOTReceiveResult) {
 	inflatedBatchSize := 8*len(choices) + params.OTParam + params.StatParam
 	extraChoices := make([]byte, inflatedBatchSize/8)
