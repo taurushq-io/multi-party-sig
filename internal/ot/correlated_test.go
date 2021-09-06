@@ -13,7 +13,7 @@ import (
 
 func runCorreOTSetup(pl *pool.Pool, hash *hash.Hash) (*CorreOTSendSetup, *CorreOTReceiveSetup, error) {
 	sender := NewCorreOTSetupSender(pl, hash.Clone())
-	receiver := NewCorreOTSetupReceive(pl, hash.Clone(), testGroup)
+	receiver := NewCorreOTSetupReceiver(pl, hash.Clone(), testGroup)
 	msgR1 := receiver.Round1()
 	msgS1, err := sender.Round1(msgR1)
 	if err != nil {

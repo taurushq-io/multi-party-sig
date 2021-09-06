@@ -12,28 +12,45 @@ import (
 	"github.com/zeebo/blake3"
 )
 
+// CorreOTSendSetup contains the results of the Sender's setup of a Correlated OT.
 type CorreOTSendSetup struct {
-	_Delta   [params.OTBytes]byte
+	// The choice bits of the correlation.
+	_Delta [params.OTBytes]byte
+	// Each column of this matrix is taken from one of the Receiver's corresponding
+	// columns, based on the corresponding bit of Delta.
 	_K_Delta [params.OTParam][params.OTBytes]byte
 }
 
+// CorreOTSetupSender contains all of the state to run the Sender's setup of a Correlated OT.
+//
+// This struct is needed, because there are multiple rounds in the setup.
 type CorreOTSetupSender struct {
 	// After setup
-	pl                *pool.Pool
-	hash              *hash.Hash
-	setup             *RandomOTReceiveSetup
-	_Delta            [params.OTBytes]byte
+	pl   *pool.Pool
+	hash *hash.Hash
+	// After Round 1
+	// The setup which can be used for the different Random OTs.
+	setup *RandomOTReceiveSetup
+	// The correlation vector, sampled at random.
+	_Delta [params.OTBytes]byte
+	// We do multiple Random OTs, and each of them needs a receiver.
 	randomOTReceivers [params.OTParam]RandomOTReceiever
 }
 
+// NewCorreOTSetupSender initializes the state for setting up the Sender part of a Correlated OT.
+//
+// This follows the Initialize part of Figure 3, in https://eprint.iacr.org/2015/546.
 func NewCorreOTSetupSender(pl *pool.Pool, hash *hash.Hash) *CorreOTSetupSender {
 	return &CorreOTSetupSender{pl: pl, hash: hash}
 }
 
+// CorreOTSetupSendRound1Message is the first message sent by the Sender in the Correlated OT setup.
 type CorreOTSetupSendRound1Message struct {
+	// We have to forward all the messages for the underlying Random OT instances.
 	Msgs [params.OTParam]RandomOTReceiveRound1Message
 }
 
+// Round1 executes the Sender's first round of the Correlated OT setup.
 func (r *CorreOTSetupSender) Round1(msg *CorreOTSetupReceiveRound1Message) (*CorreOTSetupSendRound1Message, error) {
 	var err error
 	r.setup, err = RandomOTSetupReceive(r.hash, &msg.Msg)
@@ -69,10 +86,12 @@ func (r *CorreOTSetupSender) Round1(msg *CorreOTSetupReceiveRound1Message) (*Cor
 	return outMsg, nil
 }
 
+// CorreOTSetupSendRound1Message is the second message sent by the Sender in the Correlated OT setup.
 type CorreOTSetupSendRound2Message struct {
 	Msgs [params.OTParam]RandomOTReceiveRound2Message
 }
 
+// Round2 executes the Sender's second round of the Correlated OT setup.
 func (r *CorreOTSetupSender) Round2(msg *CorreOTSetupReceiveRound2Message) *CorreOTSetupSendRound2Message {
 	outMsg := new(CorreOTSetupSendRound2Message)
 	for i := 0; i < params.OTParam; i++ {
@@ -81,6 +100,7 @@ func (r *CorreOTSetupSender) Round2(msg *CorreOTSetupReceiveRound2Message) *Corr
 	return outMsg
 }
 
+// Round2 executes the Sender's final round of the Correlated OT setup.
 func (r *CorreOTSetupSender) Round3(msg *CorreOTSetupReceiveRound3Message) (*CorreOTSendSetup, error) {
 	setup := new(CorreOTSendSetup)
 	setup._Delta = r._Delta
@@ -94,32 +114,48 @@ func (r *CorreOTSetupSender) Round3(msg *CorreOTSetupReceiveRound3Message) (*Cor
 	return setup, nil
 }
 
+// CorreOTReceiveSetup is the result of the Receiver's part of the Correlated OT setup.
+//
+// The Receiver gets two random matrices, and they know that the Sender has a
+// striping of their columns, based on their correlation vector.
 type CorreOTReceiveSetup struct {
 	_K_0 [params.OTParam][params.OTBytes]byte
 	_K_1 [params.OTParam][params.OTBytes]byte
 }
 
+// CorreOTSetupReceiver holds the Receiver's state on a Correlated OT Setup.
+//
+// This is necessary, because the setup process takes multiple rounds.
 type CorreOTSetupReceiver struct {
 	// After setup
-	pl              *pool.Pool
-	hash            *hash.Hash
-	group           curve.Curve
-	setup           *RandomOTSendSetup
+	pl    *pool.Pool
+	hash  *hash.Hash
+	group curve.Curve
+	// After round 1
+	// The setup we use to create further Random OT instances.
+	setup *RandomOTSendSetup
+	// We need to keep the state for each instance.
 	randomOTSenders [params.OTParam]RandomOTSender
 }
 
-func NewCorreOTSetupReceive(pl *pool.Pool, hash *hash.Hash, group curve.Curve) *CorreOTSetupReceiver {
+// NewCorreOTSetupReceiver initializes the state for setting up the Receiver part of a Correlated OT.
+//
+// This follows the Initialize part of Figure 3, in https://eprint.iacr.org/2015/546.
+func NewCorreOTSetupReceiver(pl *pool.Pool, hash *hash.Hash, group curve.Curve) *CorreOTSetupReceiver {
 	return &CorreOTSetupReceiver{pl: pl, hash: hash, group: group}
 }
 
+// CorreOTSetupReceiveRound1Message is the first message sent by the Receiver in a Correlated OT Setup.
 type CorreOTSetupReceiveRound1Message struct {
 	Msg RandomOTSetupSendMessage
 }
 
+// EmptyCorreOTSetupReceiveRound1Message initializes a message with a given group, so that it can be unmarshalled.
 func EmptyCorreOTSetupReceiveRound1Message(group curve.Curve) *CorreOTSetupReceiveRound1Message {
 	return &CorreOTSetupReceiveRound1Message{Msg: *EmptyRandomOTSetupSendMessage(group)}
 }
 
+// Round1 runs the first round of a Receiver's correlated OT Setup.
 func (r *CorreOTSetupReceiver) Round1() *CorreOTSetupReceiveRound1Message {
 	msg, setup := RandomOTSetupSend(r.hash, r.group)
 	r.setup = setup
@@ -137,10 +173,12 @@ func (r *CorreOTSetupReceiver) Round1() *CorreOTSetupReceiveRound1Message {
 	return &CorreOTSetupReceiveRound1Message{*msg}
 }
 
+// CorreOTSetupReceiveRound1Message is the second message sent by the Receiver in a Correlated OT Setup.
 type CorreOTSetupReceiveRound2Message struct {
 	Msgs [params.OTParam]RandomOTSendRound1Message
 }
 
+// Round1 runs the second round of a Receiver's correlated OT Setup.
 func (r *CorreOTSetupReceiver) Round2(msg *CorreOTSetupSendRound1Message) (*CorreOTSetupReceiveRound2Message, error) {
 	outMsg := new(CorreOTSetupReceiveRound2Message)
 
@@ -157,10 +195,12 @@ func (r *CorreOTSetupReceiver) Round2(msg *CorreOTSetupSendRound1Message) (*Corr
 	return outMsg, nil
 }
 
+// CorreOTSetupReceiveRound1Message is the third message sent by the Receiver in a Correlated OT Setup.
 type CorreOTSetupReceiveRound3Message struct {
 	Msgs [params.OTParam]RandomOTSendRound2Message
 }
 
+// Round1 runs the third round of a Receiver's correlated OT Setup.
 func (r *CorreOTSetupReceiver) Round3(msg *CorreOTSetupSendRound2Message) (*CorreOTSetupReceiveRound3Message, *CorreOTReceiveSetup, error) {
 	outMsg := new(CorreOTSetupReceiveRound3Message)
 	setup := new(CorreOTReceiveSetup)
@@ -176,6 +216,9 @@ func (r *CorreOTSetupReceiver) Round3(msg *CorreOTSetupSendRound2Message) (*Corr
 	return outMsg, setup, nil
 }
 
+// transposeBits transpose a matrix of bits.
+//
+// l is the number of elements in each row of the original matrix.
 func transposeBits(l int, M *[params.OTParam][]byte) [][params.OTBytes]byte {
 	// TODO: Make this faster
 	MT := make([][params.OTBytes]byte, l)
@@ -187,11 +230,24 @@ func transposeBits(l int, M *[params.OTParam][]byte) [][params.OTBytes]byte {
 	return MT
 }
 
+// CorreOTSendResult is the Sender's result after executing the Correlated OT protocol.
 type CorreOTSendResult struct {
+	// The columns of the U matrix from the protocol. This is included to be able
+	// to hash later, which we use for the random check weights.
 	_U [params.OTParam][]byte
+	// The rows of the Q matrix from the protocol.
 	_Q [][params.OTBytes]byte
 }
 
+// CorreOTSend runs the Sender's end of the Correlated OT protocol.
+//
+// The Sender will get binary vectors q_j, and the Receiver will get vectors t_j
+// satsifying t_j = q_j ^ (choices_j * Delta).
+//
+// This follows the extend section of Figure 3 in https://eprint.iacr.org/2015/546.
+//
+// A single setup can be used for multiple runs of the protocol, but it's important
+// that ctxHash be initialized with some kind of nonce in that case.
 func CorreOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, msg *CorreOTReceiveMessage) (*CorreOTSendResult, error) {
 	batchSizeBytes := batchSize >> 3
 
@@ -221,14 +277,27 @@ func CorreOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, msg
 	return &CorreOTSendResult{_U: msg.U, _Q: transposeBits(batchSize, &Q)}, nil
 }
 
+// CorreOTReceiveMessage is the first message the Receiver sends to the Sender in the Correlated OT protocol.
 type CorreOTReceiveMessage struct {
+	// The columns of the U matrix from the paper.
 	U [params.OTParam][]byte
 }
 
+// CorreOTReceiveResult is the Receiver's result at the end of the Correlated OT protocol.
 type CorreOTReceiveResult struct {
+	// The rows of the T matrix from the paper.
 	_T [][params.OTBytes]byte
 }
 
+// CorreOTReceive runs the Receiver's end of the Correlated OT protocol.
+//
+// The Sender will get binary vectors q_j, and the Receiver will get vectors t_j
+// satsifying t_j = q_j ^ (choices_j * Delta).
+//
+// This follows the extend section of Figure 3 in https://eprint.iacr.org/2015/546.
+//
+// A single setup can be used for multiple runs of the protocol, but it's important
+// that ctxHash be initialized with some kind of nonce in that case.
 func CorreOTReceive(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, choices []byte) (*CorreOTReceiveMessage, *CorreOTReceiveResult) {
 	batchSizeBytes := len(choices)
 
