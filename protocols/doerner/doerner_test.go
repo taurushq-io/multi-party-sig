@@ -1,4 +1,4 @@
-package sign
+package doerner
 
 import (
 	"errors"
@@ -15,37 +15,37 @@ import (
 	"github.com/taurusgroup/multi-party-sig/protocols/doerner/keygen"
 )
 
-func worker(wg *sync.WaitGroup, id party.ID, handler protocol.Handler, network *test.Network) {
+func runHandler(wg *sync.WaitGroup, id party.ID, handler protocol.Handler, network *test.Network) {
 	defer wg.Done()
 	test.HandlerLoop(id, handler, network)
 }
 
-func runDoerner(partyIDs party.IDSlice) (*keygen.ConfigSender, *keygen.ConfigReceiver, error) {
+var testGroup = curve.Secp256k1{}
+
+func runKeygen(partyIDs party.IDSlice) (*ConfigSender, *ConfigReceiver, error) {
 	pl := pool.NewPool(0)
 	defer pl.TearDown()
 
-	group := curve.Secp256k1{}
-
-	h0, err := protocol.NewTwoPartyHandler(keygen.StartKeygen(group, true, partyIDs[0], partyIDs[1], pl), []byte("session"), true)
+	h0, err := protocol.NewTwoPartyHandler(Keygen(testGroup, true, partyIDs[0], partyIDs[1], pl), []byte("session"), true)
 	if err != nil {
 		return nil, nil, err
 	}
-	h1, err := protocol.NewTwoPartyHandler(keygen.StartKeygen(group, false, partyIDs[1], partyIDs[0], pl), []byte("session"), false)
+	h1, err := protocol.NewTwoPartyHandler(Keygen(testGroup, false, partyIDs[1], partyIDs[0], pl), []byte("session"), false)
 	if err != nil {
 		return nil, nil, err
 	}
 	var wg sync.WaitGroup
 	network := test.NewNetwork(partyIDs)
 	wg.Add(2)
-	go worker(&wg, partyIDs[0], h0, network)
-	go worker(&wg, partyIDs[1], h1, network)
+	go runHandler(&wg, partyIDs[0], h0, network)
+	go runHandler(&wg, partyIDs[1], h1, network)
 	wg.Wait()
 
 	resultRound0, err := h0.Result()
 	if err != nil {
 		return nil, nil, err
 	}
-	configReceiver, ok := resultRound0.(*keygen.ConfigReceiver)
+	configReceiver, ok := resultRound0.(*ConfigReceiver)
 	if !ok {
 		return nil, nil, errors.New("failed to cast result to *ConfigReceiver")
 	}
@@ -54,7 +54,7 @@ func runDoerner(partyIDs party.IDSlice) (*keygen.ConfigSender, *keygen.ConfigRec
 	if err != nil {
 		return nil, nil, err
 	}
-	configSender, ok := resultRound1.(*keygen.ConfigSender)
+	configSender, ok := resultRound1.(*ConfigSender)
 	if !ok {
 		return nil, nil, errors.New("failed to cast result to *ConfigSender")
 	}
@@ -64,23 +64,23 @@ func runDoerner(partyIDs party.IDSlice) (*keygen.ConfigSender, *keygen.ConfigRec
 
 var testHash = []byte("test hash")
 
-func runDoernerSign(partyIDs party.IDSlice, configSender *keygen.ConfigSender, configReceiver *keygen.ConfigReceiver) (*ecdsa.Signature, error) {
+func runSign(partyIDs party.IDSlice, configSender *keygen.ConfigSender, configReceiver *keygen.ConfigReceiver) (*ecdsa.Signature, error) {
 	pl := pool.NewPool(0)
 	defer pl.TearDown()
 
-	h0, err := protocol.NewTwoPartyHandler(StartSignReceiver(configReceiver, partyIDs[0], partyIDs[1], testHash, pl), []byte("session"), true)
+	h0, err := protocol.NewTwoPartyHandler(SignReceiver(configReceiver, partyIDs[0], partyIDs[1], testHash, pl), []byte("session"), true)
 	if err != nil {
 		return nil, err
 	}
-	h1, err := protocol.NewTwoPartyHandler(StartSignSender(configSender, partyIDs[1], partyIDs[0], testHash, pl), []byte("session"), true)
+	h1, err := protocol.NewTwoPartyHandler(SignSender(configSender, partyIDs[1], partyIDs[0], testHash, pl), []byte("session"), true)
 	if err != nil {
 		return nil, err
 	}
 	var wg sync.WaitGroup
 	network := test.NewNetwork(partyIDs)
 	wg.Add(2)
-	go worker(&wg, partyIDs[0], h0, network)
-	go worker(&wg, partyIDs[1], h1, network)
+	go runHandler(&wg, partyIDs[0], h0, network)
+	go runHandler(&wg, partyIDs[1], h1, network)
 	wg.Wait()
 
 	resultRound0, err := h0.Result()
@@ -94,11 +94,22 @@ func runDoernerSign(partyIDs party.IDSlice, configSender *keygen.ConfigSender, c
 	return &sig, nil
 }
 
+func checkKeygenOutput(t *testing.T, configSender *ConfigSender, configReceiver *ConfigReceiver) {
+	require.True(t, configSender.Public.Equal(configReceiver.Public))
+	require.False(t, configSender.Public.IsIdentity())
+	secret := configSender.Group().NewScalar().Set(configSender.SecretShare).Mul(configReceiver.SecretShare)
+	public := secret.ActOnBase()
+	require.True(t, public.Equal(configSender.Public))
+}
+
 func TestSign(t *testing.T) {
 	partyIDs := test.PartyIDs(2)
-	configSender, configReceiver, err := runDoerner(partyIDs)
+
+	configSender, configReceiver, err := runKeygen(partyIDs)
 	require.NoError(t, err)
-	sig, err := runDoernerSign(partyIDs, configSender, configReceiver)
+	checkKeygenOutput(t, configSender, configReceiver)
+
+	sig, err := runSign(partyIDs, configSender, configReceiver)
 	require.NoError(t, err)
 	require.True(t, sig.Verify(configSender.Public, testHash))
 	require.True(t, sig.Verify(configReceiver.Public, testHash))
@@ -107,9 +118,9 @@ func TestSign(t *testing.T) {
 func BenchmarkSign(t *testing.B) {
 	t.StopTimer()
 	partyIDs := test.PartyIDs(2)
-	configSender, configReceiver, _ := runDoerner(partyIDs)
+	configSender, configReceiver, _ := runKeygen(partyIDs)
 	t.StartTimer()
 	for i := 0; i < t.N; i++ {
-		runDoernerSign(partyIDs, configSender, configReceiver)
+		runSign(partyIDs, configSender, configReceiver)
 	}
 }

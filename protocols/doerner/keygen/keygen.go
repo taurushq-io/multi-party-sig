@@ -21,10 +21,6 @@ func (c *ConfigReceiver) Group() curve.Curve {
 	return c.Public.Curve()
 }
 
-func EmptyConfigReceiver(group curve.Curve) *ConfigReceiver {
-	return &ConfigReceiver{SecretShare: group.NewScalar(), Public: group.NewPoint()}
-}
-
 type ConfigSender struct {
 	Setup       *ot.CorreOTSendSetup
 	SecretShare curve.Scalar
@@ -33,10 +29,6 @@ type ConfigSender struct {
 
 func (c *ConfigSender) Group() curve.Curve {
 	return c.Public.Curve()
-}
-
-func EmptyConfigSender(group curve.Curve) *ConfigSender {
-	return &ConfigSender{SecretShare: group.NewScalar(), Public: group.NewPoint()}
 }
 
 func StartKeygen(group curve.Curve, receiver bool, selfID, otherID party.ID, pl *pool.Pool) protocol.StartFunc {
