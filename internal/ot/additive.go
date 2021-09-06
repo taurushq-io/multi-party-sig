@@ -7,20 +7,38 @@ import (
 	"github.com/zeebo/blake3"
 )
 
+// AdditiveOTSendRound1Message is the first message by the Sender in the Additive OT protocol.
 type AdditiveOTSendRound1Message struct {
 	CombinedPads [][2][]byte
 }
 
+// AdditiveOTSendResult is the result of running the Additive OT protocol.
+//
+// The sender receives a collection of random pads.
 type AdditiveOTSendResult [][2]curve.Scalar
 
+// AdditiveOTSender holds the Sender's state for the Additive OT Protocol.
 type AdditiveOTSender struct {
-	ctxHash   *hash.Hash
-	setup     *CorreOTSendSetup
+	ctxHash *hash.Hash
+	group   curve.Curve
+	// The setup used for the underlying correlated OT.
+	setup *CorreOTSendSetup
+	// The number of transfers to perform
 	batchSize int
-	group     curve.Curve
-	alpha     [2]curve.Scalar
+	// The constant adjust that will be conditionally added to the pads.
+	alpha [2]curve.Scalar
 }
 
+// NewAdditiveOTSender initializes the sender of an Additive OT.
+//
+// This follows Protocol 9 of https://eprint.iacr.org/2018/499 to a certain extent.
+// The main difference is that we strictly conform to the underlying extended OT,
+// removing Doerner's modifications to the check.
+//
+// The goal of this protocol is for the Sender to learn random pads, each pad being two scalars,
+// and for the Receiver to receive choice_j * alpha_j - pad_j for each of the pads, and their choices.
+//
+// A single setup can be used for multiple protocol executions, but should be initialized with a nonce.
 func NewAdditiveOTSender(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, alpha [2]curve.Scalar) *AdditiveOTSender {
 	return &AdditiveOTSender{
 		ctxHash:   ctxHash,
@@ -70,32 +88,49 @@ func (r *AdditiveOTSender) Round1(msg *AdditiveOTReceiveRound1Message) (*Additiv
 	return outMsg, result, nil
 }
 
+// AdditiveOTReceiver holds the Receiver's state for the Additive OT Protocol.
 type AdditiveOTReceiver struct {
 	// After setup
 	ctxHash *hash.Hash
+	group   curve.Curve
 	setup   *CorreOTReceiveSetup
 	choices []byte
-	group   curve.Curve
 	// After round 1
 	result *ExtendedOTReceiveResult
 }
 
+// NewAdditiveOTReceiver initializes the receiver of an Additive OT.
+//
+// This follows Protocol 9 of https://eprint.iacr.org/2018/499 to a certain extent.
+// The main difference is that we strictly conform to the underlying extended OT,
+// removing Doerner's modifications to the check.
+//
+// The goal of this protocol is for the Sender to learn random pads, each pad being two scalars,
+// and for the Receiver to receive choice_j * alpha_j - pad_j for each of the pads, and their choices.
+//
+// A single setup can be used for multiple protocol executions, but should be initialized with a nonce.
 func NewAdditiveOTReceiver(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, group curve.Curve, choices []byte) *AdditiveOTReceiver {
 	return &AdditiveOTReceiver{ctxHash: ctxHash, setup: setup, group: group, choices: choices}
 }
 
+// AdditiveOTReceiveRound1Message is the first message sent by the Receiver in an Additive OT.
 type AdditiveOTReceiveRound1Message struct {
 	Msg *ExtendedOTReceiveMessage
 }
 
+// Round1 executes the Receiver's first round of an Additive OT.
 func (r *AdditiveOTReceiver) Round1() *AdditiveOTReceiveRound1Message {
 	msg, result := ExtendedOTReceive(r.ctxHash, r.setup, r.choices)
 	r.result = result
 	return &AdditiveOTReceiveRound1Message{Msg: msg}
 }
 
+// AdditiveOTReceiveResult is the Receiver's result for an Additive OT.
+//
+// For each choice_j, we receive choice_j * alpha - pad.
 type AdditiveOTReceiveResult [][2]curve.Scalar
 
+// Round2 executes the Receiver's second round of an Additive OT.
 func (r *AdditiveOTReceiver) Round2(msg *AdditiveOTSendRound1Message) (AdditiveOTReceiveResult, error) {
 	batchSize := 8 * len(r.choices)
 	result := make([][2]curve.Scalar, batchSize)
