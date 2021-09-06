@@ -97,7 +97,7 @@ func runSign(partyIDs party.IDSlice, configSender *keygen.ConfigSender, configRe
 func checkKeygenOutput(t *testing.T, configSender *ConfigSender, configReceiver *ConfigReceiver) {
 	require.True(t, configSender.Public.Equal(configReceiver.Public))
 	require.False(t, configSender.Public.IsIdentity())
-	secret := configSender.Group().NewScalar().Set(configSender.SecretShare).Mul(configReceiver.SecretShare)
+	secret := configSender.Group().NewScalar().Set(configSender.SecretShare).Add(configReceiver.SecretShare)
 	public := secret.ActOnBase()
 	require.True(t, public.Equal(configSender.Public))
 }

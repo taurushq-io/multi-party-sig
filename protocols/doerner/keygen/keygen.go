@@ -15,7 +15,7 @@ import (
 type ConfigReceiver struct {
 	// Setup is an implementation detail, needed to perform signing.
 	Setup *ot.CorreOTReceiveSetup
-	// SecretShare is a multiplicative share of the secret key.
+	// SecretShare is an additive share of the secret key.
 	SecretShare curve.Scalar
 	// Public is the shared public key.
 	Public curve.Point
@@ -30,7 +30,7 @@ func (c *ConfigReceiver) Group() curve.Curve {
 type ConfigSender struct {
 	// Setup is an implementation detail, needed to perform signing.
 	Setup *ot.CorreOTSendSetup
-	// SecretShare is a multiplicative share of the secret key.
+	// SecretShare is an additive share of the secret key.
 	SecretShare curve.Scalar
 	// Public is the shared public key.
 	Public curve.Point
@@ -44,6 +44,11 @@ func (c *ConfigSender) Group() curve.Curve {
 // StartKeygen starts the key generation protocol.
 //
 // This is documented further in the base doerner package.
+//
+// This corresponds to protocol 2 of https://eprint.iacr.org/2018/499, with some adjustments
+// to do additive sharing instead of multiplicative sharing.
+//
+// The Receiver plays the role of "Bob", and the Sender plays the role of "Alice".
 func StartKeygen(group curve.Curve, receiver bool, selfID, otherID party.ID, pl *pool.Pool) protocol.StartFunc {
 	return func(sessionID []byte) (round.Session, error) {
 		info := round.Info{

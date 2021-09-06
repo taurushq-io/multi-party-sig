@@ -5,6 +5,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 )
 
+// round3S is the third round from the Sender's perspective.
 type round3S struct {
 	*round2S
 	setup *ot.CorreOTSendSetup

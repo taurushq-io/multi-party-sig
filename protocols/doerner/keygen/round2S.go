@@ -9,17 +9,23 @@ import (
 	zksch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
 )
 
+// message2S is the message sent by the Sender at the end of the second round.
 type message2S struct {
 	OtMsg *ot.CorreOTSetupSendRound2Message
 }
 
 func (message2S) RoundNumber() round.Number { return 3 }
 
+// round2S is the second round from the Sender's perspective.
 type round2S struct {
 	*round1S
+	// secretShare is our share of the secret key.
 	secretShare curve.Scalar
-	public      curve.Point
-	otMsg       *ot.CorreOTSetupSendRound2Message
+	// publicShare is secretShare times the generator of the group.
+	publicShare curve.Point
+	// public is the shared public key.
+	public curve.Point
+	otMsg  *ot.CorreOTSetupSendRound2Message
 }
 
 func (r *round2S) VerifyMessage(msg round.Message) error {
@@ -44,7 +50,7 @@ func (r *round2S) VerifyMessage(msg round.Message) error {
 
 func (r *round2S) StoreMessage(msg round.Message) error {
 	body := msg.Content.(*message2R)
-	r.public = r.secretShare.Act(body.PublicShare)
+	r.public = r.publicShare.Add(body.PublicShare)
 	r.otMsg = r.sender.Round2(body.OtMsg)
 	return nil
 }

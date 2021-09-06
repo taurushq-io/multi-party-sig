@@ -10,22 +10,30 @@ import (
 	zksch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
 )
 
+// message2R is the message sent by the Receiver at the start of the second round.
 type message2R struct {
-	Decommit    hash.Decommitment
+	// Decommit reveals the value that we committed to earlier.
+	Decommit hash.Decommitment
+	// PublicShare is our secret share times the group generator.
 	PublicShare curve.Point
-	Proof       *zksch.Proof
-	OtMsg       *ot.CorreOTSetupReceiveRound2Message
+	// Proof is a proof of knowledge of the discrete logarithm of PublicShare.
+	Proof *zksch.Proof
+	OtMsg *ot.CorreOTSetupReceiveRound2Message
 }
 
 func (message2R) RoundNumber() round.Number { return 2 }
 
 type round2R struct {
 	*round1R
-	decommit    hash.Decommitment
+	// decommit is the decommitment to our first commitment
+	decommit hash.Decommitment
+	// secretShare is our additive share of the secret key
 	secretShare curve.Scalar
+	// publicShare is secretShare * G
 	publicShare curve.Point
-	public      curve.Point
-	otMsg       *ot.CorreOTSetupReceiveRound2Message
+	// public is the shared public key.
+	public curve.Point
+	otMsg  *ot.CorreOTSetupReceiveRound2Message
 }
 
 func (r *round2R) VerifyMessage(msg round.Message) error {
@@ -48,7 +56,7 @@ func (r *round2R) StoreMessage(msg round.Message) (err error) {
 	if err != nil {
 		return err
 	}
-	r.public = r.secretShare.Act(body.PublicShare)
+	r.public = r.publicShare.Add(body.PublicShare)
 	return nil
 }
 

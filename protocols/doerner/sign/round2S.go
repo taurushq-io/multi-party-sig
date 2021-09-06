@@ -7,6 +7,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/ecdsa"
 )
 
+// round2S is the final round of the signature protocol.
 type round2S struct {
 	*round1S
 	Sig ecdsa.Signature

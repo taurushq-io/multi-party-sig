@@ -9,14 +9,17 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 )
 
+// message1R is the message we send in this round.
 type message1R struct {
+	// Commit is the commitment to our public point.
 	Commit hash.Commitment
-	OtMsg  *ot.CorreOTSetupReceiveRound1Message
+	// OtMsg is the underlying OT setup message.
+	OtMsg *ot.CorreOTSetupReceiveRound1Message
 }
 
 func (message1R) RoundNumber() round.Number { return 1 }
 
-// round1R corresponds to the first round from the receiver's perspective.
+// round1R corresponds to the first round from the Receiver's perspective.
 type round1R struct {
 	*round.Helper
 	receiver *ot.CorreOTSetupReceiver

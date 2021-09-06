@@ -11,17 +11,23 @@ import (
 	zksch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
 )
 
+// message1S is the message the Sender provides in response to the first round.
 type message1S struct {
+	// PublicShare is our secret share times the group generator.
 	PublicShare curve.Point
-	Proof       *zksch.Proof
-	OtMsg       *ot.CorreOTSetupSendRound1Message
+	// Proof is the proof of knowledge for the discrete logarithm of PublicShare.
+	Proof *zksch.Proof
+	// OtMsg is the forwarded message for the underlying OT setup.
+	OtMsg *ot.CorreOTSetupSendRound1Message
 }
 
 func (message1S) RoundNumber() round.Number { return 2 }
 
+// round1S corresponds to the second round from the Sender's perspective.
 type round1S struct {
 	*round.Helper
-	sender         *ot.CorreOTSetupSender
+	sender *ot.CorreOTSetupSender
+	// The commitment sent to us by the receiver.
 	receiverCommit hash.Commitment
 	otMsg          *ot.CorreOTSetupSendRound1Message
 }
@@ -60,7 +66,7 @@ func (r *round1S) Finalize(out chan<- *round.Message) (round.Session, error) {
 	if err := r.SendMessage(out, &message1S{publicShare, proof, r.otMsg}, ""); err != nil {
 		return r, err
 	}
-	return &round2S{round1S: r, secretShare: secretShare}, nil
+	return &round2S{round1S: r, secretShare: secretShare, publicShare: publicShare}, nil
 }
 
 func (r *round1S) MessageContent() round.Content {

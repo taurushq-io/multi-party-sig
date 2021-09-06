@@ -5,12 +5,14 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 )
 
+// message3R is the message sent by the Receiver at the start of the third round.
 type message3R struct {
 	OtMsg *ot.CorreOTSetupReceiveRound3Message
 }
 
 func (message3R) RoundNumber() round.Number { return 3 }
 
+// round3R is the third round from the Receiver's perspective.
 type round3R struct {
 	*round2R
 	setup *ot.CorreOTReceiveSetup
