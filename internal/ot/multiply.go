@@ -11,6 +11,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 )
 
+// scalarBytes returns the number of bytes needed to store a scalar in this group.
 func scalarBytes(group curve.Curve) int {
 	return (group.ScalarBits() + 7) & ^0b111
 }
@@ -45,6 +46,10 @@ func encode(beta curve.Scalar, noise []curve.Scalar) ([]byte, error) {
 	return data, nil
 }
 
+// makeGadget constructs the gadget vector, using the hash for random values.
+//
+// This vector is composed of the right powers of two to make our multiplication work,
+// along with some public random values for noise.
 func makeGadget(ctxHash *hash.Hash, group curve.Curve) []curve.Scalar {
 	scalarEnd := scalarBytes(group)
 	// We have space for all the bytes of a scalar, and then noise vectors, padded to a multiple of 8
@@ -65,6 +70,7 @@ func makeGadget(ctxHash *hash.Hash, group curve.Curve) []curve.Scalar {
 	return out
 }
 
+// MultiplySender contains the state for the Sender of the multiplication protocol.
 type MultiplySender struct {
 	// After setup
 	ctxHash     *hash.Hash
@@ -75,6 +81,12 @@ type MultiplySender struct {
 	sender      *AdditiveOTSender
 }
 
+// NewMultiplySender initializes the Sender for the multiplication protocol.
+//
+// The Sender has a scalar alpha, the Receiver beta, and the goal is to create an additive
+// sharing of alpha * beta.
+//
+// This follows Protocol 5 of https://eprint.iacr.org/2018/4990.
 func NewMultiplySender(ctxHash *hash.Hash, setup *CorreOTSendSetup, alpha curve.Scalar) *MultiplySender {
 	group := alpha.Curve()
 	gadget := makeGadget(ctxHash, group)
@@ -91,12 +103,14 @@ func NewMultiplySender(ctxHash *hash.Hash, setup *CorreOTSendSetup, alpha curve.
 	}
 }
 
+// MultiplySendRound1Message is the first message from the Sender in the multiplication protocol.
 type MultiplySendRound1Message struct {
 	Msg    *AdditiveOTSendRound1Message
 	RCheck []curve.Scalar
 	UCheck curve.Scalar
 }
 
+// EmptyMultiplySendRound1Message initializes the message with the correct group and size, for unmarshalling.
 func (r *MultiplyReceiver) EmptyMultiplySendRound1Message() *MultiplySendRound1Message {
 	group := r.group
 	RCheck := make([]curve.Scalar, len(r.gadget))
@@ -106,6 +120,7 @@ func (r *MultiplyReceiver) EmptyMultiplySendRound1Message() *MultiplySendRound1M
 	return &MultiplySendRound1Message{RCheck: RCheck, UCheck: group.NewScalar()}
 }
 
+// Round1 runs the Sender's first round in the multiplication protocol.
 func (r *MultiplySender) Round1(msg *MultiplyReceiveRound1Message) (*MultiplySendRound1Message, curve.Scalar, error) {
 	additiveMsg, result, err := r.sender.Round1(msg.Msg)
 	if err != nil {
@@ -141,6 +156,7 @@ func (r *MultiplySender) Round1(msg *MultiplyReceiveRound1Message) (*MultiplySen
 	}, share, nil
 }
 
+// MultiplyReceiver contains the state for the Receiver of the multiplication protocol.
 type MultiplyReceiver struct {
 	// After setup
 	ctxHash  *hash.Hash
@@ -152,6 +168,12 @@ type MultiplyReceiver struct {
 	receiver *AdditiveOTReceiver
 }
 
+// NewMultiplyReceiver initializes the Receiver for the multiplication protocol.
+//
+// The Sender has a scalar alpha, the Receiver beta, and the goal is to create an additive
+// sharing of alpha * beta.
+//
+// This follows Protocol 5 of https://eprint.iacr.org/2018/4990.
 func NewMultiplyReceiver(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, beta curve.Scalar) (*MultiplyReceiver, error) {
 	group := beta.Curve()
 	gadget := makeGadget(ctxHash, group)
@@ -170,15 +192,18 @@ func NewMultiplyReceiver(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, beta cu
 	}, nil
 }
 
+// MultiplyReceiveRound1Message is the first message from the Receiver in the multiplication protocol.
 type MultiplyReceiveRound1Message struct {
 	Msg *AdditiveOTReceiveRound1Message
 }
 
+// Round1 runs the first round for the Receiver in the multiplication protocol.
 func (r *MultiplyReceiver) Round1() *MultiplyReceiveRound1Message {
 	msg := r.receiver.Round1()
 	return &MultiplyReceiveRound1Message{msg}
 }
 
+// Round2 runs the second round for the Receiver in the multiplication protocol.
 func (r *MultiplyReceiver) Round2(msg *MultiplySendRound1Message) (curve.Scalar, error) {
 	result, err := r.receiver.Round2(msg.Msg)
 	if err != nil {
