@@ -32,10 +32,11 @@ type Proof struct {
 }
 
 // NewProof generates a Schnorr proof of knowledge of exponent for public, using the Fiat-Shamir transform.
-func NewProof(hash *hash.Hash, public curve.Point, private curve.Scalar) *Proof {
+func NewProof(hash *hash.Hash, public curve.Point, private curve.Scalar, gen curve.Point) *Proof {
 	group := private.Curve()
-	a := NewRandomness(rand.Reader, group)
-	z := a.Prove(hash, public, private)
+
+	a := NewRandomness(rand.Reader, group, gen)
+	z := a.Prove(hash, public, private, gen)
 	return &Proof{
 		C: *a.Commitment(),
 		Z: *z,
@@ -44,27 +45,33 @@ func NewProof(hash *hash.Hash, public curve.Point, private curve.Scalar) *Proof 
 
 // NewRandomness creates a new a ∈ ℤₚ and the corresponding commitment C = a•G.
 // This can be used to run the proof in a non-interactive way.
-func NewRandomness(rand io.Reader, group curve.Curve) *Randomness {
-	a, c := sample.ScalarPointPair(rand, group)
+func NewRandomness(rand io.Reader, group curve.Curve, gen curve.Point) *Randomness {
+	if gen == nil {
+		gen = group.NewBasePoint()
+	}
+	a := sample.Scalar(rand, group)
 	return &Randomness{
 		a:          a,
-		commitment: Commitment{C: c},
+		commitment: Commitment{C: a.Act(gen)},
 	}
 }
 
-func challenge(hash *hash.Hash, group curve.Curve, commitment *Commitment, public curve.Point) (e curve.Scalar, err error) {
-	err = hash.WriteAny(commitment.C, public)
+func challenge(hash *hash.Hash, group curve.Curve, commitment *Commitment, public, gen curve.Point) (e curve.Scalar, err error) {
+	err = hash.WriteAny(commitment.C, public, gen)
 	e = sample.Scalar(hash.Digest(), group)
 	return
 }
 
 // Prove creates a Response = Randomness + H(..., Commitment, public)•secret (mod p).
-func (r *Randomness) Prove(hash *hash.Hash, public curve.Point, secret curve.Scalar) *Response {
+func (r *Randomness) Prove(hash *hash.Hash, public curve.Point, secret curve.Scalar, gen curve.Point) *Response {
+	if gen == nil {
+		gen = public.Curve().NewBasePoint()
+	}
 	if public.IsIdentity() || secret.IsZero() {
 		return nil
 	}
 	group := secret.Curve()
-	e, err := challenge(hash, group, &r.commitment, public)
+	e, err := challenge(hash, group, &r.commitment, public, gen)
 	if err != nil {
 		return nil
 	}
@@ -79,17 +86,20 @@ func (r *Randomness) Commitment() *Commitment {
 }
 
 // Verify checks that Response•G = Commitment + H(..., Commitment, public)•Public.
-func (z *Response) Verify(hash *hash.Hash, public curve.Point, commitment *Commitment) bool {
+func (z *Response) Verify(hash *hash.Hash, public curve.Point, commitment *Commitment, gen curve.Point) bool {
+	if gen == nil {
+		gen = public.Curve().NewBasePoint()
+	}
 	if z == nil || !z.IsValid() || public.IsIdentity() {
 		return false
 	}
 
-	e, err := challenge(hash, z.group, commitment, public)
+	e, err := challenge(hash, z.group, commitment, public, gen)
 	if err != nil {
 		return false
 	}
 
-	lhs := z.Z.ActOnBase()
+	lhs := z.Z.Act(gen)
 	rhs := e.Act(public)
 	rhs = rhs.Add(commitment.C)
 
@@ -97,11 +107,11 @@ func (z *Response) Verify(hash *hash.Hash, public curve.Point, commitment *Commi
 }
 
 // Verify checks that Proof.Response•G = Proof.Commitment + H(..., Proof.Commitment, Public)•Public.
-func (p *Proof) Verify(hash *hash.Hash, public curve.Point) bool {
+func (p *Proof) Verify(hash *hash.Hash, public, gen curve.Point) bool {
 	if !p.IsValid() {
 		return false
 	}
-	return p.Z.Verify(hash, public, &p.C)
+	return p.Z.Verify(hash, public, &p.C, gen)
 }
 
 // WriteTo implements io.WriterTo.

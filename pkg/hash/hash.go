@@ -79,7 +79,6 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 			toBeWritten = &BytesWithDomain{"big.Int", bytes}
 		case WriterToWithDomain:
 			toBeWritten = t
-			break
 		case encoding.BinaryMarshaler:
 			name := reflect.TypeOf(t)
 			bytes, err := t.MarshalBinary()
@@ -91,7 +90,7 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 				Bytes:     bytes,
 			}
 		default:
-			panic("hash.Hash: unsupported type")
+			fmt.Println(t)
 		}
 
 		// Write out `(<domain><data>)`, so that each domain separated piece of data
@@ -110,4 +109,11 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 // Clone returns a copy of the Hash in its current state.
 func (hash *Hash) Clone() *Hash {
 	return &Hash{h: hash.h.Clone()}
+}
+
+// Fork clones this hash, and then writes some data.
+func (hash *Hash) Fork(data ...interface{}) *Hash {
+	newHash := hash.Clone()
+	_ = newHash.WriteAny(data...)
+	return newHash
 }

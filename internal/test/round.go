@@ -7,7 +7,6 @@ import (
 	"reflect"
 
 	"github.com/fxamacker/cbor/v2"
-	"github.com/taurusgroup/multi-party-sig/internal/broadcast"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"golang.org/x/sync/errgroup"
@@ -153,21 +152,9 @@ func checkAllRoundsSame(rounds []round.Session) (reflect.Type, error) {
 }
 
 func getRound(outerRound round.Session) round.Session {
-	switch r := outerRound.(type) {
-	case *broadcast.Round1:
-		return getRound(r.Session)
-	case *broadcast.Round2:
-		return getRound(r.Session)
-	default:
-		return r
-	}
+	return outerRound
 }
 
 func getContent(outerContent round.Content) round.Content {
-	switch content := outerContent.(type) {
-	case *broadcast.Message2:
-		return getContent(content.Content)
-	default:
-		return content
-	}
+	return outerContent
 }

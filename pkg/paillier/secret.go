@@ -70,10 +70,11 @@ func NewSecretKey(pl *pool.Pool) *SecretKey {
 
 // NewSecretKeyFromPrimes generates a new SecretKey. Assumes that P and Q are prime.
 func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
+	oneNat := new(safenum.Nat).SetUint64(1)
+
 	n := arith.ModulusFromFactors(P, Q)
 
 	nNat := n.Nat()
-	oneNat := new(safenum.Nat).SetUint64(1)
 	nPlusOne := new(safenum.Nat).Add(nNat, oneNat, -1)
 	// Tightening is fine, since n is public
 	nPlusOne.Resize(nPlusOne.TrueLen())
@@ -105,8 +106,9 @@ func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
 // Dec decrypts c and returns the plaintext m ∈ ± (N-2)/2.
 // It returns an error if gcd(c, N²) != 1 or if c is not in [1, N²-1].
 func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
-	n := sk.PublicKey.n.Modulus
 	oneNat := new(safenum.Nat).SetUint64(1)
+
+	n := sk.PublicKey.n.Modulus
 
 	if !sk.PublicKey.ValidateCiphertexts(ct) {
 		return nil, errors.New("paillier: failed to decrypt invalid ciphertext")

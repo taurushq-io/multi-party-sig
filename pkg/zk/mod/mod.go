@@ -47,8 +47,9 @@ type Proof struct {
 //
 // qHalf should be (q - 1) / 2.
 func isQRmodPQ(y, pHalf, qHalf *safenum.Nat, p, q *safenum.Modulus) safenum.Choice {
+	oneNat := new(safenum.Nat).SetUint64(1).Resize(1)
+
 	test := new(safenum.Nat)
-	oneNat := new(safenum.Nat).SetUint64(1)
 	test.Exp(y, pHalf, p)
 	pOk := test.Eq(oneNat)
 
@@ -217,10 +218,7 @@ func (r *Response) Verify(n, w, y *big.Int) bool {
 	}
 	rhs.Mod(&rhs, n)
 
-	if lhs.Cmp(&rhs) != 0 {
-		return false
-	}
-	return true
+	return lhs.Cmp(&rhs) == 0
 }
 
 func (p *Proof) Verify(public Public, hash *hash.Hash, pl *pool.Pool) bool {

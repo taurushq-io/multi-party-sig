@@ -169,7 +169,7 @@ func (r *round4) Finalize(out chan<- *round.Message) (round.Session, error) {
 	h := r.Hash()
 	_ = h.WriteAny(UpdatedConfig, r.SelfID())
 
-	proof := r.SchnorrRand.Prove(h, PublicData[r.SelfID()].ECDSA, UpdatedSecretECDSA)
+	proof := r.SchnorrRand.Prove(h, PublicData[r.SelfID()].ECDSA, UpdatedSecretECDSA, nil)
 
 	// send to all
 	err = r.BroadcastMessage(out, &broadcast5{SchnorrResponse: proof})
