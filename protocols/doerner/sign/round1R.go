@@ -31,11 +31,11 @@ func (r *round1R) StoreMessage(round.Message) error { return nil }
 func (r *round1R) Finalize(out chan<- *round.Message) (round.Session, error) {
 	kB := sample.Scalar(rand.Reader, r.Group())
 	D := kB.ActOnBase()
+	kB.Invert()
 	multiply0, err := ot.NewMultiplyReceiver(r.Hash(), r.config.Setup, kB)
 	if err != nil {
 		return r, err
 	}
-	kB.Invert()
 	beta := r.Group().NewScalar().Set(r.config.SecretShare).Mul(kB)
 	multiply1, err := ot.NewMultiplyReceiver(r.Hash(), r.config.Setup, beta)
 	if err != nil {
