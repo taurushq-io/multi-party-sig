@@ -1,6 +1,7 @@
 package keygen
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
@@ -96,7 +98,9 @@ func (c *ConfigSender) Group() curve.Curve {
 // to do additive sharing instead of multiplicative sharing.
 //
 // The Receiver plays the role of "Bob", and the Sender plays the role of "Alice".
-func StartKeygen(group curve.Curve, receiver bool, selfID, otherID party.ID, pl *pool.Pool) protocol.StartFunc {
+//
+// If the secret share and public point are not nil, a refresh is done instead.
+func StartKeygen(group curve.Curve, receiver bool, selfID, otherID party.ID, secretShare curve.Scalar, public curve.Point, pl *pool.Pool) protocol.StartFunc {
 	return func(sessionID []byte) (round.Session, error) {
 		info := round.Info{
 			ProtocolID:       "doerner/keygen",
@@ -112,10 +116,31 @@ func StartKeygen(group curve.Curve, receiver bool, selfID, otherID party.ID, pl 
 			return nil, fmt.Errorf("keygen.StartKeygen: %w", err)
 		}
 
-		if receiver {
-			return &round1R{Helper: helper, receiver: ot.NewCorreOTSetupReceiver(pl, helper.Hash(), helper.Group())}, nil
+		refresh := true
+		if secretShare == nil && public == nil {
+			secretShare = sample.Scalar(rand.Reader, group)
+			refresh = false
 		}
-		return &round1S{Helper: helper, sender: ot.NewCorreOTSetupSender(pl, helper.Hash())}, nil
+		publicShare := secretShare.ActOnBase()
+
+		if receiver {
+			return &round1R{
+				Helper:      helper,
+				refresh:     refresh,
+				secretShare: secretShare,
+				publicShare: publicShare,
+				public:      public,
+				receiver:    ot.NewCorreOTSetupReceiver(pl, helper.Hash(), helper.Group()),
+			}, nil
+		}
+		return &round1S{
+			Helper:      helper,
+			refresh:     refresh,
+			secretShare: secretShare,
+			publicShare: publicShare,
+			public:      public,
+			sender:      ot.NewCorreOTSetupSender(pl, helper.Hash()),
+		}, nil
 	}
 }
 

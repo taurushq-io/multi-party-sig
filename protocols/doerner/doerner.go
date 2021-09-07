@@ -41,7 +41,22 @@ func EmptyConfigSender(group curve.Curve) *ConfigSender {
 //
 // A pool can be passed to this function, to parallelize certain operations and improve performance.
 func Keygen(group curve.Curve, receiver bool, selfID, otherID party.ID, pl *pool.Pool) protocol.StartFunc {
-	return keygen.StartKeygen(group, receiver, selfID, otherID, pl)
+	return keygen.StartKeygen(group, receiver, selfID, otherID, nil, nil, pl)
+}
+
+// RefreshReceiver initiates a key-refresh protocol, from the Receiver's perspective.
+//
+// The goal of this protocol is to refresh the shares of the secret key, and other auxilary
+// secret data, while preserving the shared public key.
+func RefreshReceiver(config *ConfigReceiver, selfID, otherID party.ID, pl *pool.Pool) protocol.StartFunc {
+	return keygen.StartKeygen(config.Group(), true, selfID, otherID, config.SecretShare, config.Public, pl)
+}
+
+// RefreshSender initiates a key-refresh protocol, from the Sender's perspective.
+//
+// See RefreshReceiver.
+func RefreshSender(config *ConfigSender, selfID, otherID party.ID, pl *pool.Pool) protocol.StartFunc {
+	return keygen.StartKeygen(config.Group(), false, selfID, otherID, config.SecretShare, config.Public, pl)
 }
 
 // SignReceiver initiates the signing process, given a message hash.
