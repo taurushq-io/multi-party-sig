@@ -53,7 +53,7 @@ func (r *round2) StoreBroadcastMessage(msg round.Message) error {
 	}
 
 	// check nil
-	if !body.Sigma_i.IsValid() || body.Phi_i == nil {
+	if (!r.refresh && !body.Sigma_i.IsValid()) || body.Phi_i == nil {
 		return round.ErrNilFields
 	}
 
@@ -75,8 +75,16 @@ func (r *round2) StoreBroadcastMessage(msg round.Message) error {
 	// To see why this is correct, compare this verification with the proof we
 	// produced in the previous round. Note how we do the same hash cloning,
 	// but this time with the ID of the message sender.
-	if !body.Sigma_i.Verify(r.Helper.HashForID(from), body.Phi_i.Constant(), nil) {
-		return fmt.Errorf("failed to verify Schnorr proof for party %s", from)
+
+	// Refresh: There's no proof to verify, but instead check that the constant is identity
+	if r.refresh {
+		if !body.Phi_i.Constant().IsIdentity() {
+			return fmt.Errorf("party %s sent a non-zero constant while refreshing", from)
+		}
+	} else {
+		if !body.Sigma_i.Verify(r.Helper.HashForID(from), body.Phi_i.Constant(), nil) {
+			return fmt.Errorf("failed to verify Schnorr proof for party %s", from)
+		}
 	}
 
 	r.Phi[from] = body.Phi_i

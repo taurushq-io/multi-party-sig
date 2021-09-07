@@ -1,6 +1,7 @@
 package frost
 
 import (
+	"bytes"
 	"fmt"
 	"sync"
 	"testing"
@@ -22,7 +23,16 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	r, err := h.Result()
 	require.NoError(t, err)
 	require.IsType(t, &Config{}, r)
+	c0 := r.(*Config)
+
+	h, err = protocol.NewMultiHandler(Refresh(c0, ids), nil)
+	require.NoError(t, err)
+	test.HandlerLoop(id, h, n)
+	r, err = h.Result()
+	require.NoError(t, err)
+	require.IsType(t, &Config{}, r)
 	c := r.(*Config)
+	require.True(t, c0.PublicKey.Equal(c.PublicKey))
 
 	h, err = protocol.NewMultiHandler(KeygenTaproot(id, ids, threshold), nil)
 	require.NoError(t, err)
@@ -32,7 +42,18 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	require.NoError(t, err)
 	require.IsType(t, &TaprootConfig{}, r)
 
+	c0Taproot := r.(*TaprootConfig)
+
+	h, err = protocol.NewMultiHandler(RefreshTaproot(c0Taproot, ids), nil)
+	require.NoError(t, err)
+	test.HandlerLoop(c.ID, h, n)
+
+	r, err = h.Result()
+	require.NoError(t, err)
+	require.IsType(t, &TaprootConfig{}, r)
+
 	cTaproot := r.(*TaprootConfig)
+	require.True(t, bytes.Equal(c0Taproot.PublicKey, cTaproot.PublicKey))
 
 	h, err = protocol.NewMultiHandler(Sign(c, ids, message), nil)
 	require.NoError(t, err)

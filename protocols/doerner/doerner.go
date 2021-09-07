@@ -48,6 +48,9 @@ func Keygen(group curve.Curve, receiver bool, selfID, otherID party.ID, pl *pool
 //
 // The goal of this protocol is to refresh the shares of the secret key, and other auxilary
 // secret data, while preserving the shared public key.
+//
+// This won't change the value of the public key, but it will change the value of the chaining key.
+// If this isn't desirable, then the new chain key can simply be overwritten with the previous value.
 func RefreshReceiver(config *ConfigReceiver, selfID, otherID party.ID, pl *pool.Pool) protocol.StartFunc {
 	return keygen.StartKeygen(config.Group(), true, selfID, otherID, config.SecretShare, config.Public, pl)
 }
