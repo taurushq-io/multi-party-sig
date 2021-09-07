@@ -107,9 +107,8 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 	// 3. "Each P_i calculates their long-lived private signing share by computing
 	// sᵢ = ∑ₗ₌₁ⁿ fₗ(i), stores s_i securely, and deletes each fₗ(i)"
 
-	s_i := r.Group().NewScalar()
 	for l, f_li := range r.shareFrom {
-		s_i.Add(f_li)
+		r.privateShare.Add(f_li)
 		// TODO: Maybe actually clear this in a better way
 		delete(r.shareFrom, l)
 	}
@@ -120,12 +119,10 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 	//
 	// Yᵢ = ∑ⱼ₌₁ⁿ ∑ₖ₌₀ᵗ (iᵏ mod q) * ϕⱼₖ."
 
-	Y := r.Group().NewPoint()
 	for _, phi_j := range r.Phi {
-		Y = Y.Add(phi_j.Constant())
+		r.publicKey = r.publicKey.Add(phi_j.Constant())
 	}
 
-	VerificationShares := make(map[party.ID]curve.Point)
 	// This accomplishes the same sum as in the paper, by first summing
 	// together the exponent coefficients, and then evaluating.
 	exponents := make([]*polynomial.Exponent, 0, r.PartyIDs().Len())
@@ -136,8 +133,8 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 	if err != nil {
 		panic(err)
 	}
-	for _, i := range r.PartyIDs() {
-		VerificationShares[i] = verificationExponent.Evaluate(i.Scalar(r.Group()))
+	for k, v := range r.verificationShares {
+		r.verificationShares[k] = v.Add(verificationExponent.Evaluate(k.Scalar(r.Group())))
 	}
 
 	if r.taproot {
@@ -149,21 +146,21 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 		//
 		// We assume that everyone else does the same, so we negate all the verification
 		// shares.
-		YSecp := Y.(*curve.Secp256k1Point)
+		YSecp := r.publicKey.(*curve.Secp256k1Point)
 		if !YSecp.HasEvenY() {
-			s_i.Negate()
-			for i, y_i := range VerificationShares {
-				VerificationShares[i] = y_i.Negate()
+			r.privateShare.Negate()
+			for i, y_i := range r.verificationShares {
+				r.verificationShares[i] = y_i.Negate()
 			}
 		}
 		secpVerificationShares := make(map[party.ID]*curve.Secp256k1Point)
-		for k, v := range VerificationShares {
+		for k, v := range r.verificationShares {
 			secpVerificationShares[k] = v.(*curve.Secp256k1Point)
 		}
 		return r.ResultRound(&TaprootConfig{
 			ID:                 r.SelfID(),
 			Threshold:          r.threshold,
-			PrivateShare:       s_i.(*curve.Secp256k1Scalar),
+			PrivateShare:       r.privateShare.(*curve.Secp256k1Scalar),
 			PublicKey:          YSecp.XBytes()[:],
 			VerificationShares: secpVerificationShares,
 		}), nil
@@ -172,9 +169,9 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 	return r.ResultRound(&Config{
 		ID:                 r.SelfID(),
 		Threshold:          r.threshold,
-		PrivateShare:       s_i,
-		PublicKey:          Y,
-		VerificationShares: party.NewPointMap(VerificationShares),
+		PrivateShare:       r.privateShare,
+		PublicKey:          r.publicKey,
+		VerificationShares: party.NewPointMap(r.verificationShares),
 	}), nil
 }
 

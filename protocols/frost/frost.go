@@ -45,7 +45,7 @@ func EmptyConfig(group curve.Curve) *Config {
 // This protocol corresponds to Figure 1 of the Frost paper:
 //   https://eprint.iacr.org/2020/852.pdf
 func Keygen(group curve.Curve, selfID party.ID, participants []party.ID, threshold int) protocol.StartFunc {
-	return keygen.StartKeygenCommon(false, group, participants, threshold, selfID)
+	return keygen.StartKeygenCommon(false, group, participants, threshold, selfID, nil, nil, nil)
 }
 
 // KeygenTaproot is like Keygen, but will make Taproot / BIP-340 compatible keys.
@@ -54,7 +54,31 @@ func Keygen(group curve.Curve, selfID party.ID, participants []party.ID, thresho
 //
 // See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#specification
 func KeygenTaproot(selfID party.ID, participants []party.ID, threshold int) protocol.StartFunc {
-	return keygen.StartKeygenCommon(true, curve.Secp256k1{}, participants, threshold, selfID)
+	return keygen.StartKeygenCommon(true, curve.Secp256k1{}, participants, threshold, selfID, nil, nil, nil)
+}
+
+// Refresh
+func Refresh(config *Config, participants []party.ID) protocol.StartFunc {
+	return keygen.StartKeygenCommon(false, config.Curve(), participants, config.Threshold, config.ID, config.PrivateShare, config.PublicKey, config.VerificationShares.Points)
+}
+
+// RefreshTaproot is like Refresh, but will make Taproot / BIP-340 compatible keys.
+//
+// This will also return TaprootResult instead of Result, at the end of the protocol.
+//
+// See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#specification
+func RefreshTaproot(config *TaprootConfig, participants []party.ID) protocol.StartFunc {
+	publicKey, err := curve.Secp256k1{}.LiftX(config.PublicKey)
+	if err != nil {
+		return func([]byte) (round.Session, error) {
+			return nil, err
+		}
+	}
+	verificationShares := make(map[party.ID]curve.Point, len(config.VerificationShares))
+	for k, v := range config.VerificationShares {
+		verificationShares[k] = v
+	}
+	return keygen.StartKeygenCommon(true, curve.Secp256k1{}, participants, config.Threshold, config.ID, config.PrivateShare, publicKey, verificationShares)
 }
 
 // Sign initiates the protocol for producing a threshold signature, with Frost.

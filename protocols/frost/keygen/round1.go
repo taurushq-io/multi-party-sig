@@ -7,6 +7,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -30,6 +31,18 @@ type round1 struct {
 	//
 	// Alternatively, t + 1 participants are needed to make a signature.
 	threshold int
+	// refresh indicates whether or not we're doing a refresh instead of a key-generation.
+	refresh bool
+	// These fields are set to accomodate both key-generation, in which case they'll
+	// take on identity values, and refresh, in which case their values are meaningful.
+	// These values should be modifiable.
+
+	// privateShare is our previous private share when refreshing, and 0 otherwise.
+	privateShare curve.Scalar
+	// verificationShares should hold the previous verification shares when refreshing, and identity points otherwise.
+	verificationShares map[party.ID]curve.Point
+	// publicKey should be the previous public key when refreshing, and 0 otherwise.
+	publicKey curve.Point
 }
 
 // VerifyMessage implements round.Round.
@@ -46,6 +59,7 @@ func (r *round1) StoreMessage(round.Message) error { return nil }
 // The overall goal of this round is to generate a secret value, create a polynomial
 // sharing of that value, and then send commitments to these values.
 func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
+	group := r.Group()
 	// These steps come from Figure 1, Round 1 of the Frost paper.
 
 	// 1. "Every participant P_i samples t + 1 random values (aᵢ₀, ..., aᵢₜ)) <-$ Z/(q)
@@ -54,8 +68,14 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	//
 	// Note: I've adjusted the thresholds in this quote to reflect our convention
 	// that t + 1 participants are needed to create a signature.
-	a_i0 := sample.Scalar(rand.Reader, r.Group())
-	a_i0_times_G := a_i0.ActOnBase()
+
+	// Refresh: Instead of creating a new secret, instead use 0, so that our result doesn't change.
+	a_i0 := group.NewScalar()
+	a_i0_times_G := group.NewPoint()
+	if !r.refresh {
+		a_i0 = sample.Scalar(rand.Reader, r.Group())
+		a_i0_times_G = a_i0.ActOnBase()
+	}
 	f_i := polynomial.NewPolynomial(r.Group(), r.threshold, a_i0)
 
 	// 2. "Every Pᵢ computes a proof of knowledge to the corresponding secret aᵢ₀
@@ -72,7 +92,12 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// different.
 	// At this point, we've already hashed context inside of helper, so we just
 	// add in our own ID, and then we're good to go.
-	Sigma_i := zksch.NewProof(r.Helper.HashForID(r.SelfID()), a_i0_times_G, a_i0, nil)
+
+	// Refresh: Don't create a proof.
+	var Sigma_i *zksch.Proof
+	if !r.refresh {
+		Sigma_i = zksch.NewProof(r.Helper.HashForID(r.SelfID()), a_i0_times_G, a_i0, nil)
+	}
 
 	// 3. "Every participant Pᵢ computes a public comment Φᵢ = <ϕᵢ₀, ..., ϕᵢₜ>
 	// where ϕᵢⱼ = aᵢⱼ * G."
