@@ -18,7 +18,7 @@ import (
 )
 
 func XOR(id party.ID, ids party.IDSlice, n *test.Network) error {
-	h, err := protocol.NewHandler(example.StartXOR(id, ids), nil)
+	h, err := protocol.NewMultiHandler(example.StartXOR(id, ids), nil)
 	if err != nil {
 		return err
 	}
@@ -31,7 +31,7 @@ func XOR(id party.ID, ids party.IDSlice, n *test.Network) error {
 }
 
 func CMPKeygen(id party.ID, ids party.IDSlice, threshold int, n *test.Network, pl *pool.Pool) (*cmp.Config, error) {
-	h, err := protocol.NewHandler(cmp.Keygen(curve.Secp256k1{}, id, ids, threshold, pl), nil)
+	h, err := protocol.NewMultiHandler(cmp.Keygen(curve.Secp256k1{}, id, ids, threshold, pl), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func CMPKeygen(id party.ID, ids party.IDSlice, threshold int, n *test.Network, p
 }
 
 func CMPRefresh(c *cmp.Config, n *test.Network, pl *pool.Pool) (*cmp.Config, error) {
-	hRefresh, err := protocol.NewHandler(cmp.Refresh(c, pl), nil)
+	hRefresh, err := protocol.NewMultiHandler(cmp.Refresh(c, pl), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func CMPRefresh(c *cmp.Config, n *test.Network, pl *pool.Pool) (*cmp.Config, err
 }
 
 func CMPSign(c *cmp.Config, m []byte, signers party.IDSlice, n *test.Network, pl *pool.Pool) error {
-	h, err := protocol.NewHandler(cmp.Sign(c, signers, m, pl), nil)
+	h, err := protocol.NewMultiHandler(cmp.Sign(c, signers, m, pl), nil)
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func CMPSign(c *cmp.Config, m []byte, signers party.IDSlice, n *test.Network, pl
 }
 
 func CMPPreSign(c *cmp.Config, signers party.IDSlice, n *test.Network, pl *pool.Pool) (*ecdsa.PreSignature, error) {
-	h, err := protocol.NewHandler(cmp.Presign(c, signers, pl), nil)
+	h, err := protocol.NewMultiHandler(cmp.Presign(c, signers, pl), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func CMPPreSign(c *cmp.Config, signers party.IDSlice, n *test.Network, pl *pool.
 }
 
 func CMPPreSignOnline(c *cmp.Config, preSignature *ecdsa.PreSignature, m []byte, n *test.Network, pl *pool.Pool) error {
-	h, err := protocol.NewHandler(cmp.PresignOnline(c, preSignature, m, pl), nil)
+	h, err := protocol.NewMultiHandler(cmp.PresignOnline(c, preSignature, m, pl), nil)
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func CMPPreSignOnline(c *cmp.Config, preSignature *ecdsa.PreSignature, m []byte,
 }
 
 func FrostKeygen(id party.ID, ids party.IDSlice, threshold int, n *test.Network) (*frost.Config, error) {
-	h, err := protocol.NewHandler(frost.Keygen(curve.Secp256k1{}, id, ids, threshold), nil)
+	h, err := protocol.NewMultiHandler(frost.Keygen(curve.Secp256k1{}, id, ids, threshold), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func FrostKeygen(id party.ID, ids party.IDSlice, threshold int, n *test.Network)
 }
 
 func FrostSign(c *frost.Config, id party.ID, m []byte, signers party.IDSlice, n *test.Network) error {
-	h, err := protocol.NewHandler(frost.Sign(c, signers, m), nil)
+	h, err := protocol.NewMultiHandler(frost.Sign(c, signers, m), nil)
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func FrostSign(c *frost.Config, id party.ID, m []byte, signers party.IDSlice, n 
 }
 
 func FrostKeygenTaproot(id party.ID, ids party.IDSlice, threshold int, n *test.Network) (*frost.TaprootConfig, error) {
-	h, err := protocol.NewHandler(frost.KeygenTaproot(id, ids, threshold), nil)
+	h, err := protocol.NewMultiHandler(frost.KeygenTaproot(id, ids, threshold), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +161,7 @@ func FrostKeygenTaproot(id party.ID, ids party.IDSlice, threshold int, n *test.N
 	return r.(*frost.TaprootConfig), nil
 }
 func FrostSignTaproot(c *frost.TaprootConfig, id party.ID, m []byte, signers party.IDSlice, n *test.Network) error {
-	h, err := protocol.NewHandler(frost.SignTaproot(c, signers, m), nil)
+	h, err := protocol.NewMultiHandler(frost.SignTaproot(c, signers, m), nil)
 	if err != nil {
 		return err
 	}

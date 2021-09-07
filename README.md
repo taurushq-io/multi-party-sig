@@ -44,6 +44,9 @@ Each protocol can be invoked using one of the following functions:
 | [`cmp.Sign(config *cmp.Config, signers []party.ID, messageHash []byte, pl *pool.Pool)`](protocols/cmp/cmp.go)                        | [`*ecdsa.Signature`](pkg/ecdsa/signature.go)               | Generates an ECDSA signature for `messageHash`.                                             |
 | [`cmp.Presign(config *cmp.Config, signers []party.ID, pl *pool.Pool)`](protocols/cmp/cmp.go)                                         | [`*ecdsa.PreSignature`](pkg/ecdsa/presignature.go)         | Generates a preprocessed ECDSA signature which does not depend on the message being signed. |
 | [`cmp.PresignOnline(config *cmp.Config, preSignature *ecdsa.PreSignature, messageHash []byte, pl *pool.Pool)`](protocols/cmp/cmp.go) | [`*ecdsa.Signature`](pkg/ecdsa/signature.go)               | Combines each party's `PreSignature` share to create an ECDSA signature for `messageHash`.  |
+| [`doerner.Keygen(group curve.Curve, receiver bool, selfID, otherID party.ID, pl *pool.Pool)`](protocols/doerner/doerner.go)          | [`*doerner.Config`](protocols/doerner/doerner.go)          | Generates a new ECDSA private key shared among two participants                             |
+| [`doerner.SignReceiver(config *ConfigReceiver, selfID, otherID party.ID, hash []byte, pl *pool.Pool)`](protocols/doerner/doerner.go) | [`*ecdsa.Signature`](pkg/ecdsa/signature.go)               | Generates a new ECDSA signature for a given message, using the Receiver's config            |
+| [`doerner.SignSender(config *ConfigSender, selfID, otherID party.ID, hash []byte, pl *pool.Pool)`](protocols/doerner/doerner.go)     | [`*ecdsa.Signature`](pkg/ecdsa/signature.go)               | Generates a new ECDSA signature for a given message, using the Sender's config              |
 | [`frost.Keygen(group curve.Curve, selfID party.ID, participants []party.ID, threshold int)`](protocols/frost/frost.go)               | [`*frost.Config`](protocols/frost/keygen/result.go)        | Generates a new Schnorr private key shared among all the given participants.                |
 | [`frost.KeygenTaproot(selfID party.ID, participants []party.ID, threshold int)`](protocols/frost/frost.go)                           | [`*frost.TaprootConfig`](protocols/frost/keygen/result.go) | Generates a new Taproot compatible private key shared among all the given participants.     |
 | [`frost.Sign(config *frost.Config, signers []party.ID, messageHash []byte)`](protocols/frost/frost.go)                               | [`*frost.Signature`](protocols/frost/sign/types.go)        | Generates a Schnorr signature for `messageHash`.                                            |
@@ -78,13 +81,15 @@ var (
 pl := pool.NewPool(0) // use the maximum number of threads.
 defer pl.Teardown() // destroy the pool once the protocol is done.
 
-handler, err := protocol.NewHandler(cmp.Keygen(group, selfID, participants, threshold, pl), sessionID)
+handler, err := protocol.NewMultiHandler(cmp.Keygen(group, selfID, participants, threshold, pl), sessionID)
 if err != nil {
   // the handler was not able to start the protocol, most likely due to incorrect configuration.
 }
 ```
 
 More examples of how to create handlers for various protocols can be found in [/example](/example).
+Note that for two-party protocols like Doerner, a [`protocol.TwoPartyHandler`](pkg/protocol/twoparty.go) should be created
+instead, to manage the back and forth messages required.
 
 After the handler has been created, the user can start a loop for incoming/outgoing messages.
 Messages for other parties can be obtained by querying the channel returned by `handler.Listen()`.

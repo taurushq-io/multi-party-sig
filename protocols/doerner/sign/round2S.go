@@ -31,7 +31,7 @@ func (r *round2S) StoreMessage(msg round.Message) (err error) {
 }
 
 func (r *round2S) Finalize(out chan<- *round.Message) (round.Session, error) {
-	return r.ResultRound(r.Sig), nil
+	return r.ResultRound(&r.Sig), nil
 }
 
 func (r *round2S) MessageContent() round.Content {

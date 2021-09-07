@@ -120,7 +120,7 @@ func (r *round2R) Finalize(out chan<- *round.Message) (round.Session, error) {
 	if err := r.SendMessage(out, &message2R{sig}, ""); err != nil {
 		return r, err
 	}
-	return r.ResultRound(sig), nil
+	return r.ResultRound(&sig), nil
 }
 
 func (r *round2R) MessageContent() round.Content {

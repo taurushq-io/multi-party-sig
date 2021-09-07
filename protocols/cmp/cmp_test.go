@@ -18,7 +18,7 @@ import (
 
 func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte, pl *pool.Pool, n *test.Network, wg *sync.WaitGroup) {
 	defer wg.Done()
-	h, err := protocol.NewHandler(Keygen(curve.Secp256k1{}, id, ids, threshold, pl), nil)
+	h, err := protocol.NewMultiHandler(Keygen(curve.Secp256k1{}, id, ids, threshold, pl), nil)
 	require.NoError(t, err)
 	test.HandlerLoop(id, h, n)
 	r, err := h.Result()
@@ -26,7 +26,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	require.IsType(t, &Config{}, r)
 	c := r.(*Config)
 
-	h, err = protocol.NewHandler(Refresh(c, pl), nil)
+	h, err = protocol.NewMultiHandler(Refresh(c, pl), nil)
 	require.NoError(t, err)
 	test.HandlerLoop(c.ID, h, n)
 
@@ -35,7 +35,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	require.IsType(t, &Config{}, r)
 	c = r.(*Config)
 
-	h, err = protocol.NewHandler(Sign(c, ids, message, pl), nil)
+	h, err = protocol.NewMultiHandler(Sign(c, ids, message, pl), nil)
 	require.NoError(t, err)
 	test.HandlerLoop(c.ID, h, n)
 
@@ -45,7 +45,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	signature := signResult.(*ecdsa.Signature)
 	assert.True(t, signature.Verify(c.PublicPoint(), message))
 
-	h, err = protocol.NewHandler(Presign(c, ids, pl), nil)
+	h, err = protocol.NewMultiHandler(Presign(c, ids, pl), nil)
 	require.NoError(t, err)
 
 	test.HandlerLoop(c.ID, h, n)
@@ -56,7 +56,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	preSignature := signResult.(*ecdsa.PreSignature)
 	assert.NoError(t, preSignature.Validate())
 
-	h, err = protocol.NewHandler(PresignOnline(c, preSignature, message, pl), nil)
+	h, err = protocol.NewMultiHandler(PresignOnline(c, preSignature, message, pl), nil)
 	require.NoError(t, err)
 	test.HandlerLoop(c.ID, h, n)
 

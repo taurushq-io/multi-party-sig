@@ -19,11 +19,17 @@ import (
 // An optional sessionID can be provided, which should unique among all protocol executions.
 type StartFunc func(sessionID []byte) (round.Session, error)
 
+// Handler represents some kind of handler for a protocol.
 type Handler interface {
+	// Result should return the result of running the protocol, or an error
 	Result() (interface{}, error)
+	// Listen returns a channel which will receive new messages
 	Listen() <-chan *Message
+	// Stop should abort the protocol execution.
 	Stop()
+	// CanAccept checks whether or not a message can be accepted at the current point in the protocol.
 	CanAccept(msg *Message) bool
+	// Accept advances the protocol execution after receiving a message.
 	Accept(msg *Message)
 }
 
@@ -41,8 +47,8 @@ type MultiHandler struct {
 	mtx             sync.Mutex
 }
 
-// NewHandler expects a StartFunc for the desired protocol. It returns a handler that the user can interact with.
-func NewHandler(create StartFunc, sessionID []byte) (*MultiHandler, error) {
+// NewMultiHandler expects a StartFunc for the desired protocol. It returns a handler that the user can interact with.
+func NewMultiHandler(create StartFunc, sessionID []byte) (*MultiHandler, error) {
 	r, err := create(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("protocol: failed to create round: %w", err)
