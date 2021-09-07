@@ -1,9 +1,12 @@
 package keygen
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/taurusgroup/multi-party-sig/internal/bip32"
 	"github.com/taurusgroup/multi-party-sig/internal/ot"
+	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -26,6 +29,46 @@ type ConfigReceiver struct {
 // Group returns the elliptic curve group associate with this config.
 func (c *ConfigReceiver) Group() curve.Curve {
 	return c.Public.Curve()
+}
+
+// Derive performs an arbitrary derivation of a related key, by adding a scalar.
+//
+// This can support methods like BIP32, but is more general.
+//
+// Optionally, a new chain key can be passed as well.
+func (c *ConfigReceiver) Derive(adjust curve.Scalar, newChainKey []byte) (*ConfigReceiver, error) {
+	if len(newChainKey) <= 0 {
+		newChainKey = c.ChainKey
+	}
+	if len(newChainKey) != params.SecBytes {
+		return nil, fmt.Errorf("expecte %d bytes for chain key, found %d", params.SecBytes, len(newChainKey))
+	}
+
+	adjustG := adjust.ActOnBase()
+
+	return &ConfigReceiver{
+		Setup:       c.Setup,
+		SecretShare: c.SecretShare.Curve().NewScalar().Set(c.SecretShare).Add(adjust),
+		Public:      c.Public.Add(adjustG),
+	}, nil
+}
+
+// DeriveChild adjusts the shares to represent the derived public key at a certain index.
+//
+// This will panic if the group is not curve.Secp256k1
+//
+// This derivation works according to BIP-32, see:
+// https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+func (c *ConfigReceiver) DeriveBIP32(i uint32) (*ConfigReceiver, error) {
+	publicKey, ok := c.Public.(*curve.Secp256k1Point)
+	if !ok {
+		return nil, errors.New("DeriveChild called on non secp256k1 curve")
+	}
+	scalar, newChainKey, err := bip32.DeriveScalar(publicKey, c.ChainKey, i)
+	if err != nil {
+		return nil, err
+	}
+	return c.Derive(scalar, newChainKey)
 }
 
 // ConfigSender holds the results of key generation for the sender.
@@ -74,4 +117,44 @@ func StartKeygen(group curve.Curve, receiver bool, selfID, otherID party.ID, pl 
 		}
 		return &round1S{Helper: helper, sender: ot.NewCorreOTSetupSender(pl, helper.Hash())}, nil
 	}
+}
+
+// Derive performs an arbitrary derivation of a related key, by adding a scalar.
+//
+// This can support methods like BIP32, but is more general.
+//
+// Optionally, a new chain key can be passed as well.
+func (c *ConfigSender) Derive(adjust curve.Scalar, newChainKey []byte) (*ConfigSender, error) {
+	if len(newChainKey) <= 0 {
+		newChainKey = c.ChainKey
+	}
+	if len(newChainKey) != params.SecBytes {
+		return nil, fmt.Errorf("expecte %d bytes for chain key, found %d", params.SecBytes, len(newChainKey))
+	}
+
+	adjustG := adjust.ActOnBase()
+
+	return &ConfigSender{
+		Setup:       c.Setup,
+		SecretShare: c.SecretShare.Curve().NewScalar().Set(c.SecretShare).Add(adjust),
+		Public:      c.Public.Add(adjustG),
+	}, nil
+}
+
+// DeriveChild adjusts the shares to represent the derived public key at a certain index.
+//
+// This will panic if the group is not curve.Secp256k1
+//
+// This derivation works according to BIP-32, see:
+// https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+func (c *ConfigSender) DeriveBIP32(i uint32) (*ConfigSender, error) {
+	publicKey, ok := c.Public.(*curve.Secp256k1Point)
+	if !ok {
+		return nil, errors.New("DeriveChild called on non secp256k1 curve")
+	}
+	scalar, newChainKey, err := bip32.DeriveScalar(publicKey, c.ChainKey, i)
+	if err != nil {
+		return nil, err
+	}
+	return c.Derive(scalar, newChainKey)
 }
