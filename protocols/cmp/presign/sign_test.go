@@ -36,7 +36,7 @@ func init() {
 	defer pl.TearDown()
 	configs, partyIDs = test.GenerateConfig(group, N, T, source, pl)
 	for id, c := range configs {
-		configs[id], _ = c.DeriveChild(0)
+		configs[id], _ = c.DeriveBIP32(0)
 	}
 
 	messageHash = make([]byte, 64)
