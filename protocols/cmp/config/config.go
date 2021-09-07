@@ -2,10 +2,12 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"math"
 
 	"github.com/taurusgroup/multi-party-sig/internal/bip32"
+	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
@@ -208,36 +210,28 @@ func ValidThreshold(t, n int) bool {
 	return true
 }
 
-// DeriveChild derives a sharing of the ith child of the consortium signing key.
+// Derive adds adjust to the private key, resulting in a new key pair.
 //
-// This function uses unhardened derivation, deriving a key without including the
-// underlying private key. This function will panic if i ⩾ 2³¹, since that indicates
-// a hardened key.
+// This supports arbitrary derivation methods, including BIP32. For explicit
+// BIP32 support, see DeriveBIP32.
 //
-// Sometimes, an error will be returned, indicating that this index generates
-// an invalid key.
-//
-// See: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
-func (c *Config) DeriveChild(i uint32) (*Config, error) {
-	publicPoint, ok := c.PublicPoint().(*curve.Secp256k1Point)
-	if !ok {
-		return nil, errors.New("DeriveChild must be called with secp256k1")
+// A new chain key can be passed, which will replace the existing one for the new keypair.
+func (c *Config) Derive(adjust curve.Scalar, newChainKey []byte) (*Config, error) {
+	if len(newChainKey) <= 0 {
+		newChainKey = c.ChainKey
 	}
-	scalar, newChainKey, err := bip32.DeriveScalar(publicPoint, c.ChainKey, i)
-	if err != nil {
-		return nil, err
+	if len(newChainKey) != params.SecBytes {
+		return nil, fmt.Errorf("expecte %d bytes for chain key, found %d", params.SecBytes, len(newChainKey))
 	}
-
 	// We need to add the scalar we've derived to the underlying secret,
 	// for which it's sufficient to simply add it to each share. This means adding
 	// scalar * G to each verification share as well.
-
-	scalarG := scalar.ActOnBase()
+	adjustG := adjust.ActOnBase()
 
 	public := make(map[party.ID]*Public, len(c.Public))
 	for k, v := range c.Public {
 		public[k] = &Public{
-			ECDSA:    v.ECDSA.Add(scalarG),
+			ECDSA:    v.ECDSA.Add(adjustG),
 			ElGamal:  v.ElGamal,
 			Paillier: v.Paillier,
 			Pedersen: v.Pedersen,
@@ -248,11 +242,33 @@ func (c *Config) DeriveChild(i uint32) (*Config, error) {
 		Group:     c.Group,
 		ID:        c.ID,
 		Threshold: c.Threshold,
-		ECDSA:     c.Group.NewScalar().Set(c.ECDSA).Add(scalar),
+		ECDSA:     c.Group.NewScalar().Set(c.ECDSA).Add(adjust),
 		ElGamal:   c.ElGamal,
 		Paillier:  c.Paillier,
 		RID:       c.RID,
 		ChainKey:  newChainKey,
 		Public:    public,
 	}, nil
+}
+
+// DeriveBIP32 derives a sharing of the ith child of the consortium signing key.
+//
+// This function uses unhardened derivation, deriving a key without including the
+// underlying private key. This function will panic if i ⩾ 2³¹, since that indicates
+// a hardened key.
+//
+// Sometimes, an error will be returned, indicating that this index generates
+// an invalid key.
+//
+// See: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+func (c *Config) DeriveBIP32(i uint32) (*Config, error) {
+	publicPoint, ok := c.PublicPoint().(*curve.Secp256k1Point)
+	if !ok {
+		return nil, errors.New("DeriveBIP32 must be called with secp256k1")
+	}
+	scalar, newChainKey, err := bip32.DeriveScalar(publicPoint, c.ChainKey, i)
+	if err != nil {
+		return nil, err
+	}
+	return c.Derive(scalar, newChainKey)
 }

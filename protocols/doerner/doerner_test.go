@@ -1,6 +1,7 @@
 package doerner
 
 import (
+	"bytes"
 	"errors"
 	"sync"
 	"testing"
@@ -87,11 +88,11 @@ func runSign(partyIDs party.IDSlice, configSender *keygen.ConfigSender, configRe
 	if err != nil {
 		return nil, err
 	}
-	sig, ok := resultRound0.(ecdsa.Signature)
+	sig, ok := resultRound0.(*ecdsa.Signature)
 	if !ok {
 		return nil, errors.New("failed to cast result to Signature")
 	}
-	return &sig, nil
+	return sig, nil
 }
 
 func checkKeygenOutput(t *testing.T, configSender *ConfigSender, configReceiver *ConfigReceiver) {
@@ -100,6 +101,7 @@ func checkKeygenOutput(t *testing.T, configSender *ConfigSender, configReceiver 
 	secret := configSender.Group().NewScalar().Set(configSender.SecretShare).Add(configReceiver.SecretShare)
 	public := secret.ActOnBase()
 	require.True(t, public.Equal(configSender.Public))
+	require.True(t, bytes.Equal(configSender.ChainKey, configReceiver.ChainKey))
 }
 
 func TestSign(t *testing.T) {
