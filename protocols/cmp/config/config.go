@@ -264,7 +264,7 @@ func (c *Config) Derive(adjust curve.Scalar, newChainKey []byte) (*Config, error
 func (c *Config) DeriveBIP32(i uint32) (*Config, error) {
 	publicPoint, ok := c.PublicPoint().(*curve.Secp256k1Point)
 	if !ok {
-		return nil, errors.New("DeriveChild must be called with secp256k1")
+		return nil, errors.New("DeriveBIP32 must be called with secp256k1")
 	}
 	scalar, newChainKey, err := bip32.DeriveScalar(publicPoint, c.ChainKey, i)
 	if err != nil {
