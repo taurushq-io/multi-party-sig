@@ -63,6 +63,46 @@ func runKeygen(partyIDs party.IDSlice) (*ConfigSender, *ConfigReceiver, error) {
 	return configSender, configReceiver, nil
 }
 
+func runRefresh(partyIDs party.IDSlice, configSender *ConfigSender, configReceiver *ConfigReceiver) (*ConfigSender, *ConfigReceiver, error) {
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+
+	h0, err := protocol.NewTwoPartyHandler(RefreshReceiver(configReceiver, partyIDs[0], partyIDs[1], pl), []byte("session"), true)
+	if err != nil {
+		return nil, nil, err
+	}
+	h1, err := protocol.NewTwoPartyHandler(RefreshSender(configSender, partyIDs[1], partyIDs[0], pl), []byte("session"), false)
+	if err != nil {
+		return nil, nil, err
+	}
+	var wg sync.WaitGroup
+	network := test.NewNetwork(partyIDs)
+	wg.Add(2)
+	go runHandler(&wg, partyIDs[0], h0, network)
+	go runHandler(&wg, partyIDs[1], h1, network)
+	wg.Wait()
+
+	resultRound0, err := h0.Result()
+	if err != nil {
+		return nil, nil, err
+	}
+	newConfigReceiver, ok := resultRound0.(*ConfigReceiver)
+	if !ok {
+		return nil, nil, errors.New("failed to cast result to *ConfigReceiver")
+	}
+
+	resultRound1, err := h1.Result()
+	if err != nil {
+		return nil, nil, err
+	}
+	newConfigSender, ok := resultRound1.(*ConfigSender)
+	if !ok {
+		return nil, nil, errors.New("failed to cast result to *ConfigSender")
+	}
+
+	return newConfigSender, newConfigReceiver, nil
+}
+
 var testHash = []byte("test hash")
 
 func runSign(partyIDs party.IDSlice, configSender *keygen.ConfigSender, configReceiver *keygen.ConfigReceiver) (*ecdsa.Signature, error) {
@@ -112,6 +152,17 @@ func TestSign(t *testing.T) {
 	checkKeygenOutput(t, configSender, configReceiver)
 
 	sig, err := runSign(partyIDs, configSender, configReceiver)
+	require.NoError(t, err)
+	require.True(t, sig.Verify(configSender.Public, testHash))
+	require.True(t, sig.Verify(configReceiver.Public, testHash))
+
+	newConfigSender, newConfigReceiver, err := runRefresh(partyIDs, configSender, configReceiver)
+	require.NoError(t, err)
+	checkKeygenOutput(t, configSender, configReceiver)
+	require.True(t, newConfigSender.Public.Equal(configSender.Public))
+	require.True(t, newConfigReceiver.Public.Equal(configReceiver.Public))
+
+	sig, err = runSign(partyIDs, configSender, configReceiver)
 	require.NoError(t, err)
 	require.True(t, sig.Verify(configSender.Public, testHash))
 	require.True(t, sig.Verify(configReceiver.Public, testHash))

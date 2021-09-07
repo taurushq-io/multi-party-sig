@@ -7,7 +7,9 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
+	zksch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
 )
 
 // message1R is the message we send in this round.
@@ -16,6 +18,8 @@ type message1R struct {
 	Commit hash.Commitment
 	// ChainKeyCommit is the commitment to our ChainKey randomness
 	ChainKeyCommit hash.Commitment
+	// RefreshCommit is the commitment to our refresh scalar.
+	RefreshCommit hash.Commitment
 	// OtMsg is the underlying OT setup message.
 	OtMsg *ot.CorreOTSetupReceiveRound1Message
 }
@@ -25,7 +29,15 @@ func (message1R) RoundNumber() round.Number { return 1 }
 // round1R corresponds to the first round from the Receiver's perspective.
 type round1R struct {
 	*round.Helper
-	receiver *ot.CorreOTSetupReceiver
+	// refresh indicates whether or not we should refresh
+	refresh bool
+	// public is an existing public key, if we're refresing
+	public curve.Point
+	// Our generated secret share
+	secretShare curve.Scalar
+	// Our secret share * G
+	publicShare curve.Point
+	receiver    *ot.CorreOTSetupReceiver
 }
 
 // VerifyMessage implements round.Round.
@@ -38,9 +50,8 @@ func (r *round1R) VerifyMessage(round.Message) error { return nil }
 func (r *round1R) StoreMessage(round.Message) error { return nil }
 
 func (r *round1R) Finalize(out chan<- *round.Message) (round.Session, error) {
-	secretShare := sample.Scalar(rand.Reader, r.Group())
-	publicShare := secretShare.ActOnBase()
-	commit, decommit, err := r.Hash().Commit(publicShare)
+	proof := zksch.NewProof(r.Hash(), r.publicShare, r.secretShare, nil)
+	commit, decommit, err := r.Hash().Commit(r.publicShare)
 	if err != nil {
 		return r, err
 	}
@@ -50,11 +61,25 @@ func (r *round1R) Finalize(out chan<- *round.Message) (round.Session, error) {
 	if err != nil {
 		return r, err
 	}
-	otMsg := r.receiver.Round1()
-	if err := r.SendMessage(out, &message1R{commit, chainKeyCommit, otMsg}, ""); err != nil {
+	refreshScalar := sample.Scalar(rand.Reader, r.Group())
+	refreshCommit, refreshDecommit, err := r.Hash().Commit(refreshScalar)
+	if err != nil {
 		return r, err
 	}
-	return &round2R{round1R: r, decommit: decommit, chainKeyDecommit: chainKeyDecommit, ourChainKey: chainKey, secretShare: secretShare, publicShare: publicShare}, nil
+	otMsg := r.receiver.Round1()
+	if err := r.SendMessage(out, &message1R{commit, chainKeyCommit, refreshCommit, otMsg}, ""); err != nil {
+		return r, err
+	}
+
+	return &round2R{
+		round1R:          r,
+		proof:            proof,
+		decommit:         decommit,
+		chainKeyDecommit: chainKeyDecommit,
+		refreshDecommit:  refreshDecommit,
+		refreshScalar:    refreshScalar,
+		ourChainKey:      chainKey,
+	}, nil
 }
 
 // MessageContent imlpements round.Round.

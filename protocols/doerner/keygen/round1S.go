@@ -18,6 +18,8 @@ type message1S struct {
 	PublicShare curve.Point
 	// ChainKey is our contribution to the chain key.
 	ChainKey []byte
+	// RefreshScalar is our contribution to refreshing the shares.
+	RefreshScalar curve.Scalar
 	// Proof is the proof of knowledge for the discrete logarithm of PublicShare.
 	Proof *zksch.Proof
 	// OtMsg is the forwarded message for the underlying OT setup.
@@ -29,12 +31,22 @@ func (message1S) RoundNumber() round.Number { return 2 }
 // round1S corresponds to the second round from the Sender's perspective.
 type round1S struct {
 	*round.Helper
-	sender *ot.CorreOTSetupSender
+	// refresh indicates if we're refreshing, instead of generating a new key.
+	refresh bool
+	// public is an existing public key, when refreshing
+	public curve.Point
+	// Our generated secret share
+	secretShare curve.Scalar
+	// Our secret share * G
+	publicShare curve.Point
+	sender      *ot.CorreOTSetupSender
 	// The commitment sent to us by the receiver.
 	receiverCommit hash.Commitment
 	// The chain key commitment sent to us by the receiver.
 	chainKeyCommit hash.Commitment
-	otMsg          *ot.CorreOTSetupSendRound1Message
+	// The refresh commitment sent to us by the receiver
+	refreshCommit hash.Commitment
+	otMsg         *ot.CorreOTSetupSendRound1Message
 }
 
 func (r *round1S) VerifyMessage(msg round.Message) error {
@@ -47,6 +59,9 @@ func (r *round1S) VerifyMessage(msg round.Message) error {
 		return err
 	}
 	if err := body.ChainKeyCommit.Validate(); err != nil {
+		return err
+	}
+	if err := body.RefreshCommit.Validate(); err != nil {
 		return err
 	}
 
@@ -65,19 +80,23 @@ func (r *round1S) StoreMessage(msg round.Message) (err error) {
 	}
 	r.receiverCommit = body.Commit
 	r.chainKeyCommit = body.ChainKeyCommit
+	r.refreshCommit = body.RefreshCommit
 	return nil
 }
 
 func (r *round1S) Finalize(out chan<- *round.Message) (round.Session, error) {
-	secretShare := sample.Scalar(rand.Reader, r.Group())
-	publicShare := secretShare.ActOnBase()
-	proof := zksch.NewProof(r.Hash(), publicShare, secretShare, nil)
+	proof := zksch.NewProof(r.Hash(), r.publicShare, r.secretShare, nil)
 	chainKey := make([]byte, params.SecBytes)
 	_, _ = rand.Read(chainKey)
-	if err := r.SendMessage(out, &message1S{publicShare, chainKey, proof, r.otMsg}, ""); err != nil {
+	refreshScalar := sample.Scalar(rand.Reader, r.Group())
+	if err := r.SendMessage(out, &message1S{r.publicShare, chainKey, refreshScalar, proof, r.otMsg}, ""); err != nil {
 		return r, err
 	}
-	return &round2S{round1S: r, chainKey: chainKey, secretShare: secretShare, publicShare: publicShare}, nil
+	return &round2S{
+		round1S:       r,
+		chainKey:      chainKey,
+		refreshScalar: refreshScalar,
+	}, nil
 }
 
 func (r *round1S) MessageContent() round.Content {

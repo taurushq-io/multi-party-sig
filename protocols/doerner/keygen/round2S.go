@@ -20,15 +20,11 @@ func (message2S) RoundNumber() round.Number { return 3 }
 // round2S is the second round from the Sender's perspective.
 type round2S struct {
 	*round1S
-	// secretShare is our share of the secret key.
-	secretShare curve.Scalar
 	// chainKey is our share of the chain key
 	chainKey []byte
-	// publicShare is secretShare times the generator of the group.
-	publicShare curve.Point
-	// public is the shared public key.
-	public curve.Point
-	otMsg  *ot.CorreOTSetupSendRound2Message
+	// refreshScalar is our contribution to refreshing the shares.
+	refreshScalar curve.Scalar
+	otMsg         *ot.CorreOTSetupSendRound2Message
 }
 
 func (r *round2S) VerifyMessage(msg round.Message) error {
@@ -51,6 +47,9 @@ func (r *round2S) VerifyMessage(msg round.Message) error {
 	if !r.Hash().Decommit(r.chainKeyCommit, body.ChainKeyDecommit, body.ChainKey) {
 		return errors.New("invalid commitment")
 	}
+	if !r.Hash().Decommit(r.refreshCommit, body.RefreshDecommit, body.RefreshScalar) {
+		return errors.New("invalid commitment")
+	}
 	if !body.Proof.Verify(r.Hash(), body.PublicShare, nil) {
 		return errors.New("invalid Schnorr proof")
 	}
@@ -59,11 +58,14 @@ func (r *round2S) VerifyMessage(msg round.Message) error {
 
 func (r *round2S) StoreMessage(msg round.Message) error {
 	body := msg.Content.(*message2R)
-	r.public = r.publicShare.Add(body.PublicShare)
+	if !r.refresh {
+		r.public = r.publicShare.Add(body.PublicShare)
+	}
 	r.otMsg = r.sender.Round2(body.OtMsg)
 	for i := 0; i < len(r.chainKey) && i < len(body.ChainKey); i++ {
 		r.chainKey[i] ^= body.ChainKey[i]
 	}
+	r.secretShare = r.Group().NewScalar().Set(r.secretShare).Add(r.refreshScalar).Sub(body.RefreshScalar)
 	return nil
 }
 
@@ -76,7 +78,11 @@ func (r *round2S) Finalize(out chan<- *round.Message) (round.Session, error) {
 
 func (r *round2S) MessageContent() round.Content {
 	group := r.Group()
-	return &message2R{PublicShare: group.NewPoint(), Proof: zksch.EmptyProof(group)}
+	return &message2R{
+		PublicShare:   group.NewPoint(),
+		RefreshScalar: group.NewScalar(),
+		Proof:         zksch.EmptyProof(group),
+	}
 }
 
 func (round2S) Number() round.Number {
