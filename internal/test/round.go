@@ -3,7 +3,6 @@ package test
 import (
 	"errors"
 	"fmt"
-	"log"
 	"reflect"
 
 	"github.com/fxamacker/cbor/v2"
@@ -34,8 +33,7 @@ func Rounds(rounds []round.Session, rule Rule) (error, bool) {
 	if roundType, err = checkAllRoundsSame(rounds); err != nil {
 		return err, false
 	}
-	log.Println(roundType, "finalizing")
-	// get the second set of  messages
+	// get the second set of messages
 	for id := range rounds {
 		idx := id
 		r := rounds[idx]
@@ -82,8 +80,6 @@ func Rounds(rounds []round.Session, rule Rule) (error, bool) {
 	if roundType.String() == reflect.TypeOf(&round.Abort{}).String() {
 		return nil, true
 	}
-
-	log.Println(roundType, "verifying")
 
 	for msg := range out {
 		msgBytes, err := cbor.Marshal(msg.Content)
