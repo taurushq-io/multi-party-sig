@@ -40,7 +40,7 @@ func (r *round3R) Finalize(out chan<- *round.Message) (round.Session, error) {
 	if err := r.SendMessage(out, &message3R{r.otMsg}, ""); err != nil {
 		return r, err
 	}
-	return r.ResultRound(&ConfigReceiver{Setup: r.setup, SecretShare: r.secretShare, Public: r.public}), nil
+	return r.ResultRound(&ConfigReceiver{Setup: r.setup, SecretShare: r.secretShare, Public: r.public, ChainKey: r.chainKey}), nil
 }
 
 func (r *round3R) MessageContent() round.Content {

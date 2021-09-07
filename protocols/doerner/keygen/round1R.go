@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 
 	"github.com/taurusgroup/multi-party-sig/internal/ot"
+	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
@@ -13,6 +14,8 @@ import (
 type message1R struct {
 	// Commit is the commitment to our public point.
 	Commit hash.Commitment
+	// ChainKeyCommit is the commitment to our ChainKey randomness
+	ChainKeyCommit hash.Commitment
 	// OtMsg is the underlying OT setup message.
 	OtMsg *ot.CorreOTSetupReceiveRound1Message
 }
@@ -41,11 +44,17 @@ func (r *round1R) Finalize(out chan<- *round.Message) (round.Session, error) {
 	if err != nil {
 		return r, err
 	}
-	otMsg := r.receiver.Round1()
-	if err := r.SendMessage(out, &message1R{commit, otMsg}, ""); err != nil {
+	chainKey := make([]byte, params.SecBytes)
+	_, _ = rand.Read(chainKey)
+	chainKeyCommit, chainKeyDecommit, err := r.Hash().Commit(chainKey)
+	if err != nil {
 		return r, err
 	}
-	return &round2R{round1R: r, decommit: decommit, secretShare: secretShare, publicShare: publicShare}, nil
+	otMsg := r.receiver.Round1()
+	if err := r.SendMessage(out, &message1R{commit, chainKeyCommit, otMsg}, ""); err != nil {
+		return r, err
+	}
+	return &round2R{round1R: r, decommit: decommit, chainKeyDecommit: chainKeyDecommit, ourChainKey: chainKey, secretShare: secretShare, publicShare: publicShare}, nil
 }
 
 // MessageContent imlpements round.Round.

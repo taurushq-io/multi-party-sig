@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/taurusgroup/multi-party-sig/internal/ot"
+	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	zksch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
@@ -21,6 +22,8 @@ type round2S struct {
 	*round1S
 	// secretShare is our share of the secret key.
 	secretShare curve.Scalar
+	// chainKey is our share of the chain key
+	chainKey []byte
 	// publicShare is secretShare times the generator of the group.
 	publicShare curve.Point
 	// public is the shared public key.
@@ -42,6 +45,12 @@ func (r *round2S) VerifyMessage(msg round.Message) error {
 	if !r.Hash().Decommit(r.receiverCommit, body.Decommit, body.PublicShare) {
 		return errors.New("invalid commitment")
 	}
+	if len(body.ChainKey) != params.SecBytes {
+		return errors.New("chain key too short")
+	}
+	if !r.Hash().Decommit(r.chainKeyCommit, body.ChainKeyDecommit, body.ChainKey) {
+		return errors.New("invalid commitment")
+	}
 	if !body.Proof.Verify(r.Hash(), body.PublicShare, nil) {
 		return errors.New("invalid Schnorr proof")
 	}
@@ -52,6 +61,9 @@ func (r *round2S) StoreMessage(msg round.Message) error {
 	body := msg.Content.(*message2R)
 	r.public = r.publicShare.Add(body.PublicShare)
 	r.otMsg = r.sender.Round2(body.OtMsg)
+	for i := 0; i < len(r.chainKey) && i < len(body.ChainKey); i++ {
+		r.chainKey[i] ^= body.ChainKey[i]
+	}
 	return nil
 }
 

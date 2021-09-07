@@ -19,6 +19,8 @@ type ConfigReceiver struct {
 	SecretShare curve.Scalar
 	// Public is the shared public key.
 	Public curve.Point
+	// ChainKey is the shared chain key.
+	ChainKey []byte
 }
 
 // Group returns the elliptic curve group associate with this config.
@@ -34,6 +36,8 @@ type ConfigSender struct {
 	SecretShare curve.Scalar
 	// Public is the shared public key.
 	Public curve.Point
+	// ChainKey is the shared chain key.
+	ChainKey []byte
 }
 
 // Group returns the elliptic curve group associate with this config.

@@ -29,7 +29,7 @@ func (r *round3S) StoreMessage(msg round.Message) (err error) {
 }
 
 func (r *round3S) Finalize(out chan<- *round.Message) (round.Session, error) {
-	return r.ResultRound(&ConfigSender{Setup: r.setup, SecretShare: r.secretShare, Public: r.public}), nil
+	return r.ResultRound(&ConfigSender{Setup: r.setup, SecretShare: r.secretShare, Public: r.public, ChainKey: r.chainKey}), nil
 }
 
 func (r *round3S) MessageContent() round.Content {

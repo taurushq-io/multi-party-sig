@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 
 	"github.com/taurusgroup/multi-party-sig/internal/ot"
+	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -15,6 +16,8 @@ import (
 type message1S struct {
 	// PublicShare is our secret share times the group generator.
 	PublicShare curve.Point
+	// ChainKey is our contribution to the chain key.
+	ChainKey []byte
 	// Proof is the proof of knowledge for the discrete logarithm of PublicShare.
 	Proof *zksch.Proof
 	// OtMsg is the forwarded message for the underlying OT setup.
@@ -29,6 +32,8 @@ type round1S struct {
 	sender *ot.CorreOTSetupSender
 	// The commitment sent to us by the receiver.
 	receiverCommit hash.Commitment
+	// The chain key commitment sent to us by the receiver.
+	chainKeyCommit hash.Commitment
 	otMsg          *ot.CorreOTSetupSendRound1Message
 }
 
@@ -39,6 +44,9 @@ func (r *round1S) VerifyMessage(msg round.Message) error {
 	}
 
 	if err := body.Commit.Validate(); err != nil {
+		return err
+	}
+	if err := body.ChainKeyCommit.Validate(); err != nil {
 		return err
 	}
 
@@ -56,6 +64,7 @@ func (r *round1S) StoreMessage(msg round.Message) (err error) {
 		return err
 	}
 	r.receiverCommit = body.Commit
+	r.chainKeyCommit = body.ChainKeyCommit
 	return nil
 }
 
@@ -63,10 +72,12 @@ func (r *round1S) Finalize(out chan<- *round.Message) (round.Session, error) {
 	secretShare := sample.Scalar(rand.Reader, r.Group())
 	publicShare := secretShare.ActOnBase()
 	proof := zksch.NewProof(r.Hash(), publicShare, secretShare, nil)
-	if err := r.SendMessage(out, &message1S{publicShare, proof, r.otMsg}, ""); err != nil {
+	chainKey := make([]byte, params.SecBytes)
+	_, _ = rand.Read(chainKey)
+	if err := r.SendMessage(out, &message1S{publicShare, chainKey, proof, r.otMsg}, ""); err != nil {
 		return r, err
 	}
-	return &round2S{round1S: r, secretShare: secretShare, publicShare: publicShare}, nil
+	return &round2S{round1S: r, chainKey: chainKey, secretShare: secretShare, publicShare: publicShare}, nil
 }
 
 func (r *round1S) MessageContent() round.Content {
