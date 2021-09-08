@@ -134,6 +134,7 @@ func TestSignTaproot(t *testing.T) {
 			PrivateShare:       privateShares[id],
 			VerificationShares: verificationShares,
 		}
+		result, _ = result.DeriveChild(1)
 		if newPublicKey == nil {
 			newPublicKey = result.PublicKey
 		}

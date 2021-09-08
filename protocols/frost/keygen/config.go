@@ -170,6 +170,7 @@ func (r *TaprootConfig) Derive(adjust *curve.Secp256k1Scalar, newChainKey []byte
 	if err != nil {
 		return nil, err
 	}
+	publicKey = publicKey.Add(adjustG).(*curve.Secp256k1Point)
 	// If our public key is odd, we need to negate our secret key, and everything
 	// that entails. This means negating each secret share, and the corresponding
 	// verification shares.
@@ -185,7 +186,7 @@ func (r *TaprootConfig) Derive(adjust *curve.Secp256k1Scalar, newChainKey []byte
 		PrivateShare:       privateShare.(*curve.Secp256k1Scalar),
 		PublicKey:          publicKey.XBytes(),
 		ChainKey:           newChainKey,
-		VerificationShares: r.VerificationShares,
+		VerificationShares: verificationShares,
 	}, nil
 }
 
