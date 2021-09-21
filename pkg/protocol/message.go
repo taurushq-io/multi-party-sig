@@ -3,6 +3,7 @@ package protocol
 import (
 	"fmt"
 
+	"github.com/fxamacker/cbor/v2"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -59,4 +60,52 @@ func (m *Message) Hash() []byte {
 		hash.BytesWithDomain{TheDomain: "BroadcastVerification", Bytes: m.BroadcastVerification},
 	)
 	return h.Sum()
+}
+
+// marshallableMessage is a copy of message for the purpose of cbor marshalling.
+//
+// This is a workaround to use cbor's default marshalling for Message, all while providing
+// a MarshalBinary method
+type marshallableMessage struct {
+	SSID                  []byte
+	From                  party.ID
+	To                    party.ID
+	Protocol              string
+	RoundNumber           round.Number
+	Data                  []byte
+	Broadcast             bool
+	BroadcastVerification []byte
+}
+
+func (m *Message) toMarshallable() *marshallableMessage {
+	return &marshallableMessage{
+		SSID:                  m.SSID,
+		From:                  m.From,
+		To:                    m.To,
+		Protocol:              m.Protocol,
+		RoundNumber:           m.RoundNumber,
+		Data:                  m.Data,
+		Broadcast:             m.Broadcast,
+		BroadcastVerification: m.BroadcastVerification,
+	}
+}
+
+func (m *Message) MarshalBinary() ([]byte, error) {
+	return cbor.Marshal(m.toMarshallable())
+}
+
+func (m *Message) UnmarshalBinary(data []byte) error {
+	deserialized := m.toMarshallable()
+	if err := cbor.Unmarshal(data, deserialized); err != nil {
+		return nil
+	}
+	m.SSID = deserialized.SSID
+	m.From = deserialized.From
+	m.To = deserialized.To
+	m.Protocol = deserialized.Protocol
+	m.RoundNumber = deserialized.RoundNumber
+	m.Data = deserialized.Data
+	m.Broadcast = deserialized.Broadcast
+	m.BroadcastVerification = deserialized.BroadcastVerification
+	return nil
 }
