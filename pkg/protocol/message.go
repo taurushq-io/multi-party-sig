@@ -3,7 +3,6 @@ package protocol
 import (
 	"fmt"
 
-	"github.com/fxamacker/cbor/v2"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -60,12 +59,4 @@ func (m *Message) Hash() []byte {
 		hash.BytesWithDomain{TheDomain: "BroadcastVerification", Bytes: m.BroadcastVerification},
 	)
 	return h.Sum()
-}
-
-func (m *Message) MarshalBinary() ([]byte, error) {
-	return cbor.Marshal(m)
-}
-
-func (m *Message) UnmarshalBinary(data []byte) error {
-	return cbor.Unmarshal(data, m)
 }
