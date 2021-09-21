@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -55,6 +56,7 @@ func (n *Network) Send(msg *protocol.Message) {
 	defer n.mtx.Unlock()
 	for id, c := range n.listenChannels {
 		if msg.IsFor(id) && c != nil {
+			fmt.Println("msg", msg)
 			n.listenChannels[id] <- msg
 		}
 	}

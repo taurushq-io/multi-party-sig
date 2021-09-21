@@ -251,8 +251,6 @@ func All(id party.ID, ids party.IDSlice, threshold int, message []byte, n *test.
 }
 
 func main() {
-	pl := pool.NewPool(0)
-	defer pl.TearDown()
 
 	ids := party.IDSlice{"a", "b", "c", "d", "e", "f"}
 	threshold := 4
@@ -264,6 +262,8 @@ func main() {
 	for _, id := range ids {
 		wg.Add(1)
 		go func(id party.ID) {
+			pl := pool.NewPool(0)
+			defer pl.TearDown()
 			if err := All(id, ids, threshold, messageToSign, net, &wg, pl); err != nil {
 				fmt.Println(err)
 			}

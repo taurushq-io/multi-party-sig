@@ -82,6 +82,9 @@ func worker(commands <-chan command) {
 //
 // By creating a pool, you avoid the overhead of spinning up goroutines for
 // each new operation.
+//
+// A Pool is only ever intended to be used from a single goroutine, and might cause deadlocks
+// if used by multiple goroutines concurrently.
 type Pool struct {
 	// The common channel used to send commands to the workers.
 	//
