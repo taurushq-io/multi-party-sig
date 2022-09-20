@@ -28,6 +28,11 @@ func IntervalLPrime(rand io.Reader) *safenum.Int {
 	return sampleNeg(rand, params.LPrime)
 }
 
+// IntervalEps returns an integer in the range ± 2ᵉ, but with constant-time properties.
+func IntervalEps(rand io.Reader) *safenum.Int {
+	return sampleNeg(rand, params.Epsilon)
+}
+
 // IntervalLEps returns an integer in the range ± 2ˡ⁺ᵉ, but with constant-time properties.
 func IntervalLEps(rand io.Reader) *safenum.Int {
 	return sampleNeg(rand, params.LPlusEpsilon)

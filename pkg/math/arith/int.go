@@ -61,10 +61,10 @@ func IsInIntervalLPrimeEps(n *safenum.Int) bool {
 	return n.TrueLen() <= params.LPrimePlusEpsilon
 }
 
-// IsInIntervalLEpsRootN returns true if n ∈ [-2ˡ'⁺ᵉ√N,…,2ˡ'⁺ᵉ√N], for a Paillier modulus N.
-func IsInIntervalLEpsRootN(n *safenum.Int) bool {
+// IsInIntervalLEpsPlus1RootN returns true if n ∈ [-2¹⁺ˡ⁺ᵉ√N,…,2¹⁺ˡ⁺ᵉ√N], for a Paillier modulus N.
+func IsInIntervalLEpsPlus1RootN(n *safenum.Int) bool {
 	if n == nil {
 		return false
 	}
-	return n.TrueLen() <= params.LPlusEpsilon+(params.BitsIntModN/2)
+	return n.TrueLen() <= 1+params.LPlusEpsilon+(params.BitsIntModN/2)
 }
