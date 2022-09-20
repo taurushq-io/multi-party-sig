@@ -43,9 +43,24 @@ func IntervalLN(rand io.Reader) *safenum.Int {
 	return sampleNeg(rand, params.L+params.BitsIntModN)
 }
 
+// IntervalLN2 returns an integer in the range ± 2ˡ•N², where N is the size of a Paillier modulus.
+func IntervalLN2(rand io.Reader) *safenum.Int {
+	return sampleNeg(rand, params.L+(2*params.BitsIntModN))
+}
+
 // IntervalLEpsN returns an integer in the range ± 2ˡ⁺ᵉ•N, where N is the size of a Paillier modulus.
 func IntervalLEpsN(rand io.Reader) *safenum.Int {
 	return sampleNeg(rand, params.LPlusEpsilon+params.BitsIntModN)
+}
+
+// IntervalLEpsN2 returns an integer in the range ± 2ˡ⁺ᵉ•N², where N is the size of a Paillier modulus.
+func IntervalLEpsN2(rand io.Reader) *safenum.Int {
+	return sampleNeg(rand, params.LPlusEpsilon+(2*params.BitsIntModN))
+}
+
+// IntervalLEpsRootN returns an integer in the range ± 2ˡ⁺ᵉ•√N, where N is the size of a Paillier modulus.
+func IntervalLEpsRootN(rand io.Reader) *safenum.Int {
+	return sampleNeg(rand, params.LPlusEpsilon+(params.BitsIntModN/2))
 }
 
 // IntervalScalar returns an integer in the range ±q, with q the size of a Scalar.
