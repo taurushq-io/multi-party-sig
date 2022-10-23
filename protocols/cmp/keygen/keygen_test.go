@@ -10,13 +10,15 @@ import (
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/internal/test"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
+	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 	"github.com/taurusgroup/multi-party-sig/protocols/cmp/config"
 )
 
 var group = curve.Secp256k1{}
 
-func checkOutput(t *testing.T, rounds []round.Session) {
+func checkOutput(t *testing.T, rounds []round.Session) []*config.Config {
 	N := len(rounds)
 	newConfigs := make([]*config.Config, 0, N)
 	for _, r := range rounds {
@@ -52,13 +54,13 @@ func checkOutput(t *testing.T, rounds []round.Session) {
 		err = c2.UnmarshalBinary(data)
 		assert.NoError(t, err, "failed to unmarshal new config", c.ID)
 	}
+	return newConfigs
 }
 
-func TestKeygen(t *testing.T) {
+func keygenTNParties(t *testing.T, T int, N int) []round.Session {
 	pl := pool.NewPool(0)
 	defer pl.TearDown()
 
-	N := 2
 	partyIDs := test.PartyIDs(N)
 
 	rounds := make([]round.Session, 0, N)
@@ -68,7 +70,7 @@ func TestKeygen(t *testing.T) {
 			FinalRoundNumber: Rounds,
 			SelfID:           partyID,
 			PartyIDs:         partyIDs,
-			Threshold:        N - 1,
+			Threshold:        T,
 			Group:            group,
 		}
 		r, err := Start(info, pl, nil)(nil)
@@ -83,25 +85,23 @@ func TestKeygen(t *testing.T) {
 			break
 		}
 	}
-	checkOutput(t, rounds)
+	return rounds
 }
 
-func TestRefresh(t *testing.T) {
+func refreshTNParties(t *testing.T, T int, N int) (map[party.ID]*config.Config, []round.Session) {
 	pl := pool.NewPool(0)
 	defer pl.TearDown()
 
-	N := 4
-	T := N - 1
-	configs, _ := test.GenerateConfig(group, N, T, mrand.New(mrand.NewSource(1)), pl)
+	oldConfigs, _ := test.GenerateConfig(group, N, T, mrand.New(mrand.NewSource(1)), pl)
 
 	rounds := make([]round.Session, 0, N)
-	for _, c := range configs {
+	for _, c := range oldConfigs {
 		info := round.Info{
 			ProtocolID:       "cmp/refresh-test",
 			FinalRoundNumber: Rounds,
 			SelfID:           c.ID,
 			PartyIDs:         c.PartyIDs(),
-			Threshold:        N - 1,
+			Threshold:        T,
 			Group:            group,
 		}
 		r, err := Start(info, pl, c)(nil)
@@ -117,5 +117,66 @@ func TestRefresh(t *testing.T) {
 			break
 		}
 	}
-	checkOutput(t, rounds)
+	return oldConfigs, rounds
+}
+
+func checkRefreshConsistence(t *testing.T, oldConfigs map[party.ID]*config.Config, newConfigs []*config.Config) {
+	assert.Equal(t, len(oldConfigs), len(newConfigs))
+	assert.NotEmpty(t, newConfigs)
+	lagrange := polynomial.Lagrange(group, newConfigs[0].PartyIDs())
+
+	totalECDSANew := group.NewScalar()
+	for _, c := range newConfigs {
+		secretKey := group.NewScalar().Set(lagrange[c.ID]).Mul(c.ECDSA)
+		assert.Contains(t, oldConfigs, c.ID)
+		assert.NotEqual(t, c.ECDSA, oldConfigs[c.ID].ECDSA)
+		totalECDSANew.Add(secretKey)
+	}
+
+	totalECDSAOld := group.NewScalar()
+	for _, c := range oldConfigs {
+		secretKey := group.NewScalar().Set(lagrange[c.ID]).Mul(c.ECDSA)
+		totalECDSAOld.Add(secretKey)
+	}
+	// sum of sk equals
+	assert.Equal(t, totalECDSANew, totalECDSAOld)
+}
+
+func TestKeygenT1N2(t *testing.T) {
+	output := keygenTNParties(t, 1, 2)
+	checkOutput(t, output)
+}
+
+func TestKeygenT2N3(t *testing.T) {
+	output := keygenTNParties(t, 2, 3)
+	checkOutput(t, output)
+}
+
+func TestKeygenT2N4(t *testing.T) {
+	output := keygenTNParties(t, 2, 4)
+	checkOutput(t, output)
+}
+
+func TestRefreshT1N2(t *testing.T) {
+	oldConfigs, newOutput := refreshTNParties(t, 1, 2)
+	newConfigs := checkOutput(t, newOutput)
+	checkRefreshConsistence(t, oldConfigs, newConfigs)
+}
+
+func TestRefreshT2N3(t *testing.T) {
+	oldConfigs, newOutput := refreshTNParties(t, 2, 3)
+	newConfigs := checkOutput(t, newOutput)
+	checkRefreshConsistence(t, oldConfigs, newConfigs)
+}
+
+func TestRefreshT2N4(t *testing.T) {
+	oldConfigs, newOutput := refreshTNParties(t, 2, 4)
+	newConfigs := checkOutput(t, newOutput)
+	checkRefreshConsistence(t, oldConfigs, newConfigs)
+}
+
+func TestRefreshT3N4(t *testing.T) {
+	oldConfigs, newOutput := refreshTNParties(t, 3, 4)
+	newConfigs := checkOutput(t, newOutput)
+	checkRefreshConsistence(t, oldConfigs, newConfigs)
 }
