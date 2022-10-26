@@ -4,9 +4,9 @@ import (
 	"crypto/rand"
 	"testing"
 
+	"github.com/capsule-org/multi-party-sig/pkg/math/arith"
+	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 )
 
 var benchParams *Parameters

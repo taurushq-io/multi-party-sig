@@ -3,10 +3,10 @@ package example
 import (
 	"fmt"
 
-	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
-	"github.com/taurusgroup/multi-party-sig/protocols/example/xor"
+	"github.com/capsule-org/multi-party-sig/internal/round"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
+	"github.com/capsule-org/multi-party-sig/pkg/protocol"
+	"github.com/capsule-org/multi-party-sig/protocols/example/xor"
 )
 
 const (

@@ -4,12 +4,12 @@ import (
 	"crypto/rand"
 	"math/big"
 
+	"github.com/capsule-org/multi-party-sig/internal/params"
+	"github.com/capsule-org/multi-party-sig/pkg/hash"
+	"github.com/capsule-org/multi-party-sig/pkg/math/arith"
+	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
+	"github.com/capsule-org/multi-party-sig/pkg/pool"
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/internal/params"
-	"github.com/taurusgroup/multi-party-sig/pkg/hash"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
-	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 )
 
 type Public struct {
@@ -66,9 +66,10 @@ func isQRmodPQ(y, pHalf, qHalf *safenum.Nat, p, q *safenum.Modulus) safenum.Choi
 //   - Jacobi(qr, p) == Jacobi(qr, q) == 1
 //
 // Set e to
-//        ϕ + 4
-//   e' = ------,   e = (e')²
-//          8
+//
+//	     ϕ + 4
+//	e' = ------,   e = (e')²
+//	       8
 //
 // Then, (qrᵉ)⁴ = qr.
 func fourthRootExponent(phi *safenum.Nat) *safenum.Nat {
@@ -80,8 +81,9 @@ func fourthRootExponent(phi *safenum.Nat) *safenum.Nat {
 }
 
 // makeQuadraticResidue return a, b and y' such that:
-//   y' = (-1)ᵃ • wᵇ • y
-//  is a QR.
+//
+//	 y' = (-1)ᵃ • wᵇ • y
+//	is a QR.
 //
 // With:
 //   - n=pq is a blum integer
@@ -144,12 +146,13 @@ func (p *Proof) IsValid(public Public) bool {
 //   - n = pq
 //   - p and q are odd primes
 //   - p, q == 3 (mod n)
+//
 // With:
-//  - W s.t. (w/N) = -1
-//  - x = y' ^ {1/4}
-//  - z = y^{N⁻¹ mod ϕ(N)}
-//  - a, b s.t. y' = (-1)ᵃ wᵇ y
-//  - R = [(xᵢ aᵢ, bᵢ), zᵢ] for i = 1, …, m
+//   - W s.t. (w/N) = -1
+//   - x = y' ^ {1/4}
+//   - z = y^{N⁻¹ mod ϕ(N)}
+//   - a, b s.t. y' = (-1)ᵃ wᵇ y
+//   - R = [(xᵢ aᵢ, bᵢ), zᵢ] for i = 1, …, m
 func NewProof(hash *hash.Hash, private Private, public Public, pl *pool.Pool) *Proof {
 	n, p, q, phi := public.N, private.P, private.Q, private.Phi
 	nModulus := arith.ModulusFromFactors(p, q)

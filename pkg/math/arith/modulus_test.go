@@ -5,9 +5,9 @@ import (
 	mrand "math/rand"
 	"testing"
 
+	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
 	"github.com/cronokirby/safenum"
 	"github.com/stretchr/testify/assert"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 )
 
 func sampleCoprime(r io.Reader) (*safenum.Nat, *safenum.Nat, *safenum.Modulus) {

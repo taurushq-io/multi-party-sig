@@ -6,9 +6,9 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/capsule-org/multi-party-sig/internal/params"
+	"github.com/capsule-org/multi-party-sig/pkg/pool"
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/internal/params"
-	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 )
 
 // primes generates an array containing all the odd prime numbers < below

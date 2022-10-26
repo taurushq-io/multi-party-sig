@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/capsule-org/multi-party-sig/internal/round"
 	"github.com/fxamacker/cbor/v2"
-	"github.com/taurusgroup/multi-party-sig/internal/round"
 )
 
 // TwoPartyHandler represents a restriction of the Handler for 2 party protocols.

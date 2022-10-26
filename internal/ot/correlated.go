@@ -4,11 +4,11 @@ import (
 	"crypto/rand"
 	"errors"
 
+	"github.com/capsule-org/multi-party-sig/internal/params"
+	"github.com/capsule-org/multi-party-sig/pkg/hash"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/pool"
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/internal/params"
-	"github.com/taurusgroup/multi-party-sig/pkg/hash"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 	"github.com/zeebo/blake3"
 )
 

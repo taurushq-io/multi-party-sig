@@ -3,12 +3,12 @@ package sign
 import (
 	"errors"
 
-	"github.com/taurusgroup/multi-party-sig/internal/ot"
-	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/pkg/ecdsa"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
-	zksch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
+	"github.com/capsule-org/multi-party-sig/internal/ot"
+	"github.com/capsule-org/multi-party-sig/internal/round"
+	"github.com/capsule-org/multi-party-sig/pkg/ecdsa"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
+	zksch "github.com/capsule-org/multi-party-sig/pkg/zk/sch"
 )
 
 // message2R is the last message sent by the Receiver.

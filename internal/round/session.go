@@ -1,9 +1,9 @@
 package round
 
 import (
-	"github.com/taurusgroup/multi-party-sig/pkg/hash"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
+	"github.com/capsule-org/multi-party-sig/pkg/hash"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
 )
 
 type Info struct {

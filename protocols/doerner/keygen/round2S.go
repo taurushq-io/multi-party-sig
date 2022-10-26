@@ -3,11 +3,11 @@ package keygen
 import (
 	"errors"
 
-	"github.com/taurusgroup/multi-party-sig/internal/ot"
-	"github.com/taurusgroup/multi-party-sig/internal/params"
-	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	zksch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
+	"github.com/capsule-org/multi-party-sig/internal/ot"
+	"github.com/capsule-org/multi-party-sig/internal/params"
+	"github.com/capsule-org/multi-party-sig/internal/round"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	zksch "github.com/capsule-org/multi-party-sig/pkg/zk/sch"
 )
 
 // message2S is the message sent by the Sender at the end of the second round.

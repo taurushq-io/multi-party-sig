@@ -3,17 +3,17 @@ package presign
 import (
 	"crypto/rand"
 
-	"github.com/taurusgroup/multi-party-sig/internal/elgamal"
-	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/internal/types"
-	"github.com/taurusgroup/multi-party-sig/pkg/hash"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
-	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
-	"github.com/taurusgroup/multi-party-sig/pkg/pool"
-	zkencelg "github.com/taurusgroup/multi-party-sig/pkg/zk/encelg"
+	"github.com/capsule-org/multi-party-sig/internal/elgamal"
+	"github.com/capsule-org/multi-party-sig/internal/round"
+	"github.com/capsule-org/multi-party-sig/internal/types"
+	"github.com/capsule-org/multi-party-sig/pkg/hash"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
+	"github.com/capsule-org/multi-party-sig/pkg/paillier"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
+	"github.com/capsule-org/multi-party-sig/pkg/pedersen"
+	"github.com/capsule-org/multi-party-sig/pkg/pool"
+	zkencelg "github.com/capsule-org/multi-party-sig/pkg/zk/encelg"
 )
 
 var _ round.Round = (*presign1)(nil)

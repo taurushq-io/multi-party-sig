@@ -4,13 +4,13 @@ import (
 	"crypto/rand"
 	"testing"
 
+	"github.com/capsule-org/multi-party-sig/pkg/hash"
+	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
+	"github.com/capsule-org/multi-party-sig/pkg/pool"
+	"github.com/capsule-org/multi-party-sig/pkg/zk"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/taurusgroup/multi-party-sig/pkg/hash"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
-	"github.com/taurusgroup/multi-party-sig/pkg/pool"
-	"github.com/taurusgroup/multi-party-sig/pkg/zk"
 )
 
 func TestNth(t *testing.T) {

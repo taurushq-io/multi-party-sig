@@ -4,12 +4,12 @@ import (
 	"crypto/rand"
 	"testing"
 
+	"github.com/capsule-org/multi-party-sig/pkg/hash"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/taurusgroup/multi-party-sig/pkg/hash"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 )
 
 func TestSchPass(t *testing.T) {

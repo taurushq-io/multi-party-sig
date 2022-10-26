@@ -4,16 +4,16 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/internal/types"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
-	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
-	"github.com/taurusgroup/multi-party-sig/pkg/pool"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
-	"github.com/taurusgroup/multi-party-sig/protocols/cmp/config"
+	"github.com/capsule-org/multi-party-sig/internal/round"
+	"github.com/capsule-org/multi-party-sig/internal/types"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/math/polynomial"
+	"github.com/capsule-org/multi-party-sig/pkg/paillier"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
+	"github.com/capsule-org/multi-party-sig/pkg/pedersen"
+	"github.com/capsule-org/multi-party-sig/pkg/pool"
+	"github.com/capsule-org/multi-party-sig/pkg/protocol"
+	"github.com/capsule-org/multi-party-sig/protocols/cmp/config"
 )
 
 // protocolSignID for the "3 round" variant using echo broadcast.

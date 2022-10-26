@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/taurusgroup/multi-party-sig/internal/types"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
+	"github.com/capsule-org/multi-party-sig/internal/types"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
 )
 
 type PreSignature struct {

@@ -3,10 +3,10 @@ package presign
 import (
 	"errors"
 
-	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	zklog "github.com/taurusgroup/multi-party-sig/pkg/zk/log"
+	"github.com/capsule-org/multi-party-sig/internal/round"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
+	zklog "github.com/capsule-org/multi-party-sig/pkg/zk/log"
 )
 
 var _ round.Round = (*abort2)(nil)

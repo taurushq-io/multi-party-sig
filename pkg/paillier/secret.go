@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/capsule-org/multi-party-sig/internal/params"
+	"github.com/capsule-org/multi-party-sig/pkg/math/arith"
+	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
+	"github.com/capsule-org/multi-party-sig/pkg/pedersen"
+	"github.com/capsule-org/multi-party-sig/pkg/pool"
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/internal/params"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
-	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
-	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 )
 
 var (

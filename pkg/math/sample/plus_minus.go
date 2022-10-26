@@ -3,9 +3,9 @@ package sample
 import (
 	"io"
 
+	"github.com/capsule-org/multi-party-sig/internal/params"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/internal/params"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
 
 func sampleNeg(rand io.Reader, bits int) *safenum.Int {

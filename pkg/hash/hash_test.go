@@ -7,8 +7,8 @@ import (
 
 	"github.com/cronokirby/safenum"
 	"github.com/stretchr/testify/assert"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
 )
 
 func TestHash_WriteAny(t *testing.T) {

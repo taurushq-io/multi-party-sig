@@ -3,12 +3,12 @@ package zkprm
 import (
 	"testing"
 
+	"github.com/capsule-org/multi-party-sig/pkg/hash"
+	"github.com/capsule-org/multi-party-sig/pkg/paillier"
+	"github.com/capsule-org/multi-party-sig/pkg/pool"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/taurusgroup/multi-party-sig/pkg/hash"
-	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
-	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 )
 
 func TestPrm(t *testing.T) {

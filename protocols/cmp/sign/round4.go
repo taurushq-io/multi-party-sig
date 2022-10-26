@@ -3,10 +3,10 @@ package sign
 import (
 	"errors"
 
-	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	zklogstar "github.com/taurusgroup/multi-party-sig/pkg/zk/logstar"
+	"github.com/capsule-org/multi-party-sig/internal/round"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
+	zklogstar "github.com/capsule-org/multi-party-sig/pkg/zk/logstar"
 )
 
 var _ round.Round = (*round4)(nil)
@@ -56,7 +56,7 @@ func (r *round4) StoreBroadcastMessage(msg round.Message) error {
 
 // VerifyMessage implements round.Round.
 //
-// - Verify Π(log*)(ϕ''ᵢⱼ, Δⱼ, Γ).
+// - Verify Π(log*)(ϕ”ᵢⱼ, Δⱼ, Γ).
 func (r *round4) VerifyMessage(msg round.Message) error {
 	from, to := msg.From, msg.To
 	body, ok := msg.Content.(*message4)

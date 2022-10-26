@@ -3,15 +3,16 @@ package sign
 import (
 	"crypto/rand"
 
-	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
+	"github.com/capsule-org/multi-party-sig/internal/round"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
 	"github.com/zeebo/blake3"
 )
 
 // This round sort of corresponds with Figure 2 of the Frost paper:
-//   https://eprint.iacr.org/2020/852.pdf
+//
+//	https://eprint.iacr.org/2020/852.pdf
 //
 // The main difference is that instead of having a separate pre-processing step,
 // we instead have an additional round at the start of the signing step.
@@ -48,7 +49,7 @@ type round1 struct {
 func (r *round1) VerifyMessage(round.Message) error { return nil }
 func (r *round1) StoreMessage(round.Message) error  { return nil }
 
-const deriveHashKeyContext = "github.com/taurusgroup/multi-party-sig/frost 2021-07-30T09:48+00:00 Derive hash Key"
+const deriveHashKeyContext = "github.com/capsule-org/multi-party-sig/frost 2021-07-30T09:48+00:00 Derive hash Key"
 
 // Finalize implements round.Round.
 func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {

@@ -3,9 +3,9 @@ package xor
 import (
 	"errors"
 
-	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/internal/types"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
+	"github.com/capsule-org/multi-party-sig/internal/round"
+	"github.com/capsule-org/multi-party-sig/internal/types"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
 )
 
 // Round2 embeds Round1 so that it has access to previous information.

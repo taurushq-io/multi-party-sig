@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/taurusgroup/multi-party-sig/internal/bip32"
-	"github.com/taurusgroup/multi-party-sig/internal/params"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/taproot"
+	"github.com/capsule-org/multi-party-sig/internal/bip32"
+	"github.com/capsule-org/multi-party-sig/internal/params"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
+	"github.com/capsule-org/multi-party-sig/pkg/taproot"
 )
 
 // Config contains all the information produced after key generation, from the perspective
@@ -85,7 +85,7 @@ func (r *Config) Derive(adjust curve.Scalar, newChainKey []byte) (*Config, error
 
 // DeriveChild adjusts the shares to represent the derived public key at a certain index.
 //
-// This will panic if the group is not curve.Secp256k1
+// # This will panic if the group is not curve.Secp256k1
 //
 // This derivation works according to BIP-32, see:
 // https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki

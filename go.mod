@@ -1,4 +1,4 @@
-module github.com/taurusgroup/multi-party-sig
+module github.com/capsule-org/multi-party-sig
 
 go 1.14
 

@@ -5,15 +5,15 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/taurusgroup/multi-party-sig/internal/bip32"
-	"github.com/taurusgroup/multi-party-sig/internal/ot"
-	"github.com/taurusgroup/multi-party-sig/internal/params"
-	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/pool"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
+	"github.com/capsule-org/multi-party-sig/internal/bip32"
+	"github.com/capsule-org/multi-party-sig/internal/ot"
+	"github.com/capsule-org/multi-party-sig/internal/params"
+	"github.com/capsule-org/multi-party-sig/internal/round"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
+	"github.com/capsule-org/multi-party-sig/pkg/pool"
+	"github.com/capsule-org/multi-party-sig/pkg/protocol"
 )
 
 // ConfigReceiver holds the results of key generation for the receiver.
@@ -57,7 +57,7 @@ func (c *ConfigReceiver) Derive(adjust curve.Scalar, newChainKey []byte) (*Confi
 
 // DeriveChild adjusts the shares to represent the derived public key at a certain index.
 //
-// This will panic if the group is not curve.Secp256k1
+// # This will panic if the group is not curve.Secp256k1
 //
 // This derivation works according to BIP-32, see:
 // https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
@@ -168,7 +168,7 @@ func (c *ConfigSender) Derive(adjust curve.Scalar, newChainKey []byte) (*ConfigS
 
 // DeriveChild adjusts the shares to represent the derived public key at a certain index.
 //
-// This will panic if the group is not curve.Secp256k1
+// # This will panic if the group is not curve.Secp256k1
 //
 // This derivation works according to BIP-32, see:
 // https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki

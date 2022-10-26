@@ -5,9 +5,9 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/capsule-org/multi-party-sig/internal/params"
+	"github.com/capsule-org/multi-party-sig/pkg/pool"
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/internal/params"
-	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 )
 
 func TestModN(t *testing.T) {

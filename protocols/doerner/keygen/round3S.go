@@ -1,8 +1,8 @@
 package keygen
 
 import (
-	"github.com/taurusgroup/multi-party-sig/internal/ot"
-	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/capsule-org/multi-party-sig/internal/ot"
+	"github.com/capsule-org/multi-party-sig/internal/round"
 )
 
 // round3S is the third round from the Sender's perspective.

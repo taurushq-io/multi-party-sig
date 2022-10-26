@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
 )
 
 // DeriveScalar uses a public point, chaining value, and index, to derive a scalar and chaining value.

@@ -3,10 +3,10 @@ package zk
 import (
 	"fmt"
 
+	"github.com/capsule-org/multi-party-sig/pkg/paillier"
+	"github.com/capsule-org/multi-party-sig/pkg/pedersen"
+	"github.com/capsule-org/multi-party-sig/pkg/pool"
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
-	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
-	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 )
 
 var (

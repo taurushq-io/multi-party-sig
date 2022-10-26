@@ -5,9 +5,9 @@ import (
 	"testing"
 	"testing/quick"
 
+	"github.com/capsule-org/multi-party-sig/pkg/hash"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/pkg/hash"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
 
 var testGroup = curve.Secp256k1{}

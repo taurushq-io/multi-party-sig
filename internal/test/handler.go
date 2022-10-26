@@ -1,8 +1,8 @@
 package test
 
 import (
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
+	"github.com/capsule-org/multi-party-sig/pkg/protocol"
 )
 
 // HandlerLoop blocks until the handler has finished. The result of the execution is given by Handler.Result().

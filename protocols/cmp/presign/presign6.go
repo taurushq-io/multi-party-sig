@@ -3,11 +3,11 @@ package presign
 import (
 	"errors"
 
+	"github.com/capsule-org/multi-party-sig/internal/round"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
+	zkelog "github.com/capsule-org/multi-party-sig/pkg/zk/elog"
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	zkelog "github.com/taurusgroup/multi-party-sig/pkg/zk/elog"
 )
 
 var _ round.Round = (*presign6)(nil)

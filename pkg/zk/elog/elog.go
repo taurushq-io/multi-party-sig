@@ -3,10 +3,10 @@ package zkelog
 import (
 	"crypto/rand"
 
-	"github.com/taurusgroup/multi-party-sig/internal/elgamal"
-	"github.com/taurusgroup/multi-party-sig/pkg/hash"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
+	"github.com/capsule-org/multi-party-sig/internal/elgamal"
+	"github.com/capsule-org/multi-party-sig/pkg/hash"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
 )
 
 type Public struct {

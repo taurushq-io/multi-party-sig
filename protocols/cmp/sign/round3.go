@@ -4,13 +4,13 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/capsule-org/multi-party-sig/internal/round"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/paillier"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
+	zkaffg "github.com/capsule-org/multi-party-sig/pkg/zk/affg"
+	zklogstar "github.com/capsule-org/multi-party-sig/pkg/zk/logstar"
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	zkaffg "github.com/taurusgroup/multi-party-sig/pkg/zk/affg"
-	zklogstar "github.com/taurusgroup/multi-party-sig/pkg/zk/logstar"
 )
 
 var _ round.Round = (*round3)(nil)

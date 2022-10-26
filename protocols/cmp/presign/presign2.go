@@ -3,18 +3,18 @@ package presign
 import (
 	"errors"
 
+	"github.com/capsule-org/multi-party-sig/internal/elgamal"
+	"github.com/capsule-org/multi-party-sig/internal/mta"
+	"github.com/capsule-org/multi-party-sig/internal/round"
+	"github.com/capsule-org/multi-party-sig/internal/types"
+	"github.com/capsule-org/multi-party-sig/pkg/hash"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/paillier"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
+	zkaffg "github.com/capsule-org/multi-party-sig/pkg/zk/affg"
+	zkaffp "github.com/capsule-org/multi-party-sig/pkg/zk/affp"
+	zkencelg "github.com/capsule-org/multi-party-sig/pkg/zk/encelg"
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/internal/elgamal"
-	"github.com/taurusgroup/multi-party-sig/internal/mta"
-	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/internal/types"
-	"github.com/taurusgroup/multi-party-sig/pkg/hash"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	zkaffg "github.com/taurusgroup/multi-party-sig/pkg/zk/affg"
-	zkaffp "github.com/taurusgroup/multi-party-sig/pkg/zk/affp"
-	zkencelg "github.com/taurusgroup/multi-party-sig/pkg/zk/encelg"
 )
 
 var _ round.Round = (*presign2)(nil)

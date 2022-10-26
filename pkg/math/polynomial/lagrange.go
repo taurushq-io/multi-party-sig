@@ -1,9 +1,9 @@
 package polynomial
 
 import (
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
 )
 
 // Lagrange returns the Lagrange coefficients at 0 for all parties in the interpolation domain.
@@ -46,9 +46,12 @@ func getScalarsAndNumerator(group curve.Curve, interpolationDomain []party.ID) (
 //
 // The following formulas are taken from
 // https://en.wikipedia.org/wiki/Lagrange_polynomial
-//			                 x₀ ⋅⋅⋅ xₖ
+//
+//	x₀ ⋅⋅⋅ xₖ
+//
 // lⱼ(0) =	--------------------------------------------------
-//			xⱼ⋅(x₀ - xⱼ)⋅⋅⋅(xⱼ₋₁ - xⱼ)⋅(xⱼ₊₁ - xⱼ)⋅⋅⋅(xₖ - xⱼ).
+//
+//	xⱼ⋅(x₀ - xⱼ)⋅⋅⋅(xⱼ₋₁ - xⱼ)⋅(xⱼ₊₁ - xⱼ)⋅⋅⋅(xₖ - xⱼ).
 func lagrange(group curve.Curve, interpolationDomain map[party.ID]curve.Scalar, numerator curve.Scalar, j party.ID) curve.Scalar {
 	xJ := interpolationDomain[j]
 	tmp := group.NewScalar()

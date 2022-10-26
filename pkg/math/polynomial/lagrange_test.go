@@ -3,11 +3,11 @@ package polynomial_test
 import (
 	"testing"
 
+	"github.com/capsule-org/multi-party-sig/internal/test"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/math/polynomial"
 	"github.com/cronokirby/safenum"
 	"github.com/stretchr/testify/assert"
-	"github.com/taurusgroup/multi-party-sig/internal/test"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 )
 
 func TestLagrange(t *testing.T) {

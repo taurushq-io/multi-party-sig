@@ -5,10 +5,10 @@ import (
 	"testing"
 	"testing/quick"
 
+	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
+	"github.com/capsule-org/multi-party-sig/pkg/pool"
 	"github.com/cronokirby/safenum"
 	"github.com/stretchr/testify/assert"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
-	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 )
 
 var (

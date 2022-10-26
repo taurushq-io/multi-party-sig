@@ -3,9 +3,9 @@ package keygen
 import (
 	"errors"
 
-	"github.com/taurusgroup/multi-party-sig/internal/round"
-	sch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
-	"github.com/taurusgroup/multi-party-sig/protocols/cmp/config"
+	"github.com/capsule-org/multi-party-sig/internal/round"
+	sch "github.com/capsule-org/multi-party-sig/pkg/zk/sch"
+	"github.com/capsule-org/multi-party-sig/protocols/cmp/config"
 )
 
 var _ round.Round = (*round5)(nil)

@@ -5,9 +5,9 @@ import (
 	"crypto/rand"
 	"testing"
 
-	"github.com/taurusgroup/multi-party-sig/internal/params"
-	"github.com/taurusgroup/multi-party-sig/pkg/hash"
-	"github.com/taurusgroup/multi-party-sig/pkg/pool"
+	"github.com/capsule-org/multi-party-sig/internal/params"
+	"github.com/capsule-org/multi-party-sig/pkg/hash"
+	"github.com/capsule-org/multi-party-sig/pkg/pool"
 )
 
 func runExtendedOT(hash *hash.Hash, choices []byte, sendSetup *CorreOTSendSetup, receiveSetup *CorreOTReceiveSetup) (*ExtendedOTSendResult, *ExtendedOTReceiveResult, error) {

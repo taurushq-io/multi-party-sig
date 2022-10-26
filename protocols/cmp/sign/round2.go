@@ -3,14 +3,14 @@ package sign
 import (
 	"errors"
 
+	"github.com/capsule-org/multi-party-sig/internal/mta"
+	"github.com/capsule-org/multi-party-sig/internal/round"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/paillier"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
+	zkenc "github.com/capsule-org/multi-party-sig/pkg/zk/enc"
+	zklogstar "github.com/capsule-org/multi-party-sig/pkg/zk/logstar"
 	"github.com/cronokirby/safenum"
-	"github.com/taurusgroup/multi-party-sig/internal/mta"
-	"github.com/taurusgroup/multi-party-sig/internal/round"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	zkenc "github.com/taurusgroup/multi-party-sig/pkg/zk/enc"
-	zklogstar "github.com/taurusgroup/multi-party-sig/pkg/zk/logstar"
 )
 
 var _ round.Round = (*round2)(nil)

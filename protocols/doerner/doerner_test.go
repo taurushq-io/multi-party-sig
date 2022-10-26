@@ -6,14 +6,14 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/capsule-org/multi-party-sig/internal/test"
+	"github.com/capsule-org/multi-party-sig/pkg/ecdsa"
+	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
+	"github.com/capsule-org/multi-party-sig/pkg/party"
+	"github.com/capsule-org/multi-party-sig/pkg/pool"
+	"github.com/capsule-org/multi-party-sig/pkg/protocol"
+	"github.com/capsule-org/multi-party-sig/protocols/doerner/keygen"
 	"github.com/stretchr/testify/require"
-	"github.com/taurusgroup/multi-party-sig/internal/test"
-	"github.com/taurusgroup/multi-party-sig/pkg/ecdsa"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/party"
-	"github.com/taurusgroup/multi-party-sig/pkg/pool"
-	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
-	"github.com/taurusgroup/multi-party-sig/protocols/doerner/keygen"
 )
 
 func runHandler(wg *sync.WaitGroup, id party.ID, handler protocol.Handler, network *test.Network) {
