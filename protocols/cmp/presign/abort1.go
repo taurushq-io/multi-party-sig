@@ -57,7 +57,7 @@ func (r *abort1) StoreBroadcastMessage(msg round.Message) error {
 	}
 
 	for id, deltaProof := range body.DeltaProofs {
-		if !deltaProof.Verify(r.HashForID(from), public, r.DeltaCiphertext[from][id]) {
+		if !deltaProof.Verify(r.HashForID(from), public, r.DeltaCiphertext[id][from]) {
 			return errors.New("failed to validate Delta MtA Nth proof")
 		}
 	}
@@ -131,7 +131,7 @@ func proveNth(hash *hash.Hash, paillierSecret *paillier.SecretKey, c *paillier.C
 }
 
 func (msg *abortNth) Verify(hash *hash.Hash, paillierPublic *paillier.PublicKey, c *paillier.Ciphertext) bool {
-	if msg == nil || !arith.IsValidNatModN(paillierPublic.N(), msg.Nonce) || msg.Plaintext == nil {
+	if msg == nil || !arith.IsValidNatModN(paillierPublic.ModulusSquared().Modulus, msg.Nonce) || msg.Plaintext == nil {
 		return false
 	}
 	one := new(safenum.Nat).SetUint64(1)
