@@ -52,7 +52,7 @@ func NewSession(info Info, sessionID []byte, pl *pool.Pool, auxInfo ...hash.Writ
 	}
 
 	// make sure the threshold is correct
-	if info.Threshold < 0 || info.Threshold > math.MaxUint32 {
+	if info.Threshold < 0 || uint32(info.Threshold) > uint32(math.MaxUint32) {
 		return nil, fmt.Errorf("session: threshold %d is invalid", info.Threshold)
 	}
 

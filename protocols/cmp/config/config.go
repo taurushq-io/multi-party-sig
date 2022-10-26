@@ -201,7 +201,7 @@ func (c *Config) CanSign(signers party.IDSlice) bool {
 }
 
 func ValidThreshold(t, n int) bool {
-	if t < 0 || t > math.MaxUint32 {
+	if t < 0 || uint32(t) > uint32(math.MaxUint32) {
 		return false
 	}
 	if n <= 0 || t > n-1 {
