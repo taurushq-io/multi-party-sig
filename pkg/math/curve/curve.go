@@ -91,6 +91,9 @@ type Scalar interface {
 	//
 	// This can be accomplished with Act, but can be made more efficient, in many cases.
 	ActOnBase() Point
+	// IsOverHalfOrder returns whether or not the scalar exceeds the group order
+	// divided by 2 in constant time.
+	IsOverHalfOrder() bool
 }
 
 // Point represents an element of our Elliptic Curve group.
