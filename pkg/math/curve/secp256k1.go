@@ -83,6 +83,10 @@ func (*Secp256k1Scalar) Curve() Curve {
 	return Secp256k1{}
 }
 
+func (s *Secp256k1Scalar) Value() *secp256k1.ModNScalar {
+	return &s.value
+}
+
 func (s *Secp256k1Scalar) MarshalBinary() ([]byte, error) {
 	data := s.value.Bytes()
 	return data[:], nil

@@ -27,3 +27,20 @@ func (sig Signature) Verify(X curve.Point, hash []byte) bool {
 	R2 = sInv.Act(R2)
 	return R2.Equal(sig.R)
 }
+
+func (sig Signature) RecoveryId() byte {
+	r := sig.R.(*curve.Secp256k1Point)
+	s := sig.S.(*curve.Secp256k1Scalar)
+
+	var recid byte = 0
+
+	if !r.HasEvenY() {
+		recid = 1;
+	}
+
+	if s.Value().IsOverHalfOrder() {
+		recid ^= 1
+	}
+
+	return recid
+}
