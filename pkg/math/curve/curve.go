@@ -91,6 +91,8 @@ type Scalar interface {
 	//
 	// This can be accomplished with Act, but can be made more efficient, in many cases.
 	ActOnBase() Point
+
+	IsOverHalfOrder() bool
 }
 
 // Point represents an element of our Elliptic Curve group.
