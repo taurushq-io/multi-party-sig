@@ -135,6 +135,10 @@ func (s *Secp256k1Scalar) Negate() Scalar {
 	return s
 }
 
+func (s *Secp256k1Scalar) IsOverHalfOrder() bool {
+	return s.value.IsOverHalfOrder()
+}
+
 func (s *Secp256k1Scalar) Equal(that Scalar) bool {
 	other := secp256k1CastScalar(that)
 
