@@ -11,16 +11,16 @@ import (
 	"github.com/capsule-org/multi-party-sig/pkg/party"
 	"github.com/capsule-org/multi-party-sig/pkg/pool"
 	"github.com/capsule-org/multi-party-sig/protocols/cmp/config"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/sha3"
 )
 
 var (
-	oneNat      = new(safenum.Nat).SetUint64(1)
-	oneInt      = new(safenum.Int).SetNat(oneNat)
-	minusOneInt = new(safenum.Int).SetNat(oneNat).Neg(1)
+	oneNat      = new(saferith.Nat).SetUint64(1)
+	oneInt      = new(saferith.Int).SetNat(oneNat)
+	minusOneInt = new(saferith.Int).SetNat(oneNat).Neg(1)
 
 	N           = 4
 	T           = N - 1

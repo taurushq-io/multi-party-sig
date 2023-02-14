@@ -3,7 +3,7 @@ package polynomial
 import (
 	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
 	"github.com/capsule-org/multi-party-sig/pkg/party"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 )
 
 // Lagrange returns the Lagrange coefficients at 0 for all parties in the interpolation domain.
@@ -31,7 +31,7 @@ func LagrangeSingle(group curve.Curve, interpolationDomain []party.ID, j party.I
 // getScalarsAndNumerator returns the Scalars associated to the list of party.IDs.
 func getScalarsAndNumerator(group curve.Curve, interpolationDomain []party.ID) (map[party.ID]curve.Scalar, curve.Scalar) {
 	// numerator = x₀ * … * xₖ
-	numerator := group.NewScalar().SetNat(new(safenum.Nat).SetUint64(1))
+	numerator := group.NewScalar().SetNat(new(saferith.Nat).SetUint64(1))
 	scalars := make(map[party.ID]curve.Scalar, len(interpolationDomain))
 	for _, id := range interpolationDomain {
 		xi := id.Scalar(group)
@@ -57,7 +57,7 @@ func lagrange(group curve.Curve, interpolationDomain map[party.ID]curve.Scalar, 
 	tmp := group.NewScalar()
 
 	// denominator = xⱼ⋅(xⱼ - x₀)⋅⋅⋅(xⱼ₋₁ - xⱼ)⋅(xⱼ₊₁ - xⱼ)⋅⋅⋅(xₖ - xⱼ)
-	denominator := group.NewScalar().SetNat(new(safenum.Nat).SetUint64(1))
+	denominator := group.NewScalar().SetNat(new(saferith.Nat).SetUint64(1))
 	for i, xI := range interpolationDomain {
 		if i == j {
 			// lⱼ *= xⱼ

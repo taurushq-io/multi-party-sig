@@ -7,11 +7,11 @@ import (
 
 	"github.com/capsule-org/multi-party-sig/internal/params"
 	"github.com/capsule-org/multi-party-sig/pkg/pool"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 )
 
 func TestModN(t *testing.T) {
-	n := safenum.ModulusFromUint64(3 * 11 * 65519)
+	n := saferith.ModulusFromUint64(3 * 11 * 65519)
 	x := ModN(rand.Reader, n)
 	_, _, lt := x.CmpMod(n)
 	if lt != 1 {
@@ -39,7 +39,7 @@ func TestPaillier(t *testing.T) {
 
 // This exists to save the results of functions we want to benchmark, to avoid
 // having them optimized away.
-var resultNat *safenum.Nat
+var resultNat *saferith.Nat
 
 func BenchmarkPaillier(b *testing.B) {
 	pl := pool.NewPool(0)
@@ -54,7 +54,7 @@ func BenchmarkModN(b *testing.B) {
 	b.StopTimer()
 	nBytes := make([]byte, (params.BitsPaillier+7)/8)
 	_, _ = rand.Read(nBytes)
-	n := safenum.ModulusFromBytes(nBytes)
+	n := saferith.ModulusFromBytes(nBytes)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		resultNat = ModN(rand.Reader, n)

@@ -9,7 +9,7 @@ import (
 	"github.com/capsule-org/multi-party-sig/pkg/paillier"
 	"github.com/capsule-org/multi-party-sig/pkg/party"
 	"github.com/capsule-org/multi-party-sig/pkg/pedersen"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/fxamacker/cbor/v2"
 )
 
@@ -27,7 +27,7 @@ type configMarshal struct {
 	ID             party.ID
 	Threshold      int
 	ECDSA, ElGamal curve.Scalar
-	P, Q           *safenum.Nat
+	P, Q           *saferith.Nat
 	RID, ChainKey  types.RID
 	Public         []cbor.RawMessage
 }
@@ -35,8 +35,8 @@ type configMarshal struct {
 type publicMarshal struct {
 	ID             party.ID
 	ECDSA, ElGamal curve.Point
-	N              *safenum.Modulus
-	S, T           *safenum.Nat
+	N              *saferith.Modulus
+	S, T           *saferith.Nat
 }
 
 func (c *Config) MarshalBinary() ([]byte, error) {

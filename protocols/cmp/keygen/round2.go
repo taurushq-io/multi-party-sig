@@ -9,7 +9,7 @@ import (
 	"github.com/capsule-org/multi-party-sig/pkg/paillier"
 	"github.com/capsule-org/multi-party-sig/pkg/party"
 	zksch "github.com/capsule-org/multi-party-sig/pkg/zk/sch"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 )
 
 var _ round.Round = (*round2)(nil)
@@ -37,9 +37,9 @@ type round2 struct {
 	PaillierPublic map[party.ID]*paillier.PublicKey
 
 	// NModulus[j] = Nⱼ
-	NModulus map[party.ID]*safenum.Modulus
+	NModulus map[party.ID]*saferith.Modulus
 	// S[j], T[j] = sⱼ, tⱼ
-	S, T map[party.ID]*safenum.Nat
+	S, T map[party.ID]*saferith.Nat
 
 	ElGamalSecret curve.Scalar
 
@@ -48,7 +48,7 @@ type round2 struct {
 
 	// PedersenSecret = λᵢ
 	// Used to generate the Pedersen parameters
-	PedersenSecret *safenum.Nat
+	PedersenSecret *saferith.Nat
 
 	// SchnorrRand = aᵢ
 	// Randomness used to compute Schnorr commitment of proof of knowledge of secret share

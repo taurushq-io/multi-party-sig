@@ -12,7 +12,7 @@ import (
 	"github.com/capsule-org/multi-party-sig/pkg/party"
 	zkaffg "github.com/capsule-org/multi-party-sig/pkg/zk/affg"
 	zkaffp "github.com/capsule-org/multi-party-sig/pkg/zk/affp"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 )
 
 var _ round.Round = (*presign3)(nil)
@@ -20,9 +20,9 @@ var _ round.Round = (*presign3)(nil)
 type presign3 struct {
 	*presign2
 	// DeltaShareBeta[j] = βᵢⱼ
-	DeltaShareBeta map[party.ID]*safenum.Int
+	DeltaShareBeta map[party.ID]*saferith.Int
 	// ChiShareBeta[j] = β̂ᵢⱼ
-	ChiShareBeta map[party.ID]*safenum.Int
+	ChiShareBeta map[party.ID]*saferith.Int
 
 	// DeltaCiphertext[j][k] = Dₖⱼ
 	DeltaCiphertext map[party.ID]map[party.ID]*paillier.Ciphertext
@@ -124,13 +124,13 @@ func (presign3) StoreMessage(round.Message) error { return nil }
 func (r *presign3) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// δᵢ = γᵢ kᵢ
 	KShareInt := curve.MakeInt(r.KShare)
-	DeltaShare := new(safenum.Int).Mul(r.GammaShare, KShareInt, -1)
+	DeltaShare := new(saferith.Int).Mul(r.GammaShare, KShareInt, -1)
 
-	DeltaSharesAlpha := make(map[party.ID]*safenum.Int, r.N())
-	ChiSharesAlpha := make(map[party.ID]*safenum.Int, r.N())
+	DeltaSharesAlpha := make(map[party.ID]*saferith.Int, r.N())
+	ChiSharesAlpha := make(map[party.ID]*saferith.Int, r.N())
 
 	// χᵢ = xᵢ kᵢ
-	ChiShare := new(safenum.Int).Mul(curve.MakeInt(r.SecretECDSA), KShareInt, -1)
+	ChiShare := new(saferith.Int).Mul(curve.MakeInt(r.SecretECDSA), KShareInt, -1)
 
 	var (
 		culprits []party.ID

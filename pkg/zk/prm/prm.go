@@ -11,15 +11,15 @@ import (
 	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
 	"github.com/capsule-org/multi-party-sig/pkg/pedersen"
 	"github.com/capsule-org/multi-party-sig/pkg/pool"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 )
 
 type Public struct {
-	N    *safenum.Modulus
-	S, T *safenum.Nat
+	N    *saferith.Modulus
+	S, T *saferith.Nat
 }
 type Private struct {
-	Lambda, Phi, P, Q *safenum.Nat
+	Lambda, Phi, P, Q *saferith.Nat
 }
 
 type Proof struct {
@@ -40,12 +40,12 @@ func (p *Proof) IsValid(public Public) bool {
 // s = t^lambda (mod N).
 func NewProof(private Private, hash *hash.Hash, public Public, pl *pool.Pool) *Proof {
 	lambda := private.Lambda
-	phi := safenum.ModulusFromNat(private.Phi)
+	phi := saferith.ModulusFromNat(private.Phi)
 
 	n := arith.ModulusFromFactors(private.P, private.Q)
 
 	var (
-		as [params.StatParam]*safenum.Nat
+		as [params.StatParam]*saferith.Nat
 		As [params.StatParam]*big.Int
 	)
 	lockedRand := pool.NewLockedReader(rand.Reader)

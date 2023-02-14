@@ -6,7 +6,7 @@ import (
 	"github.com/capsule-org/multi-party-sig/internal/test"
 	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
 	"github.com/capsule-org/multi-party-sig/pkg/math/polynomial"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +19,7 @@ func TestLagrange(t *testing.T) {
 	coefsOdd := polynomial.Lagrange(group, allIDs[:N-1])
 	sumEven := group.NewScalar()
 	sumOdd := group.NewScalar()
-	one := group.NewScalar().SetNat(new(safenum.Nat).SetUint64(1))
+	one := group.NewScalar().SetNat(new(saferith.Nat).SetUint64(1))
 	for _, c := range coefsEven {
 		sumEven.Add(c)
 	}

@@ -10,7 +10,7 @@ import (
 	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
 	"github.com/capsule-org/multi-party-sig/pkg/party"
 	"github.com/capsule-org/multi-party-sig/pkg/taproot"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 )
 
 // This round roughly corresponds with steps 3-6 of Figure 3 in the Frost paper:
@@ -133,7 +133,7 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 		RBytes := RSecp.XBytes()
 		PBytes := r.Y.(*curve.Secp256k1Point).XBytes()
 		cHash := taproot.TaggedHash("BIP0340/challenge", RBytes, PBytes, r.M)
-		c = r.Group().NewScalar().SetNat(new(safenum.Nat).SetBytes(cHash))
+		c = r.Group().NewScalar().SetNat(new(saferith.Nat).SetBytes(cHash))
 	} else {
 		cHash := hash.New()
 		_ = cHash.WriteAny(R, r.Y, r.M)

@@ -25,7 +25,7 @@ A Go implementation of multi-party threshold signing for:
   as per BIP-32's key derivation spec. Only unhardened derivation is supported,
   since hardened derivation would require hashing the secret key, which no party
   has access to.
-- **Constant-time arithmetic**, via [safenum](https://github.com/cronokirby/safenum).
+- **Constant-time arithmetic**, via [saferith](https://github.com/cronokirby/saferith).
   The CMP protocol requires Paillier encryption, as well as related ZK proofs
   performing modular arithmetic. We use a constant-time implementation of this
   arithmetic to mitigate timing-leaks

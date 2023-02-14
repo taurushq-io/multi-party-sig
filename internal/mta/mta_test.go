@@ -11,7 +11,7 @@ import (
 	"github.com/capsule-org/multi-party-sig/pkg/zk"
 	zkaffg "github.com/capsule-org/multi-party-sig/pkg/zk/affg"
 	zkaffp "github.com/capsule-org/multi-party-sig/pkg/zk/affp"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,7 +40,7 @@ func Test_newMtA(t *testing.T) {
 	ajbi := group.NewScalar().Set(ajScalar).Mul(bi)
 	c := group.NewScalar().Set(aibj).Add(ajbi)
 
-	verifyMtA := func(Di, Dj *paillier.Ciphertext, betaI, betaJ *safenum.Int) {
+	verifyMtA := func(Di, Dj *paillier.Ciphertext, betaI, betaJ *saferith.Int) {
 		alphaI, err := ski.Dec(Dj)
 		require.NoError(t, err, "decryption should pass")
 		alphaJ, err := skj.Dec(Di)

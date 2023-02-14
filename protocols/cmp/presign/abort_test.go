@@ -7,7 +7,7 @@ import (
 	"github.com/capsule-org/multi-party-sig/internal/test"
 	"github.com/capsule-org/multi-party-sig/pkg/party"
 	"github.com/capsule-org/multi-party-sig/pkg/pool"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -77,12 +77,12 @@ func TestRoundFail(t *testing.T) {
 			TestRule{
 				BeforeFinalize: func(rPrevious round.Session) {
 					if r, ok := rPrevious.(*presign3); ok {
-						r.GammaShare = new(safenum.Int).Add(r.GammaShare, minusOneInt, -1)
+						r.GammaShare = new(saferith.Int).Add(r.GammaShare, minusOneInt, -1)
 					}
 				},
 				AfterFinalize: func(rNext round.Session) {
 					if r, ok := rNext.(*presign4); ok {
-						r.GammaShare = new(safenum.Int).Add(r.GammaShare, oneInt, -1)
+						r.GammaShare = new(saferith.Int).Add(r.GammaShare, oneInt, -1)
 					}
 				},
 			},

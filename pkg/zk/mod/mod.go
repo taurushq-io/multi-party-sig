@@ -9,20 +9,20 @@ import (
 	"github.com/capsule-org/multi-party-sig/pkg/math/arith"
 	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
 	"github.com/capsule-org/multi-party-sig/pkg/pool"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 )
 
 type Public struct {
 	// N = p*q
-	N *safenum.Modulus
+	N *saferith.Modulus
 }
 
 type Private struct {
 	// P, Q primes such that
 	// P, Q ≡ 3 mod 4
-	P, Q *safenum.Nat
+	P, Q *saferith.Nat
 	// Phi = ϕ(n) = (p-1)(q-1)
-	Phi *safenum.Nat
+	Phi *saferith.Nat
 }
 
 type Response struct {
@@ -46,10 +46,10 @@ type Proof struct {
 // pHalf should be (p - 1) / 2
 //
 // qHalf should be (q - 1) / 2.
-func isQRmodPQ(y, pHalf, qHalf *safenum.Nat, p, q *safenum.Modulus) safenum.Choice {
-	oneNat := new(safenum.Nat).SetUint64(1).Resize(1)
+func isQRmodPQ(y, pHalf, qHalf *saferith.Nat, p, q *saferith.Modulus) saferith.Choice {
+	oneNat := new(saferith.Nat).SetUint64(1).Resize(1)
 
-	test := new(safenum.Nat)
+	test := new(saferith.Nat)
 	test.Exp(y, pHalf, p)
 	pOk := test.Eq(oneNat)
 
@@ -72,11 +72,11 @@ func isQRmodPQ(y, pHalf, qHalf *safenum.Nat, p, q *safenum.Modulus) safenum.Choi
 //	       8
 //
 // Then, (qrᵉ)⁴ = qr.
-func fourthRootExponent(phi *safenum.Nat) *safenum.Nat {
-	e := new(safenum.Nat).SetUint64(4)
+func fourthRootExponent(phi *saferith.Nat) *saferith.Nat {
+	e := new(saferith.Nat).SetUint64(4)
 	e.Add(e, phi, -1)
 	e.Rsh(e, 3, -1)
-	e.ModMul(e, e, safenum.ModulusFromNat(phi))
+	e.ModMul(e, e, saferith.ModulusFromNat(phi))
 	return e
 }
 
@@ -93,8 +93,8 @@ func fourthRootExponent(phi *safenum.Nat) *safenum.Nat {
 //   - qHalf = (p - 1) / 2
 //
 // Leaking the return values is fine, but not the input values related to the factorization of N.
-func makeQuadraticResidue(y, w, pHalf, qHalf *safenum.Nat, n, p, q *safenum.Modulus) (a, b bool, out *safenum.Nat) {
-	out = new(safenum.Nat).Mod(y, n)
+func makeQuadraticResidue(y, w, pHalf, qHalf *saferith.Nat, n, p, q *saferith.Modulus) (a, b bool, out *saferith.Nat) {
+	out = new(saferith.Nat).Mod(y, n)
 
 	if isQRmodPQ(out, pHalf, qHalf, p, q) == 1 {
 		return
@@ -156,15 +156,15 @@ func (p *Proof) IsValid(public Public) bool {
 func NewProof(hash *hash.Hash, private Private, public Public, pl *pool.Pool) *Proof {
 	n, p, q, phi := public.N, private.P, private.Q, private.Phi
 	nModulus := arith.ModulusFromFactors(p, q)
-	pHalf := new(safenum.Nat).Rsh(p, 1, -1)
-	pMod := safenum.ModulusFromNat(p)
-	qHalf := new(safenum.Nat).Rsh(q, 1, -1)
-	qMod := safenum.ModulusFromNat(q)
-	phiMod := safenum.ModulusFromNat(phi)
+	pHalf := new(saferith.Nat).Rsh(p, 1, -1)
+	pMod := saferith.ModulusFromNat(p)
+	qHalf := new(saferith.Nat).Rsh(q, 1, -1)
+	qMod := saferith.ModulusFromNat(q)
+	phiMod := saferith.ModulusFromNat(phi)
 	// W can be leaked so no need to make this sampling return a nat.
 	w := sample.QNR(rand.Reader, n)
 
-	nInverse := new(safenum.Nat).ModInverse(n.Nat(), phiMod)
+	nInverse := new(saferith.Nat).ModInverse(n.Nat(), phiMod)
 
 	e := fourthRootExponent(phi)
 
@@ -259,9 +259,9 @@ func (p *Proof) Verify(public Public, hash *hash.Hash, pl *pool.Pool) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, n *safenum.Modulus, w *big.Int) (es []*safenum.Nat, err error) {
+func challenge(hash *hash.Hash, n *saferith.Modulus, w *big.Int) (es []*saferith.Nat, err error) {
 	err = hash.WriteAny(n, w)
-	es = make([]*safenum.Nat, params.StatParam)
+	es = make([]*saferith.Nat, params.StatParam)
 	for i := range es {
 		es[i] = sample.ModN(hash.Digest(), n)
 	}

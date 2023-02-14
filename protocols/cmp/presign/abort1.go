@@ -9,23 +9,23 @@ import (
 	"github.com/capsule-org/multi-party-sig/pkg/paillier"
 	"github.com/capsule-org/multi-party-sig/pkg/party"
 	zknth "github.com/capsule-org/multi-party-sig/pkg/zk/nth"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 )
 
 var _ round.Round = (*abort1)(nil)
 
 type abort1 struct {
 	*presign6
-	GammaShares map[party.ID]*safenum.Int
-	KShares     map[party.ID]*safenum.Int
+	GammaShares map[party.ID]*saferith.Int
+	KShares     map[party.ID]*saferith.Int
 	// DeltaAlphas[j][k] = αⱼₖ
-	DeltaAlphas map[party.ID]map[party.ID]*safenum.Int
+	DeltaAlphas map[party.ID]map[party.ID]*saferith.Int
 }
 
 type broadcastAbort1 struct {
 	round.NormalBroadcastContent
 	// GammaShare = γᵢ
-	GammaShare  *safenum.Int
+	GammaShare  *saferith.Int
 	KProof      *abortNth
 	DeltaProofs map[party.ID]*abortNth
 }
@@ -38,7 +38,7 @@ func (r *abort1) StoreBroadcastMessage(msg round.Message) error {
 		return round.ErrInvalidContent
 	}
 
-	alphas := make(map[party.ID]*safenum.Int, len(body.DeltaProofs))
+	alphas := make(map[party.ID]*saferith.Int, len(body.DeltaProofs))
 	for id, deltaProof := range body.DeltaProofs {
 		alphas[id] = deltaProof.Plaintext
 	}
@@ -74,7 +74,7 @@ func (abort1) StoreMessage(round.Message) error { return nil }
 func (r *abort1) Finalize(chan<- *round.Message) (round.Session, error) {
 	var (
 		culprits   []party.ID
-		delta, tmp safenum.Int
+		delta, tmp saferith.Int
 	)
 	for _, j := range r.OtherPartyIDs() {
 		delta.Mul(r.KShares[j], r.GammaShares[j], -1)
@@ -109,8 +109,8 @@ func (r *abort1) BroadcastContent() round.BroadcastContent { return &broadcastAb
 func (abort1) Number() round.Number { return 7 }
 
 type abortNth struct {
-	Plaintext *safenum.Int
-	Nonce     *safenum.Nat
+	Plaintext *saferith.Int
+	Nonce     *saferith.Nat
 	Proof     *zknth.Proof
 }
 
@@ -134,7 +134,7 @@ func (msg *abortNth) Verify(hash *hash.Hash, paillierPublic *paillier.PublicKey,
 	if msg == nil || !arith.IsValidNatModN(paillierPublic.N(), msg.Nonce) || msg.Plaintext == nil {
 		return false
 	}
-	one := new(safenum.Nat).SetUint64(1)
+	one := new(saferith.Nat).SetUint64(1)
 	cExpected := c.Nat()
 	cActual := paillierPublic.EncWithNonce(msg.Plaintext, one).Nat()
 	cActual.ModMul(cActual, msg.Nonce, paillierPublic.ModulusSquared().Modulus)

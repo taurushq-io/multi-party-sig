@@ -6,7 +6,7 @@ import (
 
 	"github.com/capsule-org/multi-party-sig/internal/params"
 	"github.com/capsule-org/multi-party-sig/pkg/math/arith"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 )
 
 type Error string
@@ -23,12 +23,12 @@ func (e Error) Error() string {
 
 type Parameters struct {
 	n    *arith.Modulus
-	s, t *safenum.Nat
+	s, t *saferith.Nat
 }
 
 // New returns a new set of Pedersen parameters.
 // Assumes ValidateParameters(n, s, t) returns nil.
-func New(n *arith.Modulus, s, t *safenum.Nat) *Parameters {
+func New(n *arith.Modulus, s, t *saferith.Nat) *Parameters {
 	return &Parameters{
 		s: s,
 		t: t,
@@ -41,7 +41,7 @@ func New(n *arith.Modulus, s, t *safenum.Nat) *Parameters {
 // - s, t are not in [1, …,n-1].
 // - s, t are not coprime to N.
 // - s = t.
-func ValidateParameters(n *safenum.Modulus, s, t *safenum.Nat) error {
+func ValidateParameters(n *saferith.Modulus, s, t *saferith.Nat) error {
 	if n == nil || s == nil || t == nil {
 		return ErrNilFields
 	}
@@ -57,20 +57,20 @@ func ValidateParameters(n *safenum.Modulus, s, t *safenum.Nat) error {
 }
 
 // N = p•q, p ≡ q ≡ 3 mod 4.
-func (p Parameters) N() *safenum.Modulus { return p.n.Modulus }
+func (p Parameters) N() *saferith.Modulus { return p.n.Modulus }
 
 // S = r² mod N.
-func (p Parameters) S() *safenum.Nat { return p.s }
+func (p Parameters) S() *saferith.Nat { return p.s }
 
 // T = Sˡ mod N.
-func (p Parameters) T() *safenum.Nat { return p.t }
+func (p Parameters) T() *saferith.Nat { return p.t }
 
 // Commit computes sˣ tʸ (mod N)
 //
-// x and y are taken as safenum.Int, because we want to keep these values in secret,
+// x and y are taken as saferith.Int, because we want to keep these values in secret,
 // in general. The commitment produced, on the other hand, hides their values,
 // and can be safely shared.
-func (p Parameters) Commit(x, y *safenum.Int) *safenum.Nat {
+func (p Parameters) Commit(x, y *saferith.Int) *saferith.Nat {
 	sx := p.n.ExpI(p.s, x)
 	ty := p.n.ExpI(p.t, y)
 
@@ -80,7 +80,7 @@ func (p Parameters) Commit(x, y *safenum.Int) *safenum.Nat {
 }
 
 // Verify returns true if sᵃ tᵇ ≡ S Tᵉ (mod N).
-func (p Parameters) Verify(a, b, e *safenum.Int, S, T *safenum.Nat) bool {
+func (p Parameters) Verify(a, b, e *saferith.Int, S, T *saferith.Nat) bool {
 	if a == nil || b == nil || S == nil || T == nil || e == nil {
 		return false
 	}
@@ -107,7 +107,7 @@ func (p *Parameters) WriteTo(w io.Writer) (int64, error) {
 	buf := make([]byte, params.BytesIntModN)
 
 	// write N, S, T
-	for _, i := range []*safenum.Nat{p.n.Nat(), p.s, p.t} {
+	for _, i := range []*saferith.Nat{p.n.Nat(), p.s, p.t} {
 		i.FillBytes(buf)
 		n, err := w.Write(buf)
 		nAll += int64(n)
