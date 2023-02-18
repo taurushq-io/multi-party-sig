@@ -10,7 +10,7 @@ import (
 	"github.com/capsule-org/multi-party-sig/pkg/party"
 	zkaffg "github.com/capsule-org/multi-party-sig/pkg/zk/affg"
 	zklogstar "github.com/capsule-org/multi-party-sig/pkg/zk/logstar"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 )
 
 var _ round.Round = (*round3)(nil)
@@ -19,13 +19,13 @@ type round3 struct {
 	*round2
 
 	// DeltaShareAlpha[j] = αᵢⱼ
-	DeltaShareAlpha map[party.ID]*safenum.Int
+	DeltaShareAlpha map[party.ID]*saferith.Int
 	// DeltaShareBeta[j] = βᵢⱼ
-	DeltaShareBeta map[party.ID]*safenum.Int
+	DeltaShareBeta map[party.ID]*saferith.Int
 	// ChiShareAlpha[j] = α̂ᵢⱼ
-	ChiShareAlpha map[party.ID]*safenum.Int
+	ChiShareAlpha map[party.ID]*saferith.Int
 	// ChiShareBeta[j] = β̂ᵢⱼ
-	ChiShareBeta map[party.ID]*safenum.Int
+	ChiShareBeta map[party.ID]*saferith.Int
 }
 
 type message3 struct {
@@ -146,10 +146,10 @@ func (r *round3) Finalize(out chan<- *round.Message) (round.Session, error) {
 	BigDeltaShare := r.KShare.Act(Gamma)
 
 	// δᵢ = γᵢ kᵢ
-	DeltaShare := new(safenum.Int).Mul(r.GammaShare, KShareInt, -1)
+	DeltaShare := new(saferith.Int).Mul(r.GammaShare, KShareInt, -1)
 
 	// χᵢ = xᵢ kᵢ
-	ChiShare := new(safenum.Int).Mul(curve.MakeInt(r.SecretECDSA), KShareInt, -1)
+	ChiShare := new(saferith.Int).Mul(curve.MakeInt(r.SecretECDSA), KShareInt, -1)
 
 	for _, j := range r.OtherPartyIDs() {
 		//δᵢ += αᵢⱼ + βᵢⱼ

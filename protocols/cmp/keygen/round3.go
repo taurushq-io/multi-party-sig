@@ -15,7 +15,7 @@ import (
 	zkmod "github.com/capsule-org/multi-party-sig/pkg/zk/mod"
 	zkprm "github.com/capsule-org/multi-party-sig/pkg/zk/prm"
 	zksch "github.com/capsule-org/multi-party-sig/pkg/zk/sch"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 )
 
 var _ round.Round = (*round3)(nil)
@@ -38,11 +38,11 @@ type broadcast3 struct {
 	SchnorrCommitments *zksch.Commitment
 	ElGamalPublic      curve.Point
 	// N Paillier and Pedersen N = p•q, p ≡ q ≡ 3 mod 4
-	N *safenum.Modulus
+	N *saferith.Modulus
 	// S = r² mod N
-	S *safenum.Nat
+	S *saferith.Nat
 	// T = Sˡ mod N
-	T *safenum.Nat
+	T *saferith.Nat
 	// Decommitment = uᵢ decommitment bytes
 	Decommitment hash.Decommitment
 }

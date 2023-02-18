@@ -6,7 +6,7 @@ import (
 	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
 	"github.com/capsule-org/multi-party-sig/pkg/party"
 	zklogstar "github.com/capsule-org/multi-party-sig/pkg/zk/logstar"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 )
 
 var _ round.Round = (*presign4)(nil)
@@ -15,9 +15,9 @@ type presign4 struct {
 	*presign3
 
 	// DeltaShareAlpha[j] = αᵢⱼ
-	DeltaShareAlpha map[party.ID]*safenum.Int
+	DeltaShareAlpha map[party.ID]*saferith.Int
 	// ChiShareAlpha[j] = α̂ᵢⱼ
-	ChiShareAlpha map[party.ID]*safenum.Int
+	ChiShareAlpha map[party.ID]*saferith.Int
 
 	// ElGamalChiNonce = b̂ᵢ
 	ElGamalChiNonce elgamal.Nonce

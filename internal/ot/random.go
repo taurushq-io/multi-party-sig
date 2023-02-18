@@ -10,7 +10,7 @@ import (
 	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
 	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
 	zksch "github.com/capsule-org/multi-party-sig/pkg/zk/sch"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/zeebo/blake3"
 )
 
@@ -79,7 +79,7 @@ type RandomOTReceiever struct {
 	hash  *blake3.Hasher
 	group curve.Curve
 	// Which random message we want to receive.
-	choice safenum.Choice
+	choice saferith.Choice
 	// The public key of the sender.
 	_B curve.Point
 	// After Round1
@@ -99,7 +99,7 @@ type RandomOTReceiever struct {
 // The nonce should be 32 bytes, and must be different if a single setup is used for multiple OTs.
 //
 // choice indicates which of the two random messages should be received.
-func NewRandomOTReceiver(nonce []byte, result *RandomOTReceiveSetup, choice safenum.Choice) (out RandomOTReceiever) {
+func NewRandomOTReceiver(nonce []byte, result *RandomOTReceiveSetup, choice saferith.Choice) (out RandomOTReceiever) {
 	// This will only error if the nonce has the wrong length, which is a programmer error
 	var err error
 	out.hash, err = blake3.NewKeyed(nonce)

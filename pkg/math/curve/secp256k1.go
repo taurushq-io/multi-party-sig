@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/decred/dcrd/dcrec/secp256k1/v3"
 )
 
@@ -44,10 +44,10 @@ func (Secp256k1) SafeScalarBytes() int {
 	return 32
 }
 
-var secp256k1OrderNat, _ = new(safenum.Nat).SetHex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141")
-var secp256k1Order = safenum.ModulusFromNat(secp256k1OrderNat)
+var secp256k1OrderNat, _ = new(saferith.Nat).SetHex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141")
+var secp256k1Order = saferith.ModulusFromNat(secp256k1OrderNat)
 
-func (Secp256k1) Order() *safenum.Modulus {
+func (Secp256k1) Order() *saferith.Modulus {
 	return secp256k1Order
 }
 
@@ -145,6 +145,10 @@ func (s *Secp256k1Scalar) IsZero() bool {
 	return s.value.IsZero()
 }
 
+func (s *Secp256k1Scalar) IsOverHalfOrder() bool {
+	return s.value.IsOverHalfOrder()
+}
+
 func (s *Secp256k1Scalar) Set(that Scalar) Scalar {
 	other := secp256k1CastScalar(that)
 
@@ -152,8 +156,8 @@ func (s *Secp256k1Scalar) Set(that Scalar) Scalar {
 	return s
 }
 
-func (s *Secp256k1Scalar) SetNat(x *safenum.Nat) Scalar {
-	reduced := new(safenum.Nat).Mod(x, secp256k1Order)
+func (s *Secp256k1Scalar) SetNat(x *saferith.Nat) Scalar {
+	reduced := new(saferith.Nat).Mod(x, secp256k1Order)
 	s.value.SetByteSlice(reduced.Bytes())
 	return s
 }
@@ -190,6 +194,11 @@ func (*Secp256k1Point) Curve() Curve {
 func (p *Secp256k1Point) XBytes() []byte {
 	p.value.ToAffine()
 	return p.value.X.Bytes()[:]
+}
+
+func (p *Secp256k1Point) YBytes() []byte {
+	p.value.ToAffine()
+	return p.value.Y.Bytes()[:]
 }
 
 func (p *Secp256k1Point) MarshalBinary() ([]byte, error) {

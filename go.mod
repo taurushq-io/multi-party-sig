@@ -3,7 +3,7 @@ module github.com/capsule-org/multi-party-sig
 go 1.14
 
 require (
-	github.com/cronokirby/safenum v0.29.0
+	github.com/cronokirby/saferith v0.33.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v3 v3.0.0
 	github.com/fxamacker/cbor/v2 v2.3.0

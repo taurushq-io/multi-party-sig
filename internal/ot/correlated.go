@@ -8,7 +8,7 @@ import (
 	"github.com/capsule-org/multi-party-sig/pkg/hash"
 	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
 	"github.com/capsule-org/multi-party-sig/pkg/pool"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/zeebo/blake3"
 )
 
@@ -65,7 +65,7 @@ func (r *CorreOTSetupSender) Round1(msg *CorreOTSetupReceiveRound1Message) (*Cor
 		Bytes:     nil,
 	}).Digest()
 	for i := 0; i < params.OTParam; i++ {
-		choice := safenum.Choice(bitAt(i, r._Delta[:]))
+		choice := saferith.Choice(bitAt(i, r._Delta[:]))
 		nonce := make([]byte, 32)
 		_, _ = randomOTNonces.Read(nonce)
 		r.randomOTReceivers[i] = NewRandomOTReceiver(nonce, r.setup, choice)

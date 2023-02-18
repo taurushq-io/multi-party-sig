@@ -9,7 +9,7 @@ import (
 	"github.com/capsule-org/multi-party-sig/pkg/math/arith"
 	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
 	"github.com/capsule-org/multi-party-sig/pkg/paillier"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 )
 
 type Public struct {
@@ -17,23 +17,23 @@ type Public struct {
 	N *paillier.PublicKey
 
 	// R = r = ρᴺ (mod N²)
-	R *safenum.Nat
+	R *saferith.Nat
 }
 
 type Private struct {
 	// Rho = ρ
-	Rho *safenum.Nat
+	Rho *saferith.Nat
 }
 
 type Commitment struct {
 	// A = αᴺ (mod N²)
-	A *safenum.Nat
+	A *saferith.Nat
 }
 
 type Proof struct {
 	Commitment
 	// Z = αρᴺ (mod N²)
-	Z *safenum.Nat
+	Z *saferith.Nat
 }
 
 func (p *Proof) IsValid(public Public) bool {
@@ -88,7 +88,7 @@ func (p *Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, public Public, commitment Commitment) (e *safenum.Int, err error) {
+func challenge(hash *hash.Hash, public Public, commitment Commitment) (e *saferith.Int, err error) {
 	err = hash.WriteAny(public.N, public.R, commitment.A)
 	e = sample.IntervalL(hash.Digest())
 	return

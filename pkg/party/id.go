@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/fxamacker/cbor/v2"
 )
 
@@ -23,7 +23,7 @@ type ID string
 // All of the IDs of our participants form a polynomial sharing of the secret
 // scalar value used for ECDSA.
 func (id ID) Scalar(group curve.Curve) curve.Scalar {
-	return group.NewScalar().SetNat(new(safenum.Nat).SetBytes([]byte(id)))
+	return group.NewScalar().SetNat(new(saferith.Nat).SetBytes([]byte(id)))
 }
 
 // WriteTo makes ID implement the io.WriterTo interface.

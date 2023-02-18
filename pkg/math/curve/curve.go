@@ -3,7 +3,7 @@ package curve
 import (
 	"encoding"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 )
 
 // Curve represents the starting point for working with an Elliptic Curve group.
@@ -32,7 +32,7 @@ type Curve interface {
 	// reduction doesn't introduce any bias.
 	SafeScalarBytes() int
 	// Order returns a Modulus holding order of this group.
-	Order() *safenum.Modulus
+	Order() *saferith.Modulus
 }
 
 // Scalar represents a number modulo the order of some Elliptic Curve group.
@@ -82,7 +82,7 @@ type Scalar interface {
 	// SetNat mutates this Scalar, replacing it with the value of a number.
 	//
 	// This number must be interpreted modulo the order of the group.
-	SetNat(*safenum.Nat) Scalar
+	SetNat(*saferith.Nat) Scalar
 	// Act acts on a Point with this Scalar, returning a new Point.
 	//
 	// This shouldn't mutate the Scalar, or the Point.
@@ -91,6 +91,9 @@ type Scalar interface {
 	//
 	// This can be accomplished with Act, but can be made more efficient, in many cases.
 	ActOnBase() Point
+	// IsOverHalfOrder returns whether or not the scalar exceeds the group order
+	// divided by 2 in constant time.
+	IsOverHalfOrder() bool
 }
 
 // Point represents an element of our Elliptic Curve group.
@@ -139,12 +142,12 @@ type Point interface {
 }
 
 // MakeInt converts a scalar into an Int.
-func MakeInt(s Scalar) *safenum.Int {
+func MakeInt(s Scalar) *saferith.Int {
 	bytes, err := s.MarshalBinary()
 	if err != nil {
 		panic(err)
 	}
-	return new(safenum.Int).SetBytes(bytes)
+	return new(saferith.Int).SetBytes(bytes)
 }
 
 // FromHash converts a hash value to a Scalar.
@@ -164,7 +167,7 @@ func FromHash(group Curve, h []byte) Scalar {
 	if len(h) > orderBytes {
 		h = h[:orderBytes]
 	}
-	s := new(safenum.Nat).SetBytes(h)
+	s := new(saferith.Nat).SetBytes(h)
 	excess := len(h)*8 - orderBits
 	if excess > 0 {
 		s.Rsh(s, uint(excess), -1)

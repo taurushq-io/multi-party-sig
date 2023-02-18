@@ -13,7 +13,7 @@ import (
 	"github.com/capsule-org/multi-party-sig/pkg/paillier"
 	"github.com/capsule-org/multi-party-sig/pkg/party"
 	zksch "github.com/capsule-org/multi-party-sig/pkg/zk/sch"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 )
 
 var _ round.Round = (*round1)(nil)
@@ -111,9 +111,9 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 		ShareReceived:  map[party.ID]curve.Scalar{r.SelfID(): SelfShare},
 		ElGamalPublic:  map[party.ID]curve.Point{r.SelfID(): ElGamalPublic},
 		PaillierPublic: map[party.ID]*paillier.PublicKey{r.SelfID(): SelfPaillierPublic},
-		NModulus:       map[party.ID]*safenum.Modulus{r.SelfID(): SelfPedersenPublic.N()},
-		S:              map[party.ID]*safenum.Nat{r.SelfID(): SelfPedersenPublic.S()},
-		T:              map[party.ID]*safenum.Nat{r.SelfID(): SelfPedersenPublic.T()},
+		NModulus:       map[party.ID]*saferith.Modulus{r.SelfID(): SelfPedersenPublic.N()},
+		S:              map[party.ID]*saferith.Nat{r.SelfID(): SelfPedersenPublic.S()},
+		T:              map[party.ID]*saferith.Nat{r.SelfID(): SelfPedersenPublic.T()},
 		ElGamalSecret:  ElGamalSecret,
 		PaillierSecret: PaillierSecret,
 		PedersenSecret: PedersenSecret,

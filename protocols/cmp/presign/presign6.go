@@ -7,7 +7,7 @@ import (
 	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
 	"github.com/capsule-org/multi-party-sig/pkg/party"
 	zkelog "github.com/capsule-org/multi-party-sig/pkg/zk/elog"
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 )
 
 var _ round.Round = (*presign6)(nil)
@@ -107,9 +107,9 @@ func (r *presign6) Finalize(out chan<- *round.Message) (round.Session, error) {
 		}
 		return &abort1{
 			presign6:    r,
-			GammaShares: map[party.ID]*safenum.Int{r.SelfID(): r.GammaShare},
-			KShares:     map[party.ID]*safenum.Int{r.SelfID(): curve.MakeInt(r.KShare)},
-			DeltaAlphas: map[party.ID]map[party.ID]*safenum.Int{r.SelfID(): r.DeltaShareAlpha},
+			GammaShares: map[party.ID]*saferith.Int{r.SelfID(): r.GammaShare},
+			KShares:     map[party.ID]*saferith.Int{r.SelfID(): curve.MakeInt(r.KShare)},
+			DeltaAlphas: map[party.ID]map[party.ID]*saferith.Int{r.SelfID(): r.DeltaShareAlpha},
 		}, nil
 	}
 
