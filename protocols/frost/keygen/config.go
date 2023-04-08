@@ -141,7 +141,7 @@ func (r *TaprootConfig) Clone() *TaprootConfig {
 		PrivateShare:       curve.Secp256k1{}.NewScalar().Set(r.PrivateShare).(*curve.Secp256k1Scalar),
 		PublicKey:          publicKeyCopy,
 		ChainKey:           chainKeyCopy,
-		VerificationShares: r.VerificationShares,
+		VerificationShares: verificationSharesCopy,
 	}
 }
 

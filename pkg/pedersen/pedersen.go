@@ -59,6 +59,9 @@ func ValidateParameters(n *saferith.Modulus, s, t *saferith.Nat) error {
 // N = p•q, p ≡ q ≡ 3 mod 4.
 func (p Parameters) N() *saferith.Modulus { return p.n.Modulus }
 
+// N, but as an arith modulus, which is sometimes useful
+func (p Parameters) NArith() *arith.Modulus { return p.n }
+
 // S = r² mod N.
 func (p Parameters) S() *saferith.Nat { return p.s }
 

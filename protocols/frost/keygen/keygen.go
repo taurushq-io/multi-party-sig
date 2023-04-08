@@ -34,9 +34,9 @@ func StartKeygenCommon(taproot bool, group curve.Curve, participants []party.ID,
 			Group:            group,
 		}
 		if taproot {
-			info.ProtocolID = protocolID
-		} else {
 			info.ProtocolID = protocolIDTaproot
+		} else {
+			info.ProtocolID = protocolID
 		}
 
 		helper, err := round.NewSession(info, sessionID, nil)
