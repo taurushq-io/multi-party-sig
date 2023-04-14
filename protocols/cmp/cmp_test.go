@@ -18,7 +18,7 @@ import (
 
 func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte, pl *pool.Pool, n *test.Network, wg *sync.WaitGroup) {
 	defer wg.Done()
-	h, err := protocol.NewMultiHandler(Keygen(curve.Secp256k1{}, id, ids, threshold, pl), nil)
+	h, err := protocol.NewMultiHandler(Keygen(curve.Secp256k1{}, id, ids, threshold, pl, nil), nil)
 	require.NoError(t, err)
 	test.HandlerLoop(id, h, n)
 	r, err := h.Result()
@@ -147,7 +147,7 @@ func TestStart(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c.Threshold = tt.threshold
 			var err error
-			_, err = Keygen(group, selfID, tt.partyIDs, tt.threshold, pl)(nil)
+			_, err = Keygen(group, selfID, tt.partyIDs, tt.threshold, pl, nil)(nil)
 			t.Log(err)
 			assert.Error(t, err)
 

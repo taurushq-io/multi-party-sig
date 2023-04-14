@@ -31,7 +31,7 @@ func XOR(id party.ID, ids party.IDSlice, n *test.Network) error {
 }
 
 func CMPKeygen(id party.ID, ids party.IDSlice, threshold int, n *test.Network, pl *pool.Pool) (*cmp.Config, error) {
-	h, err := protocol.NewMultiHandler(cmp.Keygen(curve.Secp256k1{}, id, ids, threshold, pl), nil)
+	h, err := protocol.NewMultiHandler(cmp.Keygen(curve.Secp256k1{}, id, ids, threshold, pl, nil), nil)
 	if err != nil {
 		return nil, err
 	}

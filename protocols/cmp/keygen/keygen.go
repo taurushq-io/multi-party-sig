@@ -8,6 +8,7 @@ import (
 	"github.com/capsule-org/multi-party-sig/pkg/math/curve"
 	"github.com/capsule-org/multi-party-sig/pkg/math/polynomial"
 	"github.com/capsule-org/multi-party-sig/pkg/math/sample"
+	"github.com/capsule-org/multi-party-sig/pkg/paillier"
 	"github.com/capsule-org/multi-party-sig/pkg/party"
 	"github.com/capsule-org/multi-party-sig/pkg/pool"
 	"github.com/capsule-org/multi-party-sig/pkg/protocol"
@@ -16,7 +17,7 @@ import (
 
 const Rounds round.Number = 5
 
-func Start(info round.Info, pl *pool.Pool, c *config.Config) protocol.StartFunc {
+func Start(info round.Info, pl *pool.Pool, c *config.Config, secretKey *paillier.SecretKey) protocol.StartFunc {
 	return func(sessionID []byte) (_ round.Session, err error) {
 		var helper *round.Helper
 		if c == nil {
@@ -48,8 +49,9 @@ func Start(info round.Info, pl *pool.Pool, c *config.Config) protocol.StartFunc 
 		VSSConstant := sample.Scalar(rand.Reader, group)
 		VSSSecret := polynomial.NewPolynomial(group, helper.Threshold(), VSSConstant)
 		return &round1{
-			Helper:    helper,
-			VSSSecret: VSSSecret,
+			Helper:            helper,
+			VSSSecret:         VSSSecret,
+			PaillierSecretKey: secretKey,
 		}, nil
 
 	}

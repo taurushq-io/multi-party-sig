@@ -42,6 +42,8 @@ type round1 struct {
 	// Keygen:  fᵢ(0) = xⁱ
 	// Refresh: fᵢ(0) = 0
 	VSSSecret *polynomial.Polynomial
+
+	PaillierSecretKey *paillier.SecretKey
 }
 
 // VerifyMessage implements round.Round.
@@ -62,7 +64,12 @@ func (r *round1) StoreMessage(round.Message) error { return nil }
 // - commit to message.
 func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// generate Paillier and Pedersen
-	PaillierSecret := paillier.NewSecretKey(nil)
+	var PaillierSecret *paillier.SecretKey
+	if r.PaillierSecretKey == nil {
+		PaillierSecret = paillier.NewSecretKey(nil)
+	} else {
+		PaillierSecret = r.PaillierSecretKey
+	}
 	SelfPaillierPublic := PaillierSecret.PublicKey
 	SelfPedersenPublic, PedersenSecret := PaillierSecret.GeneratePedersen()
 

@@ -71,7 +71,7 @@ func TestKeygen(t *testing.T) {
 			Threshold:        N - 1,
 			Group:            group,
 		}
-		r, err := Start(info, pl, nil)(nil)
+		r, err := Start(info, pl, nil, nil)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
 		rounds = append(rounds, r)
 	}
@@ -104,7 +104,7 @@ func TestRefresh(t *testing.T) {
 			Threshold:        N - 1,
 			Group:            group,
 		}
-		r, err := Start(info, pl, c)(nil)
+		r, err := Start(info, pl, c, nil)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
 		rounds = append(rounds, r)
 
