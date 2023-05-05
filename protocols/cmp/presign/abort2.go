@@ -46,7 +46,7 @@ func (r *abort2) StoreBroadcastMessage(msg round.Message) error {
 	r.KShares[from] = r.Group().NewScalar().SetNat(body.KProof.Plaintext.Mod(r.Group().Order()))
 
 	if !body.YHatProof.Verify(r.HashForID(from), zklog.Public{
-		H: r.ElGamalK[from].L,
+		H: r.ElGamalChi[from].L,
 		X: r.ElGamal[from],
 		Y: body.YHat,
 	}) {
@@ -88,7 +88,7 @@ func (r *abort2) Finalize(chan<- *round.Message) (round.Session, error) {
 
 		}
 
-		if !M.Equal(r.ElGamalK[j].M) {
+		if !M.Equal(r.ElGamalChi[j].M) {
 			culprits = append(culprits, j)
 		}
 	}
