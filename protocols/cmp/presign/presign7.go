@@ -100,14 +100,14 @@ func (r *presign7) Finalize(out chan<- *round.Message) (round.Session, error) {
 
 	// ∑ⱼ Sⱼ ?= X
 	if !r.PublicKey.Equal(PublicKeyComputed) {
-		YHat := r.ElGamalKNonce.Act(r.ElGamal[r.SelfID()])
+		YHat := r.ElGamalChiNonce.Act(r.ElGamal[r.SelfID()])
 		YHatProof := zklog.NewProof(r.Group(), r.HashForID(r.SelfID()), zklog.Public{
-			H: r.ElGamalKNonce.ActOnBase(),
+			H: r.ElGamalChiNonce.ActOnBase(),
 			X: r.ElGamal[r.SelfID()],
 			Y: YHat,
 		}, zklog.Private{
-			A: r.ElGamalKNonce,
-			B: r.SecretElGamal,
+			A: r.SecretElGamal,
+			B: r.ElGamalChiNonce,
 		})
 
 		ChiProofs := make(map[party.ID]*abortNth, r.N()-1)

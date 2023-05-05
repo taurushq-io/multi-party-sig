@@ -5,11 +5,13 @@ import (
 
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/internal/types"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
+	zkfac "github.com/taurusgroup/multi-party-sig/pkg/zk/fac"
 	zkmod "github.com/taurusgroup/multi-party-sig/pkg/zk/mod"
 	zkprm "github.com/taurusgroup/multi-party-sig/pkg/zk/prm"
 	"github.com/taurusgroup/multi-party-sig/protocols/cmp/config"
@@ -36,6 +38,7 @@ type broadcast4 struct {
 	round.NormalBroadcastContent
 	Mod *zkmod.Proof
 	Prm *zkprm.Proof
+	Fac *zkfac.Proof
 }
 
 // StoreBroadcastMessage implements round.BroadcastRound.
@@ -55,6 +58,11 @@ func (r *round4) StoreBroadcastMessage(msg round.Message) error {
 
 	// verify zkprm
 	if !body.Prm.Verify(zkprm.Public{N: r.NModulus[from], S: r.S[from], T: r.T[from]}, r.HashForID(from), r.Pool) {
+		return errors.New("failed to validate prm proof")
+	}
+
+	// verify zkfac
+	if !body.Fac.Verify(zkfac.Public{Aux: pedersen.New(arith.ModulusFromN(r.NModulus[from]), r.S[from], r.T[from])}, r.HashForID(from)) {
 		return errors.New("failed to validate prm proof")
 	}
 	return nil
