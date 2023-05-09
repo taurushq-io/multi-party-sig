@@ -10,7 +10,8 @@ import (
 )
 
 // This corresponds with step 7 of Figure 3 in the Frost paper:
-//   https://eprint.iacr.org/2020/852.pdf
+//
+//	https://eprint.iacr.org/2020/852.pdf
 //
 // The big difference, once again, stems from their being no signing authority.
 // Instead, each participant calculates the signature on their own.
@@ -114,7 +115,7 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 	} else {
 		sig := Signature{
 			R: r.R,
-			z: z,
+			Z: z,
 		}
 
 		if !sig.Verify(r.Y, r.M) {
