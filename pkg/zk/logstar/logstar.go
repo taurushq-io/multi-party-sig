@@ -3,7 +3,7 @@ package zklogstar
 import (
 	"crypto/rand"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -30,32 +30,32 @@ type Public struct {
 
 type Private struct {
 	// X is the plaintext of C and the discrete log of X.
-	X *safenum.Int
+	X *saferith.Int
 
 	// Rho = ρ is nonce used to encrypt C.
-	Rho *safenum.Nat
+	Rho *saferith.Nat
 }
 
 type Commitment struct {
 	// S = sˣ tᵘ (mod N)
-	S *safenum.Nat
+	S *saferith.Nat
 	// A = Enc₀(alpha; r)
 	A *paillier.Ciphertext
 	// Y = α⋅G
 	Y curve.Point
 	// D = sᵃ tᵍ (mod N)
-	D *safenum.Nat
+	D *saferith.Nat
 }
 
 type Proof struct {
 	group curve.Curve
 	*Commitment
 	// Z1 = α + e x
-	Z1 *safenum.Int
+	Z1 *saferith.Int
 	// Z2 = r ρᵉ mod N
-	Z2 *safenum.Nat
+	Z2 *saferith.Nat
 	// Z3 = γ + e μ
-	Z3 *safenum.Int
+	Z3 *saferith.Int
 }
 
 func (p *Proof) IsValid(public Public) bool {
@@ -97,14 +97,14 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	e, _ := challenge(hash, group, public, commitment)
 
 	// z1 = α + e x,
-	z1 := new(safenum.Int).SetInt(private.X)
+	z1 := new(saferith.Int).SetInt(private.X)
 	z1.Mul(e, z1, -1)
 	z1.Add(z1, alpha, -1)
 	// z2 = r ρᵉ mod N,
 	z2 := NModulus.ExpI(private.Rho, e)
 	z2.ModMul(z2, r, N)
 	// z3 = γ + e μ,
-	z3 := new(safenum.Int).Mul(e, mu, -1)
+	z3 := new(saferith.Int).Mul(e, mu, -1)
 	z3.Add(z3, gamma, -1)
 
 	return &Proof{
@@ -168,7 +168,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, group curve.Curve, public Public, commitment *Commitment) (e *safenum.Int, err error) {
+func challenge(hash *hash.Hash, group curve.Curve, public Public, commitment *Commitment) (e *saferith.Int, err error) {
 	err = hash.WriteAny(public.Aux, public.Prover, public.C, public.X, public.G,
 		commitment.S, commitment.A, commitment.Y, commitment.D)
 	e = sample.IntervalScalar(hash.Digest(), group)

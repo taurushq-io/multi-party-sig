@@ -3,7 +3,7 @@ package sign
 import (
 	"errors"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/internal/mta"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -27,16 +27,16 @@ type round2 struct {
 	BigGammaShare map[party.ID]curve.Point
 
 	// GammaShare = γᵢ <- 𝔽
-	GammaShare *safenum.Int
+	GammaShare *saferith.Int
 	// KShare = kᵢ  <- 𝔽
 	KShare curve.Scalar
 
 	// KNonce = ρᵢ <- ℤₙ
 	// used to encrypt Kᵢ = Encᵢ(kᵢ)
-	KNonce *safenum.Nat
+	KNonce *saferith.Nat
 	// GNonce = νᵢ <- ℤₙ
 	// used to encrypt Gᵢ = Encᵢ(γᵢ)
-	GNonce *safenum.Nat
+	GNonce *saferith.Nat
 }
 
 type broadcast2 struct {
@@ -113,8 +113,8 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 	otherIDs := r.OtherPartyIDs()
 	type mtaOut struct {
 		err       error
-		DeltaBeta *safenum.Int
-		ChiBeta   *safenum.Int
+		DeltaBeta *saferith.Int
+		ChiBeta   *saferith.Int
 	}
 	mtaOuts := r.Pool.Parallelize(len(otherIDs), func(i int) interface{} {
 		j := otherIDs[i]
@@ -152,8 +152,8 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 			ChiBeta:   ChiBeta,
 		}
 	})
-	DeltaShareBetas := make(map[party.ID]*safenum.Int, len(otherIDs)-1)
-	ChiShareBetas := make(map[party.ID]*safenum.Int, len(otherIDs)-1)
+	DeltaShareBetas := make(map[party.ID]*saferith.Int, len(otherIDs)-1)
+	ChiShareBetas := make(map[party.ID]*saferith.Int, len(otherIDs)-1)
 	for idx, mtaOutRaw := range mtaOuts {
 		j := otherIDs[idx]
 		m := mtaOutRaw.(mtaOut)
@@ -168,8 +168,8 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 		round2:          r,
 		DeltaShareBeta:  DeltaShareBetas,
 		ChiShareBeta:    ChiShareBetas,
-		DeltaShareAlpha: map[party.ID]*safenum.Int{},
-		ChiShareAlpha:   map[party.ID]*safenum.Int{},
+		DeltaShareAlpha: map[party.ID]*saferith.Int{},
+		ChiShareAlpha:   map[party.ID]*saferith.Int{},
 	}, nil
 }
 

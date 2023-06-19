@@ -3,7 +3,7 @@ package zkenc
 import (
 	"crypto/rand"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -22,30 +22,30 @@ type Public struct {
 type Private struct {
 	// K = k ∈ 2ˡ = Dec₀(K)
 	// plaintext of K
-	K *safenum.Int
+	K *saferith.Int
 
 	// Rho = ρ
 	// nonce of K
-	Rho *safenum.Nat
+	Rho *saferith.Nat
 }
 
 type Commitment struct {
 	// S = sᵏtᵘ
-	S *safenum.Nat
+	S *saferith.Nat
 	// A = Enc₀ (α, r)
 	A *paillier.Ciphertext
 	// C = sᵃtᵍ
-	C *safenum.Nat
+	C *saferith.Nat
 }
 
 type Proof struct {
 	*Commitment
 	// Z₁ = α + e⋅k
-	Z1 *safenum.Int
+	Z1 *saferith.Int
 	// Z₂ = r ⋅ ρᵉ mod N₀
-	Z2 *safenum.Nat
+	Z2 *saferith.Nat
 	// Z₃ = γ + e⋅μ
-	Z3 *safenum.Int
+	Z3 *saferith.Int
 }
 
 func (p *Proof) IsValid(public Public) bool {
@@ -80,14 +80,14 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 
 	e, _ := challenge(hash, group, public, commitment)
 
-	z1 := new(safenum.Int).SetInt(private.K)
+	z1 := new(saferith.Int).SetInt(private.K)
 	z1.Mul(e, z1, -1)
 	z1.Add(z1, alpha, -1)
 
 	z2 := NModulus.ExpI(private.Rho, e)
 	z2.ModMul(z2, r, N)
 
-	z3 := new(safenum.Int).Mul(e, mu, -1)
+	z3 := new(saferith.Int).Mul(e, mu, -1)
 	z3.Add(z3, gamma, -1)
 
 	return &Proof{
@@ -132,7 +132,7 @@ func (p Proof) Verify(group curve.Curve, hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, group curve.Curve, public Public, commitment *Commitment) (e *safenum.Int, err error) {
+func challenge(hash *hash.Hash, group curve.Curve, public Public, commitment *Commitment) (e *saferith.Int, err error) {
 	err = hash.WriteAny(public.Aux, public.Prover, public.K,
 		commitment.S, commitment.A, commitment.C)
 	e = sample.IntervalScalar(hash.Digest(), group)

@@ -3,7 +3,7 @@ package sign
 import (
 	"fmt"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -14,7 +14,8 @@ import (
 )
 
 // This round roughly corresponds with steps 3-6 of Figure 3 in the Frost paper:
-//   https://eprint.iacr.org/2020/852.pdf
+//
+//	https://eprint.iacr.org/2020/852.pdf
 //
 // The main differences stem from the lack of a signature authority.
 //
@@ -132,7 +133,7 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 		RBytes := RSecp.XBytes()
 		PBytes := r.Y.(*curve.Secp256k1Point).XBytes()
 		cHash := taproot.TaggedHash("BIP0340/challenge", RBytes, PBytes, r.M)
-		c = r.Group().NewScalar().SetNat(new(safenum.Nat).SetBytes(cHash))
+		c = r.Group().NewScalar().SetNat(new(saferith.Nat).SetBytes(cHash))
 	} else {
 		cHash := hash.New()
 		_ = cHash.WriteAny(R, r.Y, r.M)

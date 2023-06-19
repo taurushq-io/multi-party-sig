@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
 )
@@ -70,7 +70,7 @@ var sievePool = sync.Pool{
 	},
 }
 
-func tryBlumPrime(rand io.Reader) *safenum.Nat {
+func tryBlumPrime(rand io.Reader) *saferith.Nat {
 	initPrimes.Do(func() {
 		thePrimes = primes(primeBound)
 	})
@@ -150,7 +150,7 @@ func tryBlumPrime(rand io.Reader) *safenum.Nat {
 		if !p.ProbablyPrime(0) {
 			continue
 		}
-		return new(safenum.Nat).SetBig(p, params.BitsBlumPrime)
+		return new(saferith.Nat).SetBig(p, params.BitsBlumPrime)
 	}
 
 	return nil
@@ -159,7 +159,7 @@ func tryBlumPrime(rand io.Reader) *safenum.Nat {
 // Paillier generate the necessary integers for a Paillier key pair.
 // p, q are safe primes ((p - 1) / 2 is also prime), and Blum primes (p = 3 mod 4)
 // n = pq.
-func Paillier(rand io.Reader, pl *pool.Pool) (p, q *safenum.Nat) {
+func Paillier(rand io.Reader, pl *pool.Pool) (p, q *saferith.Nat) {
 	reader := pool.NewLockedReader(rand)
 	results := pl.Search(2, func() interface{} {
 		q := tryBlumPrime(reader)
@@ -169,6 +169,6 @@ func Paillier(rand io.Reader, pl *pool.Pool) (p, q *safenum.Nat) {
 		}
 		return q
 	})
-	p, q = results[0].(*safenum.Nat), results[1].(*safenum.Nat)
+	p, q = results[0].(*saferith.Nat), results[1].(*saferith.Nat)
 	return
 }

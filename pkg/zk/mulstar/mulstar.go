@@ -3,7 +3,7 @@ package zkmulstar
 import (
 	"crypto/rand"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -29,10 +29,10 @@ type Public struct {
 
 type Private struct {
 	// X ∈ ± 2ˡ
-	X *safenum.Int
+	X *saferith.Int
 
 	// Rho = ρ = Nonce D
-	Rho *safenum.Nat
+	Rho *saferith.Nat
 }
 
 type Commitment struct {
@@ -41,20 +41,20 @@ type Commitment struct {
 	// Bₓ = gᵃ
 	Bx curve.Point
 	// E = sᵃ tᵍ
-	E *safenum.Nat
+	E *saferith.Nat
 	// S = sˣ tᵐ
-	S *safenum.Nat
+	S *saferith.Nat
 }
 
 type Proof struct {
 	group curve.Curve
 	*Commitment
 	// Z1 = α + ex
-	Z1 *safenum.Int
+	Z1 *saferith.Int
 	// Z2 = y + em
-	Z2 *safenum.Int
+	Z2 *saferith.Int
 	// W = ρᵉ•r mod N₀
-	W *safenum.Nat
+	W *saferith.Nat
 }
 
 func (p *Proof) IsValid(public Public) bool {
@@ -99,11 +99,11 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	e, _ := challenge(group, hash, public, commitment)
 
 	// z₁ = e•x+α
-	z1 := new(safenum.Int).SetInt(private.X)
+	z1 := new(saferith.Int).SetInt(private.X)
 	z1.Mul(e, z1, -1)
 	z1.Add(z1, alpha, -1)
 	// z₂ = e•m+γ
-	z2 := new(safenum.Int).Mul(e, m, -1)
+	z2 := new(saferith.Int).Mul(e, m, -1)
 	z2.Add(z2, gamma, -1)
 	// w = ρᵉ•r mod N₀
 	w := N0Modulus.ExpI(private.Rho, e)
@@ -166,7 +166,7 @@ func (p *Proof) Verify(group curve.Curve, hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(group curve.Curve, hash *hash.Hash, public Public, commitment *Commitment) (e *safenum.Int, err error) {
+func challenge(group curve.Curve, hash *hash.Hash, public Public, commitment *Commitment) (e *saferith.Int, err error) {
 	err = hash.WriteAny(public.Aux, public.Verifier,
 		public.C, public.D, public.X,
 		commitment.A, commitment.Bx,

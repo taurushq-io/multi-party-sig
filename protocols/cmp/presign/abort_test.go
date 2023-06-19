@@ -3,7 +3,7 @@ package presign
 import (
 	"testing"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
@@ -77,12 +77,12 @@ func TestRoundFail(t *testing.T) {
 			TestRule{
 				BeforeFinalize: func(rPrevious round.Session) {
 					if r, ok := rPrevious.(*presign3); ok {
-						r.GammaShare = new(safenum.Int).Add(r.GammaShare, minusOneInt, -1)
+						r.GammaShare = new(saferith.Int).Add(r.GammaShare, minusOneInt, -1)
 					}
 				},
 				AfterFinalize: func(rNext round.Session) {
 					if r, ok := rNext.(*presign4); ok {
-						r.GammaShare = new(safenum.Int).Add(r.GammaShare, oneInt, -1)
+						r.GammaShare = new(saferith.Int).Add(r.GammaShare, oneInt, -1)
 					}
 				},
 			},

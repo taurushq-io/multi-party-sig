@@ -1,7 +1,7 @@
 package keygen
 
 import (
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
@@ -37,9 +37,9 @@ type round2 struct {
 	PaillierPublic map[party.ID]*paillier.PublicKey
 
 	// NModulus[j] = Nⱼ
-	NModulus map[party.ID]*safenum.Modulus
+	NModulus map[party.ID]*saferith.Modulus
 	// S[j], T[j] = sⱼ, tⱼ
-	S, T map[party.ID]*safenum.Nat
+	S, T map[party.ID]*saferith.Nat
 
 	ElGamalSecret curve.Scalar
 
@@ -48,7 +48,7 @@ type round2 struct {
 
 	// PedersenSecret = λᵢ
 	// Used to generate the Pedersen parameters
-	PedersenSecret *safenum.Nat
+	PedersenSecret *saferith.Nat
 
 	// SchnorrRand = aᵢ
 	// Randomness used to compute Schnorr commitment of proof of knowledge of secret share

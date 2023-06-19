@@ -5,7 +5,7 @@ import (
 	"testing"
 	"testing/quick"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
@@ -15,7 +15,7 @@ var testGroup = curve.Secp256k1{}
 func runRandomOT(choice bool, hash *hash.Hash) (*RandomOTSendResult, []byte, error) {
 	nonce := make([]byte, 32)
 	_, _ = hash.Digest().Read(nonce)
-	safeChoice := safenum.Choice(0)
+	safeChoice := saferith.Choice(0)
 	if choice {
 		safeChoice = 1
 	}

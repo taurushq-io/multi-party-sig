@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
@@ -26,22 +26,22 @@ type PublicKey struct {
 	nSquared *arith.Modulus
 
 	// These values are cached out of convenience, and performance
-	nNat *safenum.Nat
+	nNat *saferith.Nat
 	// nPlusOne = n + 1
-	nPlusOne *safenum.Nat
+	nPlusOne *saferith.Nat
 }
 
 // N is the public modulus making up this key.
-func (pk *PublicKey) N() *safenum.Modulus {
+func (pk *PublicKey) N() *saferith.Modulus {
 	return pk.n.Modulus
 }
 
 // NewPublicKey returns an initialized paillier.PublicKey and caches N, N² and (N-1)/2.
-func NewPublicKey(n *safenum.Modulus) *PublicKey {
-	oneNat := new(safenum.Nat).SetUint64(1)
+func NewPublicKey(n *saferith.Modulus) *PublicKey {
+	oneNat := new(saferith.Nat).SetUint64(1)
 	nNat := n.Nat()
-	nSquared := safenum.ModulusFromNat(new(safenum.Nat).Mul(nNat, nNat, -1))
-	nPlusOne := new(safenum.Nat).Add(nNat, oneNat, -1)
+	nSquared := saferith.ModulusFromNat(new(saferith.Nat).Mul(nNat, nNat, -1))
+	nPlusOne := new(saferith.Nat).Add(nNat, oneNat, -1)
 	// Tightening is fine, since n is public
 	nPlusOne.Resize(nPlusOne.TrueLen())
 
@@ -56,7 +56,7 @@ func NewPublicKey(n *safenum.Modulus) *PublicKey {
 // ValidateN performs basic checks to make sure the modulus is valid:
 // - log₂(n) = params.BitsPaillier.
 // - n is odd.
-func ValidateN(n *safenum.Modulus) error {
+func ValidateN(n *saferith.Modulus) error {
 	if n == nil {
 		return ErrPaillierNil
 	}
@@ -77,7 +77,7 @@ func ValidateN(n *safenum.Modulus) error {
 // The message m must be in the range [-(N-1)/2, …, (N-1)/2] and panics otherwise.
 //
 // ct = (1+N)ᵐρᴺ (mod N²).
-func (pk PublicKey) Enc(m *safenum.Int) (*Ciphertext, *safenum.Nat) {
+func (pk PublicKey) Enc(m *saferith.Int) (*Ciphertext, *saferith.Nat) {
 	nonce := sample.UnitModN(rand.Reader, pk.n.Modulus)
 	return pk.EncWithNonce(m, nonce), nonce
 }
@@ -88,9 +88,9 @@ func (pk PublicKey) Enc(m *safenum.Int) (*Ciphertext, *safenum.Nat) {
 // The message m must be in the range [-(N-1)/2, …, (N-1)/2] and panics otherwise
 //
 // ct = (1+N)ᵐρᴺ (mod N²).
-func (pk PublicKey) EncWithNonce(m *safenum.Int, nonce *safenum.Nat) *Ciphertext {
+func (pk PublicKey) EncWithNonce(m *saferith.Int, nonce *saferith.Nat) *Ciphertext {
 	mAbs := m.Abs()
-	nHalf := new(safenum.Nat).SetNat(pk.nNat)
+	nHalf := new(saferith.Nat).SetNat(pk.nNat)
 	nHalf.Rsh(nHalf, 1, -1)
 	if gt, _, _ := mAbs.Cmp(nHalf); gt == 1 {
 		panic("paillier.Encrypt: tried to encrypt message outside of range [-(N-1)/2, …, (N-1)/2]")

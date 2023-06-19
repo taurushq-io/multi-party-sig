@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"testing"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +20,7 @@ func TestMulG(t *testing.T) {
 	verifierPaillier := zk.VerifierPaillierPublic
 	verifierPedersen := zk.Pedersen
 
-	c := new(safenum.Int).SetUint64(12)
+	c := new(saferith.Int).SetUint64(12)
 	C, _ := verifierPaillier.Enc(c)
 
 	x := sample.IntervalL(rand.Reader)
