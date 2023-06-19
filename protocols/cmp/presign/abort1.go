@@ -57,7 +57,7 @@ func (r *abort1) StoreBroadcastMessage(msg round.Message) error {
 	}
 
 	for id, deltaProof := range body.DeltaProofs {
-		if !deltaProof.Verify(r.HashForID(from), public, r.DeltaCiphertext[id][from]) {
+		if !deltaProof.Verify(r.HashForID(from), public, r.DeltaCiphertext[from][id]) {
 			return errors.New("failed to validate Delta MtA Nth proof")
 		}
 	}
@@ -108,12 +108,18 @@ func (r *abort1) BroadcastContent() round.BroadcastContent { return &broadcastAb
 // Number implements round.Round.
 func (abort1) Number() round.Number { return 7 }
 
+// abortNth for a given ciphertext c = end(m,r) contains
+// - the message m,
+// - the "hidden" nonce r^N % N^2, equal to enc(0,r)
+// - a proof of knowledge of r
 type abortNth struct {
 	Plaintext *safenum.Int
 	Nonce     *safenum.Nat
 	Proof     *zknth.Proof
 }
 
+// proveNth decypts the message and the nonce contained in the ciphertext c, using the private key.
+// Returns an abortNth proving knowledge of the nonce
 func proveNth(hash *hash.Hash, paillierSecret *paillier.SecretKey, c *paillier.Ciphertext) *abortNth {
 	NSquared := paillierSecret.ModulusSquared()
 	N := paillierSecret.Modulus()
