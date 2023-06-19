@@ -15,11 +15,12 @@ func TestFac(t *testing.T) {
 	pl := pool.NewPool(0)
 	defer pl.TearDown()
 
+	aux, _ := paillier.NewSecretKey(pl).GeneratePedersen()
 	sk := paillier.NewSecretKey(pl)
-	ped, _ := sk.GeneratePedersen()
 
 	public := Public{
-		Aux: ped,
+		N:   sk.Modulus().Modulus,
+		Aux: aux,
 	}
 
 	proof := NewProof(Private{

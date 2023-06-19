@@ -111,10 +111,8 @@ func (r *round3) StoreBroadcastMessage(msg round.Message) error {
 	}
 	r.RIDs[from] = body.RID
 	r.ChainKeys[from] = body.C
-	r.NModulus[from] = body.N
-	r.S[from] = body.S
-	r.T[from] = body.T
 	r.PaillierPublic[from] = paillier.NewPublicKey(body.N)
+	r.Pedersen[from] = pedersen.New(arith.ModulusFromN(body.N), body.S, body.T)
 	r.VSSPolynomials[from] = body.VSSPolynomial
 	r.SchnorrCommitments[from] = body.SchnorrCommitments
 	r.ElGamalPublic[from] = body.ElGamalPublic
@@ -161,7 +159,7 @@ func (r *round3) Finalize(out chan<- *round.Message) (round.Session, error) {
 		P:   r.PaillierSecret.P(),
 		Q:   r.PaillierSecret.Q(),
 		Phi: r.PaillierSecret.Phi(),
-	}, zkmod.Public{N: r.NModulus[r.SelfID()]}, r.Pool)
+	}, zkmod.Public{N: r.PaillierPublic[r.SelfID()].N()}, r.Pool)
 
 	// prove s, t are correct as aux parameters with zkprm
 	prm := zkprm.NewProof(zkprm.Private{
@@ -169,23 +167,24 @@ func (r *round3) Finalize(out chan<- *round.Message) (round.Session, error) {
 		Phi:    r.PaillierSecret.Phi(),
 		P:      r.PaillierSecret.P(),
 		Q:      r.PaillierSecret.Q(),
-	}, h.Clone(), zkprm.Public{N: r.NModulus[r.SelfID()], S: r.S[r.SelfID()], T: r.T[r.SelfID()]}, r.Pool)
-
-	// Prove that the factors of N are relatively large
-	fac := zkfac.NewProof(zkfac.Private{P: r.PaillierSecret.P(), Q: r.PaillierSecret.Q()}, h.Clone(), zkfac.Public{
-		Aux: pedersen.New(arith.ModulusFromFactors(r.PaillierSecret.P(), r.PaillierSecret.Q()), r.S[r.SelfID()], r.T[r.SelfID()]),
-	})
+	}, h.Clone(), zkprm.Public{Aux: r.Pedersen[r.SelfID()]}, r.Pool)
 
 	if err := r.BroadcastMessage(out, &broadcast4{
 		Mod: mod,
 		Prm: prm,
-		Fac: fac,
 	}); err != nil {
 		return r, err
 	}
 
-	// create messages with encrypted shares
+	// create P2P messages with encrypted shares and zkfac proof
 	for _, j := range r.OtherPartyIDs() {
+
+		// Prove that the factors of N are relatively large
+		fac := zkfac.NewProof(zkfac.Private{P: r.PaillierSecret.P(), Q: r.PaillierSecret.Q()}, h.Clone(), zkfac.Public{
+			N:   r.PaillierPublic[r.SelfID()].N(),
+			Aux: r.Pedersen[j],
+		})
+
 		// compute fᵢ(j)
 		share := r.VSSSecret.Evaluate(j.Scalar(r.Group()))
 		// Encrypt share
@@ -193,6 +192,7 @@ func (r *round3) Finalize(out chan<- *round.Message) (round.Session, error) {
 
 		err := r.SendMessage(out, &message4{
 			Share: C,
+			Fac:   fac,
 		}, j)
 		if err != nil {
 			return r, err
