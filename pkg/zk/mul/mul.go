@@ -3,7 +3,7 @@ package zkmul
 import (
 	"crypto/rand"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -27,13 +27,13 @@ type Public struct {
 
 type Private struct {
 	// X = x is the plaintext of Public.X.
-	X *safenum.Int
+	X *saferith.Int
 
 	// Rho = ρ is the nonce for Public.C.
-	Rho *safenum.Nat
+	Rho *saferith.Nat
 
 	// RhoX = ρₓ is the nonce for Public.X
-	RhoX *safenum.Nat
+	RhoX *saferith.Nat
 }
 
 type Commitment struct {
@@ -46,11 +46,11 @@ type Commitment struct {
 type Proof struct {
 	*Commitment
 	// Z = α + ex
-	Z *safenum.Int
+	Z *saferith.Int
 	// U = r⋅ρᵉ mod N
-	U *safenum.Nat
+	U *saferith.Nat
 	// V = s⋅ρₓᵉ
-	V *safenum.Nat
+	V *saferith.Nat
 }
 
 func (p *Proof) IsValid(public Public) bool {
@@ -86,7 +86,7 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	e, _ := challenge(hash, group, public, commitment)
 
 	// Z = α + ex
-	z := new(safenum.Int).SetInt(private.X)
+	z := new(saferith.Int).SetInt(private.X)
 	z.Mul(e, z, -1)
 	z.Add(z, alpha, -1)
 	// U = r⋅ρᵉ mod N
@@ -142,7 +142,7 @@ func (p *Proof) Verify(group curve.Curve, hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, group curve.Curve, public Public, commitment *Commitment) (e *safenum.Int, err error) {
+func challenge(hash *hash.Hash, group curve.Curve, public Public, commitment *Commitment) (e *saferith.Int, err error) {
 	err = hash.WriteAny(public.Prover,
 		public.X, public.Y, public.C,
 		commitment.A, commitment.B)

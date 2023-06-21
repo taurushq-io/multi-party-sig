@@ -3,7 +3,7 @@ package zkencelg
 import (
 	"crypto/rand"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -28,10 +28,10 @@ type Public struct {
 }
 type Private struct {
 	// X = x = Dec(C)
-	X *safenum.Int
+	X *saferith.Int
 
 	// Rho = ρ = Nonce(C)
-	Rho *safenum.Nat
+	Rho *saferith.Nat
 
 	// A = a
 	A curve.Scalar
@@ -41,7 +41,7 @@ type Private struct {
 
 type Commitment struct {
 	// S = sˣtᵘ
-	S *safenum.Nat
+	S *saferith.Nat
 	// D = Enc(α, r)
 	D *paillier.Ciphertext
 	// Y = β⋅A+α⋅G
@@ -49,20 +49,20 @@ type Commitment struct {
 	// Z = β⋅G
 	Z curve.Point
 	// C = sᵃtᵍ
-	T *safenum.Nat
+	T *saferith.Nat
 }
 
 type Proof struct {
 	group curve.Curve
 	*Commitment
 	// Z1 = z₁ = α + ex
-	Z1 *safenum.Int
+	Z1 *saferith.Int
 	// W = w = β + eb (mod q)
 	W curve.Scalar
 	// Z2 = z₂ = r⋅ρᵉ (mod N₀)
-	Z2 *safenum.Nat
+	Z2 *saferith.Nat
 	// Z3 = z₃ = γ + eμ
-	Z3 *safenum.Int
+	Z3 *saferith.Int
 }
 
 func (p *Proof) IsValid(public Public) bool {
@@ -102,7 +102,7 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 
 	e, _ := challenge(hash, group, public, commitment)
 
-	z1 := new(safenum.Int).SetInt(private.X)
+	z1 := new(saferith.Int).SetInt(private.X)
 	z1.Mul(e, z1, -1)
 	z1.Add(z1, alpha, -1)
 
@@ -111,7 +111,7 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	z2 := NModulus.ExpI(private.Rho, e)
 	z2.ModMul(z2, r, N)
 
-	z3 := new(safenum.Int).Mul(e, mu, -1)
+	z3 := new(saferith.Int).Mul(e, mu, -1)
 	z3.Add(z3, gamma, -1)
 
 	return &Proof{
@@ -176,7 +176,7 @@ func (p Proof) Verify(hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, group curve.Curve, public Public, commitment *Commitment) (e *safenum.Int, err error) {
+func challenge(hash *hash.Hash, group curve.Curve, public Public, commitment *Commitment) (e *saferith.Int, err error) {
 	err = hash.WriteAny(public.Aux, public.Prover, public.C, public.A, public.B, public.X,
 		commitment.S, commitment.D, commitment.Y, commitment.Z, commitment.T)
 	e = sample.IntervalScalar(hash.Digest(), group)

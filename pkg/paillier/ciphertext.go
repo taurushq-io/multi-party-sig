@@ -4,14 +4,14 @@ import (
 	"crypto/rand"
 	"io"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 )
 
 // Ciphertext represents an integer of the for (1+N)ᵐρᴺ (mod N²), representing the encryption of m ∈ ℤₙˣ.
 type Ciphertext struct {
-	c *safenum.Nat
+	c *saferith.Nat
 }
 
 // Add sets ct to the homomorphic sum ct ⊕ ct₂.
@@ -28,7 +28,7 @@ func (ct *Ciphertext) Add(pk *PublicKey, ct2 *Ciphertext) *Ciphertext {
 
 // Mul sets ct to the homomorphic multiplication of k ⊙ ct.
 // ct ← ctᵏ (mod N²).
-func (ct *Ciphertext) Mul(pk *PublicKey, k *safenum.Int) *Ciphertext {
+func (ct *Ciphertext) Mul(pk *PublicKey, k *saferith.Int) *Ciphertext {
 	if k == nil {
 		return ct
 	}
@@ -45,7 +45,7 @@ func (ct *Ciphertext) Equal(ctA *Ciphertext) bool {
 
 // Clone returns a deep copy of ct.
 func (ct Ciphertext) Clone() *Ciphertext {
-	c := new(safenum.Nat)
+	c := new(saferith.Nat)
 	c.SetNat(ct.c)
 	return &Ciphertext{c: c}
 }
@@ -54,7 +54,7 @@ func (ct Ciphertext) Clone() *Ciphertext {
 // ct ← ct ⋅ nonceᴺ (mod N²).
 // If nonce is nil, a random one is generated.
 // The receiver is updated, and the nonce update is returned.
-func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *safenum.Nat) *safenum.Nat {
+func (ct *Ciphertext) Randomize(pk *PublicKey, nonce *saferith.Nat) *saferith.Nat {
 	if nonce == nil {
 		nonce = sample.UnitModN(rand.Reader, pk.n.Modulus)
 	}
@@ -85,10 +85,10 @@ func (ct *Ciphertext) MarshalBinary() ([]byte, error) {
 }
 
 func (ct *Ciphertext) UnmarshalBinary(data []byte) error {
-	ct.c = new(safenum.Nat)
+	ct.c = new(saferith.Nat)
 	return ct.c.UnmarshalBinary(data)
 }
 
-func (ct *Ciphertext) Nat() *safenum.Nat {
-	return new(safenum.Nat).SetNat(ct.c)
+func (ct *Ciphertext) Nat() *saferith.Nat {
+	return new(saferith.Nat).SetNat(ct.c)
 }

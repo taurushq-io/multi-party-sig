@@ -3,7 +3,7 @@ package presign
 import (
 	"errors"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -107,9 +107,9 @@ func (r *presign6) Finalize(out chan<- *round.Message) (round.Session, error) {
 		}
 		return &abort1{
 			presign6:    r,
-			GammaShares: map[party.ID]*safenum.Int{r.SelfID(): r.GammaShare},
-			KShares:     map[party.ID]*safenum.Int{r.SelfID(): curve.MakeInt(r.KShare)},
-			DeltaAlphas: map[party.ID]map[party.ID]*safenum.Int{r.SelfID(): r.DeltaShareAlpha},
+			GammaShares: map[party.ID]*saferith.Int{r.SelfID(): r.GammaShare},
+			KShares:     map[party.ID]*saferith.Int{r.SelfID(): curve.MakeInt(r.KShare)},
+			DeltaAlphas: map[party.ID]map[party.ID]*saferith.Int{r.SelfID(): r.DeltaShareAlpha},
 		}, nil
 	}
 

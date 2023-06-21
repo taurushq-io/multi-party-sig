@@ -3,7 +3,7 @@ package presign
 import (
 	"errors"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/internal/elgamal"
 	"github.com/taurusgroup/multi-party-sig/internal/mta"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
@@ -28,16 +28,16 @@ type presign2 struct {
 	G map[party.ID]*paillier.Ciphertext
 
 	// GammaShare = γᵢ <- 𝔽
-	GammaShare *safenum.Int
+	GammaShare *saferith.Int
 	// KShare = kᵢ  <- 𝔽
 	KShare curve.Scalar
 
 	// KNonce = ρᵢ <- ℤₙ
 	// used to encrypt Kᵢ = Encᵢ(kᵢ)
-	KNonce *safenum.Nat
+	KNonce *saferith.Nat
 	// GNonce = νᵢ <- ℤₙ
 	// used to encrypt Gᵢ = Encᵢ(γᵢ)
-	GNonce *safenum.Nat
+	GNonce *saferith.Nat
 
 	// ElGamalKNonce = bᵢ
 	ElGamalKNonce elgamal.Nonce
@@ -128,11 +128,11 @@ func (r *presign2) Finalize(out chan<- *round.Message) (round.Session, error) {
 	n := len(otherIDs)
 
 	type mtaOut struct {
-		DeltaBeta  *safenum.Int
+		DeltaBeta  *saferith.Int
 		DeltaD     *paillier.Ciphertext
 		DeltaF     *paillier.Ciphertext
 		DeltaProof *zkaffp.Proof
-		ChiBeta    *safenum.Int
+		ChiBeta    *saferith.Int
 		ChiD       *paillier.Ciphertext
 		ChiF       *paillier.Ciphertext
 		ChiProof   *zkaffg.Proof
@@ -161,8 +161,8 @@ func (r *presign2) Finalize(out chan<- *round.Message) (round.Session, error) {
 	})
 	ChiCiphertext := make(map[party.ID]*paillier.Ciphertext, n)
 	DeltaCiphertext := make(map[party.ID]*paillier.Ciphertext, n)
-	DeltaShareBeta := make(map[party.ID]*safenum.Int, n)
-	ChiShareBeta := make(map[party.ID]*safenum.Int, n)
+	DeltaShareBeta := make(map[party.ID]*saferith.Int, n)
+	ChiShareBeta := make(map[party.ID]*saferith.Int, n)
 
 	broadcastMsg := broadcast3{
 		DeltaCiphertext: DeltaCiphertext,

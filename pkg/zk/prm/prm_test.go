@@ -19,9 +19,7 @@ func TestPrm(t *testing.T) {
 	ped, lambda := sk.GeneratePedersen()
 
 	public := Public{
-		ped.N(),
-		ped.S(),
-		ped.T(),
+		Aux: ped,
 	}
 
 	proof := NewProof(Private{
@@ -55,9 +53,7 @@ func BenchmarkCRT(b *testing.B) {
 	ped, lambda := sk.GeneratePedersen()
 
 	public := Public{
-		ped.N(),
-		ped.S(),
-		ped.T(),
+		Aux: ped,
 	}
 
 	private := Private{

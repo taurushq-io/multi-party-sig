@@ -3,7 +3,7 @@ package polynomial_test
 import (
 	"testing"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/stretchr/testify/assert"
 	"github.com/taurusgroup/multi-party-sig/internal/test"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -19,7 +19,7 @@ func TestLagrange(t *testing.T) {
 	coefsOdd := polynomial.Lagrange(group, allIDs[:N-1])
 	sumEven := group.NewScalar()
 	sumOdd := group.NewScalar()
-	one := group.NewScalar().SetNat(new(safenum.Nat).SetUint64(1))
+	one := group.NewScalar().SetNat(new(saferith.Nat).SetUint64(1))
 	for _, c := range coefsEven {
 		sumEven.Add(c)
 	}

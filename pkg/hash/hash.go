@@ -54,11 +54,11 @@ func (hash *Hash) Sum() []byte {
 //
 // Currently supported types:
 //
-//  - []byte
-//  - *safenum.Nat
-//  - *safenum.Int
-//  - *safenum.Modulus
-//  - hash.WriterToWithDomain
+//   - []byte
+//   - *saferith.Nat
+//   - *saferith.Int
+//   - *saferith.Modulus
+//   - hash.WriterToWithDomain
 //
 // This function will apply its own domain separation for the first two types.
 // The last type already suggests which domain to use, and this function respects it.

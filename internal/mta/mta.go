@@ -3,7 +3,7 @@ package mta
 import (
 	"crypto/rand"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
@@ -24,8 +24,8 @@ import (
 // - F = encⱼ(-β, r)
 // - Proof = zkaffg proof of correct encryption.
 func ProveAffG(group curve.Curve, h *hash.Hash,
-	senderSecretShare *safenum.Int, senderSecretSharePoint curve.Point, receiverEncryptedShare *paillier.Ciphertext,
-	sender *paillier.SecretKey, receiver *paillier.PublicKey, verifier *pedersen.Parameters) (Beta *safenum.Int, D, F *paillier.Ciphertext, Proof *zkaffg.Proof) {
+	senderSecretShare *saferith.Int, senderSecretSharePoint curve.Point, receiverEncryptedShare *paillier.Ciphertext,
+	sender *paillier.SecretKey, receiver *paillier.PublicKey, verifier *pedersen.Parameters) (Beta *saferith.Int, D, F *paillier.Ciphertext, Proof *zkaffg.Proof) {
 	D, F, S, R, BetaNeg := newMta(senderSecretShare, receiverEncryptedShare, sender, receiver)
 	Proof = zkaffg.NewProof(group, h, zkaffg.Public{
 		Kv:       receiverEncryptedShare,
@@ -57,9 +57,9 @@ func ProveAffG(group curve.Curve, h *hash.Hash,
 // - F = encⱼ(-β, r)
 // - Proof = zkaffp proof of correct encryption.
 func ProveAffP(group curve.Curve, h *hash.Hash,
-	senderSecretShare *safenum.Int, senderEncryptedShare *paillier.Ciphertext, senderEncryptedShareNonce *safenum.Nat,
+	senderSecretShare *saferith.Int, senderEncryptedShare *paillier.Ciphertext, senderEncryptedShareNonce *saferith.Nat,
 	receiverEncryptedShare *paillier.Ciphertext,
-	sender *paillier.SecretKey, receiver *paillier.PublicKey, verifier *pedersen.Parameters) (Beta *safenum.Int, D, F *paillier.Ciphertext, Proof *zkaffp.Proof) {
+	sender *paillier.SecretKey, receiver *paillier.PublicKey, verifier *pedersen.Parameters) (Beta *saferith.Int, D, F *paillier.Ciphertext, Proof *zkaffp.Proof) {
 	D, F, S, R, BetaNeg := newMta(senderSecretShare, receiverEncryptedShare, sender, receiver)
 	Proof = zkaffp.NewProof(group, h, zkaffp.Public{
 		Kv:       receiverEncryptedShare,
@@ -81,8 +81,8 @@ func ProveAffP(group curve.Curve, h *hash.Hash,
 	return
 }
 
-func newMta(senderSecretShare *safenum.Int, receiverEncryptedShare *paillier.Ciphertext,
-	sender *paillier.SecretKey, receiver *paillier.PublicKey) (D, F *paillier.Ciphertext, S, R *safenum.Nat, BetaNeg *safenum.Int) {
+func newMta(senderSecretShare *saferith.Int, receiverEncryptedShare *paillier.Ciphertext,
+	sender *paillier.SecretKey, receiver *paillier.PublicKey) (D, F *paillier.Ciphertext, S, R *saferith.Nat, BetaNeg *saferith.Int) {
 	BetaNeg = sample.IntervalLPrime(rand.Reader)
 
 	F, R = sender.Enc(BetaNeg) // F = encᵢ(-β, r)

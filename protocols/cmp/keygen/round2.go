@@ -1,7 +1,7 @@
 package keygen
 
 import (
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
@@ -9,6 +9,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
+	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
 	zksch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
 )
 
@@ -36,10 +37,8 @@ type round2 struct {
 	// PaillierPublic[j] = Nⱼ
 	PaillierPublic map[party.ID]*paillier.PublicKey
 
-	// NModulus[j] = Nⱼ
-	NModulus map[party.ID]*safenum.Modulus
-	// S[j], T[j] = sⱼ, tⱼ
-	S, T map[party.ID]*safenum.Nat
+	// Pedersen[j] = (Nⱼ,Sⱼ,Tⱼ)
+	Pedersen map[party.ID]*pedersen.Parameters
 
 	ElGamalSecret curve.Scalar
 
@@ -48,7 +47,7 @@ type round2 struct {
 
 	// PedersenSecret = λᵢ
 	// Used to generate the Pedersen parameters
-	PedersenSecret *safenum.Nat
+	PedersenSecret *saferith.Nat
 
 	// SchnorrRand = aᵢ
 	// Randomness used to compute Schnorr commitment of proof of knowledge of secret share
@@ -95,9 +94,9 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 		VSSPolynomial:      r.VSSPolynomials[r.SelfID()],
 		SchnorrCommitments: r.SchnorrRand.Commitment(),
 		ElGamalPublic:      r.ElGamalPublic[r.SelfID()],
-		N:                  r.NModulus[r.SelfID()],
-		S:                  r.S[r.SelfID()],
-		T:                  r.T[r.SelfID()],
+		N:                  r.Pedersen[r.SelfID()].N(),
+		S:                  r.Pedersen[r.SelfID()].S(),
+		T:                  r.Pedersen[r.SelfID()].T(),
 		Decommitment:       r.Decommitment,
 	})
 	if err != nil {

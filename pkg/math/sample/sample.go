@@ -5,7 +5,7 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
@@ -24,10 +24,10 @@ func mustReadBits(rand io.Reader, buf []byte) {
 }
 
 // ModN samples an element of ℤₙ.
-func ModN(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
-	out := new(safenum.Nat)
+func ModN(rand io.Reader, n *saferith.Modulus) *saferith.Nat {
+	out := new(saferith.Nat)
 	buf := make([]byte, (n.BitLen()+7)/8)
-	n = safenum.ModulusFromNat(n.Nat())
+	n = saferith.ModulusFromNat(n.Nat())
 	for {
 		mustReadBits(rand, buf)
 		out.SetBytes(buf)
@@ -40,10 +40,10 @@ func ModN(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
 }
 
 // UnitModN returns a u ∈ ℤₙˣ.
-func UnitModN(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
-	out := new(safenum.Nat)
+func UnitModN(rand io.Reader, n *saferith.Modulus) *saferith.Nat {
+	out := new(saferith.Nat)
 	buf := make([]byte, (n.BitLen()+7)/8)
-	n = safenum.ModulusFromNat(n.Nat())
+	n = saferith.ModulusFromNat(n.Nat())
 	for i := 0; i < maxIterations; i++ {
 		// PERF: Reuse buffer instead of allocating each time
 		mustReadBits(rand, buf)
@@ -56,7 +56,7 @@ func UnitModN(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
 }
 
 // QNR samples a random quadratic non-residue in Z_n.
-func QNR(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
+func QNR(rand io.Reader, n *saferith.Modulus) *saferith.Nat {
 	var w big.Int
 	nBig := n.Big()
 	buf := make([]byte, params.BitsIntModN/8)
@@ -65,15 +65,15 @@ func QNR(rand io.Reader, n *safenum.Modulus) *safenum.Nat {
 		w.SetBytes(buf)
 		w.Mod(&w, nBig)
 		if big.Jacobi(&w, nBig) == -1 {
-			return new(safenum.Nat).SetBig(&w, w.BitLen())
+			return new(saferith.Nat).SetBig(&w, w.BitLen())
 		}
 	}
 	panic(ErrMaxIterations)
 }
 
 // Pedersen generates the s, t, λ such that s = tˡ.
-func Pedersen(rand io.Reader, phi *safenum.Nat, n *safenum.Modulus) (s, t, lambda *safenum.Nat) {
-	phiMod := safenum.ModulusFromNat(phi)
+func Pedersen(rand io.Reader, phi *saferith.Nat, n *saferith.Modulus) (s, t, lambda *saferith.Nat) {
+	phiMod := saferith.ModulusFromNat(phi)
 
 	lambda = ModN(rand, phiMod)
 
@@ -82,7 +82,7 @@ func Pedersen(rand io.Reader, phi *safenum.Nat, n *safenum.Modulus) (s, t, lambd
 	t = tau.ModMul(tau, tau, n)
 	// s = tˡ mod N
 	// TODO SPEED
-	s = new(safenum.Nat).Exp(t, lambda, n)
+	s = new(saferith.Nat).Exp(t, lambda, n)
 
 	return
 }
@@ -91,7 +91,7 @@ func Pedersen(rand io.Reader, phi *safenum.Nat, n *safenum.Modulus) (s, t, lambd
 func Scalar(rand io.Reader, group curve.Curve) curve.Scalar {
 	buffer := make([]byte, group.SafeScalarBytes())
 	mustReadBits(rand, buffer)
-	n := new(safenum.Nat).SetBytes(buffer)
+	n := new(saferith.Nat).SetBytes(buffer)
 	return group.NewScalar().SetNat(n)
 }
 

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
@@ -28,20 +28,20 @@ var (
 type SecretKey struct {
 	*PublicKey
 	// p, q such that N = p⋅q
-	p, q *safenum.Nat
+	p, q *saferith.Nat
 	// phi = ϕ = (p-1)(q-1)
-	phi *safenum.Nat
+	phi *saferith.Nat
 	// phiInv = ϕ⁻¹ mod N
-	phiInv *safenum.Nat
+	phiInv *saferith.Nat
 }
 
 // P returns the first of the two factors composing this key.
-func (sk *SecretKey) P() *safenum.Nat {
+func (sk *SecretKey) P() *saferith.Nat {
 	return sk.p
 }
 
 // Q returns the second of the two factors composing this key.
-func (sk *SecretKey) Q() *safenum.Nat {
+func (sk *SecretKey) Q() *saferith.Nat {
 	return sk.q
 }
 
@@ -51,7 +51,7 @@ func (sk *SecretKey) Q() *safenum.Nat {
 // is our public key. This function counts the number of units mod N.
 //
 // This quantity is useful in ZK proofs.
-func (sk *SecretKey) Phi() *safenum.Nat {
+func (sk *SecretKey) Phi() *saferith.Nat {
 	return sk.phi
 }
 
@@ -69,21 +69,21 @@ func NewSecretKey(pl *pool.Pool) *SecretKey {
 }
 
 // NewSecretKeyFromPrimes generates a new SecretKey. Assumes that P and Q are prime.
-func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
-	oneNat := new(safenum.Nat).SetUint64(1)
+func NewSecretKeyFromPrimes(P, Q *saferith.Nat) *SecretKey {
+	oneNat := new(saferith.Nat).SetUint64(1)
 
 	n := arith.ModulusFromFactors(P, Q)
 
 	nNat := n.Nat()
-	nPlusOne := new(safenum.Nat).Add(nNat, oneNat, -1)
+	nPlusOne := new(saferith.Nat).Add(nNat, oneNat, -1)
 	// Tightening is fine, since n is public
 	nPlusOne.Resize(nPlusOne.TrueLen())
 
-	pMinus1 := new(safenum.Nat).Sub(P, oneNat, -1)
-	qMinus1 := new(safenum.Nat).Sub(Q, oneNat, -1)
-	phi := new(safenum.Nat).Mul(pMinus1, qMinus1, -1)
+	pMinus1 := new(saferith.Nat).Sub(P, oneNat, -1)
+	qMinus1 := new(saferith.Nat).Sub(Q, oneNat, -1)
+	phi := new(saferith.Nat).Mul(pMinus1, qMinus1, -1)
 	// ϕ⁻¹ mod N
-	phiInv := new(safenum.Nat).ModInverse(phi, n.Modulus)
+	phiInv := new(saferith.Nat).ModInverse(phi, n.Modulus)
 
 	pSquared := pMinus1.Mul(P, P, -1)
 	qSquared := qMinus1.Mul(Q, Q, -1)
@@ -105,8 +105,8 @@ func NewSecretKeyFromPrimes(P, Q *safenum.Nat) *SecretKey {
 
 // Dec decrypts c and returns the plaintext m ∈ ± (N-2)/2.
 // It returns an error if gcd(c, N²) != 1 or if c is not in [1, N²-1].
-func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
-	oneNat := new(safenum.Nat).SetUint64(1)
+func (sk *SecretKey) Dec(ct *Ciphertext) (*saferith.Int, error) {
+	oneNat := new(saferith.Nat).SetUint64(1)
 
 	n := sk.PublicKey.n.Modulus
 
@@ -127,28 +127,28 @@ func (sk *SecretKey) Dec(ct *Ciphertext) (*safenum.Int, error) {
 	result.ModMul(result, phiInv, n)
 
 	// see 6.1 https://www.iacr.org/archive/crypto2001/21390136.pdf
-	return new(safenum.Int).SetModSymmetric(result, n), nil
+	return new(saferith.Int).SetModSymmetric(result, n), nil
 }
 
 // DecWithRandomness returns the underlying plaintext, as well as the randomness used.
-func (sk *SecretKey) DecWithRandomness(ct *Ciphertext) (*safenum.Int, *safenum.Nat, error) {
+func (sk *SecretKey) DecWithRandomness(ct *Ciphertext) (*saferith.Int, *saferith.Nat, error) {
 	m, err := sk.Dec(ct)
 	if err != nil {
 		return nil, nil, err
 	}
-	mNeg := new(safenum.Int).SetInt(m).Neg(1)
+	mNeg := new(saferith.Int).SetInt(m).Neg(1)
 
 	// x = C(N+1)⁻ᵐ (mod N)
 	x := sk.n.ExpI(sk.nPlusOne, mNeg)
 	x.ModMul(x, ct.c, sk.n.Modulus)
 
 	// r = xⁿ⁻¹ (mod N)
-	nInverse := new(safenum.Nat).ModInverse(sk.nNat, safenum.ModulusFromNat(sk.phi))
+	nInverse := new(saferith.Nat).ModInverse(sk.nNat, saferith.ModulusFromNat(sk.phi))
 	r := sk.n.Exp(x, nInverse)
 	return m, r, nil
 }
 
-func (sk SecretKey) GeneratePedersen() (*pedersen.Parameters, *safenum.Nat) {
+func (sk SecretKey) GeneratePedersen() (*pedersen.Parameters, *saferith.Nat) {
 	s, t, lambda := sample.Pedersen(rand.Reader, sk.phi, sk.n.Modulus)
 	ped := pedersen.New(sk.n, s, t)
 	return ped, lambda
@@ -159,7 +159,7 @@ func (sk SecretKey) GeneratePedersen() (*pedersen.Parameters, *safenum.Nat) {
 // - log₂(p) ≡ params.BitsBlumPrime.
 // - p ≡ 3 (mod 4).
 // - q := (p-1)/2 is prime.
-func ValidatePrime(p *safenum.Nat) error {
+func ValidatePrime(p *saferith.Nat) error {
 	if p == nil {
 		return ErrPrimeNil
 	}
@@ -176,7 +176,7 @@ func ValidatePrime(p *safenum.Nat) error {
 	}
 
 	// check (p-1)/2 is prime
-	pMinus1Div2 := new(safenum.Nat).Rsh(p, 1, -1)
+	pMinus1Div2 := new(saferith.Nat).Rsh(p, 1, -1)
 
 	if !pMinus1Div2.Big().ProbablyPrime(1) {
 		return ErrNotSafePrime

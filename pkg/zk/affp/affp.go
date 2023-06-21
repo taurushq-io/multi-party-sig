@@ -3,7 +3,7 @@ package zkaffp
 import (
 	"crypto/rand"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -35,18 +35,18 @@ type Public struct {
 
 type Private struct {
 	// X ∈ ± 2ˡ
-	X *safenum.Int
+	X *saferith.Int
 	// Y ∈ ± 2ˡº
-	Y *safenum.Int
+	Y *saferith.Int
 	// S = s
 	// Original name: ρ
-	S *safenum.Nat
+	S *saferith.Nat
 	// Rx = rₓ
 	// Original name: ρx
-	Rx *safenum.Nat
+	Rx *saferith.Nat
 	// R = r
 	// Original name: ρy
-	R *safenum.Nat
+	R *saferith.Nat
 }
 
 type Commitment struct {
@@ -57,31 +57,31 @@ type Commitment struct {
 	// By = Enc₁(β;ρy)
 	By *paillier.Ciphertext
 	// E = sᵃ tᵍ (mod N)
-	E *safenum.Nat
+	E *saferith.Nat
 	// S = sˣ tᵐ (mod N)
-	S *safenum.Nat
+	S *saferith.Nat
 	// F = sᵇ tᵈ (mod N)
-	F *safenum.Nat
+	F *saferith.Nat
 	// T = sʸ tᵘ (mod N)
-	T *safenum.Nat
+	T *saferith.Nat
 }
 
 type Proof struct {
 	*Commitment
 	// Z1 = Z₁ = α+ex
-	Z1 *safenum.Int
+	Z1 *saferith.Int
 	// Z2 = Z₂ = β+ey
-	Z2 *safenum.Int
+	Z2 *saferith.Int
 	// Z3 = Z₃ = γ+em
-	Z3 *safenum.Int
+	Z3 *saferith.Int
 	// Z4 = Z₄ = δ+eμ
-	Z4 *safenum.Int
+	Z4 *saferith.Int
 	// W = w = ρ⋅sᵉ (mod N₀)
-	W *safenum.Nat
+	W *saferith.Nat
 	// Wx = wₓ = ρₓ⋅rₓᵉ (mod N₁)
-	Wx *safenum.Nat
+	Wx *saferith.Nat
 	// Wy = wy = ρy ⋅rᵉ (mod N₁)
-	Wy *safenum.Nat
+	Wy *saferith.Nat
 }
 
 func (p *Proof) IsValid(public Public) bool {
@@ -144,18 +144,18 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	e, _ := challenge(hash, group, public, commitment)
 
 	// e•x+α
-	z1 := new(safenum.Int).SetInt(private.X)
+	z1 := new(saferith.Int).SetInt(private.X)
 	z1.Mul(e, z1, -1)
 	z1.Add(z1, alpha, -1)
 	// e•y+β
-	z2 := new(safenum.Int).SetInt(private.Y)
+	z2 := new(saferith.Int).SetInt(private.Y)
 	z2.Mul(e, z2, -1)
 	z2.Add(z2, beta, -1)
 	// e•m+γ
-	z3 := new(safenum.Int).Mul(e, m, -1)
+	z3 := new(saferith.Int).Mul(e, m, -1)
 	z3.Add(z3, gamma, -1)
 	// e•μ+δ
-	z4 := new(safenum.Int).Mul(e, mu, -1)
+	z4 := new(saferith.Int).Mul(e, mu, -1)
 	z4.Add(z4, delta, -1)
 	// ρ⋅sᵉ (mod N₀)
 	w := N0Modulus.ExpI(private.S, e)
@@ -235,7 +235,7 @@ func (p Proof) Verify(group curve.Curve, hash *hash.Hash, public Public) bool {
 	return true
 }
 
-func challenge(hash *hash.Hash, group curve.Curve, public Public, commitment *Commitment) (e *safenum.Int, err error) {
+func challenge(hash *hash.Hash, group curve.Curve, public Public, commitment *Commitment) (e *saferith.Int, err error) {
 	err = hash.WriteAny(public.Aux, public.Prover, public.Verifier,
 		public.Kv, public.Dv, public.Fp, public.Xp,
 		commitment.A, commitment.Bx, commitment.By,

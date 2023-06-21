@@ -1,7 +1,7 @@
 package polynomial
 
 import (
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 )
@@ -31,7 +31,7 @@ func LagrangeSingle(group curve.Curve, interpolationDomain []party.ID, j party.I
 // getScalarsAndNumerator returns the Scalars associated to the list of party.IDs.
 func getScalarsAndNumerator(group curve.Curve, interpolationDomain []party.ID) (map[party.ID]curve.Scalar, curve.Scalar) {
 	// numerator = x₀ * … * xₖ
-	numerator := group.NewScalar().SetNat(new(safenum.Nat).SetUint64(1))
+	numerator := group.NewScalar().SetNat(new(saferith.Nat).SetUint64(1))
 	scalars := make(map[party.ID]curve.Scalar, len(interpolationDomain))
 	for _, id := range interpolationDomain {
 		xi := id.Scalar(group)
@@ -46,15 +46,18 @@ func getScalarsAndNumerator(group curve.Curve, interpolationDomain []party.ID) (
 //
 // The following formulas are taken from
 // https://en.wikipedia.org/wiki/Lagrange_polynomial
-//			                 x₀ ⋅⋅⋅ xₖ
+//
+//	x₀ ⋅⋅⋅ xₖ
+//
 // lⱼ(0) =	--------------------------------------------------
-//			xⱼ⋅(x₀ - xⱼ)⋅⋅⋅(xⱼ₋₁ - xⱼ)⋅(xⱼ₊₁ - xⱼ)⋅⋅⋅(xₖ - xⱼ).
+//
+//	xⱼ⋅(x₀ - xⱼ)⋅⋅⋅(xⱼ₋₁ - xⱼ)⋅(xⱼ₊₁ - xⱼ)⋅⋅⋅(xₖ - xⱼ).
 func lagrange(group curve.Curve, interpolationDomain map[party.ID]curve.Scalar, numerator curve.Scalar, j party.ID) curve.Scalar {
 	xJ := interpolationDomain[j]
 	tmp := group.NewScalar()
 
 	// denominator = xⱼ⋅(xⱼ - x₀)⋅⋅⋅(xⱼ₋₁ - xⱼ)⋅(xⱼ₊₁ - xⱼ)⋅⋅⋅(xₖ - xⱼ)
-	denominator := group.NewScalar().SetNat(new(safenum.Nat).SetUint64(1))
+	denominator := group.NewScalar().SetNat(new(saferith.Nat).SetUint64(1))
 	for i, xI := range interpolationDomain {
 		if i == j {
 			// lⱼ *= xⱼ

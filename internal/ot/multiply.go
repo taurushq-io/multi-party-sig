@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"errors"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -30,7 +30,7 @@ func encode(beta curve.Scalar, noise []curve.Scalar) ([]byte, error) {
 	_, _ = rand.Read(gamma)
 
 	acc := group.NewScalar().Set(beta)
-	mulNat := new(safenum.Nat)
+	mulNat := new(saferith.Nat)
 	mul := group.NewScalar()
 	for i := 0; i < len(noise); i++ {
 		mulNat.SetUint64(uint64((gamma[i>>3] >> (i & 0b111)) & 1))
@@ -55,7 +55,7 @@ func makeGadget(ctxHash *hash.Hash, group curve.Curve) []curve.Scalar {
 	// We have space for all the bytes of a scalar, and then noise vectors, padded to a multiple of 8
 	out := make([]curve.Scalar, 8*((group.ScalarBits()+7)/8+(group.ScalarBits()+2*params.StatParam+7)/8))
 	// Handle powers of 2, in big endian order
-	acc := group.NewScalar().SetNat(new(safenum.Nat).SetUint64(1))
+	acc := group.NewScalar().SetNat(new(saferith.Nat).SetUint64(1))
 	for i := (scalarEnd >> 3) - 1; i >= 0; i-- {
 		for j := 0; j < 8; j++ {
 			out[(i<<3)|j] = group.NewScalar().Set(acc)
@@ -217,7 +217,7 @@ func (r *MultiplyReceiver) Round2(msg *MultiplySendRound1Message) (curve.Scalar,
 	mul := r.group.NewScalar()
 	checkLeft := r.group.NewScalar()
 	checkRight := r.group.NewScalar()
-	choiceNat := new(safenum.Nat)
+	choiceNat := new(saferith.Nat)
 
 	for i := 0; i < len(result); i++ {
 		checkLeft.Set(result[i][0]).Mul(chi0)

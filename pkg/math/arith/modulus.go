@@ -1,25 +1,25 @@
 package arith
 
 import (
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 )
 
-// Modulus wraps a safenum.Modulus and enables faster modular exponentiation when
+// Modulus wraps a saferith.Modulus and enables faster modular exponentiation when
 // the factorization is known.
 // When n = p⋅q, xᵉ (mod n) can be computed with only two exponentiations
 // with p and q respectively.
 type Modulus struct {
 	// represents modulus n
-	*safenum.Modulus
+	*saferith.Modulus
 	// n = p⋅p
-	p, q *safenum.Modulus
+	p, q *saferith.Modulus
 	// pInv = p⁻¹ (mod q)
-	pNat, pInv *safenum.Nat
+	pNat, pInv *saferith.Nat
 }
 
 // ModulusFromN creates a simple wrapper around a given modulus n.
 // The modulus is not copied.
-func ModulusFromN(n *safenum.Modulus) *Modulus {
+func ModulusFromN(n *saferith.Modulus) *Modulus {
 	return &Modulus{
 		Modulus: n,
 	}
@@ -27,13 +27,13 @@ func ModulusFromN(n *safenum.Modulus) *Modulus {
 
 // ModulusFromFactors creates the necessary cached values to accelerate
 // exponentiation mod n.
-func ModulusFromFactors(p, q *safenum.Nat) *Modulus {
-	nNat := new(safenum.Nat).Mul(p, q, -1)
-	nMod := safenum.ModulusFromNat(nNat)
-	pMod := safenum.ModulusFromNat(p)
-	qMod := safenum.ModulusFromNat(q)
-	pInvQ := new(safenum.Nat).ModInverse(p, qMod)
-	pNat := new(safenum.Nat).SetNat(p)
+func ModulusFromFactors(p, q *saferith.Nat) *Modulus {
+	nNat := new(saferith.Nat).Mul(p, q, -1)
+	nMod := saferith.ModulusFromNat(nNat)
+	pMod := saferith.ModulusFromNat(p)
+	qMod := saferith.ModulusFromNat(q)
+	pInvQ := new(saferith.Nat).ModInverse(p, qMod)
+	pNat := new(saferith.Nat).SetNat(p)
 	return &Modulus{
 		Modulus: nMod,
 		p:       pMod,
@@ -43,11 +43,11 @@ func ModulusFromFactors(p, q *safenum.Nat) *Modulus {
 	}
 }
 
-// Exp is equivalent to (safenum.Nat).Exp(x, e, n.Modulus).
+// Exp is equivalent to (saferith.Nat).Exp(x, e, n.Modulus).
 // It returns xᵉ (mod n).
-func (n *Modulus) Exp(x, e *safenum.Nat) *safenum.Nat {
+func (n *Modulus) Exp(x, e *saferith.Nat) *saferith.Nat {
 	if n.hasFactorization() {
-		var xp, xq safenum.Nat
+		var xp, xq saferith.Nat
 		xp.Exp(x, e, n.p) // x₁ = xᵉ (mod p₁)
 		xq.Exp(x, e, n.q) // x₂ = xᵉ (mod p₂)
 		// r = x₁ + p₁ ⋅ [p₁⁻¹ (mod p₂)] ⋅ [x₁ - x₂] (mod n)
@@ -57,19 +57,19 @@ func (n *Modulus) Exp(x, e *safenum.Nat) *safenum.Nat {
 		r.ModAdd(r, &xp, n.Modulus)
 		return r
 	}
-	return new(safenum.Nat).Exp(x, e, n.Modulus)
+	return new(saferith.Nat).Exp(x, e, n.Modulus)
 }
 
-// ExpI is equivalent to (safenum.Nat).ExpI(x, e, n.Modulus).
+// ExpI is equivalent to (saferith.Nat).ExpI(x, e, n.Modulus).
 // It returns xᵉ (mod n).
-func (n *Modulus) ExpI(x *safenum.Nat, e *safenum.Int) *safenum.Nat {
+func (n *Modulus) ExpI(x *saferith.Nat, e *saferith.Int) *saferith.Nat {
 	if n.hasFactorization() {
 		y := n.Exp(x, e.Abs())
-		inverted := new(safenum.Nat).ModInverse(y, n.Modulus)
+		inverted := new(saferith.Nat).ModInverse(y, n.Modulus)
 		y.CondAssign(e.IsNegative(), inverted)
 		return y
 	}
-	return new(safenum.Nat).ExpI(x, e, n.Modulus)
+	return new(saferith.Nat).ExpI(x, e, n.Modulus)
 }
 
 func (n Modulus) hasFactorization() bool {

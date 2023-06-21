@@ -5,7 +5,7 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/arith"
@@ -15,11 +15,10 @@ import (
 )
 
 type Public struct {
-	N    *safenum.Modulus
-	S, T *safenum.Nat
+	Aux *pedersen.Parameters
 }
 type Private struct {
-	Lambda, Phi, P, Q *safenum.Nat
+	Lambda, Phi, P, Q *saferith.Nat
 }
 
 type Proof struct {
@@ -30,7 +29,8 @@ func (p *Proof) IsValid(public Public) bool {
 	if p == nil {
 		return false
 	}
-	if !arith.IsValidBigModN(public.N.Big(), append(p.As[:], p.Zs[:]...)...) {
+
+	if !arith.IsValidBigModN(public.Aux.N().Big(), append(p.As[:], p.Zs[:]...)...) {
 		return false
 	}
 	return true
@@ -40,12 +40,12 @@ func (p *Proof) IsValid(public Public) bool {
 // s = t^lambda (mod N).
 func NewProof(private Private, hash *hash.Hash, public Public, pl *pool.Pool) *Proof {
 	lambda := private.Lambda
-	phi := safenum.ModulusFromNat(private.Phi)
+	phi := saferith.ModulusFromNat(private.Phi)
 
 	n := arith.ModulusFromFactors(private.P, private.Q)
 
 	var (
-		as [params.StatParam]*safenum.Nat
+		as [params.StatParam]*saferith.Nat
 		As [params.StatParam]*big.Int
 	)
 	lockedRand := pool.NewLockedReader(rand.Reader)
@@ -54,7 +54,7 @@ func NewProof(private Private, hash *hash.Hash, public Public, pl *pool.Pool) *P
 		as[i] = sample.ModN(lockedRand, phi)
 
 		// Aᵢ = tᵃ mod N
-		As[i] = n.Exp(public.T, as[i]).Big()
+		As[i] = n.Exp(public.Aux.T(), as[i]).Big()
 
 		return nil
 	})
@@ -81,11 +81,11 @@ func (p *Proof) Verify(public Public, hash *hash.Hash, pl *pool.Pool) bool {
 	if p == nil {
 		return false
 	}
-	if err := pedersen.ValidateParameters(public.N, public.S, public.T); err != nil {
+	if err := pedersen.ValidateParameters(public.Aux.N(), public.Aux.S(), public.Aux.T()); err != nil {
 		return false
 	}
 
-	n, s, t := public.N.Big(), public.S.Big(), public.T.Big()
+	n, s, t := public.Aux.N().Big(), public.Aux.S().Big(), public.Aux.T().Big()
 
 	es, err := challenge(hash, public, p.As)
 	if err != nil {
@@ -130,7 +130,7 @@ func (p *Proof) Verify(public Public, hash *hash.Hash, pl *pool.Pool) bool {
 }
 
 func challenge(hash *hash.Hash, public Public, A [params.StatParam]*big.Int) (es []bool, err error) {
-	err = hash.WriteAny(public.N, public.S, public.T)
+	err = hash.WriteAny(public.Aux)
 	for _, a := range A {
 		_ = hash.WriteAny(a)
 	}

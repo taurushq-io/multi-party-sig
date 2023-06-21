@@ -4,7 +4,7 @@ import (
 	mrand "math/rand"
 	"testing"
 
-	"github.com/cronokirby/safenum"
+	"github.com/cronokirby/saferith"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
@@ -18,9 +18,9 @@ import (
 )
 
 var (
-	oneNat      = new(safenum.Nat).SetUint64(1)
-	oneInt      = new(safenum.Int).SetNat(oneNat)
-	minusOneInt = new(safenum.Int).SetNat(oneNat).Neg(1)
+	oneNat      = new(saferith.Nat).SetUint64(1)
+	oneInt      = new(saferith.Int).SetNat(oneNat)
+	minusOneInt = new(saferith.Int).SetNat(oneNat).Neg(1)
 
 	N           = 4
 	T           = N - 1
