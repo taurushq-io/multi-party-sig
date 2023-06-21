@@ -59,7 +59,7 @@ func (r *abort2) StoreBroadcastMessage(msg round.Message) error {
 	}
 
 	for id, chiProof := range body.ChiProofs {
-		if !chiProof.Verify(r.HashForID(from), public, r.ChiCiphertext[id][from]) {
+		if !chiProof.Verify(r.HashForID(from), public, r.ChiCiphertext[from][id]) {
 			return errors.New("failed to validate Delta MtA Nth proof")
 		}
 	}
