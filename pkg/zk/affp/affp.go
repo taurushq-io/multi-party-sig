@@ -179,7 +179,7 @@ func NewProof(group curve.Curve, hash *hash.Hash, public Public, private Private
 	}
 }
 
-func (p Proof) Verify(group curve.Curve, hash *hash.Hash, public Public) bool {
+func (p *Proof) Verify(group curve.Curve, hash *hash.Hash, public Public) bool {
 	if !p.IsValid(public) {
 		return false
 	}
