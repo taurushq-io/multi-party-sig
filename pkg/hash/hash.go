@@ -2,6 +2,7 @@ package hash
 
 import (
 	"encoding"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -73,9 +74,24 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 			toBeWritten = &BytesWithDomain{"[]byte", t}
 		case *big.Int:
 			if t == nil {
-				return fmt.Errorf("hash.Hash: write *big.Int: nil")
+				return fmt.Errorf("hash.WriteAny: write *big.Int: nil")
 			}
-			bytes, _ := t.GobEncode()
+			// size of t in bits
+			var t_bits = uint64(t.BitLen())
+			// 1 byte  for the sign
+			// 8 bytes for the bit length
+			// followed by the big-endian representation of t
+			var num_bytes = 1 + 8 + (t_bits+7)/8
+			var bytes = make([]byte, num_bytes)
+			// if t<0 then bytes[0]=255
+			// if t=0 then bytes[0]=0
+			// if t>0 then bytes[0]=1
+			bytes[0] = byte(t.Sign())
+			// store the size in bytes 1-9
+			binary.BigEndian.PutUint64(bytes[1:9], t_bits)
+			// fill the remaining bytes with the positive part of t
+			// in big-endian representation
+			_ = t.FillBytes(bytes[9:])
 			toBeWritten = &BytesWithDomain{"big.Int", bytes}
 		case WriterToWithDomain:
 			toBeWritten = t
@@ -90,7 +106,8 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 				Bytes:     bytes,
 			}
 		default:
-			fmt.Println(t)
+			// This should panic or something
+			return fmt.Errorf("hash.WriteAny: invalid type provided as input")
 		}
 
 		// Write out `(<domain><data>)`, so that each domain separated piece of data
