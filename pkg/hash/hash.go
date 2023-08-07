@@ -1,6 +1,7 @@
 package hash
 
 import (
+	"bytes"
 	"encoding"
 	"encoding/binary"
 	"errors"
@@ -64,44 +65,36 @@ func (hash *Hash) Sum() []byte {
 // This function will apply its own domain separation for the first two types.
 // The last type already suggests which domain to use, and this function respects it.
 func (hash *Hash) WriteAny(data ...interface{}) error {
-	var toBeWritten WriterToWithDomain
+	var sizeBuf [8]byte
+	var toBeWritten BytesWithDomain
 	for _, d := range data {
 		switch t := d.(type) {
 		case []byte:
 			if t == nil {
 				return errors.New("hash.WriteAny: nil []byte")
 			}
-			toBeWritten = &BytesWithDomain{"[]byte", t}
+			toBeWritten = BytesWithDomain{"[]byte", t}
 		case *big.Int:
 			if t == nil {
 				return fmt.Errorf("hash.WriteAny: write *big.Int: nil")
 			}
-			// size of t in bits
-			var t_bits = uint64(t.BitLen())
-			// 1 byte  for the sign
-			// 8 bytes for the bit length
-			// followed by the big-endian representation of t
-			var num_bytes = 1 + 8 + (t_bits+7)/8
-			var bytes = make([]byte, num_bytes)
-			// if t<0 then bytes[0]=255
-			// if t=0 then bytes[0]=0
-			// if t>0 then bytes[0]=1
-			bytes[0] = byte(t.Sign())
-			// store the size in bytes 1-9
-			binary.BigEndian.PutUint64(bytes[1:9], t_bits)
-			// fill the remaining bytes with the positive part of t
-			// in big-endian representation
-			_ = t.FillBytes(bytes[9:])
-			toBeWritten = &BytesWithDomain{"big.Int", bytes}
+			bytes, _ := t.GobEncode()
+			toBeWritten = BytesWithDomain{"big.Int", bytes}
 		case WriterToWithDomain:
-			toBeWritten = t
+			var buf = new(bytes.Buffer)
+			_, err := t.WriteTo(buf)
+			if err != nil {
+				name := reflect.TypeOf(t)
+				return fmt.Errorf("hash.WriteAny: %s: %w", name.String(), err)
+			}
+			toBeWritten = BytesWithDomain{t.Domain(), buf.Bytes()}
 		case encoding.BinaryMarshaler:
 			name := reflect.TypeOf(t)
 			bytes, err := t.MarshalBinary()
 			if err != nil {
 				return fmt.Errorf("hash.WriteAny: %s: %w", name.String(), err)
 			}
-			toBeWritten = &BytesWithDomain{
+			toBeWritten = BytesWithDomain{
 				TheDomain: name.String(),
 				Bytes:     bytes,
 			}
@@ -110,15 +103,24 @@ func (hash *Hash) WriteAny(data ...interface{}) error {
 			return fmt.Errorf("hash.WriteAny: invalid type provided as input")
 		}
 
-		// Write out `(<domain><data>)`, so that each domain separated piece of data
+		// Write out `(<domain_size><domain><data_size><data>)`, so that each domain separated piece of data
 		// is distinguished from others.
+
+		// (
 		_, _ = hash.h.WriteString("(")
-		_, _ = hash.h.WriteString(toBeWritten.Domain())
-		_, err := toBeWritten.WriteTo(hash.h)
+		// <domain_size>
+		binary.BigEndian.PutUint64(sizeBuf[:], uint64(len(toBeWritten.TheDomain)))
+		_, _ = hash.h.Write(sizeBuf[:])
+		// <domain>
+		_, _ = hash.h.WriteString(toBeWritten.TheDomain)
+		// <data_size>
+		binary.BigEndian.PutUint64(sizeBuf[:], uint64(len(toBeWritten.Bytes)))
+		_, _ = hash.h.Write(sizeBuf[:])
+		// <data>
+		_, _ = hash.h.Write(toBeWritten.Bytes)
+		// )
 		_, _ = hash.h.WriteString(")")
-		if err != nil {
-			return fmt.Errorf("hash.WriteAny: %s: %w", toBeWritten.Domain(), err)
-		}
+
 	}
 	return nil
 }
