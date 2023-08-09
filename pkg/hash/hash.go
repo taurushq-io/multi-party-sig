@@ -1,7 +1,9 @@
 package hash
 
 import (
+	"bytes"
 	"encoding"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -63,45 +65,62 @@ func (hash *Hash) Sum() []byte {
 // This function will apply its own domain separation for the first two types.
 // The last type already suggests which domain to use, and this function respects it.
 func (hash *Hash) WriteAny(data ...interface{}) error {
-	var toBeWritten WriterToWithDomain
+	var sizeBuf [8]byte
+	var toBeWritten BytesWithDomain
 	for _, d := range data {
 		switch t := d.(type) {
 		case []byte:
 			if t == nil {
 				return errors.New("hash.WriteAny: nil []byte")
 			}
-			toBeWritten = &BytesWithDomain{"[]byte", t}
+			toBeWritten = BytesWithDomain{"[]byte", t}
 		case *big.Int:
 			if t == nil {
-				return fmt.Errorf("hash.Hash: write *big.Int: nil")
+				return fmt.Errorf("hash.WriteAny: write *big.Int: nil")
 			}
 			bytes, _ := t.GobEncode()
-			toBeWritten = &BytesWithDomain{"big.Int", bytes}
+			toBeWritten = BytesWithDomain{"big.Int", bytes}
 		case WriterToWithDomain:
-			toBeWritten = t
+			var buf = new(bytes.Buffer)
+			_, err := t.WriteTo(buf)
+			if err != nil {
+				name := reflect.TypeOf(t)
+				return fmt.Errorf("hash.WriteAny: %s: %w", name.String(), err)
+			}
+			toBeWritten = BytesWithDomain{t.Domain(), buf.Bytes()}
 		case encoding.BinaryMarshaler:
 			name := reflect.TypeOf(t)
 			bytes, err := t.MarshalBinary()
 			if err != nil {
 				return fmt.Errorf("hash.WriteAny: %s: %w", name.String(), err)
 			}
-			toBeWritten = &BytesWithDomain{
+			toBeWritten = BytesWithDomain{
 				TheDomain: name.String(),
 				Bytes:     bytes,
 			}
 		default:
-			fmt.Println(t)
+			// This should panic or something
+			return fmt.Errorf("hash.WriteAny: invalid type provided as input")
 		}
 
-		// Write out `(<domain><data>)`, so that each domain separated piece of data
+		// Write out `(<domain_size><domain><data_size><data>)`, so that each domain separated piece of data
 		// is distinguished from others.
+
+		// (
 		_, _ = hash.h.WriteString("(")
-		_, _ = hash.h.WriteString(toBeWritten.Domain())
-		_, err := toBeWritten.WriteTo(hash.h)
+		// <domain_size>
+		binary.BigEndian.PutUint64(sizeBuf[:], uint64(len(toBeWritten.TheDomain)))
+		_, _ = hash.h.Write(sizeBuf[:])
+		// <domain>
+		_, _ = hash.h.WriteString(toBeWritten.TheDomain)
+		// <data_size>
+		binary.BigEndian.PutUint64(sizeBuf[:], uint64(len(toBeWritten.Bytes)))
+		_, _ = hash.h.Write(sizeBuf[:])
+		// <data>
+		_, _ = hash.h.Write(toBeWritten.Bytes)
+		// )
 		_, _ = hash.h.WriteString(")")
-		if err != nil {
-			return fmt.Errorf("hash.WriteAny: %s: %w", toBeWritten.Domain(), err)
-		}
+
 	}
 	return nil
 }
