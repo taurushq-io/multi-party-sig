@@ -36,3 +36,26 @@ func TestSignature_Verify(t *testing.T) {
 		t.Error("verify failed")
 	}
 }
+
+func TestSignature_Verify_Zero(t *testing.T) {
+	group := curve.Secp256k1{}
+
+	m := []byte("any message is valid")
+	x := sample.Scalar(rand.Reader, group)
+	X := x.ActOnBase()
+
+	// s = 0
+	s := group.NewScalar()
+	if !s.IsZero() {
+		t.Error("s should be zero")
+		return
+	}
+	R := s.ActOnBase()
+	sig := &Signature{
+		R: R,
+		S: s,
+	}
+	if sig.Verify(X, m) {
+		t.Error("zero R/S signature should not verify")
+	}
+}

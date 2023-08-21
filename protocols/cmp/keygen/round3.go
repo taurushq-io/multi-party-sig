@@ -68,7 +68,7 @@ func (r *round3) StoreBroadcastMessage(msg round.Message) error {
 	}
 
 	// check nil
-	if body.N == nil || body.S == nil || body.T == nil || body.VSSPolynomial == nil {
+	if body.N == nil || body.S == nil || body.T == nil || body.VSSPolynomial == nil || body.SchnorrCommitments == nil {
 		return round.ErrNilFields
 	}
 	// check RID length
