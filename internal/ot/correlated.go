@@ -165,6 +165,9 @@ func (s *CorreOTReceiveSetup) MarshalBinary() ([]byte, error) {
 }
 
 func (s *CorreOTReceiveSetup) UnmarshalBinary(data []byte) error {
+	if s == nil {
+		return errors.New("nil pointer")
+	}
 	n := 0
 
 	for i := 0; i < params.OTParam; i++ {
