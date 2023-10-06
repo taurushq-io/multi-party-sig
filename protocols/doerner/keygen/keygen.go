@@ -33,6 +33,59 @@ func (c *ConfigReceiver) Group() curve.Curve {
 	return c.Public.Curve()
 }
 
+func (c *ConfigReceiver) MarshalBinary() ([]byte, error) {
+	res := make([]byte, 0, ot.CorreOTReceiveSetupSize+32+33+len(c.ChainKey))
+
+	b, err := c.Setup.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	res = append(res, b...)
+
+	if err != nil {
+		return nil, err
+	}
+
+	b, err = c.SecretShare.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	res = append(res, b...)
+
+	b, err = c.Public.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	res = append(res, b...)
+	res = append(res, c.ChainKey...)
+
+	return res, nil
+}
+
+func (c *ConfigReceiver) UnmarshalBinary(data []byte) error {
+	if len(data) < ot.CorreOTReceiveSetupSize+32+33+len(c.ChainKey) {
+		return errors.New("invalid data")
+	}
+	n := ot.CorreOTReceiveSetupSize
+	if err := c.Setup.UnmarshalBinary(data[:n]); err != nil {
+		return err
+	}
+
+	if err := c.SecretShare.UnmarshalBinary(data[n : n+32]); err != nil {
+		return err
+	}
+	n += 32
+
+	if err := c.Public.UnmarshalBinary(data[n : n+33]); err != nil {
+		return err
+	}
+	n += 33
+
+	c.ChainKey = data[n:]
+
+	return nil
+}
+
 // Derive performs an arbitrary derivation of a related key, by adding a scalar.
 //
 // This can support methods like BIP32, but is more general.
@@ -83,6 +136,59 @@ type ConfigSender struct {
 	Public curve.Point
 	// ChainKey is the shared chain key.
 	ChainKey []byte
+}
+
+func (c *ConfigSender) MarshalBinary() ([]byte, error) {
+	res := make([]byte, 0, ot.CorreOTSendSetupSize+32+33+len(c.ChainKey))
+
+	b, err := c.Setup.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	res = append(res, b...)
+
+	if err != nil {
+		return nil, err
+	}
+
+	b, err = c.SecretShare.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	res = append(res, b...)
+
+	b, err = c.Public.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	res = append(res, b...)
+	res = append(res, c.ChainKey...)
+
+	return res, nil
+}
+
+func (c *ConfigSender) UnmarshalBinary(data []byte) error {
+	if len(data) < ot.CorreOTSendSetupSize+32+33+len(c.ChainKey) {
+		return errors.New("invalid data")
+	}
+	n := ot.CorreOTSendSetupSize
+	if err := c.Setup.UnmarshalBinary(data[:n]); err != nil {
+		return err
+	}
+
+	if err := c.SecretShare.UnmarshalBinary(data[n : n+32]); err != nil {
+		return err
+	}
+	n += 32
+
+	if err := c.Public.UnmarshalBinary(data[n : n+33]); err != nil {
+		return err
+	}
+	n += 33
+
+	c.ChainKey = data[n:]
+
+	return nil
 }
 
 // Group returns the elliptic curve group associate with this config.

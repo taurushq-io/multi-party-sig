@@ -1,6 +1,7 @@
 package doerner
 
 import (
+	"github.com/taurusgroup/multi-party-sig/internal/ot"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
@@ -19,7 +20,7 @@ type (
 // Because ConfigReceiver contains group dependent data, it needs to be initialized
 // with a concrete group to be unmarshalled correctly.
 func EmptyConfigReceiver(group curve.Curve) *ConfigReceiver {
-	return &ConfigReceiver{SecretShare: group.NewScalar(), Public: group.NewPoint()}
+	return &ConfigReceiver{SecretShare: group.NewScalar(), Public: group.NewPoint(), Setup: new(ot.CorreOTReceiveSetup)}
 }
 
 // EmptyConfigSender creates a ConfigSender that's ready to be unmarshalled.
@@ -27,7 +28,7 @@ func EmptyConfigReceiver(group curve.Curve) *ConfigReceiver {
 // Because ConfigSender contains group dependent data, it needs to be initialized
 // with a concrete group to be unmarshalled correctly.
 func EmptyConfigSender(group curve.Curve) *ConfigSender {
-	return &ConfigSender{SecretShare: group.NewScalar(), Public: group.NewPoint()}
+	return &ConfigSender{SecretShare: group.NewScalar(), Public: group.NewPoint(), Setup: new(ot.CorreOTSendSetup)}
 }
 
 // Keygen initiates the Doerner key generation protocol.

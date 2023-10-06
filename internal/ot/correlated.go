@@ -12,6 +12,11 @@ import (
 	"github.com/zeebo/blake3"
 )
 
+const (
+	CorreOTSendSetupSize    = params.OTBytes * (params.OTParam + 1)
+	CorreOTReceiveSetupSize = params.OTParam * params.OTBytes * 2
+)
+
 // CorreOTSendSetup contains the results of the Sender's setup of a Correlated OT.
 type CorreOTSendSetup struct {
 	// The choice bits of the correlation.
@@ -19,6 +24,28 @@ type CorreOTSendSetup struct {
 	// Each column of this matrix is taken from one of the Receiver's corresponding
 	// columns, based on the corresponding bit of Delta.
 	_K_Delta [params.OTParam][params.OTBytes]byte
+}
+
+func (s *CorreOTSendSetup) MarshalBinary() ([]byte, error) {
+	res := make([]byte, 0, CorreOTSendSetupSize)
+	res = append(res, s._Delta[:]...)
+	for _, val := range s._K_Delta {
+		res = append(res, val[:]...)
+	}
+	return res, nil
+}
+
+func (s *CorreOTSendSetup) UnmarshalBinary(data []byte) error {
+	if s == nil {
+		return errors.New("nil pointer")
+	}
+	n := copy(s._Delta[:], data[:params.OTBytes])
+	for i := 0; i < params.OTParam; i++ {
+		copy(s._K_Delta[i][:], data[n:n+params.OTBytes])
+		n += params.OTBytes
+	}
+
+	return nil
 }
 
 // CorreOTSetupSender contains all of the state to run the Sender's setup of a Correlated OT.
@@ -121,6 +148,36 @@ func (r *CorreOTSetupSender) Round3(msg *CorreOTSetupReceiveRound3Message) (*Cor
 type CorreOTReceiveSetup struct {
 	_K_0 [params.OTParam][params.OTBytes]byte
 	_K_1 [params.OTParam][params.OTBytes]byte
+}
+
+func (s *CorreOTReceiveSetup) MarshalBinary() ([]byte, error) {
+	res := make([]byte, 0, params.OTParam*params.OTBytes*2)
+
+	for _, val := range s._K_0 {
+		res = append(res, val[:]...)
+	}
+
+	for _, val := range s._K_1 {
+		res = append(res, val[:]...)
+	}
+
+	return res, nil
+}
+
+func (s *CorreOTReceiveSetup) UnmarshalBinary(data []byte) error {
+	n := 0
+
+	for i := 0; i < params.OTParam; i++ {
+		copy(s._K_0[i][:], data[n:n+params.OTBytes])
+		n += params.OTBytes
+	}
+
+	for i := 0; i < params.OTParam; i++ {
+		copy(s._K_1[i][:], data[n:n+params.OTBytes])
+		n += params.OTBytes
+	}
+
+	return nil
 }
 
 // CorreOTSetupReceiver holds the Receiver's state on a Correlated OT Setup.

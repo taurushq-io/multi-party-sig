@@ -135,6 +135,45 @@ func runSign(partyIDs party.IDSlice, configSender *keygen.ConfigSender, configRe
 	return sig, nil
 }
 
+func runSignMarshal(partyIDs party.IDSlice, configSenderBytes, configReceiverBytes []byte) (*ecdsa.Signature, error) {
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+
+	configSender := EmptyConfigSender(curve.Secp256k1{})
+	configReceiver := EmptyConfigReceiver(curve.Secp256k1{})
+	if err := configSender.UnmarshalBinary(configSenderBytes); err != nil {
+		return nil, err
+	}
+	if err := configReceiver.UnmarshalBinary(configReceiverBytes); err != nil {
+		return nil, err
+	}
+
+	h0, err := protocol.NewTwoPartyHandler(SignReceiver(configReceiver, partyIDs[0], partyIDs[1], testHash, pl), []byte("session"), true)
+	if err != nil {
+		return nil, err
+	}
+	h1, err := protocol.NewTwoPartyHandler(SignSender(configSender, partyIDs[1], partyIDs[0], testHash, pl), []byte("session"), true)
+	if err != nil {
+		return nil, err
+	}
+	var wg sync.WaitGroup
+	network := test.NewNetwork(partyIDs)
+	wg.Add(2)
+	go runHandler(&wg, partyIDs[0], h0, network)
+	go runHandler(&wg, partyIDs[1], h1, network)
+	wg.Wait()
+
+	resultRound0, err := h0.Result()
+	if err != nil {
+		return nil, err
+	}
+	sig, ok := resultRound0.(*ecdsa.Signature)
+	if !ok {
+		return nil, errors.New("failed to cast result to Signature")
+	}
+	return sig, nil
+}
+
 func checkKeygenOutput(t *testing.T, configSender *ConfigSender, configReceiver *ConfigReceiver) {
 	require.True(t, configSender.Public.Equal(configReceiver.Public))
 	require.False(t, configSender.Public.IsIdentity())
@@ -163,6 +202,40 @@ func TestSign(t *testing.T) {
 	require.True(t, newConfigReceiver.Public.Equal(configReceiver.Public))
 
 	sig, err = runSign(partyIDs, configSender, configReceiver)
+	require.NoError(t, err)
+	require.True(t, sig.Verify(configSender.Public, testHash))
+	require.True(t, sig.Verify(configReceiver.Public, testHash))
+}
+
+func TestSignMarshal(t *testing.T) {
+	partyIDs := test.PartyIDs(2)
+
+	configSender, configReceiver, err := runKeygen(partyIDs)
+	require.NoError(t, err)
+	checkKeygenOutput(t, configSender, configReceiver)
+
+	configSenderBytes, err := configSender.MarshalBinary()
+	require.NoError(t, err, "marshal config sender failed")
+	configReceiverBytes, err := configReceiver.MarshalBinary()
+	require.NoError(t, err, "marshal config receiver failed")
+
+	sig, err := runSignMarshal(partyIDs, configSenderBytes, configReceiverBytes)
+	require.NoError(t, err)
+	require.True(t, sig.Verify(configSender.Public, testHash))
+	require.True(t, sig.Verify(configReceiver.Public, testHash))
+
+	newConfigSender, newConfigReceiver, err := runRefresh(partyIDs, configSender, configReceiver)
+	require.NoError(t, err)
+	checkKeygenOutput(t, configSender, configReceiver)
+	require.True(t, newConfigSender.Public.Equal(configSender.Public))
+	require.True(t, newConfigReceiver.Public.Equal(configReceiver.Public))
+
+	configSenderBytes, err = newConfigSender.MarshalBinary()
+	require.NoError(t, err, "marshal config sender failed")
+	configReceiverBytes, err = newConfigReceiver.MarshalBinary()
+	require.NoError(t, err, "marshal config receiver failed")
+
+	sig, err = runSignMarshal(partyIDs, configSenderBytes, configReceiverBytes)
 	require.NoError(t, err)
 	require.True(t, sig.Verify(configSender.Public, testHash))
 	require.True(t, sig.Verify(configReceiver.Public, testHash))
