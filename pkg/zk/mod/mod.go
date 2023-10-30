@@ -262,8 +262,9 @@ func (p *Proof) Verify(public Public, hash *hash.Hash, pl *pool.Pool) bool {
 func challenge(hash *hash.Hash, n *saferith.Modulus, w *big.Int) (es []*saferith.Nat, err error) {
 	err = hash.WriteAny(n, w)
 	es = make([]*saferith.Nat, params.StatParam)
+	var digest = hash.Digest()
 	for i := range es {
-		es[i] = sample.ModN(hash.Digest(), n)
+		es[i] = sample.ModN(digest, n)
 	}
 	return
 }

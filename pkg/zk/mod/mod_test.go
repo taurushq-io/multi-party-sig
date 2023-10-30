@@ -79,6 +79,23 @@ func Test_set4thRoot(t *testing.T) {
 	assert.True(t, root.Eq(y) == 1, "root^4 should be equal to y")
 }
 
+func Test_hashFix(t *testing.T) {
+	N := zk.ProverPaillierSecret.N()
+	w := sample.QNR(rand.Reader, N).Big()
+	h := hash.New()
+	es, err := challenge(h, N, w)
+	assert.NoError(t, err, "failed to compute challenge")
+
+	allEqual := true
+	for _, e := range es {
+		if !(e.Eq(es[0]) == 1) {
+			allEqual = false
+		}
+	}
+
+	assert.False(t, allEqual, "all challenges should be different")
+}
+
 var proof *Proof
 
 func BenchmarkCRT(b *testing.B) {
