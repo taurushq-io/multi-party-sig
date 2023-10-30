@@ -88,7 +88,6 @@ func Test_hashFix(t *testing.T) {
 
 	allEqual := true
 	for _, e := range es {
-		println(e.String())
 		if !(e.Eq(es[0]) == 1) {
 			allEqual = false
 		}
