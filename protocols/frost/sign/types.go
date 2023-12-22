@@ -1,8 +1,10 @@
 package sign
 
 import (
+	"errors"
 	"io"
 
+	"github.com/fxamacker/cbor/v2"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
@@ -29,14 +31,22 @@ func (messageHash) Domain() string {
 //
 // This signature claims to satisfy:
 //
-//    z * G = R + H(R, Y, m) * Y
+//	z * G = R + H(R, Y, m) * Y
 //
 // for a public key Y.
 type Signature struct {
+	Group curve.Curve
 	// R is the commitment point.
 	R curve.Point
 	// z is the response scalar.
 	z curve.Scalar
+}
+
+type signatureMarshal struct {
+	// R is the commitment point.
+	R curve.Point
+	// z is the response scalar.
+	Z curve.Scalar
 }
 
 // Verify checks if a signature equation actually holds.
@@ -55,4 +65,26 @@ func (sig Signature) Verify(public curve.Point, m []byte) bool {
 	actual := sig.z.ActOnBase()
 
 	return expected.Equal(actual)
+}
+
+func (sig *Signature) MarshalBinary() ([]byte, error) {
+	return cbor.Marshal(&signatureMarshal{
+		R: sig.R,
+		Z: sig.z,
+	})
+}
+
+func (sig *Signature) UnmarshalBinary(data []byte) error {
+	if sig.Group == nil {
+		return errors.New("can't unmarshal frost signature with no group")
+	}
+	sigMarshal := &signatureMarshal{
+		R: sig.Group.NewPoint(),
+		Z: sig.Group.NewScalar(),
+	}
+	if err := cbor.Unmarshal(data, sigMarshal); err != nil {
+		return err
+	}
+	sig.R, sig.z = sigMarshal.R, sigMarshal.Z
+	return nil
 }
