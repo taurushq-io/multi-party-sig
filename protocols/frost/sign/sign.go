@@ -48,7 +48,7 @@ func StartSignCommon(taproot bool, result *keygen.Config, signers []party.ID, me
 	}
 }
 
-func StartSignAdaptor(result *keygen.Config, signers []party.ID, messageHash []byte, adaptor curve.Secp256k1Point) protocol.StartFunc {
+func StartSignAdaptor(result *keygen.Config, signers []party.ID, adaptor curve.Secp256k1Point, messageHash []byte) protocol.StartFunc {
 	return func(sessionID []byte) (round.Session, error) {
 		info := round.Info{
 			FinalRoundNumber: protocolRounds,

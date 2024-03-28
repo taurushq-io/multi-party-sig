@@ -43,7 +43,8 @@ func EmptyConfig(group curve.Curve) *Config {
 // selfID is the identifier for the local party calling this function.
 //
 // This protocol corresponds to Figure 1 of the Frost paper:
-//   https://eprint.iacr.org/2020/852.pdf
+//
+//	https://eprint.iacr.org/2020/852.pdf
 func Keygen(group curve.Curve, selfID party.ID, participants []party.ID, threshold int) protocol.StartFunc {
 	return keygen.StartKeygenCommon(false, group, participants, threshold, selfID, nil, nil, nil)
 }
@@ -91,8 +92,8 @@ func RefreshTaproot(config *TaprootConfig, participants []party.ID) protocol.Sta
 // messageHash is the hash of the message a signature should be generated for.
 //
 // This protocol merges Figures 2 and 3 from the Frost paper:
-//   https://eprint.iacr.org/2020/852.pdf
 //
+//	https://eprint.iacr.org/2020/852.pdf
 //
 // We merge the pre-processing and signing protocols into a single signing protocol
 // which doesn't require any pre-processing.
@@ -129,4 +130,25 @@ func SignTaproot(config *TaprootConfig, signers []party.ID, messageHash []byte) 
 		VerificationShares: party.NewPointMap(genericVerificationShares),
 	}
 	return sign.StartSignCommon(true, normalResult, signers, messageHash)
+}
+
+func SignTaprootAdaptor(config *TaprootConfig, signers []party.ID, adaptorPoint curve.Secp256k1Point, messageHash []byte) protocol.StartFunc {
+	publicKey, err := curve.Secp256k1{}.LiftX(config.PublicKey)
+	if err != nil {
+		return func([]byte) (round.Session, error) {
+			return nil, err
+		}
+	}
+	genericVerificationShares := make(map[party.ID]curve.Point)
+	for k, v := range config.VerificationShares {
+		genericVerificationShares[k] = v
+	}
+	normalResult := &keygen.Config{
+		ID:                 config.ID,
+		Threshold:          config.Threshold,
+		PrivateShare:       config.PrivateShare,
+		PublicKey:          publicKey,
+		VerificationShares: party.NewPointMap(genericVerificationShares),
+	}
+	return sign.StartSignAdaptor(normalResult, signers, adaptorPoint, messageHash)
 }

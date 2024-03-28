@@ -242,7 +242,7 @@ func TestSignTaprootAdaptor(t *testing.T) {
 			PublicKey:          tapRootPublicKey,
 			VerificationShares: party.NewPointMap(genericVerificationShares),
 		}
-		r, err := StartSignAdaptor(normalResult, partyIDs, steak, *adaptorPoint)(nil)
+		r, err := StartSignAdaptor(normalResult, partyIDs, *adaptorPoint, steak)(nil)
 		require.NoError(t, err, "round creation should not result in an error")
 		rounds = append(rounds, r)
 	}

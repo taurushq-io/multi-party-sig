@@ -123,6 +123,14 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 
 		// hack to support adaptor point tweak
 		if r.T != nil {
+			if !RSecp.HasEvenY() {
+				r.d_i.Negate()
+				r.e_i.Negate()
+				for _, l := range r.PartyIDs() {
+					RShares[l] = RShares[l].Negate()
+				}
+				RSecp = RSecp.Negate().(*curve.Secp256k1Point)
+			}
 			RSecp = RSecp.Add(r.T).(*curve.Secp256k1Point)
 		}
 
