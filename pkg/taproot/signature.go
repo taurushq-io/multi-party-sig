@@ -241,6 +241,17 @@ func (pk PublicKey) VerifyAdaptor(sig AdaptorSignature, T curve.Secp256k1Point, 
 	return bytes.Equal(check.XBytes(), sig.R.XBytes())
 }
 
+func (sig AdaptorSignature) Serialize() (out [65]byte) {
+	out[0] = 0x03
+	if sig.R.HasEvenY() {
+		out[0] = 0x02
+	}
+	copy(out[1:], sig.R.XBytes())
+	zBytes, _ := sig.z.MarshalBinary()
+	copy(out[33:], zBytes[:])
+	return out
+}
+
 func CompleteAdaptor(sig AdaptorSignature, t curve.Secp256k1Scalar) (Signature, error) {
 	// math from https://github.com/t-bast/lightning-docs/blob/master/schnorr.md#adaptor-signatures
 	// Complete:
