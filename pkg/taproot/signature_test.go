@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAdaptorSerialize(t *testing.T) {
+func TestAdaptorSerialization(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		steak := sha256.New()
 		steak.Write([]byte{0xDE, 0xAD, 0xBE, 0xEF, byte(i)})
@@ -33,6 +33,10 @@ func TestAdaptorSerialize(t *testing.T) {
 		serialized := adaptor.Serialize()
 		require.Equal(t, byte(2), serialized[0])
 		require.Equal(t, []byte(sig), serialized[1:])
+
+		deserialized, err := DeserializeAdaptorSignature(serialized[:])
+		require.NoError(t, err)
+		require.Equal(t, adaptor, deserialized)
 	}
 }
 

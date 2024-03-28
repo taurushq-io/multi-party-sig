@@ -77,6 +77,9 @@ func GenKey(rand io.Reader) (SecretKey, PublicKey, error) {
 // SignatureLen is the number of bytes in a Signature.
 const SignatureLen = 64
 
+// Serialized adaptor signatures have an extra byte for the R point's Y coordinate parity
+const AdaptorSignatureLen = SignatureLen + 1
+
 // Signature represents a signature according to BIP-340.
 //
 // This should exactly SignatureLen = 64 bytes long.
@@ -211,6 +214,26 @@ func NewAdaptorSignature(R curve.Secp256k1Point, z curve.Secp256k1Scalar) Adapto
 		R: R,
 		z: z,
 	}
+}
+
+func DeserializeAdaptorSignature(b []byte) (AdaptorSignature, error) {
+	if len(b) != AdaptorSignatureLen {
+		return AdaptorSignature{},
+			fmt.Errorf("invalid adaptor signature length: expected %v, got %v", AdaptorSignatureLen, len(b))
+	}
+	if !(b[0] == 0x02 || b[0] == 0x03) {
+		return AdaptorSignature{},
+			fmt.Errorf("invalid R point: expected parity byte of 0x02 or 0x03, got %v", b[0])
+	}
+	var R curve.Secp256k1Point
+	if err := R.UnmarshalBinary(b[:33]); err != nil {
+		return AdaptorSignature{}, err
+	}
+	var z curve.Secp256k1Scalar
+	if err := z.UnmarshalBinary(b[33:]); err != nil {
+		return AdaptorSignature{}, err
+	}
+	return NewAdaptorSignature(R, z), nil
 }
 
 func (pk PublicKey) VerifyAdaptor(sig AdaptorSignature, T curve.Secp256k1Point, m []byte) bool {
