@@ -15,7 +15,8 @@ import (
 )
 
 // This round corresponds with the steps 1-4 of Round 1, Figure 1 in the Frost paper:
-//   https://eprint.iacr.org/2020/852.pdf
+//
+//	https://eprint.iacr.org/2020/852.pdf
 type round1 struct {
 	*round.Helper
 	// taproot indicates whether or not to make taproot compatible keys.
@@ -99,7 +100,7 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 		Sigma_i = zksch.NewProof(r.Helper.HashForID(r.SelfID()), a_i0_times_G, a_i0, nil)
 	}
 
-	// 3. "Every participant Pᵢ computes a public comment Φᵢ = <ϕᵢ₀, ..., ϕᵢₜ>
+	// 3. "Every participant Pᵢ computes a public commitment Φᵢ = <ϕᵢ₀, ..., ϕᵢₜ>
 	// where ϕᵢⱼ = aᵢⱼ * G."
 	//
 	// Note: I've once again adjusted the threshold indices, I've also taken

@@ -85,7 +85,7 @@ func (r *Config) Derive(adjust curve.Scalar, newChainKey []byte) (*Config, error
 
 // DeriveChild adjusts the shares to represent the derived public key at a certain index.
 //
-// This will panic if the group is not curve.Secp256k1
+// # This will panic if the group is not curve.Secp256k1
 //
 // This derivation works according to BIP-32, see:
 // https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
@@ -95,6 +95,28 @@ func (r *Config) DeriveChild(i uint32) (*Config, error) {
 		return nil, errors.New("DeriveChild called on non secp256k1 curve")
 	}
 	scalar, newChainKey, err := bip32.DeriveScalar(publicKey, r.ChainKey, i)
+	if err != nil {
+		return nil, err
+	}
+	return r.Derive(scalar, newChainKey)
+}
+
+// DeriveDescendant adjusts the shares to represent the derived public key at a certain path.
+//
+// # This will panic if the group is not curve.Secp256k1
+//
+// This derivation works according to BIP-32, see:
+// https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+func (r *Config) DeriveDescendant(pathSpec string) (*Config, error) {
+	publicKey, ok := r.PublicKey.(*curve.Secp256k1Point)
+	if !ok {
+		return nil, errors.New("DeriveChild called on non secp256k1 curve")
+	}
+	path, err := bip32.PathFrom(pathSpec)
+	if err != nil {
+		return nil, err
+	}
+	scalar, newChainKey, err := bip32.DeriveScalarForPath(publicKey, r.ChainKey, path)
 	if err != nil {
 		return nil, err
 	}
@@ -190,6 +212,22 @@ func (r *TaprootConfig) Derive(adjust *curve.Secp256k1Scalar, newChainKey []byte
 	}, nil
 }
 
+// DeriveTaproot adjusts the shares to turn a Taproot internal key into a Taproot output key.
+//
+// This derivation works according to BIP-341, see:
+// https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki
+func (r *TaprootConfig) DeriveTaproot(merkleRoot []byte) (*TaprootConfig, error) {
+	adjustBytes := taproot.TaggedHash("TapTweak", r.PublicKey[:], merkleRoot)
+
+	var adjust curve.Secp256k1Scalar
+	err := adjust.UnmarshalBinary(adjustBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.Derive(&adjust, nil)
+}
+
 // DeriveChild adjusts the shares to represent the derived public key at a certain index.
 //
 // This derivation works according to BIP-32, see:
@@ -205,6 +243,31 @@ func (r *TaprootConfig) DeriveChild(i uint32) (*TaprootConfig, error) {
 		return nil, err
 	}
 	scalar, newChainKey, err := bip32.DeriveScalar(publicKey, r.ChainKey, i)
+	if err != nil {
+		return nil, err
+	}
+	return r.Derive(scalar, newChainKey)
+}
+
+// DeriveDescendant adjusts the shares to represent the derived public key at a certain path.
+//
+// This derivation works according to BIP-32, see:
+// https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+//
+// Note that to do this derivation, we interpret the Taproot key as an "old"
+// ECDSA key, with the y coordinate byte set to 0x02. We also only look at the x
+// coordinate of the derived public key, making sure that the corresponding secret
+// key matches the version of this point with an even y coordinate.
+func (r *TaprootConfig) DeriveDescendant(pathSpec string) (*TaprootConfig, error) {
+	publicKey, err := curve.Secp256k1{}.LiftX(r.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+	path, err := bip32.PathFrom(pathSpec)
+	if err != nil {
+		return nil, err
+	}
+	scalar, newChainKey, err := bip32.DeriveScalarForPath(publicKey, r.ChainKey, path)
 	if err != nil {
 		return nil, err
 	}
