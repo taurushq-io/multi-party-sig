@@ -252,7 +252,7 @@ func (sig AdaptorSignature) Serialize() (out [65]byte) {
 	return out
 }
 
-func CompleteAdaptor(sig AdaptorSignature, t curve.Secp256k1Scalar) (Signature, error) {
+func (sig AdaptorSignature) Complete(t curve.Secp256k1Scalar) (Signature, error) {
 	// math from https://github.com/t-bast/lightning-docs/blob/master/schnorr.md#adaptor-signatures
 	// Complete:
 	//  s' = s + t

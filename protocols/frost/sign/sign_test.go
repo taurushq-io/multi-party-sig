@@ -102,7 +102,7 @@ func checkOutputTaprootAdaptor(t *testing.T, rounds []round.Session, public tapr
 		adaptorSig := resultRound.Result.(taproot.AdaptorSignature)
 		assert.True(t, public.VerifyAdaptor(adaptorSig, adaptorPoint, m), "expected valid adaptor signature")
 
-		finalSig, err := taproot.CompleteAdaptor(adaptorSig, adaptorSecret)
+		finalSig, err := adaptorSig.Complete(adaptorSecret)
 		require.NoError(t, err, "expected completion of adaptor signature")
 		assert.True(t, public.Verify(finalSig, m), "expected valid signature")
 	}

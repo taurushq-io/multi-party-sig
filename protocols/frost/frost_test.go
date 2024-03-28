@@ -88,7 +88,7 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	require.IsType(t, taproot.AdaptorSignature{}, signResult)
 	adaptorSignature := signResult.(taproot.AdaptorSignature)
 	assert.True(t, cTaproot.PublicKey.VerifyAdaptor(adaptorSignature, *adaptorPoint, message))
-	finalSignature, err := taproot.CompleteAdaptor(adaptorSignature, adaptorSecret)
+	finalSignature, err := adaptorSignature.Complete(adaptorSecret)
 	require.NoError(t, err)
 	assert.True(t, cTaproot.PublicKey.Verify(finalSignature, message))
 }
