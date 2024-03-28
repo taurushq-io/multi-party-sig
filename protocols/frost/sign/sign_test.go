@@ -98,8 +98,8 @@ func checkOutputTaprootAdaptor(t *testing.T, rounds []round.Session, public tapr
 	for _, r := range rounds {
 		require.IsType(t, &round.Output{}, r, "expected result round")
 		resultRound := r.(*round.Output)
-		require.IsType(t, taproot.Signature{}, resultRound.Result, "expected taproot signature result")
-		adaptorSig := resultRound.Result.(taproot.Signature)
+		require.IsType(t, taproot.AdaptorSignature{}, resultRound.Result, "expected taproot signature result")
+		adaptorSig := resultRound.Result.(taproot.AdaptorSignature)
 		assert.True(t, public.VerifyAdaptor(adaptorSig, adaptorPoint, m), "expected valid adaptor signature")
 
 		finalSig, err := taproot.CompleteAdaptor(adaptorSig, adaptorSecret)
