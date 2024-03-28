@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"sync/atomic"
@@ -199,4 +200,84 @@ func (pk PublicKey) Verify(sig Signature, m []byte) bool {
 		return false
 	}
 	return bytes.Equal(check.XBytes(), sig[:32])
+}
+
+func (pk PublicKey) VerifyAdaptor(sig Signature, T curve.Secp256k1Point, m []byte) bool {
+	// See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#verification
+	if len(sig) != SignatureLen {
+		return false
+	}
+
+	P, err := curve.Secp256k1{}.LiftX(pk)
+	if err != nil {
+		return false
+	}
+	s := new(curve.Secp256k1Scalar)
+	if err := s.UnmarshalBinary(sig[32:]); err != nil {
+		return false
+	}
+
+	// interpret sig[:32] as a BIP-340 point (even Y coord)
+	sigR := new(curve.Secp256k1Point)
+	var sigRBytes [33]byte
+	sigRBytes[0] = 0x02 // even Y coordinate
+	copy(sigRBytes[1:], sig[:32])
+	if err := sigR.UnmarshalBinary(sigRBytes[:]); err != nil {
+		return false
+	}
+	RplusT := sigR.Add(&T).(*curve.Secp256k1Point)
+	RplusTbytes := RplusT.XBytes()
+
+	eHash := TaggedHash("BIP0340/challenge", RplusTbytes, pk, m)
+	e := new(curve.Secp256k1Scalar)
+	_ = e.UnmarshalBinary(eHash)
+
+	R := s.ActOnBase()
+	check2 := R.Sub(e.Act(P))
+	check := check2.(*curve.Secp256k1Point)
+	if check.IsIdentity() {
+		return false
+	}
+
+	return bytes.Equal(check.XBytes(), sig[:32])
+}
+
+func CompleteAdaptor(sig Signature, t curve.Secp256k1Scalar) (Signature, error) {
+	// math from https://github.com/t-bast/lightning-docs/blob/master/schnorr.md#adaptor-signatures
+	// Complete:
+	//  s' = s + t
+	//  R' = R + T
+	//  (s', R') -> valid schnorr signature
+
+	s := new(curve.Secp256k1Scalar)
+	if err := s.UnmarshalBinary(sig[32:]); err != nil {
+		wrapped := errors.Join(errors.New("adaptor completion: failed to parse s"), err)
+		return []byte{}, wrapped
+	}
+
+	// interpret sig[:32] as a BIP-340 point (even Y coord)
+	R := new(curve.Secp256k1Point)
+	var RBytes [33]byte
+	RBytes[0] = 0x02 // even Y coordinate
+	copy(RBytes[1:], sig[:32])
+	if err := R.UnmarshalBinary(RBytes[:]); err != nil {
+		wrapped := errors.Join(errors.New("adaptor completion: failed to parse R"), err)
+		return []byte{}, wrapped
+	}
+
+	T := t.ActOnBase().(*curve.Secp256k1Point)
+
+	RPrime := R.Add(T).(*curve.Secp256k1Point)
+	if !RPrime.HasEvenY() {
+		t.Negate()
+	}
+	sPrime := s.Add(&t)
+
+	RPrimeBytes := RPrime.XBytes()
+	sPrimeBytes, _ := sPrime.MarshalBinary()
+
+	var outSig [64]byte
+	copy(outSig[:32], RPrimeBytes[:])
+	copy(outSig[32:], sPrimeBytes[:])
+	return outSig[:], nil
 }

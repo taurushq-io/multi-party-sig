@@ -2,6 +2,7 @@ package sign
 
 import (
 	"fmt"
+	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
@@ -43,6 +44,33 @@ func StartSignCommon(taproot bool, result *keygen.Config, signers []party.ID, me
 			Y:       result.PublicKey,
 			YShares: result.VerificationShares.Points,
 			s_i:     result.PrivateShare,
+		}, nil
+	}
+}
+
+func StartSignAdaptor(result *keygen.Config, signers []party.ID, messageHash []byte, adaptor curve.Secp256k1Point) protocol.StartFunc {
+	return func(sessionID []byte) (round.Session, error) {
+		info := round.Info{
+			FinalRoundNumber: protocolRounds,
+			SelfID:           result.ID,
+			PartyIDs:         signers,
+			ProtocolID:       protocolIDTaproot,
+			Threshold:        result.Threshold,
+			Group:            result.PublicKey.Curve(),
+		}
+
+		helper, err := round.NewSession(info, sessionID, nil)
+		if err != nil {
+			return nil, fmt.Errorf("sign.StartSign: %w", err)
+		}
+		return &round1{
+			Helper:  helper,
+			taproot: true,
+			M:       messageHash,
+			Y:       result.PublicKey,
+			YShares: result.VerificationShares.Points,
+			s_i:     result.PrivateShare,
+			T:       &adaptor,
 		}, nil
 	}
 }

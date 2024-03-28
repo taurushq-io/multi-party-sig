@@ -94,6 +94,20 @@ func checkOutputTaproot(t *testing.T, rounds []round.Session, public taproot.Pub
 	}
 }
 
+func checkOutputTaprootAdaptor(t *testing.T, rounds []round.Session, public taproot.PublicKey, adaptorSecret curve.Secp256k1Scalar, adaptorPoint curve.Secp256k1Point, m []byte) {
+	for _, r := range rounds {
+		require.IsType(t, &round.Output{}, r, "expected result round")
+		resultRound := r.(*round.Output)
+		require.IsType(t, taproot.Signature{}, resultRound.Result, "expected taproot signature result")
+		adaptorSig := resultRound.Result.(taproot.Signature)
+		assert.True(t, public.VerifyAdaptor(adaptorSig, adaptorPoint, m), "expected valid adaptor signature")
+
+		finalSig, err := taproot.CompleteAdaptor(adaptorSig, adaptorSecret)
+		require.NoError(t, err, "expected completion of adaptor signature")
+		assert.True(t, public.Verify(finalSig, m), "expected valid signature")
+	}
+}
+
 func TestSignTaproot(t *testing.T) {
 	group := curve.Secp256k1{}
 	N := 5
@@ -165,4 +179,81 @@ func TestSignTaproot(t *testing.T) {
 	}
 
 	checkOutputTaproot(t, rounds, newPublicKey, steak)
+}
+
+func TestSignTaprootAdaptor(t *testing.T) {
+	group := curve.Secp256k1{}
+	N := 5
+	threshold := 2
+
+	partyIDs := test.PartyIDs(N)
+
+	secret := sample.Scalar(rand.Reader, group)
+	publicPoint := secret.ActOnBase()
+	if !publicPoint.(*curve.Secp256k1Point).HasEvenY() {
+		secret.Negate()
+	}
+	f := polynomial.NewPolynomial(group, threshold, secret)
+	publicKey := taproot.PublicKey(publicPoint.(*curve.Secp256k1Point).XBytes())
+	steakHash := sha256.New()
+	_, _ = steakHash.Write([]byte{0xDE, 0xAD, 0xBE, 0xEF})
+	steak := steakHash.Sum(nil)
+	chainKey := make([]byte, params.SecBytes)
+	_, _ = rand.Read(chainKey)
+
+	privateShares := make(map[party.ID]*curve.Secp256k1Scalar, N)
+	for _, id := range partyIDs {
+		privateShares[id] = f.Evaluate(id.Scalar(group)).(*curve.Secp256k1Scalar)
+	}
+
+	verificationShares := make(map[party.ID]*curve.Secp256k1Point, N)
+	for _, id := range partyIDs {
+		verificationShares[id] = privateShares[id].ActOnBase().(*curve.Secp256k1Point)
+	}
+
+	adaptorSecret := sample.Scalar(rand.Reader, group).(*curve.Secp256k1Scalar)
+	adaptorPoint := adaptorSecret.ActOnBase().(*curve.Secp256k1Point)
+	// our adaptor implementation allows for odd Y coords
+
+	var newPublicKey []byte
+	rounds := make([]round.Session, 0, N)
+	for _, id := range partyIDs {
+		result := &keygen.TaprootConfig{
+			ID:                 id,
+			Threshold:          threshold,
+			PublicKey:          publicKey,
+			PrivateShare:       privateShares[id],
+			VerificationShares: verificationShares,
+		}
+		result, _ = result.DeriveChild(1)
+		if newPublicKey == nil {
+			newPublicKey = result.PublicKey
+		}
+		tapRootPublicKey, err := curve.Secp256k1{}.LiftX(newPublicKey)
+		genericVerificationShares := make(map[party.ID]curve.Point)
+		for k, v := range result.VerificationShares {
+			genericVerificationShares[k] = v
+		}
+		require.NoError(t, err)
+		normalResult := &keygen.Config{
+			ID:                 result.ID,
+			Threshold:          result.Threshold,
+			PrivateShare:       result.PrivateShare,
+			PublicKey:          tapRootPublicKey,
+			VerificationShares: party.NewPointMap(genericVerificationShares),
+		}
+		r, err := StartSignAdaptor(normalResult, partyIDs, steak, *adaptorPoint)(nil)
+		require.NoError(t, err, "round creation should not result in an error")
+		rounds = append(rounds, r)
+	}
+
+	for {
+		err, done := test.Rounds(rounds, nil)
+		require.NoError(t, err, "failed to process round")
+		if done {
+			break
+		}
+	}
+
+	checkOutputTaprootAdaptor(t, rounds, newPublicKey, *adaptorSecret, *adaptorPoint, steak)
 }

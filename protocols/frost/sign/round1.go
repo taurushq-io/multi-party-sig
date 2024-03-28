@@ -11,7 +11,8 @@ import (
 )
 
 // This round sort of corresponds with Figure 2 of the Frost paper:
-//   https://eprint.iacr.org/2020/852.pdf
+//
+//	https://eprint.iacr.org/2020/852.pdf
 //
 // The main difference is that instead of having a separate pre-processing step,
 // we instead have an additional round at the start of the signing step.
@@ -42,6 +43,8 @@ type round1 struct {
 	YShares map[party.ID]curve.Point
 	// s_i = sᵢ is our private secret share
 	s_i curve.Scalar
+	// T is an optional adaptor point tweak
+	T *curve.Secp256k1Point
 }
 
 // VerifyMessage implements round.Round.
