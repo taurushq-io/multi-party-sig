@@ -7,7 +7,7 @@ author:
 date: 14-07-2021
 ---
 
-We've implemented the [FROST](https://eprint.iacr.org/2020/852.pdf) protocol
+We've implemented the [FROST](FROST.pdf) protocol
 inside of this repo. This document details the departures we've made from the protocol
 as specified in the paper, along with the additions we've contributed.
 
