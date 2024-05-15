@@ -1,6 +1,6 @@
 module github.com/taurusgroup/multi-party-sig
 
-go 1.20
+go 1.22
 
 require (
 	github.com/cronokirby/saferith v0.33.0
