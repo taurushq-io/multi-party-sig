@@ -91,6 +91,9 @@ func TestDerive(t *testing.T) {
 	}
 
 	path, err := PathFrom("0")
+	if err != nil {
+		panic("Expected path creation to succeed")
+	}
 	computedAdjust, computedChildChainKey, err := DeriveScalarForPath(
 		computedMasterPrivateKey.ActOnBase().(*curve.Secp256k1Point),
 		computedMasterChainKey,
