@@ -151,11 +151,11 @@ func (r *TaprootConfig) Clone() *TaprootConfig {
 //
 // Optionally, a new chain key can be passed as well.
 func (r *TaprootConfig) Derive(adjust *curve.Secp256k1Scalar, newChainKey []byte) (*TaprootConfig, error) {
+	if len(newChainKey) > 0 && len(newChainKey) != params.SecBytes {
+		return nil, fmt.Errorf("expecte %d bytes for chain key, found %d", params.SecBytes, len(newChainKey))
+	}
 	if len(newChainKey) <= 0 {
 		newChainKey = r.ChainKey
-	}
-	if len(newChainKey) != params.SecBytes {
-		return nil, fmt.Errorf("expecte %d bytes for chain key, found %d", params.SecBytes, len(newChainKey))
 	}
 
 	adjustG := adjust.ActOnBase()
