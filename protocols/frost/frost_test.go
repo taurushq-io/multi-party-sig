@@ -93,6 +93,33 @@ func do(t *testing.T, id party.ID, ids []party.ID, threshold int, message []byte
 	assert.True(t, cTaproot.PublicKey.Verify(finalSignature, message))
 }
 
+func doDkgOnly(t *testing.T, id party.ID, ids []party.ID, threshold int, n *test.Network) Config {
+	h, err := protocol.NewMultiHandler(Keygen(curve.Secp256k1{}, id, ids, threshold), nil)
+	require.NoError(t, err)
+	test.HandlerLoop(id, h, n)
+	r, err := h.Result()
+	require.NoError(t, err)
+	require.IsType(t, &Config{}, r)
+	return *r.(*Config)
+}
+
+func doSigningOnly(t *testing.T, c Config, ids []party.ID, message []byte, n *test.Network, wg *sync.WaitGroup) {
+	defer wg.Done()
+	h, err := protocol.NewMultiHandler(Sign(&c, ids, message), nil)
+	require.NoError(t, err)
+	test.HandlerLoop(c.ID, h, n)
+
+	signResult, err := h.Result()
+	require.NoError(t, err)
+	require.IsType(t, Signature{}, signResult)
+	signature := signResult.(Signature)
+	assert.True(t, signature.Verify(c.PublicKey, message))
+}
+
+// This test is preserved for parity with upstream, but it isn't realistic.
+// Particularly, by setting T = N-1, we are effectively testing a 1-of-N scheme.
+// Also, _every_ share is part of the signing group.
+// The tests below this one check more realistic scenarios.
 func TestFrost(t *testing.T) {
 	N := 5
 	T := N - 1
@@ -112,4 +139,87 @@ func TestFrost(t *testing.T) {
 		go do(t, id, partyIDs, T, message, *adaptorSecret, n, &wg)
 	}
 	wg.Wait()
+}
+
+func TestFrostRealisticSign(t *testing.T) {
+	// this is (however unintuitively) a 3 of 5 scheme
+	// (max two parties corrupted during keygen)
+	N := 5
+	T := 2
+	message := []byte("hello")
+
+	partyIDs := test.PartyIDs(N)
+
+	dkgNetwork := test.NewNetwork(partyIDs)
+
+	configs := make(map[party.ID]Config)
+	var wg sync.WaitGroup
+	wg.Add(N)
+	var mtx sync.Mutex
+	for _, id := range partyIDs {
+		go func() {
+			c := doDkgOnly(t, id, partyIDs, T, dkgNetwork)
+			mtx.Lock()
+			configs[c.ID] = c
+			mtx.Unlock()
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+
+	signingIDs := test.PartyIDs(3) // meets quorum
+	signNetwork := test.NewNetwork(signingIDs)
+	var signWg sync.WaitGroup
+	signWg.Add(len(signingIDs))
+	for _, id := range signingIDs {
+		c := configs[id]
+		go doSigningOnly(t, c, signingIDs, message, signNetwork, &signWg)
+	}
+	signWg.Wait()
+}
+
+func TestFrostSigningFailToMeetQuorum(t *testing.T) {
+	// this is (however unintuitively) a 3 of 5 scheme
+	// (max two parties corrupted during keygen)
+	N := 5
+	T := 2
+	message := []byte("hello")
+
+	partyIDs := test.PartyIDs(N)
+
+	dkgNetwork := test.NewNetwork(partyIDs)
+
+	configs := make(map[party.ID]Config)
+	var wg sync.WaitGroup
+	wg.Add(N)
+	var mtx sync.Mutex
+	for _, id := range partyIDs {
+		go func() {
+			c := doDkgOnly(t, id, partyIDs, T, dkgNetwork)
+			mtx.Lock()
+			configs[c.ID] = c
+			mtx.Unlock()
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+
+	signingIDs := test.PartyIDs(2) // fails to meet quorum
+	var signWg sync.WaitGroup
+	signWg.Add(len(signingIDs))
+	for _, id := range signingIDs {
+		c := configs[id]
+		go func() {
+			defer signWg.Done()
+
+			_, err := protocol.NewMultiHandler(Sign(&c, signingIDs, message), nil)
+			require.Error(t, err)
+			// This is a counterintuitive error message: the "threshold" in question is the DKG threshold,
+			// which is one less than the "m" value in an "m of n" scheme. We don't alter the error message
+			// to something more intuitive in order to keep tracking upstream.
+			expected := "protocol: failed to create round: sign.StartSign: session: threshold 2 is invalid for number of parties 2"
+			require.Equal(t, expected, err.Error())
+		}()
+	}
+	signWg.Wait()
 }
