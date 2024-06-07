@@ -207,6 +207,30 @@ func TestFrostRealisticSign(t *testing.T) {
 		go doSigningOnly(t, c, signingIDs, message, signNetwork, &wg)
 	}
 	wg.Wait()
+
+	// The d share below is one of the lost/non-refreshed shares.
+	// Signing is expected to fail:
+	// d cannot sign with the refreshed shares a and b
+	signingIDs = []party.ID{"a", "b", "d"}
+	signNetwork = test.NewNetwork(signingIDs)
+	wg.Add(len(signingIDs))
+	for _, id := range signingIDs {
+		c := configs[id]
+		go func() {
+			defer wg.Done()
+			h, err := protocol.NewMultiHandler(Sign(&c, signingIDs, message), nil)
+			require.NoError(t, err)
+			test.HandlerLoop(c.ID, h, signNetwork)
+
+			_, err = h.Result()
+			require.Error(t, err)
+			// Some other aspects of the error text can be non-deterministic,
+			// depending on goroutine timing, so we only check for the presence
+			// of this crucial text, indicating which part of the FROST algorithm failed.
+			require.ErrorContains(t, err, "round 3: failed to verify response")
+		}()
+	}
+	wg.Wait()
 }
 
 func TestFrostSigningFailToMeetQuorum(t *testing.T) {
