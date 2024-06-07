@@ -103,6 +103,16 @@ func doDkgOnly(t *testing.T, id party.ID, ids []party.ID, threshold int, n *test
 	return *r.(*Config)
 }
 
+func doRefreshOnly(t *testing.T, c Config, ids []party.ID, n *test.Network) Config {
+	h, err := protocol.NewMultiHandler(Refresh(&c, ids), nil)
+	require.NoError(t, err)
+	test.HandlerLoop(c.ID, h, n)
+	r, err := h.Result()
+	require.NoError(t, err)
+	require.IsType(t, &Config{}, r)
+	return *r.(*Config)
+}
+
 func doSigningOnly(t *testing.T, c Config, ids []party.ID, message []byte, n *test.Network, wg *sync.WaitGroup) {
 	defer wg.Done()
 	h, err := protocol.NewMultiHandler(Sign(&c, ids, message), nil)
@@ -169,13 +179,34 @@ func TestFrostRealisticSign(t *testing.T) {
 
 	signingIDs := test.PartyIDs(3) // meets quorum
 	signNetwork := test.NewNetwork(signingIDs)
-	var signWg sync.WaitGroup
-	signWg.Add(len(signingIDs))
+	wg.Add(len(signingIDs))
 	for _, id := range signingIDs {
 		c := configs[id]
-		go doSigningOnly(t, c, signingIDs, message, signNetwork, &signWg)
+		go doSigningOnly(t, c, signingIDs, message, signNetwork, &wg)
 	}
-	signWg.Wait()
+	wg.Wait()
+
+	// note that we are only refreshing 3 of the 5 available parties
+	wg.Add(len(signingIDs))
+	for _, id := range signingIDs {
+		c := configs[id]
+		go func() {
+			// we're reusing signNetwork here, since we have identical parties
+			c = doRefreshOnly(t, c, signingIDs, signNetwork)
+			mtx.Lock()
+			configs[c.ID] = c
+			mtx.Unlock()
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+
+	wg.Add(len(signingIDs))
+	for _, id := range signingIDs {
+		c := configs[id]
+		go doSigningOnly(t, c, signingIDs, message, signNetwork, &wg)
+	}
+	wg.Wait()
 }
 
 func TestFrostSigningFailToMeetQuorum(t *testing.T) {
