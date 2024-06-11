@@ -6,6 +6,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/protocol"
 	"github.com/taurusgroup/multi-party-sig/protocols/frost/keygen"
+	"github.com/taurusgroup/multi-party-sig/protocols/frost/repair"
 	"github.com/taurusgroup/multi-party-sig/protocols/frost/sign"
 )
 
@@ -80,6 +81,11 @@ func RefreshTaproot(config *TaprootConfig, participants []party.ID) protocol.Sta
 		verificationShares[k] = v
 	}
 	return keygen.StartKeygenCommon(true, curve.Secp256k1{}, participants, config.Threshold, config.ID, config.PrivateShare, publicKey, verificationShares)
+}
+
+// Repair initiates the protocol for repairing a lost key.
+func Repair(helpers []party.ID, lostID, selfID party.ID, privateShare *curve.Scalar) protocol.StartFunc {
+	return repair.Repair(helpers, lostID, selfID, privateShare)
 }
 
 // Sign initiates the protocol for producing a threshold signature, with Frost.

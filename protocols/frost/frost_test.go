@@ -113,6 +113,15 @@ func doRefreshOnly(t *testing.T, c Config, ids []party.ID, n *test.Network) Conf
 	return *r.(*Config)
 }
 
+func doRepairOnly(t *testing.T, helpers []party.ID, lostID, selfID party.ID, privateShare *curve.Scalar, n *test.Network) curve.Scalar {
+	h, err := protocol.NewMultiHandler(Repair(helpers, lostID, selfID, privateShare), nil)
+	require.NoErrorf(t, err, "error in Repair for %s", selfID)
+	test.HandlerLoop(selfID, h, n)
+	res, err := h.Result()
+	require.NoError(t, err)
+	return res.(curve.Scalar)
+}
+
 func doSigningOnly(t *testing.T, c Config, ids []party.ID, message []byte, n *test.Network, wg *sync.WaitGroup) {
 	defer wg.Done()
 	h, err := protocol.NewMultiHandler(Sign(&c, ids, message), nil)
@@ -277,4 +286,78 @@ func TestFrostSigningFailToMeetQuorum(t *testing.T) {
 		}()
 	}
 	signWg.Wait()
+}
+
+func TestFrostRepair(t *testing.T) {
+	// this is (however unintuitively) a 3 of 5 scheme
+	// (max two parties corrupted during keygen)
+	N := 5
+	T := 2
+	//message := []byte("hello")
+
+	partyIDs := test.PartyIDs(N)
+
+	dkgNetwork := test.NewNetwork(partyIDs)
+
+	configs := make(map[party.ID]Config)
+	var wg sync.WaitGroup
+	wg.Add(N)
+	var mtx sync.Mutex
+	for _, id := range partyIDs {
+		go func() {
+			c := doDkgOnly(t, id, partyIDs, T, dkgNetwork)
+			mtx.Lock()
+			configs[c.ID] = c
+			mtx.Unlock()
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+
+	helperIDs := []party.ID{"a", "b", "c"}
+	lostID := party.ID("d")
+	participants := make([]party.ID, 0, len(helperIDs)+1)
+	participants = append(participants, helperIDs...)
+	participants = append(participants, lostID)
+	repairNetwork := test.NewNetwork(participants)
+	wg.Add(len(participants))
+	var repairedShare curve.Scalar
+	for _, id := range participants {
+		var privateShare *curve.Scalar
+		if id != lostID {
+			c := configs[id]
+			privateShare = &c.PrivateShare
+		}
+		go func() {
+			defer wg.Done()
+			res := doRepairOnly(t, helperIDs, lostID, id, privateShare, repairNetwork)
+			if id == lostID {
+				repairedShare = res
+			}
+		}()
+	}
+	wg.Wait()
+
+	// check that the repaired share is correct
+	require.Equal(t, repairedShare, configs[lostID].PrivateShare)
+	// craft a new config using the repaired share
+	// for the future: is it possible to restore the verification shares without copying them?
+	restoredConfig := Config{
+		ID:                 lostID,
+		Threshold:          T,
+		PrivateShare:       repairedShare,
+		PublicKey:          configs[lostID].PublicKey,
+		ChainKey:           configs[lostID].ChainKey,
+		VerificationShares: configs[lostID].VerificationShares,
+	}
+	configs[lostID] = restoredConfig
+
+	// let's demonstrate signing
+	signingIDs := []party.ID{"b", "c", lostID}
+	signingNetwork := test.NewNetwork(signingIDs)
+	wg.Add(len(signingIDs))
+	for _, id := range signingIDs {
+		c := configs[id]
+		go doSigningOnly(t, c, signingIDs, []byte("hello"), signingNetwork, &wg)
+	}
 }
