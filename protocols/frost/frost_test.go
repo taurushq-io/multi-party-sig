@@ -171,17 +171,26 @@ func TestFrostRealisticSign(t *testing.T) {
 
 	dkgNetwork := test.NewNetwork(partyIDs)
 
-	configs := make(map[party.ID]Config)
+	configs := make(map[party.ID]Config, N)
+	// we will use this to show that refresh generates all-new private shares
+	privateShareSet := make(map[[32]byte]struct{}, N)
 	var wg sync.WaitGroup
 	wg.Add(N)
 	var mtx sync.Mutex
 	for _, id := range partyIDs {
 		go func() {
+			defer wg.Done()
 			c := doDkgOnly(t, id, partyIDs, T, dkgNetwork)
+
+			b, err := c.PrivateShare.MarshalBinary()
+			require.NoError(t, err)
+			var arr [32]byte
+			copy(arr[:], b)
+
 			mtx.Lock()
+			defer mtx.Unlock()
 			configs[c.ID] = c
-			mtx.Unlock()
-			wg.Done()
+			privateShareSet[arr] = struct{}{}
 		}()
 	}
 	wg.Wait()
@@ -200,12 +209,20 @@ func TestFrostRealisticSign(t *testing.T) {
 	for _, id := range signingIDs {
 		c := configs[id]
 		go func() {
+			defer wg.Done()
 			// we're reusing signNetwork here, since we have identical parties
 			c = doRefreshOnly(t, c, signingIDs, signNetwork)
+
+			b, err := c.PrivateShare.MarshalBinary()
+			require.NoError(t, err)
+			var arr [32]byte
+			copy(arr[:], b)
+
 			mtx.Lock()
+			defer mtx.Unlock()
+			_, found := privateShareSet[arr]
+			require.False(t, found, "private share %v was not refreshed", id)
 			configs[c.ID] = c
-			mtx.Unlock()
-			wg.Done()
 		}()
 	}
 	wg.Wait()
