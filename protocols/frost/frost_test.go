@@ -113,7 +113,7 @@ func doRefreshOnly(t *testing.T, c Config, ids []party.ID, n *test.Network) Conf
 	return *r.(*Config)
 }
 
-func doRepairOnly(t *testing.T, helpers []party.ID, lostID, selfID party.ID, privateShare *curve.Scalar, n *test.Network) curve.Scalar {
+func doRepairOnly(t *testing.T, helpers []party.ID, lostID, selfID party.ID, privateShare curve.Scalar, n *test.Network) curve.Scalar {
 	h, err := protocol.NewMultiHandler(Repair(helpers, lostID, selfID, privateShare), nil)
 	require.NoErrorf(t, err, "error in Repair for %s", selfID)
 	test.HandlerLoop(selfID, h, n)
@@ -340,10 +340,10 @@ func TestFrostRepair(t *testing.T) {
 	wg.Add(len(participants))
 	var repairedShare curve.Scalar
 	for _, id := range participants {
-		var privateShare *curve.Scalar
+		var privateShare curve.Scalar
 		if id != lostID {
 			c := configs[id]
-			privateShare = &c.PrivateShare
+			privateShare = c.PrivateShare
 		}
 		go func() {
 			defer wg.Done()
