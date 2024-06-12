@@ -84,7 +84,7 @@ func RefreshTaproot(config *TaprootConfig, participants []party.ID) protocol.Sta
 }
 
 // Repair initiates the protocol for repairing a lost key.
-func Repair(helpers []party.ID, lostID, selfID party.ID, privateShare *curve.Scalar) protocol.StartFunc {
+func Repair(helpers []party.ID, lostID, selfID party.ID, privateShare curve.Scalar) protocol.StartFunc {
 	return repair.Repair(helpers, lostID, selfID, privateShare)
 }
 

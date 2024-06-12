@@ -25,7 +25,7 @@ var (
 	_ round.Round = (*round3)(nil)
 )
 
-func Repair(helpers []party.ID, lostID, selfID party.ID, privateShare *curve.Scalar) protocol.StartFunc {
+func Repair(helpers []party.ID, lostID, selfID party.ID, privateShare curve.Scalar) protocol.StartFunc {
 	return func(sessionID []byte) (round.Session, error) {
 		if len(helpers) < 2 {
 			return nil, fmt.Errorf(

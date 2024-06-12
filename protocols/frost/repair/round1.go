@@ -19,7 +19,7 @@ type round1 struct {
 	lostID party.ID
 	// privateShare is the secret share of a helper
 	// This should be nil for the lost share.
-	privateShare *curve.Scalar
+	privateShare curve.Scalar
 }
 
 // VerifyMessage implements round.Round.
@@ -67,7 +67,7 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	}
 
 	zeta := computeLagrangeCoefficient(group, r.helpers, r.lostID, r.SelfID())
-	lhs := group.NewScalar().Set(zeta).Mul(*r.privateShare)
+	lhs := group.NewScalar().Set(zeta).Mul(r.privateShare)
 	deltaSum := group.NewScalar()
 	for i := range len(r.helpers) - 1 {
 		id := r.helpers[i]
