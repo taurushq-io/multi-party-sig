@@ -27,11 +27,9 @@ var (
 
 func Repair(helpers []party.ID, lostID, selfID party.ID, privateShare curve.Scalar) protocol.StartFunc {
 	return func(sessionID []byte) (round.Session, error) {
-		if len(helpers) < 2 {
-			return nil, fmt.Errorf(
-				"repair.Repair: not enough helpers (wanted 2+), have %d", len(helpers))
+		if len(helpers) < 1 {
+			return nil, fmt.Errorf("repair.Repair: helpers must be non-empty")
 		}
-
 		if lostID == selfID {
 			if privateShare != nil {
 				return nil, fmt.Errorf(

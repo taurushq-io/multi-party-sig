@@ -378,3 +378,77 @@ func TestFrostRepair(t *testing.T) {
 		go doSigningOnly(t, c, signingIDs, []byte("hello"), signingNetwork, &wg)
 	}
 }
+
+func TestFrostRepair1of3(t *testing.T) {
+	// testing repair in a 1-of-3 scheme
+	// this is a somewhat strange thing to test, as it means
+	// that repair is essentially copying of a private key
+	N := 3
+	T := 0
+
+	partyIDs := test.PartyIDs(N)
+	dkgNetwork := test.NewNetwork(partyIDs)
+
+	configs := make(map[party.ID]Config)
+	var wg sync.WaitGroup
+	wg.Add(N)
+	var mtx sync.Mutex
+	for _, id := range partyIDs {
+		go func() {
+			c := doDkgOnly(t, id, partyIDs, T, dkgNetwork)
+			mtx.Lock()
+			configs[c.ID] = c
+			mtx.Unlock()
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+
+	helperIDs := []party.ID{"a"}
+	lostID := party.ID("b")
+	participants := make([]party.ID, 0, len(helperIDs)+1)
+	participants = append(participants, helperIDs...)
+	participants = append(participants, lostID)
+	repairNetwork := test.NewNetwork(participants)
+	wg.Add(len(participants))
+	var repairedShare curve.Scalar
+	for _, id := range participants {
+		var privateShare curve.Scalar
+		if id != lostID {
+			c := configs[id]
+			privateShare = c.PrivateShare
+		}
+		go func() {
+			defer wg.Done()
+			res := doRepairOnly(t, helperIDs, lostID, id, privateShare, repairNetwork)
+			if id == lostID {
+				repairedShare = res
+			}
+		}()
+	}
+	wg.Wait()
+
+	// check that the repaired share is correct
+	require.Equal(t, repairedShare, configs[lostID].PrivateShare)
+	// craft a new config using the repaired share
+	// for the future: is it possible to restore the verification shares without copying them?
+	restoredConfig := Config{
+		ID:                 lostID,
+		Threshold:          T,
+		PrivateShare:       repairedShare,
+		PublicKey:          configs[lostID].PublicKey,
+		ChainKey:           configs[lostID].ChainKey,
+		VerificationShares: configs[lostID].VerificationShares,
+	}
+	configs[lostID] = restoredConfig
+
+	// let's demonstrate signing
+	signingIDs := []party.ID{"b"}
+	signingNetwork := test.NewNetwork(signingIDs)
+	wg.Add(len(signingIDs))
+	for _, id := range signingIDs {
+		c := configs[id]
+		go doSigningOnly(t, c, signingIDs, []byte("hello"), signingNetwork, &wg)
+	}
+
+}
