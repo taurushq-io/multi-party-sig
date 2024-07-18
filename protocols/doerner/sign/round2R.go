@@ -3,11 +3,11 @@ package sign
 import (
 	"errors"
 
-	"github.com/taurusgroup/multi-party-sig/internal/ot"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/ecdsa"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
+	"github.com/taurusgroup/multi-party-sig/pkg/ot"
 	zksch "github.com/taurusgroup/multi-party-sig/pkg/zk/sch"
 )
 

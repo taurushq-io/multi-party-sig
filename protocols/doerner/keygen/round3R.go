@@ -1,8 +1,8 @@
 package keygen
 
 import (
-	"github.com/taurusgroup/multi-party-sig/internal/ot"
 	"github.com/taurusgroup/multi-party-sig/internal/round"
+	"github.com/taurusgroup/multi-party-sig/pkg/ot"
 )
 
 // message3R is the message sent by the Receiver at the start of the third round.
