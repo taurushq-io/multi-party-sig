@@ -2,6 +2,8 @@ package ot
 
 import (
 	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 
 	"github.com/cronokirby/saferith"
@@ -121,6 +123,62 @@ func (r *CorreOTSetupSender) Round3(msg *CorreOTSetupReceiveRound3Message) (*Cor
 type CorreOTReceiveSetup struct {
 	_K_0 [params.OTParam][params.OTBytes]byte
 	_K_1 [params.OTParam][params.OTBytes]byte
+}
+
+// MarshalJSON customizes the JSON representation of CorreOTReceiveSetup.
+//
+// This is necessary to marshal the ConfigReceiver struct.
+func (c *CorreOTReceiveSetup) MarshalJSON() ([]byte, error) {
+	// Convert byte arrays to base64 strings for JSON compatibility
+	type Alias CorreOTReceiveSetup
+	return json.Marshal(&struct {
+		K0 []string `json:"K_0"`
+		K1 []string `json:"K_1"`
+		*Alias
+	}{
+		K0:    convertToBase64Strings(c._K_0),
+		K1:    convertToBase64Strings(c._K_1),
+		Alias: (*Alias)(c),
+	})
+}
+
+// UnmarshalJSON customizes the JSON unmarshalling of CorreOTReceiveSetup.
+//
+// This is necessary to unmarshal the ConfigReceiver struct.
+func (c *CorreOTReceiveSetup) UnmarshalJSON(data []byte) error {
+	type Alias CorreOTReceiveSetup
+	aux := &struct {
+		K0 []string `json:"K_0"`
+		K1 []string `json:"K_1"`
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	c._K_0 = convertFromBase64Strings(aux.K0)
+	c._K_1 = convertFromBase64Strings(aux.K1)
+	return nil
+}
+
+// convertFromBase64Strings converts a slice of base64-encoded strings to a 2D byte array.
+func convertFromBase64Strings(data []string) [params.OTParam][params.OTBytes]byte {
+	var result [params.OTParam][params.OTBytes]byte
+	for i, str := range data {
+		bytes, _ := base64.StdEncoding.DecodeString(str)
+		copy(result[i][:], bytes)
+	}
+	return result
+}
+
+// convertToBase64Strings converts a 2D byte array to a slice of base64-encoded strings.
+func convertToBase64Strings(data [params.OTParam][params.OTBytes]byte) []string {
+	result := make([]string, params.OTParam)
+	for i, bytes := range data {
+		result[i] = base64.StdEncoding.EncodeToString(bytes[:])
+	}
+	return result
 }
 
 // CorreOTSetupReceiver holds the Receiver's state on a Correlated OT Setup.
