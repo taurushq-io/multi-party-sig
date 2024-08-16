@@ -5,12 +5,37 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/cronokirby/saferith"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 )
+
+// evaluateClassic evaluates a polynomial in a given variable index
+// We do the classic method, where we compute all powers of x.
+func (p *Exponent) evaluateClassic(x curve.Scalar) curve.Point {
+	var tmp curve.Point
+
+	xPower := p.group.NewScalar().SetNat(new(saferith.Nat).SetUint64(1))
+	result := p.group.NewPoint()
+
+	if p.IsConstant {
+		// since we start at index 1 of the polynomial, x must be x and not 1
+		xPower.Mul(x)
+	}
+
+	for i := 0; i < len(p.coefficients); i++ {
+		// tmp = [xⁱ]Aᵢ
+		tmp = xPower.Act(p.coefficients[i])
+		// result += [xⁱ]Aᵢ
+		result = result.Add(tmp)
+		// x = xⁱ⁺¹
+		xPower.Mul(x)
+	}
+	return result
+}
 
 func TestExponent_Evaluate(t *testing.T) {
 	group := curve.Secp256k1{}

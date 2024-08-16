@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 
-	"github.com/cronokirby/saferith"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 )
@@ -59,30 +58,6 @@ func (p *Exponent) Evaluate(x curve.Scalar) curve.Point {
 		result = x.Act(result)
 	}
 
-	return result
-}
-
-// evaluateClassic evaluates a polynomial in a given variable index
-// We do the classic method, where we compute all powers of x.
-func (p *Exponent) evaluateClassic(x curve.Scalar) curve.Point {
-	var tmp curve.Point
-
-	xPower := p.group.NewScalar().SetNat(new(saferith.Nat).SetUint64(1))
-	result := p.group.NewPoint()
-
-	if p.IsConstant {
-		// since we start at index 1 of the polynomial, x must be x and not 1
-		xPower.Mul(x)
-	}
-
-	for i := 0; i < len(p.coefficients); i++ {
-		// tmp = [xⁱ]Aᵢ
-		tmp = xPower.Act(p.coefficients[i])
-		// result += [xⁱ]Aᵢ
-		result = result.Add(tmp)
-		// x = xⁱ⁺¹
-		xPower.Mul(x)
-	}
 	return result
 }
 
@@ -180,7 +155,6 @@ func (*Exponent) Domain() string {
 }
 
 func EmptyExponent(group curve.Curve) *Exponent {
-	// TODO create custom marshaller
 	return &Exponent{group: group}
 }
 
