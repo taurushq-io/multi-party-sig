@@ -12,7 +12,7 @@ type Number uint16
 // WriteTo implements io.WriterTo interface.
 func (i Number) WriteTo(w io.Writer) (int64, error) {
 	err := binary.Write(w, binary.BigEndian, uint64(i))
-	return 2, err
+	return 8, err
 }
 
 // Domain implements hash.WriterToWithDomain.
