@@ -62,7 +62,7 @@ type Scalar interface {
 	Sub(Scalar) Scalar
 	// Negate mutates this Scalar, replacing it with its negation.
 	Negate() Scalar
-	// Mul mutates this Scalar, replacing it with another.
+	// Mul mutates this Scalar, by multiplying it with another.
 	Mul(Scalar) Scalar
 	// Invert mutates this Scalar, replacing it with its multiplicative inverse.
 	Invert() Scalar
