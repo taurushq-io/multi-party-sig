@@ -29,7 +29,7 @@ func (messageHash) Domain() string {
 //
 // This signature claims to satisfy:
 //
-//    z * G = R + H(R, Y, m) * Y
+//	z * G = R + H(R, Y, m) * Y
 //
 // for a public key Y.
 type Signature struct {
@@ -40,13 +40,14 @@ type Signature struct {
 }
 
 // Verify checks if a signature equation actually holds.
+// The public point must be a valid point on the curve.
 //
 // Note that m is the hash of a message, and not the message itself.
-func (sig Signature) Verify(public curve.Point, m []byte) bool {
+func (sig Signature) Verify(public curve.Point, m messageHash) bool {
 	group := public.Curve()
 
 	challengeHash := hash.New()
-	_ = challengeHash.WriteAny(sig.R, public, messageHash(m))
+	_ = challengeHash.WriteAny(sig.R, public, m)
 	challenge := sample.Scalar(challengeHash.Digest(), group)
 
 	expected := challenge.Act(public)

@@ -87,7 +87,7 @@ func (h *MultiHandler) Listen() <-chan *Message {
 	return h.out
 }
 
-// CanAccept returns true if the message is designated for this protocol protocol execution.
+// CanAccept returns true if the message is designated for this protocol execution.
 func (h *MultiHandler) CanAccept(msg *Message) bool {
 	r := h.currentRound
 	if msg == nil {
@@ -136,7 +136,7 @@ func (h *MultiHandler) Accept(msg *Message) {
 	defer h.mtx.Unlock()
 
 	// exit early if the message is bad, or if we are already done
-	if !h.CanAccept(msg) || h.err != nil || h.result != nil || h.duplicate(msg) {
+	if !h.CanAccept(msg) || h.err != nil || h.result != nil || h.isDuplicate(msg) {
 		return
 	}
 
@@ -347,6 +347,9 @@ func (h *MultiHandler) abort(err error, culprits ...party.ID) {
 
 // Stop cancels the current execution of the protocol, and alerts the other users.
 func (h *MultiHandler) Stop() {
+	h.mtx.Lock()
+	defer h.mtx.Unlock()
+
 	if h.err != nil || h.result != nil {
 		h.abort(errors.New("aborted by user"), h.currentRound.SelfID())
 	}
@@ -399,7 +402,7 @@ func (h *MultiHandler) receivedAll() bool {
 	return true
 }
 
-func (h *MultiHandler) duplicate(msg *Message) bool {
+func (h *MultiHandler) isDuplicate(msg *Message) bool {
 	if msg.RoundNumber == 0 {
 		return false
 	}

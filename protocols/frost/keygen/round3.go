@@ -47,8 +47,7 @@ func (r *round3) StoreBroadcastMessage(msg round.Message) error {
 		return err
 	}
 
-	// Verify that the commitment to the chain key contribution matches, and then xor
-	// it into the accumulated chain key so far.
+	// Verify that the commitment to the chain key contribution matches
 	if !r.HashForID(from).Decommit(r.ChainKeyCommitments[from], body.Decommitment, body.C_l) {
 		return fmt.Errorf("failed to verify chain key commitment")
 	}

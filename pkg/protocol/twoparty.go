@@ -44,11 +44,11 @@ func NewTwoPartyHandler(create StartFunc, sessionID []byte, leader bool) (*TwoPa
 func (h *TwoPartyHandler) Result() (interface{}, error) {
 	h.mtx.Lock()
 	defer h.mtx.Unlock()
-	if h.result != nil {
-		return h.result, nil
-	}
 	if h.err != nil {
 		return nil, h.err
+	}
+	if h.result != nil {
+		return h.result, nil
 	}
 	return nil, errors.New("protocol: not finished")
 }
