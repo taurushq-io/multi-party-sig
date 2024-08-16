@@ -34,7 +34,7 @@ func parallelizeAlone(f func(int) interface{}, count int) []interface{} {
 type command struct {
 	search bool
 	// This counter indicates the number of results that still need to be produced.
-	ctr *int64
+	ctr *atomic.Int64
 	// This channel is used to signal that the counter was modified
 	ctrChanged chan<- struct{}
 	// This is the index we evaluate our function at, when not searching
@@ -48,13 +48,13 @@ type command struct {
 //
 // We need to keep searching for successful queries of f while *ctr > 0.
 // When we find a successful result, we decrement *ctr.
-func workerSearch(results []interface{}, ctrChanged chan<- struct{}, f func(int) interface{}, ctr *int64) {
-	for atomic.LoadInt64(ctr) > 0 {
+func workerSearch(results []interface{}, ctrChanged chan<- struct{}, f func(int) interface{}, ctr *atomic.Int64) {
+	for ctr.Load() > 0 {
 		res := f(0)
 		if res == nil {
 			continue
 		}
-		i := atomic.AddInt64(ctr, -1)
+		i := ctr.Add(-1)
 		if i >= 0 {
 			results[i] = res
 		}
@@ -69,7 +69,7 @@ func worker(commands <-chan command) {
 			workerSearch(c.results, c.ctrChanged, c.f, c.ctr)
 		} else {
 			c.results[c.i] = c.f(c.i)
-			atomic.AddInt64(c.ctr, -1)
+			c.ctr.Add(-1)
 			c.ctrChanged <- struct{}{}
 		}
 	}
@@ -134,7 +134,8 @@ func (p *Pool) Search(count int, f func() interface{}) []interface{} {
 
 	results := make([]interface{}, count)
 
-	ctr := int64(count)
+	ctr := atomic.Int64{}
+	ctr.Store(int64(count))
 	ctrChanged := make(chan struct{})
 	cmd := command{
 		search:     true,
@@ -151,7 +152,7 @@ func (p *Pool) Search(count int, f func() interface{}) []interface{} {
 		case <-ctrChanged:
 		}
 	}
-	for atomic.LoadInt64(&ctr) > 0 {
+	for ctr.Load() > 0 {
 		<-ctrChanged
 	}
 
@@ -168,7 +169,8 @@ func (p *Pool) Parallelize(count int, f func(int) interface{}) []interface{} {
 
 	results := make([]interface{}, count)
 
-	ctr := int64(count)
+	ctr := atomic.Int64{}
+	ctr.Store(int64(count))
 	ctrChanged := make(chan struct{})
 	cmdI := 0
 	for cmdI < count {
@@ -189,7 +191,7 @@ func (p *Pool) Parallelize(count int, f func(int) interface{}) []interface{} {
 		case <-ctrChanged:
 		}
 	}
-	for atomic.LoadInt64(&ctr) > 0 {
+	for ctr.Load() > 0 {
 		<-ctrChanged
 	}
 

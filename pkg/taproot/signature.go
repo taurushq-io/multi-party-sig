@@ -87,7 +87,7 @@ type Signature []byte
 
 // signatureCounter is an atomic counter used to add some fault
 // resistance in case we don't use a source of randomness for Sign
-var signatureCounter uint64
+var signatureCounter atomic.Uint64
 
 // Sign uses a secret key to create a new signature.
 //
@@ -117,33 +117,31 @@ func (sk SecretKey) Sign(rand io.Reader, m []byte) (Signature, error) {
 
 	a := make([]byte, 32)
 	k := new(curve.Secp256k1Scalar)
-	for k.IsZero() {
-		// Either read new random bytes into a, or increment a global counter.
-		//
-		// Either way, the probability of us not finding a valid nonce
-		// is negligeable.
-		if rand != nil {
-			if _, err := io.ReadFull(rand, a); err != nil {
-				return nil, err
-			}
-		} else {
-			// Need to use atomics, because of potential multi-threading
-			ctr := atomic.AddUint64(&signatureCounter, 1)
-			binary.BigEndian.PutUint64(a, ctr)
+	// Either read new random bytes into a, or increment a global counter.
+	//
+	// Either way, the probability of us not finding a valid nonce
+	// is negligeable.
+	if rand != nil {
+		if _, err := io.ReadFull(rand, a); err != nil {
+			return nil, err
 		}
+	} else {
+		// Need to use atomics, because of potential multi-threading
+		ctr := signatureCounter.Add(1)
+		binary.BigEndian.PutUint64(a, ctr)
+	}
 
-		t, _ := d.MarshalBinary()
-		aHash := TaggedHash("BIP0340/aux", a)
-		for i := 0; i < 32; i++ {
-			t[i] ^= aHash[i]
-		}
+	t, _ := d.MarshalBinary()
+	aHash := TaggedHash("BIP0340/aux", a)
+	for i := 0; i < 32; i++ {
+		t[i] ^= aHash[i]
+	}
 
-		randHash := TaggedHash("BIP0340/nonce", t[:], PBytes, m)
+	randHash := TaggedHash("BIP0340/nonce", t[:], PBytes, m)
 
-		_ = k.UnmarshalBinary(randHash)
-		if k.IsZero() {
-			return nil, fmt.Errorf("invalid nonce")
-		}
+	_ = k.UnmarshalBinary(randHash)
+	if k.IsZero() {
+		return nil, fmt.Errorf("invalid nonce")
 	}
 
 	R := k.ActOnBase().(*curve.Secp256k1Point)
