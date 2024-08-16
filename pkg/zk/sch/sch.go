@@ -107,6 +107,7 @@ func (z *Response) Verify(hash *hash.Hash, public curve.Point, commitment *Commi
 }
 
 // Verify checks that Proof.Response•G = Proof.Commitment + H(..., Proof.Commitment, Public)•Public.
+// Proof commitment point must lie on the curve.
 func (p *Proof) Verify(hash *hash.Hash, public, gen curve.Point) bool {
 	if !p.IsValid() {
 		return false
