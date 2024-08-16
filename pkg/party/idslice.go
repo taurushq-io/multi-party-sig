@@ -17,6 +17,7 @@ func NewIDSlice(partyIDs []ID) IDSlice {
 }
 
 // Contains returns true if partyIDs contains id.
+// Returns true only if all ids are present.
 // Assumes that the IDSlice is valid.
 func (partyIDs IDSlice) Contains(ids ...ID) bool {
 	for _, id := range ids {
@@ -65,6 +66,7 @@ func (partyIDs IDSlice) Swap(i, j int)      { partyIDs[i], partyIDs[j] = partyID
 func (partyIDs IDSlice) sort() { sort.Sort(partyIDs) }
 
 // search returns the result of applying SearchStrings to the receiver and x.
+// Assumes the id slice is valid.
 func (partyIDs IDSlice) search(x ID) (int, bool) {
 	index := sort.Search(len(partyIDs), func(i int) bool { return partyIDs[i] >= x })
 	if index >= 0 && index < len(partyIDs) && partyIDs[index] == x {
@@ -74,7 +76,7 @@ func (partyIDs IDSlice) search(x ID) (int, bool) {
 }
 
 // WriteTo implements io.WriterTo and should be used within the hash.Hash function.
-// It writes the full uncompressed point to w, ie 64 bytes.
+// It writes the party ID string to w, ie 64 bytes.
 func (partyIDs IDSlice) WriteTo(w io.Writer) (int64, error) {
 	if partyIDs == nil {
 		return 0, io.ErrUnexpectedEOF
