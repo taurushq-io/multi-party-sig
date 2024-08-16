@@ -51,6 +51,8 @@ func (Secp256k1) Order() *saferith.Modulus {
 	return secp256k1Order
 }
 
+// LiftX creates a Secp256k1Point from the given byte slice.
+// The input data is truncated to the first 32 bytes and any additional bytes are ignored.
 func (Secp256k1) LiftX(data []byte) (*Secp256k1Point, error) {
 	out := new(Secp256k1Point)
 	out.value.Z.SetInt(1)
