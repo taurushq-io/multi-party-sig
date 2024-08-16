@@ -15,7 +15,8 @@ import (
 )
 
 // This round corresponds with the steps 1-4 of Round 1, Figure 1 in the Frost paper:
-//   https://eprint.iacr.org/2020/852.pdf
+//
+//	https://eprint.iacr.org/2020/852.pdf
 type round1 struct {
 	*round.Helper
 	// taproot indicates whether or not to make taproot compatible keys.
@@ -120,7 +121,7 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 		return r, fmt.Errorf("failed to commit to chain key")
 	}
 
-	// 4. "Every Pᵢ broadcasts Φᵢ, σᵢ to all other participants
+	// 4. "Every Pᵢ broadcasts Φᵢ, σᵢ, Cᵢ to all other participants
 	err = r.BroadcastMessage(out, &broadcast2{
 		Phi_i:      Phi_i,
 		Sigma_i:    Sigma_i,
