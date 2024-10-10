@@ -12,7 +12,7 @@ import (
 
 // fieldElementLen is enough to hold 2 elements of GF(2^k).
 //
-// This allows us to multiply 2 elements together withour performing a reduction.
+// This allows us to multiply 2 elements together without performing a reduction.
 const fieldElementLen = 2 * params.OTBytes / 8
 
 // fieldElement represent an element of GF(2^k), in little endian order.
@@ -85,8 +85,7 @@ type ExtendedOTSendResult struct {
 //
 // This follows Figure 7 of https://eprint.iacr.org/2015/546.
 //
-// A single setup can be used for many invocations of this protocol, so long as the
-// hash is initialized with some kind of nonce.
+// SECURITY WARNING: A setup must not be reused for multiple invocations of this protocol
 func ExtendedOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, msg *ExtendedOTReceiveMessage) (*ExtendedOTSendResult, error) {
 	inflatedBatchSize := batchSize + params.OTParam + params.StatParam
 
@@ -110,7 +109,14 @@ func ExtendedOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, 
 		q.accumulate(&correResult._Q[i], &chi[i])
 	}
 
-	q.accumulate(&msg.X, &setup._Delta)
+        // XXX: convert from field element to bytes
+        // not reduced, so mul wont give the correct result
+	var tmp [params.OTBytes]byte
+        for j := 0; j < params.OTBytes; j++ {
+            tmp[j] ^= byte(msg.X[j/8] >> (8*(j%8)))
+        }
+
+	q.accumulate(&tmp, &setup._Delta)
 
 	if !q.eq(&msg.T) {
 		return nil, fmt.Errorf("ExtendedOTSend: monochrome check failed")
@@ -150,7 +156,8 @@ type ExtendedOTReceiveResult struct {
 // ExtendedOTReceiveMessage is the Receiver's first message for an Extended OT.
 type ExtendedOTReceiveMessage struct {
 	CorreMsg *CorreOTReceiveMessage
-	X        [params.OTBytes]byte
+	//X        [params.OTBytes]byte
+	X        fieldElement
 	T        fieldElement
 }
 
@@ -160,8 +167,7 @@ type ExtendedOTReceiveMessage struct {
 //
 // This follows Figure 7 of https://eprint.iacr.org/2015/546.
 //
-// A single setup can be used for many invocations of this protocol, so long as the
-// hash is initialized with some kind of nonce.
+// SECURITY WARNING: A setup must not  be reused for multiple invocations of this protocol
 func ExtendedOTReceive(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, choices []byte) (*ExtendedOTReceiveMessage, *ExtendedOTReceiveResult) {
 	inflatedBatchSize := 8*len(choices) + params.OTParam + params.StatParam
 	extraChoices := make([]byte, inflatedBatchSize/8)
@@ -184,9 +190,20 @@ func ExtendedOTReceive(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, choices [
 
 	for i := 0; i < len(chi); i++ {
 		mask := -bitAt(i, extraChoices)
-		for j := 0; j < params.OTBytes; j++ {
+
+	        var maskArg [params.OTBytes]byte
+                for l := range maskArg {
+                    maskArg[l] = mask
+                }
+
+		outMsg.X.accumulate(&maskArg, &chi[i])
+
+                /*
+                // original, incorrect (AND instead of GF mul)
+                for j := 0; j < params.OTBytes; j++ {
 			outMsg.X[j] ^= mask & chi[i][j]
 		}
+                */
 	}
 
 	for i := 0; i < len(chi) && i < len(correResult._T); i++ {
