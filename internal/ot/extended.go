@@ -135,11 +135,12 @@ func ExtendedOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, 
 		q.accumulate(&correResult._Q[i], &chi[i])
 	}
 
+        //q.accumulate(&msg.X, &setup._Delta)
         Xreduced := msg.X.reduce()
-
 	q.accumulate(&Xreduced, &setup._Delta)
 
-	if !q.eq(&msg.T) {
+	// comparing the reduced field elements
+        if q.reduce() != msg.T.reduce() {
 		return nil, fmt.Errorf("ExtendedOTSend: monochrome check failed")
 	}
 
@@ -218,12 +219,10 @@ func ExtendedOTReceive(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, choices [
 
 		outMsg.X.accumulate(&maskArg, &chi[i])
 
-                /*
                 // original, incorrect (AND instead of GF mul)
-                for j := 0; j < params.OTBytes; j++ {
-			outMsg.X[j] ^= mask & chi[i][j]
-		}
-                */
+                //for j := 0; j < params.OTBytes; j++ {
+		//	outMsg.X[j] ^= mask & chi[i][j]
+		//}
 	}
 
 	for i := 0; i < len(chi) && i < len(correResult._T); i++ {
