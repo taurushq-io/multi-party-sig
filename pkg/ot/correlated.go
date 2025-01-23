@@ -162,13 +162,65 @@ func (c *CorreOTReceiveSetup) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON customizes the JSON representation of CorreOTReceiveSetup.
+//
+// This is necessary to marshal the ConfigReceiver struct.
+func (c *CorreOTSendSetup) MarshalJSON() ([]byte, error) {
+	// Convert byte arrays to base64 strings for JSON compatibility
+	type Alias CorreOTSendSetup
+	return json.Marshal(&struct {
+		Delta   string   `json:"_Delta"`
+		K_Delta []string `json:"K_Delta"`
+		*Alias
+	}{
+		Delta:   convertToBase64String(c._Delta),
+		K_Delta: convertToBase64Strings(c._K_Delta),
+		Alias:   (*Alias)(c),
+	})
+}
+
+// UnmarshalJSON customizes the JSON unmarshalling of CorreOTReceiveSetup.
+//
+// This is necessary to unmarshal the ConfigReceiver struct.
+func (c *CorreOTSendSetup) UnmarshalJSON(data []byte) error {
+	type Alias CorreOTSendSetup
+	aux := &struct {
+		Delta   string   `json:"Delta"`
+		K_Delta []string `json:"K_Delta"`
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	c._Delta = convertFromBase64String(aux.Delta)
+	c._K_Delta = convertFromBase64Strings(aux.K_Delta)
+	return nil
+}
+
+func convertFromBase64String(str string) [params.OTBytes]byte {
+	var result [params.OTBytes]byte
+
+	bytes, _ := base64.StdEncoding.DecodeString(str)
+	copy(result[:], bytes)
+
+	return result
+}
+
 // convertFromBase64Strings converts a slice of base64-encoded strings to a 2D byte array.
 func convertFromBase64Strings(data []string) [params.OTParam][params.OTBytes]byte {
 	var result [params.OTParam][params.OTBytes]byte
 	for i, str := range data {
-		bytes, _ := base64.StdEncoding.DecodeString(str)
-		copy(result[i][:], bytes)
+		result[i] = convertFromBase64String(str)
 	}
+	return result
+}
+
+// convertToBase64Strings converts a 2D byte array to a slice of base64-encoded strings.
+func convertToBase64String(data [params.OTBytes]byte) string {
+	var result string = base64.StdEncoding.EncodeToString(data[:])
+
 	return result
 }
 
@@ -176,7 +228,7 @@ func convertFromBase64Strings(data []string) [params.OTParam][params.OTBytes]byt
 func convertToBase64Strings(data [params.OTParam][params.OTBytes]byte) []string {
 	result := make([]string, params.OTParam)
 	for i, bytes := range data {
-		result[i] = base64.StdEncoding.EncodeToString(bytes[:])
+		result[i] = convertToBase64String(bytes)
 	}
 	return result
 }
