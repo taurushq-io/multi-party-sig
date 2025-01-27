@@ -57,6 +57,15 @@ func TestMarshalingOTSetup(t *testing.T) {
 	newReceiveSetup := &CorreOTReceiveSetup{}
 	newReceiveSetup.UnmarshalJSON(receiveSetupBytes)
 
+	for i := 0; i < params.OTParam; i++ {
+		if !bytes.Equal(newReceiveSetup._K_0[i][:], receiveSetup._K_0[i][:]) {
+			t.Error("receiveSetup._K_0 diff")
+		}
+		if !bytes.Equal(newReceiveSetup._K_1[i][:], receiveSetup._K_1[i][:]) {
+			t.Error("receiveSetup._K_1 diff")
+		}
+	}
+
 	if !bytes.Equal(newSendSetup._Delta[:], sendSetup._Delta[:]) {
 		t.Error("sender._Delta diff")
 	}

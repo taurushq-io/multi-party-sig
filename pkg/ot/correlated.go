@@ -169,7 +169,7 @@ func (c *CorreOTSendSetup) MarshalJSON() ([]byte, error) {
 	// Convert byte arrays to base64 strings for JSON compatibility
 	type Alias CorreOTSendSetup
 	return json.Marshal(&struct {
-		Delta   string   `json:"_Delta"`
+		Delta   string   `json:"Delta"`
 		K_Delta []string `json:"K_Delta"`
 		*Alias
 	}{
