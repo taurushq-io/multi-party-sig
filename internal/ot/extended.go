@@ -4,30 +4,50 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"io"
 
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
 	"github.com/zeebo/blake3"
 )
 
-// fieldElementLen is enough to hold 2 elements of GF(2^k).
-//
-// This allows us to multiply 2 elements together withour performing a reduction.
-const fieldElementLen = 2 * params.OTBytes / 8
+const fieldElementLen = params.OTBytes / 8
 
-// fieldElement represent an element of GF(2^k), in little endian order.
 type fieldElement [fieldElementLen]uint64
 
-// eq checks if two field elements are equal, in constant time.
-func (f *fieldElement) eq(a *fieldElement) bool {
-	acc := uint64(0)
+func randFe(r io.Reader) fieldElement {
+	var out fieldElement
 	for i := 0; i < fieldElementLen; i++ {
+		_ = binary.Read(r, binary.LittleEndian, &out[i])
+	}
+	return out
+}
+
+// doubleFieldElementLen is enough to hold 2 elements of GF(2^k).
+//
+// This allows us to multiply 2 elements together withour performing a reduction.
+const doubleFieldElementLen = 2 * fieldElementLen
+
+// doubleFieldElement represent an element of GF(2^k), in little endian order.
+type doubleFieldElement [doubleFieldElementLen]uint64
+
+// eq checks if two field elements are equal, in constant time.
+func (f *doubleFieldElement) eq(a *doubleFieldElement) byte {
+	acc := uint64(0)
+	for i := 0; i < doubleFieldElementLen; i++ {
 		acc |= f[i] ^ a[i]
 	}
-	return ((acc | -acc) >> (63)) != 1
+	return byte((acc|-acc)>>(63)) ^ 1
 }
 
 // shl1 shifts a field element left by 1 bit.
+func (f *doubleFieldElement) shl1() {
+	for i := doubleFieldElementLen - 1; i > 0; i-- {
+		f[i] = (f[i] << 1) | (f[i-1] >> 63)
+	}
+	f[0] <<= 1
+}
+
 func (f *fieldElement) shl1() {
 	for i := fieldElementLen - 1; i > 0; i-- {
 		f[i] = (f[i] << 1) | (f[i-1] >> 63)
@@ -39,25 +59,17 @@ func (f *fieldElement) shl1() {
 //
 // This allows us to calculate a weight sum of different vectors, which we use
 // to detect cheating in the protocol.
-func (f *fieldElement) accumulate(a *[params.OTBytes]byte, b *[params.OTBytes]byte) {
-	var b64 [params.OTBytes / 8]uint64
-	for i := 0; i < len(b64); i++ {
-		b64[i] = binary.LittleEndian.Uint64(b[8*i : 8*(i+1)])
-	}
-	var a64 [params.OTBytes / 8]uint64
-	for i := 0; i < len(a64); i++ {
-		a64[i] = binary.LittleEndian.Uint64(a[8*i : 8*(i+1)])
-	}
-	var scratch fieldElement
-	for i := 0; i < fieldElementLen; i++ {
+func (f *doubleFieldElement) accumulate(a fieldElement, b fieldElement) {
+	var scratch doubleFieldElement
+	for i := 0; i < doubleFieldElementLen; i++ {
 		scratch[i] = 0
 	}
 
 	for i := 63; i >= 0; i-- {
-		for j := 0; j < len(b64); j++ {
-			mask := -((a64[j] >> i) & 1)
-			for k := 0; k < len(b64); k++ {
-				scratch[j+k] ^= mask & b64[k]
+		for j := 0; j < len(b); j++ {
+			mask := -((a[j] >> i) & 1)
+			for k := 0; k < len(b); k++ {
+				scratch[j+k] ^= mask & b[k]
 			}
 		}
 		if i != 0 {
@@ -65,9 +77,64 @@ func (f *fieldElement) accumulate(a *[params.OTBytes]byte, b *[params.OTBytes]by
 		}
 	}
 
-	for i := 0; i < fieldElementLen; i++ {
+	for i := 0; i < doubleFieldElementLen; i++ {
 		f[i] ^= scratch[i]
 	}
+}
+
+// conditionalAdd adds x if the first bit of choice is 1, in constant time.
+func (f *doubleFieldElement) conditionalAdd(choice byte, x doubleFieldElement) {
+	for i := 0; i < doubleFieldElementLen; i++ {
+		f[i] ^= (-uint64(choice & 1)) & x[i]
+	}
+}
+
+func pluckColumnToFieldElement(data [][params.OTBytes]byte, c int) fieldElement {
+	var out fieldElement
+	for i := 0; i < params.OTParam; i++ {
+		out.shl1()
+		// out |= data[i][c] (indexing into the bit)
+		out[0] |= uint64(bitAt(c, data[i][:]))
+	}
+	return out
+}
+
+func pluckBitsToFieldElements(data []byte) []fieldElement {
+	out := make([]fieldElement, (8*len(data))/params.OTParam)
+	for i := 0; i < len(out); i++ {
+		for j := 0; j < params.OTParam; j++ {
+			out[i].shl1()
+			out[i][0] |= uint64(bitAt(params.OTParam*i+j, data))
+		}
+	}
+	return out
+}
+
+// transposeToFieldSize elements transposes matrix columns into field elements.
+//
+// We should have a matrix with lambda columns, and N * lambda rows. We end up
+// with N rows, each of which contains lambda field element sized arrays.
+func transposeToFieldSizeElements(data [][params.OTBytes]byte) [][params.OTParam]fieldElement {
+	out := make([][params.OTParam]fieldElement, len(data)/params.OTParam)
+	for i := 0; i < len(out); i++ {
+		for c := 0; c < params.OTParam; c++ {
+			// Pick out a column of bits from lambda rows, and turn that into a field element.
+			out[i][c] = pluckColumnToFieldElement(data[params.OTParam*i:params.OTParam*(i+1)], c)
+		}
+	}
+	return out
+}
+
+// adjustBatchSize pads the desired batch size to a suitable length
+func adjustBatchSize(desired int) int {
+	// c.f. https://github.com/cronokirby/cait-sith/blob/8e6dc86d1a6c672315a7391c3f0cb3c58c990f3f/src/triples/random_ot_extension.rs#L35
+	r := desired % params.OTParam
+	// padded should be a multiple of the security parameter
+	padded := desired
+	if r != 0 {
+		padded += (params.OTParam - r)
+	}
+	return padded + 2*params.OTParam
 }
 
 // ExtendedOTSendResult is the Sender's result for an Extended OT.
@@ -88,9 +155,9 @@ type ExtendedOTSendResult struct {
 // A single setup can be used for many invocations of this protocol, so long as the
 // hash is initialized with some kind of nonce.
 func ExtendedOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, msg *ExtendedOTReceiveMessage) (*ExtendedOTSendResult, error) {
-	inflatedBatchSize := batchSize + params.OTParam + params.StatParam
+	adjustedBatchSize := adjustBatchSize(batchSize)
 
-	correResult, err := CorreOTSend(ctxHash, setup, inflatedBatchSize, msg.CorreMsg)
+	correResult, err := CorreOTSend(ctxHash, setup, adjustedBatchSize, msg.CorreMsg)
 	if err != nil {
 		return nil, err
 	}
@@ -99,20 +166,25 @@ func ExtendedOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, 
 		ctxHash.WriteAny(correResult._U[i])
 	}
 
-	chi := make([][params.OTBytes]byte, inflatedBatchSize)
+	chi := make([]fieldElement, adjustedBatchSize/params.OTParam)
 	digest := ctxHash.Digest()
 	for i := 0; i < len(chi); i++ {
-		_, _ = digest.Read(chi[i][:])
+		chi[i] = randFe(digest)
 	}
 
-	var q fieldElement
-	for i := 0; i < len(chi); i++ {
-		q.accumulate(&correResult._Q[i], &chi[i])
+	good := byte(1)
+	_Qhat := transposeToFieldSizeElements(correResult._Q)
+	for j := 0; j < params.OTParam; j++ {
+		var q doubleFieldElement
+		for i := 0; i < len(chi); i++ {
+			q.accumulate(_Qhat[i][j], chi[i])
+		}
+		expected := msg.T[j]
+		expected.conditionalAdd(bitAt(j, setup._Delta[:]), msg.X)
+		good &= q.eq(&expected)
 	}
 
-	q.accumulate(&msg.X, &setup._Delta)
-
-	if !q.eq(&msg.T) {
+	if good != 1 {
 		return nil, fmt.Errorf("ExtendedOTSend: monochrome check failed")
 	}
 
@@ -150,8 +222,8 @@ type ExtendedOTReceiveResult struct {
 // ExtendedOTReceiveMessage is the Receiver's first message for an Extended OT.
 type ExtendedOTReceiveMessage struct {
 	CorreMsg *CorreOTReceiveMessage
-	X        [params.OTBytes]byte
-	T        fieldElement
+	X        doubleFieldElement
+	T        [params.OTParam]doubleFieldElement
 }
 
 // ExtendedOTReceive runs the Receiver's side of the Extended OT Protocol.
@@ -163,8 +235,8 @@ type ExtendedOTReceiveMessage struct {
 // A single setup can be used for many invocations of this protocol, so long as the
 // hash is initialized with some kind of nonce.
 func ExtendedOTReceive(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, choices []byte) (*ExtendedOTReceiveMessage, *ExtendedOTReceiveResult) {
-	inflatedBatchSize := 8*len(choices) + params.OTParam + params.StatParam
-	extraChoices := make([]byte, inflatedBatchSize/8)
+	adjustedBatchSize := adjustBatchSize(8 * len(choices))
+	extraChoices := make([]byte, adjustedBatchSize/8)
 	copy(extraChoices, choices)
 	_, _ = rand.Read(extraChoices[len(choices):])
 
@@ -176,21 +248,20 @@ func ExtendedOTReceive(ctxHash *hash.Hash, setup *CorreOTReceiveSetup, choices [
 	outMsg := new(ExtendedOTReceiveMessage)
 	outMsg.CorreMsg = correMsg
 
-	chi := make([][params.OTBytes]byte, inflatedBatchSize)
+	chi := make([]fieldElement, adjustedBatchSize/params.OTParam)
 	digest := ctxHash.Digest()
 	for i := 0; i < len(chi); i++ {
-		_, _ = digest.Read(chi[i][:])
+		chi[i] = randFe(digest)
 	}
+
+	bHat := pluckBitsToFieldElements(extraChoices)
+	_THat := transposeToFieldSizeElements(correResult._T)
 
 	for i := 0; i < len(chi); i++ {
-		mask := -bitAt(i, extraChoices)
-		for j := 0; j < params.OTBytes; j++ {
-			outMsg.X[j] ^= mask & chi[i][j]
+		outMsg.X.accumulate(bHat[i], chi[i])
+		for j := 0; j < params.OTParam; j++ {
+			outMsg.T[j].accumulate(_THat[i][j], chi[i])
 		}
-	}
-
-	for i := 0; i < len(chi) && i < len(correResult._T); i++ {
-		outMsg.T.accumulate(&correResult._T[i], &chi[i])
 	}
 
 	VChoices := make([][params.OTBytes]byte, 8*len(choices))
