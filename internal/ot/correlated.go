@@ -246,8 +246,6 @@ type CorreOTSendResult struct {
 //
 // This follows the extend section of Figure 3 in https://eprint.iacr.org/2015/546.
 //
-// A single setup can be used for multiple runs of the protocol, but it's important
-// that ctxHash be initialized with some kind of nonce in that case.
 func CorreOTSend(ctxHash *hash.Hash, setup *CorreOTSendSetup, batchSize int, msg *CorreOTReceiveMessage) (*CorreOTSendResult, error) {
 	batchSizeBytes := batchSize >> 3
 

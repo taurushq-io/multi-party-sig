@@ -25,7 +25,7 @@ func randFe(r io.Reader) fieldElement {
 
 // doubleFieldElementLen is enough to hold 2 elements of GF(2^k).
 //
-// This allows us to multiply 2 elements together withour performing a reduction.
+// This allows us to multiply 2 elements together without performing a reduction.
 const doubleFieldElementLen = 2 * fieldElementLen
 
 // doubleFieldElement represent an element of GF(2^k), in little endian order.
