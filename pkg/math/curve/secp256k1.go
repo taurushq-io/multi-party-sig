@@ -196,6 +196,11 @@ func (p *Secp256k1Point) XBytes() []byte {
 	return p.value.X.Bytes()[:]
 }
 
+func (p *Secp256k1Point) YBytes() []byte {
+	p.value.ToAffine()
+	return p.value.Y.Bytes()[:]
+}
+
 func (p *Secp256k1Point) MarshalBinary() ([]byte, error) {
 	out := make([]byte, 33)
 	// we clone v to not case a race during a hash.Write
