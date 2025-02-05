@@ -38,6 +38,44 @@ func runCorreOTSetup(pl *pool.Pool, hash *hash.Hash) (*CorreOTSendSetup, *CorreO
 	return sendSetup, receiveSetup, nil
 }
 
+func TestMarshalingOTSetup(t *testing.T) {
+	pl := pool.NewPool(0)
+	defer pl.TearDown()
+	sendSetup, receiveSetup, err := runCorreOTSetup(pl, hash.New())
+	sendSetupBytes, err := sendSetup.MarshalJSON()
+	if err != nil {
+		panic(err)
+	}
+	receiveSetupBytes, err := receiveSetup.MarshalJSON()
+	if err != nil {
+		panic(err)
+	}
+
+	newSendSetup := &CorreOTSendSetup{}
+	newSendSetup.UnmarshalJSON(sendSetupBytes)
+
+	newReceiveSetup := &CorreOTReceiveSetup{}
+	newReceiveSetup.UnmarshalJSON(receiveSetupBytes)
+
+	for i := 0; i < params.OTParam; i++ {
+		if !bytes.Equal(newReceiveSetup._K_0[i][:], receiveSetup._K_0[i][:]) {
+			t.Error("receiveSetup._K_0 diff")
+		}
+		if !bytes.Equal(newReceiveSetup._K_1[i][:], receiveSetup._K_1[i][:]) {
+			t.Error("receiveSetup._K_1 diff")
+		}
+	}
+
+	if !bytes.Equal(newSendSetup._Delta[:], sendSetup._Delta[:]) {
+		t.Error("sender._Delta diff")
+	}
+	for i := 0; i < params.OTParam; i++ {
+		if !bytes.Equal(newSendSetup._K_Delta[i][:], sendSetup._K_Delta[i][:]) {
+			t.Error("send._K_Delta[i]")
+		}
+	}
+}
+
 func TestCorreOTSetup(t *testing.T) {
 	pl := pool.NewPool(0)
 	defer pl.TearDown()

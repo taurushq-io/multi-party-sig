@@ -2,6 +2,7 @@ package keygen
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -26,6 +27,13 @@ type ConfigReceiver struct {
 	Public curve.Point
 	// ChainKey is the shared chain key.
 	ChainKey []byte
+}
+
+type ConfigMarshal struct {
+	Setup       []byte
+	SecretShare []byte
+	Public      []byte
+	ChainKey    []byte
 }
 
 // Group returns the elliptic curve group associate with this config.
@@ -71,6 +79,35 @@ func (c *ConfigReceiver) DeriveBIP32(i uint32) (*ConfigReceiver, error) {
 		return nil, err
 	}
 	return c.Derive(scalar, newChainKey)
+}
+
+func (c *ConfigReceiver) MarshalJSON() ([]byte, error) {
+	secretShare, err := c.SecretShare.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal configReceiver.SecretShare: %v", err)
+	}
+	public, err := c.Public.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal configReceiver.Public: %v", err)
+	}
+	setup, err := c.Setup.MarshalJSON()
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal configReceiver.Setup: %v", err)
+	}
+
+	output := ConfigMarshal{
+		Setup:       setup,
+		SecretShare: secretShare,
+		Public:      public,
+		ChainKey:    c.ChainKey,
+	}
+
+	res, err := json.Marshal(output)
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal keygen output: %v", err)
+	}
+
+	return res, nil
 }
 
 // ConfigSender holds the results of key generation for the sender.
@@ -182,4 +219,33 @@ func (c *ConfigSender) DeriveBIP32(i uint32) (*ConfigSender, error) {
 		return nil, err
 	}
 	return c.Derive(scalar, newChainKey)
+}
+
+func (c *ConfigSender) MarshalJSON() ([]byte, error) {
+	secretShare, err := c.SecretShare.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal configSender.SecretShare: %v", err)
+	}
+	public, err := c.Public.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal configSender.Public: %v", err)
+	}
+	setup, err := c.Setup.MarshalJSON()
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal configSender.Setup: %v", err)
+	}
+
+	output := ConfigMarshal{
+		Setup:       setup,
+		SecretShare: secretShare,
+		Public:      public,
+		ChainKey:    c.ChainKey,
+	}
+
+	res, err := json.Marshal(output)
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal keygen output: %v", err)
+	}
+
+	return res, nil
 }

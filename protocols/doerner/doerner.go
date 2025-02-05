@@ -1,6 +1,10 @@
 package doerner
 
 import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/taurusgroup/multi-party-sig/internal/ot"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pool"
@@ -12,6 +16,7 @@ import (
 type (
 	ConfigReceiver = keygen.ConfigReceiver
 	ConfigSender   = keygen.ConfigSender
+	ConfigMarshal  = keygen.ConfigMarshal
 )
 
 // EmptyConfigReceiver creates a ConfigReceiever that's ready to be unmarshalled.
@@ -79,4 +84,70 @@ func SignReceiver(config *ConfigReceiver, selfID, otherID party.ID, hash []byte,
 // See SignReceiver for more information.
 func SignSender(config *ConfigSender, selfID, otherID party.ID, hash []byte, pl *pool.Pool) protocol.StartFunc {
 	return sign.StartSignSender(config, selfID, otherID, hash, pl)
+}
+
+func ConfigReceiverFromMarshaledJSON(share []byte) (*ConfigReceiver, error) {
+	clientShare := ConfigMarshal{}
+	err := json.Unmarshal(share, &clientShare)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshall keygen output: %v", err)
+	}
+
+	secretShare := new(curve.Secp256k1Scalar)
+	err = secretShare.UnmarshalBinary(clientShare.SecretShare)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshal clientShare.secretShare: %v", err)
+	}
+	public := new(curve.Secp256k1Point)
+	err = public.UnmarshalBinary(clientShare.Public)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshal clientShare.public: %v", err)
+	}
+	setup := ot.CorreOTReceiveSetup{}
+
+	err = setup.UnmarshalJSON(clientShare.Setup)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshal clientShare.setup: %v", err)
+	}
+
+	configReceiver := &ConfigReceiver{
+		Setup:       &setup,
+		SecretShare: secretShare,
+		Public:      public,
+		ChainKey:    clientShare.ChainKey,
+	}
+	return configReceiver, nil
+}
+
+func ConfigSenderFromMarshaledJSON(share []byte) (*ConfigSender, error) {
+	clientShare := ConfigMarshal{}
+	err := json.Unmarshal(share, &clientShare)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshall keygen output: %v", err)
+	}
+
+	secretShare := new(curve.Secp256k1Scalar)
+	err = secretShare.UnmarshalBinary(clientShare.SecretShare)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshal clientShare.secretShare: %v", err)
+	}
+	public := new(curve.Secp256k1Point)
+	err = public.UnmarshalBinary(clientShare.Public)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshal clientShare.public: %v", err)
+	}
+	setup := ot.CorreOTSendSetup{}
+
+	err = setup.UnmarshalJSON(clientShare.Setup)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshal clientShare.setup: %v", err)
+	}
+
+	configSender := &ConfigSender{
+		Setup:       &setup,
+		SecretShare: secretShare,
+		Public:      public,
+		ChainKey:    clientShare.ChainKey,
+	}
+	return configSender, nil
 }
