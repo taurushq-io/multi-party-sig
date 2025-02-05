@@ -2,6 +2,8 @@ package ot
 
 import (
 	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 
 	"github.com/cronokirby/saferith"
@@ -121,6 +123,83 @@ func (r *CorreOTSetupSender) Round3(msg *CorreOTSetupReceiveRound3Message) (*Cor
 type CorreOTReceiveSetup struct {
 	_K_0 [params.OTParam][params.OTBytes]byte
 	_K_1 [params.OTParam][params.OTBytes]byte
+}
+
+func (c *CorreOTReceiveSetup) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		K0 []string `json:"K_0"`
+		K1 []string `json:"K_1"`
+	}{
+		K0: convertToBase64Strings(c._K_0),
+		K1: convertToBase64Strings(c._K_1),
+	})
+}
+
+func (c *CorreOTReceiveSetup) UnmarshalJSON(data []byte) error {
+	aux := &struct {
+		K0 []string `json:"K_0"`
+		K1 []string `json:"K_1"`
+	}{}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	c._K_0 = convertFromBase64Strings(aux.K0)
+	c._K_1 = convertFromBase64Strings(aux.K1)
+	return nil
+}
+
+func (c *CorreOTSendSetup) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Delta   string   `json:"Delta"`
+		K_Delta []string `json:"K_Delta"`
+	}{
+		Delta:   convertToBase64String(c._Delta),
+		K_Delta: convertToBase64Strings(c._K_Delta),
+	})
+}
+
+func (c *CorreOTSendSetup) UnmarshalJSON(data []byte) error {
+	aux := &struct {
+		Delta   string   `json:"Delta"`
+		K_Delta []string `json:"K_Delta"`
+	}{}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	c._Delta = convertFromBase64String(aux.Delta)
+	c._K_Delta = convertFromBase64Strings(aux.K_Delta)
+	return nil
+}
+
+func convertFromBase64String(str string) [params.OTBytes]byte {
+	var result [params.OTBytes]byte
+
+	bytes, _ := base64.StdEncoding.DecodeString(str)
+	copy(result[:], bytes)
+
+	return result
+}
+
+func convertFromBase64Strings(data []string) [params.OTParam][params.OTBytes]byte {
+	var result [params.OTParam][params.OTBytes]byte
+	for i, str := range data {
+		result[i] = convertFromBase64String(str)
+	}
+	return result
+}
+
+func convertToBase64String(data [params.OTBytes]byte) string {
+	var result string = base64.StdEncoding.EncodeToString(data[:])
+
+	return result
+}
+
+func convertToBase64Strings(data [params.OTParam][params.OTBytes]byte) []string {
+	result := make([]string, params.OTParam)
+	for i, bytes := range data {
+		result[i] = convertToBase64String(bytes)
+	}
+	return result
 }
 
 // CorreOTSetupReceiver holds the Receiver's state on a Correlated OT Setup.
