@@ -162,6 +162,7 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 			Threshold:          r.threshold,
 			PrivateShare:       r.privateShare.(*curve.Secp256k1Scalar),
 			PublicKey:          YSecp.XBytes()[:],
+			ChainKey:           ChainKey,
 			VerificationShares: secpVerificationShares,
 		}), nil
 	}
@@ -171,6 +172,7 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 		Threshold:          r.threshold,
 		PrivateShare:       r.privateShare,
 		PublicKey:          r.publicKey,
+		ChainKey:           ChainKey,
 		VerificationShares: party.NewPointMap(r.verificationShares),
 	}), nil
 }
