@@ -133,6 +133,7 @@ func TestSignTaproot(t *testing.T) {
 			PublicKey:          publicKey,
 			PrivateShare:       privateShares[id],
 			VerificationShares: verificationShares,
+			ChainKey:           chainKey,
 		}
 		result, _ = result.DeriveChild(1)
 		if newPublicKey == nil {
@@ -150,6 +151,7 @@ func TestSignTaproot(t *testing.T) {
 			PrivateShare:       result.PrivateShare,
 			PublicKey:          tapRootPublicKey,
 			VerificationShares: party.NewPointMap(genericVerificationShares),
+			ChainKey:           chainKey,
 		}
 		r, err := StartSignCommon(true, normalResult, partyIDs, steak)(nil)
 		require.NoError(t, err, "round creation should not result in an error")

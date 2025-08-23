@@ -13,7 +13,8 @@ import (
 )
 
 // This round corresponds with steps 5 of Round 1, 1 of Round 2, Figure 1 in the Frost paper:
-//   https://eprint.iacr.org/2020/852.pdf
+//
+//	https://eprint.iacr.org/2020/852.pdf
 type round2 struct {
 	*round1
 	// f_i is the polynomial this participant uses to share their contribution to

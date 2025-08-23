@@ -116,6 +116,10 @@ func checkOutputTaproot(t *testing.T, rounds []round.Session, parties party.IDSl
 		}
 		publicKey = result.PublicKey
 		if chainKey != nil {
+			if result.ChainKey == nil {
+				t.Logf("chain key is nil for %v", result.ID)
+				t.Fail()
+			}
 			assert.Equal(t, chainKey, result.ChainKey, "different chain keys")
 		}
 		chainKey = result.ChainKey

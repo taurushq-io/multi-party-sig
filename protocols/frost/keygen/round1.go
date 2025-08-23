@@ -15,7 +15,8 @@ import (
 )
 
 // This round corresponds with the steps 1-4 of Round 1, Figure 1 in the Frost paper:
-//   https://eprint.iacr.org/2020/852.pdf
+//
+//	https://eprint.iacr.org/2020/852.pdf
 type round1 struct {
 	*round.Helper
 	// taproot indicates whether or not to make taproot compatible keys.

@@ -10,7 +10,8 @@ import (
 )
 
 // This corresponds with step 7 of Figure 3 in the Frost paper:
-//   https://eprint.iacr.org/2020/852.pdf
+//
+//	https://eprint.iacr.org/2020/852.pdf
 //
 // The big difference, once again, stems from their being no signing authority.
 // Instead, each participant calculates the signature on their own.

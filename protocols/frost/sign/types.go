@@ -29,7 +29,7 @@ func (messageHash) Domain() string {
 //
 // This signature claims to satisfy:
 //
-//    z * G = R + H(R, Y, m) * Y
+//	z * G = R + H(R, Y, m) * Y
 //
 // for a public key Y.
 type Signature struct {

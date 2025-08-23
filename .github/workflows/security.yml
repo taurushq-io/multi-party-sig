@@ -1,0 +1,28 @@
+# Name of this GitHub Actions workflow.
+name: Security Actions
+
+on:
+  # Scan changed files in PRs (diff-aware scanning):
+  pull_request: {}
+
+  # Scan on-demand through GitHub Actions interface
+  workflow_dispatch: {}
+
+  # Scan mainline branches when there is change in security.yml file:
+  push: {}
+
+  # Schedule the CI job (this method uses cron syntax):
+  schedule:
+    - cron: '40 22 * * 1'
+    # It is recommended to change the schedule to a random time.
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+jobs:
+  # Calling Security Reusable action which would in turn call other reusable actions example - Semgrep
+  call_security:
+    uses: falconxio/security-actions/.github/workflows/security.yml@main
+    secrets: inherit
