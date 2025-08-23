@@ -45,6 +45,8 @@ func checkOutput(t *testing.T, rounds []round.Session, parties party.IDSlice) {
 
 	actualPublicKey := privateKey.ActOnBase()
 
+	require.True(t, len(chainKey) > 0, "chainKey is empty")
+
 	require.True(t, publicKey.Equal(actualPublicKey))
 
 	shares := make(map[party.ID]curve.Scalar)
@@ -127,6 +129,8 @@ func checkOutputTaproot(t *testing.T, rounds []round.Session, parties party.IDSl
 	actualPublicKey := privateKey.ActOnBase()
 
 	require.True(t, actualPublicKey.Equal(effectivePublic))
+
+	require.True(t, len(chainKey) > 0, "chainKey is empty")
 
 	shares := make(map[party.ID]curve.Scalar)
 	for _, result := range results {
