@@ -1,10 +1,14 @@
 package config
 
 import (
+	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"io"
 	"math"
+	"math/big"
+
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 
 	"github.com/taurusgroup/multi-party-sig/internal/bip32"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
@@ -271,4 +275,20 @@ func (c *Config) DeriveBIP32(i uint32) (*Config, error) {
 		return nil, err
 	}
 	return c.Derive(scalar, newChainKey)
+}
+
+func (c *Config) ECDSAPubKey() (ecdsa.PublicKey, error) {
+	publicPoint, ok := c.PublicPoint().(*curve.Secp256k1Point)
+	if !ok {
+		return ecdsa.PublicKey{}, errors.New("ECDSAPubKey must be called with secp256k1")
+	}
+
+	x := new(big.Int).SetBytes(publicPoint.XBytes())
+	y := new(big.Int).SetBytes(publicPoint.YBytes())
+
+	return ecdsa.PublicKey{
+		Curve: secp256k1.S256(),
+		X:     x,
+		Y:     y,
+	}, nil
 }
