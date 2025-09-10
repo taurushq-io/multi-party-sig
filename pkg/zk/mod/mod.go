@@ -212,6 +212,7 @@ func (r *Response) Verify(n, w, y *big.Int) bool {
 	lhs.Mod(&lhs, n)
 
 	// rhs = y' = (-1)ᵃ • wᵇ • y
+
 	rhs.Set(y)
 	if r.A {
 		rhs.Neg(&rhs)
@@ -235,13 +236,9 @@ func (p *Proof) Verify(public Public, hash *hash.Hash, pl *pool.Pool) bool {
 		return false
 	}
 
-	if big.Jacobi(p.W, n) != -1 {
-		return false
-	}
-
-	if !arith.IsValidBigModN(n, p.W) {
-		return false
-	}
+        if !p.IsValid(public) {
+            return false
+        }
 
 	// get [yᵢ] <- ℤₙ
 	ys, err := challenge(hash, nMod, p.W)
@@ -249,6 +246,10 @@ func (p *Proof) Verify(public Public, hash *hash.Hash, pl *pool.Pool) bool {
 		return false
 	}
 	verifications := pl.Parallelize(params.StatParam, func(i int) interface{} {
+                if !arith.IsValidBigModN(n, ys[i].Big()) {
+                    return false
+                }
+
 		return p.Responses[i].Verify(n, p.W, ys[i].Big())
 	})
 	for i := 0; i < len(verifications); i++ {
